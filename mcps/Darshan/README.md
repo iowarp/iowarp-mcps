@@ -1,165 +1,289 @@
-# Darshan MCP Server
+# Darshan MCP - HPC I/O Performance Analysis for LLMs
 
-The Darshan MCP server provides comprehensive analysis tools for Darshan I/O profiler trace files. It allows AI agents to explore, analyze, and extract insights from I/O performance data collected during HPC application runs.
 
-## Features
+## Description
 
-- **Load and parse Darshan logs**: Extract metadata and basic information from .darshan files
-- **Job-level analysis**: Get comprehensive job summaries with runtime and I/O statistics
-- **File access pattern analysis**: Understand how applications access files (sequential vs random, read vs write)
-- **I/O performance metrics**: Calculate bandwidth, IOPS, and request size statistics
-- **POSIX and MPI-IO analysis**: Analyze system call patterns and MPI-IO operations
-- **Bottleneck identification**: Automatically identify potential performance issues
-- **Timeline analysis**: Understand I/O activity over time
-- **Log comparison**: Compare multiple trace files to identify performance changes
-- **Comprehensive reporting**: Generate detailed I/O analysis reports
+Darshan MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to analyze HPC application I/O performance through Darshan profiler trace files. This server provides advanced I/O analysis capabilities, performance bottleneck identification, and comprehensive reporting tools with seamless integration with AI coding assistants.
 
-## Installation
+**Key Features:**
+- **Comprehensive I/O Analysis**: Load and parse Darshan logs with metadata extraction and performance metrics calculation
+- **Performance Metrics**: Calculate bandwidth, IOPS, request size statistics, and access pattern analysis
+- **Bottleneck Detection**: Automatically identify potential I/O performance issues and optimization opportunities
+- **Multi-Protocol Support**: Analyze both POSIX system calls and MPI-IO operations with detailed pattern recognition
+- **Timeline Analysis**: Understand I/O activity over time with temporal performance visualization
+- **Comparative Analysis**: Compare multiple trace files to identify performance changes and optimization results
+- **MCP Integration**: Full Model Context Protocol compliance for seamless LLM integration
 
-```bash
-# Install the MCP server
-uv pip install "git+https://github.com/iowarp/scientific-mcps.git@main#subdirectory=Darshan"
 
-# Or install from local directory
-cd Darshan
-uv pip install -e .
-```
+## 🛠️ Installation
 
-## Running the Server
+### Requirements
 
-After installation, you can run the server using:
+- Python 3.10 or higher
+- [uv](https://docs.astral.sh/uv/) package manager (recommended)
+- Darshan tools (`darshan-parser` in PATH)
+- Python libraries: numpy, pandas, matplotlib
 
-```bash
-uv run darshan-mcp
-```
+<details>
+<summary><b>Install in Cursor</b></summary>
 
-Or if installed globally:
+Go to: `Settings` -> `Cursor Settings` -> `MCP` -> `Add new global MCP server`
 
-```bash
-darshan-mcp
-```
-
-## Prerequisites
-
-- **Darshan tools**: The server requires `darshan-parser` to be installed and available in PATH
-- **Python libraries**: numpy, pandas, matplotlib for analysis and visualization
-- **Darshan log files**: .darshan format trace files from instrumented applications
-
-## Available Tools
-
-### load_darshan_log
-Load and parse a Darshan log file to extract basic information.
-- **log_file_path**: Absolute path to the .darshan log file
+Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file is the recommended approach. You may also install in a specific project by creating `.cursor/mcp.json` in your project folder. See [Cursor MCP docs](https://docs.cursor.com/context/model-context-protocol) for more info.
 
 ```json
 {
-  "success": true,
-  "log_file": "/path/to/trace.darshan",
-  "job_info": {"job_id": "12345", "nprocs": 64},
-  "modules": ["POSIX", "MPIIO", "STDIO"],
-  "file_count": 42
+  "mcpServers": {
+    "darshan-mcp": {
+      "command": "uvx",
+      "args": ["iowarp-mcps", "darshan"]
+    }
+  }
 }
 ```
 
-### get_job_summary
-Get comprehensive job-level summary including runtime and I/O statistics.
-- **log_file_path**: Path to the Darshan log file
+</details>
 
-### analyze_file_access_patterns
-Analyze how files were accessed during the job.
-- **log_file_path**: Path to the Darshan log file
-- **file_pattern** (optional): Filter files by pattern (e.g., '*.dat', '/scratch/*')
+<details>
+<summary><b>Install in VS Code</b></summary>
 
-### get_io_performance_metrics
-Extract detailed I/O performance metrics including bandwidth and IOPS.
-- **log_file_path**: Path to the Darshan log file
+Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) for more info.
 
-### analyze_posix_operations
-Analyze POSIX system call patterns (open, read, write, seek, etc.).
-- **log_file_path**: Path to the Darshan log file
-
-### analyze_mpiio_operations
-Analyze MPI-IO operations including collective vs independent I/O.
-- **log_file_path**: Path to the Darshan log file
-
-### identify_io_bottlenecks
-Automatically identify potential I/O performance bottlenecks.
-- **log_file_path**: Path to the Darshan log file
-
-### get_timeline_analysis
-Generate timeline analysis of I/O activity over time.
-- **log_file_path**: Path to the Darshan log file
-- **time_resolution**: Time resolution for analysis (e.g., '1s', '100ms')
-
-### compare_darshan_logs
-Compare two Darshan log files to identify performance differences.
-- **log_file_1**: Path to the first log file
-- **log_file_2**: Path to the second log file
-- **comparison_metrics**: List of metrics to compare ['bandwidth', 'iops', 'file_count']
-
-### generate_io_summary_report
-Generate a comprehensive I/O analysis report.
-- **log_file_path**: Path to the Darshan log file
-- **include_visualizations**: Whether to include visualization data
-
-## Example Usage
-
-```python
-# Load a Darshan log file
-result = await load_darshan_log("/path/to/application.darshan")
-
-# Get job summary
-summary = await get_job_summary("/path/to/application.darshan")
-print(f"Job ran for {summary['runtime_seconds']} seconds")
-print(f"Total I/O: {summary['total_io_volume']} bytes")
-
-# Analyze file access patterns
-patterns = await analyze_file_access_patterns("/path/to/application.darshan")
-print(f"Found {patterns['read_only_files']} read-only files")
-print(f"Found {patterns['sequential_access']} files with sequential access")
-
-# Get performance metrics
-metrics = await get_io_performance_metrics("/path/to/application.darshan")
-print(f"Read bandwidth: {metrics['read_metrics']['bandwidth_mbps']} MB/s")
-print(f"Write bandwidth: {metrics['write_metrics']['bandwidth_mbps']} MB/s")
-
-# Identify bottlenecks
-bottlenecks = await identify_io_bottlenecks("/path/to/application.darshan")
-for issue in bottlenecks['identified_issues']:
-    print(f"Issue: {issue['description']}")
-
-# Compare two runs
-comparison = await compare_darshan_logs(
-    "/path/to/run1.darshan", 
-    "/path/to/run2.darshan",
-    ["bandwidth", "iops"]
-)
-
-# Generate comprehensive report
-report = await generate_io_summary_report("/path/to/application.darshan")
+```json
+"mcp": {
+  "servers": {
+    "darshan-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["iowarp-mcps", "darshan"]
+    }
+  }
+}
 ```
 
-## Understanding Darshan Data
+</details>
 
-Darshan logs contain rich information about I/O behavior:
+<details>
+<summary><b>Install in Claude Code</b></summary>
 
-- **Job metadata**: Process count, runtime, user information
-- **File access data**: Which files were accessed, when, and how
-- **I/O operations**: Read/write counts, sizes, and timing
-- **Access patterns**: Sequential vs random, collective vs independent
-- **Performance metrics**: Bandwidth, IOPS, request sizes
+Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
 
-## Common Analysis Workflows
+```sh
+claude mcp add darshan-mcp -- uvx iowarp-mcps darshan
+```
 
-1. **Performance Assessment**: Load log → Get job summary → Analyze performance metrics
-2. **Bottleneck Investigation**: Identify bottlenecks → Analyze access patterns → Review POSIX/MPI-IO operations
-3. **Optimization Validation**: Compare logs before/after optimization
-4. **Application Profiling**: Generate comprehensive report for detailed analysis
+</details>
 
-## Notes
+<details>
+<summary><b>Install in Claude Desktop</b></summary>
 
-- Requires Darshan-utils to be installed on the system
-- Log files must be in .darshan format (not .darshan.gz)
-- Large log files may take time to process
-- Some analyses require specific modules to be present in the log
-- Timeline analysis requires timestamp data which may not be available in all Darshan versions
+Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) for more info.
+
+```json
+{
+  "mcpServers": {
+    "darshan-mcp": {
+      "command": "uvx",
+      "args": ["iowarp-mcps", "darshan"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Manual Setup</b></summary>
+
+**Linux/macOS:**
+```bash
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/Darshan run darshan-mcp --help
+```
+
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\Darshan run darshan-mcp --help
+```
+
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\Darshan run darshan-mcp --help
+```
+
+</details>
+
+## Available Actions
+
+### `load_darshan_log`
+**Description**: Load and parse a Darshan log file to extract metadata and basic I/O information.
+
+**Parameters**:
+- `log_file_path` (str): Absolute path to the .darshan log file
+
+**Returns**: Dictionary with job information, modules detected, and file count statistics.
+
+### `get_job_summary`
+**Description**: Get comprehensive job-level summary including runtime statistics and I/O performance overview.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+
+**Returns**: Dictionary with runtime metrics, process information, and I/O volume statistics.
+
+### `analyze_file_access_patterns`
+**Description**: Analyze file access patterns to understand application I/O behavior and optimization opportunities.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+- `file_pattern` (str, optional): Filter files by pattern (e.g., '*.dat', '/scratch/*')
+
+**Returns**: Dictionary with access pattern analysis including sequential vs random access statistics.
+
+### `get_io_performance_metrics`
+**Description**: Extract detailed I/O performance metrics including bandwidth, IOPS, and request size analysis.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+
+**Returns**: Dictionary with comprehensive performance metrics and throughput analysis.
+
+### `analyze_posix_operations`
+**Description**: Analyze POSIX system call patterns including open, read, write, and seek operations.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+
+**Returns**: Dictionary with POSIX operation statistics and system call analysis.
+
+### `analyze_mpiio_operations`
+**Description**: Analyze MPI-IO operations including collective vs independent I/O patterns and performance.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+
+**Returns**: Dictionary with MPI-IO operation analysis and collective I/O performance metrics.
+
+### `identify_io_bottlenecks`
+**Description**: Automatically identify potential I/O performance bottlenecks and optimization opportunities.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+
+**Returns**: Dictionary with identified performance issues and recommended optimizations.
+
+### `get_timeline_analysis`
+**Description**: Generate temporal analysis of I/O activity to understand performance patterns over time.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+- `time_resolution` (str): Time resolution for analysis (e.g., '1s', '100ms')
+
+**Returns**: Dictionary with timeline analysis and temporal I/O patterns.
+
+### `compare_darshan_logs`
+**Description**: Compare two Darshan log files to identify performance differences and optimization results.
+
+**Parameters**:
+- `log_file_1` (str): Path to the first log file
+- `log_file_2` (str): Path to the second log file
+- `comparison_metrics` (list): List of metrics to compare ['bandwidth', 'iops', 'file_count']
+
+**Returns**: Dictionary with comparative analysis and performance delta identification.
+
+### `generate_io_summary_report`
+**Description**: Generate comprehensive I/O analysis report with detailed metrics and recommendations.
+
+**Parameters**:
+- `log_file_path` (str): Path to the Darshan log file
+- `include_visualizations` (bool): Whether to include visualization data in the report
+
+**Returns**: Dictionary with complete I/O analysis report and performance insights.
+
+## Examples
+
+### 1. HPC Application Performance Analysis
+```
+Analyze the I/O performance of my application using the Darshan log at /data/app_trace.darshan. Identify bottlenecks and provide optimization recommendations.
+```
+
+**Tools called:**
+- `load_darshan_log` - Parse the Darshan trace file
+- `get_job_summary` - Extract job-level statistics
+- `identify_io_bottlenecks` - Find performance issues
+- `get_io_performance_metrics` - Calculate detailed metrics
+
+This prompt will:
+- Use `load_darshan_log` to parse the trace file and extract metadata
+- Generate job summary using `get_job_summary` for runtime and I/O statistics
+- Identify performance bottlenecks using `identify_io_bottlenecks`
+- Provide comprehensive performance analysis with optimization recommendations
+
+### 2. I/O Pattern Optimization Study
+```
+Compare the I/O patterns between /data/before_opt.darshan and /data/after_opt.darshan to validate our optimization efforts and measure performance improvements.
+```
+
+**Tools called:**
+- `analyze_file_access_patterns` - Analyze access patterns for both files
+- `compare_darshan_logs` - Compare performance metrics
+- `get_io_performance_metrics` - Extract detailed performance data
+
+This prompt will:
+- Analyze access patterns using `analyze_file_access_patterns` for both traces
+- Compare performance metrics using `compare_darshan_logs`
+- Extract detailed metrics using `get_io_performance_metrics`
+- Provide comprehensive optimization validation and improvement quantification
+
+### 3. MPI-IO Collective Performance Analysis
+```
+Examine the MPI-IO operations in /data/parallel_app.darshan, focusing on collective vs independent I/O patterns and their impact on overall performance.
+```
+
+**Tools called:**
+- `analyze_mpiio_operations` - Analyze MPI-IO patterns
+- `get_timeline_analysis` - Understand temporal patterns
+- `generate_io_summary_report` - Create comprehensive report
+
+This prompt will:
+- Analyze MPI-I/O operations using `analyze_mpiio_operations`
+- Generate temporal analysis using `get_timeline_analysis`
+- Create detailed report using `generate_io_summary_report`
+- Provide insights into collective I/O efficiency and optimization opportunities
+
+### 4. POSIX System Call Analysis
+```
+Investigate the POSIX I/O operations in /data/serial_app.darshan to understand file access patterns and identify potential optimizations for system call efficiency.
+```
+
+**Tools called:**
+- `analyze_posix_operations` - Examine POSIX system calls
+- `analyze_file_access_patterns` - Study file access behavior
+- `identify_io_bottlenecks` - Find system-level bottlenecks
+
+This prompt will:
+- Analyze POSIX operations using `analyze_posix_operations`
+- Study file access patterns using `analyze_file_access_patterns`
+- Identify bottlenecks using `identify_io_bottlenecks`
+- Provide system call optimization recommendations
+
+### 5. Comprehensive I/O Performance Report
+```
+Generate a complete I/O performance analysis report for /data/production_app.darshan including all metrics, visualizations, and recommendations for our production environment.
+```
+
+**Tools called:**
+- `load_darshan_log` - Load and validate trace file
+- `generate_io_summary_report` - Create comprehensive analysis
+- `get_timeline_analysis` - Add temporal performance data
+
+This prompt will:
+- Load and validate trace using `load_darshan_log`
+- Generate complete report using `generate_io_summary_report`
+- Add timeline analysis using `get_timeline_analysis`
+- Provide production-ready performance assessment with actionable insights

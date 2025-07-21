@@ -5,7 +5,7 @@
 
 ADIOS MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to access and analyze scientific simulation and real-time data through the ADIOS2 framework. This server provides read-only access to BP5 datasets with intelligent data handling and seamless integration with AI coding assistants.
 
-The system automatically handles ADIOS2 data structures, provides comprehensive variable inspection, and supports multi-step time-series data analysis. It offers professional data access capabilities with support for scientific computing workflows and high-performance data I/O operations.
+
 
 **Key Features:**
 - **High-Performance Data Access**: Read-only access to ADIOS2 BP5 files with optimized I/O operations
@@ -36,8 +36,8 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
 {
   "mcpServers": {
     "adios-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Adios", "run", "adios-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "adios"]
     }
   }
 }
@@ -55,8 +55,8 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
   "servers": {
     "adios-mcp": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Adios", "run", "adios-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "adios"]
     }
   }
 }
@@ -67,10 +67,10 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
 <details>
 <summary><b>Install in Claude Code</b></summary>
 
-Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/claude-code/mcp) for more info.
+Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
 
 ```sh
-claude mcp add adios-mcp -- uv --directory /absolute/path/to/Adios run adios-mcp
+claude mcp add adios-mcp -- uvx iowarp-mcps adios
 ```
 
 </details>
@@ -84,11 +84,8 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 {
   "mcpServers": {
     "adios-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Adios", "run", "adios-mcp"],
-      "env": {
-        "UV_PROJECT_ENVIRONMENT": "/absolute/path/to/Adios/.venv"
-      }
+      "command": "uvx",
+      "args": ["iowarp-mcps", "adios"]
     }
   }
 }
@@ -99,16 +96,26 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 <details>
 <summary><b>Manual Setup</b></summary>
 
-1. Clone or download the ADIOS MCP server
-2. Install dependencies:
-   ```bash
-   cd /path/to/Adios
-   uv sync
-   ```
-3. Test the installation:
-   ```bash
-   uv run adios-mcp --version
-   ```
+**Linux/macOS:**
+```bash
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/Adios run adios-mcp --help
+```
+ 
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\Adios run adios-mcp --help
+```
+ 
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\Adios run adios-mcp --help
+```
 
 </details>
 

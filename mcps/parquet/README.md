@@ -1,255 +1,247 @@
-# MCP Server Implementation
-
-## MCP Capabilities
-
-**Parquet Handler**
-- Reads specific columns from .parquet files using PyArrow (pyarrow must be installed)
-- Expects valid file paths and column names
-- Supports error handling for:
-  - Non-existent files
-  - Missing or incorrect column names
+# Parquet MCP - Columnar Data Access for LLMs
 
 
-## Environment Setup (Linux)
+## Description
 
-1. Install uv:
+Parquet MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to access, analyze, and manipulate Parquet columnar data files. This server provides advanced capabilities for efficient data reading, column-based operations, and high-performance analytics with seamless integration with AI coding assistants.
+
+**Key Features:**
+- **High-Performance Columnar Access**: Efficient column-based data reading using PyArrow with optimized memory usage
+- **Intelligent Data Processing**: Automatic schema detection and type inference with metadata extraction
+- **Flexible Data Operations**: Resource discovery, column reading, and data preview capabilities
+- **Big Data Support**: Optimized for large datasets with memory-efficient streaming and column selection
+- **Analytics Integration**: Support for data science workflows with pandas and NumPy compatibility
+- **MCP Integration**: Full Model Context Protocol compliance for seamless LLM integration
+
+
+## 🛠️ Installation
+
+### Requirements
+
+- Python 3.10 or higher
+- [uv](https://docs.astral.sh/uv/) package manager (recommended)
+- PyArrow library for Parquet file processing
+
+<details>
+<summary><b>Install in Cursor</b></summary>
+
+Go to: `Settings` -> `Cursor Settings` -> `MCP` -> `Add new global MCP server`
+
+Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file is the recommended approach. You may also install in a specific project by creating `.cursor/mcp.json` in your project folder. See [Cursor MCP docs](https://docs.cursor.com/context/model-context-protocol) for more info.
+
+```json
+{
+  "mcpServers": {
+    "parquet-mcp": {
+      "command": "uvx",
+      "args": ["iowarp-mcps", "parquet"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Install in VS Code</b></summary>
+
+Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) for more info.
+
+```json
+"mcp": {
+  "servers": {
+    "parquet-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["iowarp-mcps", "parquet"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Install in Claude Code</b></summary>
+
+Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
+
+```sh
+claude mcp add parquet-mcp -- uvx iowarp-mcps parquet
+```
+
+</details>
+
+<details>
+<summary><b>Install in Claude Desktop</b></summary>
+
+Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) for more info.
+
+```json
+{
+  "mcpServers": {
+    "parquet-mcp": {
+      "command": "uvx",
+      "args": ["iowarp-mcps", "parquet"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Manual Setup</b></summary>
+
+**Linux/macOS:**
 ```bash
-pip install uv
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/parquet run parquet-mcp --help
 ```
 
-2. Create and activate environment using uv:
-```bash
-uv venv mcp-server
-source mcp-server/bin/activate
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\parquet run parquet-mcp --help
 ```
 
-3. Install dependencies using uv:
-```bash
-# Install dependencies from pyproject.toml
-uv pip install --requirement pyproject.toml
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\parquet run parquet-mcp --help
 ```
 
-Dependencies are specified in pyproject.toml:
-```toml
-[project]
-name = "mcp_server"
-version = "0.1.0"
-dependencies = [
-    "fastapi>=0.115.12",
-    "numpy>=2.2.4",
-    "pandas>=2.2.3",
-    "pyarrow>=19.0.1",
-    "pydantic>=2.11.3",
-    "pytest>=8.3.5",
-    "pytest-asyncio==0.26.0",
-    "requests>=2.32.3",
-    "uvicorn>=0.34.1",
-]
+</details>
 
-python = ">=3.10"
+## Available Actions
+
+### `list_parquet_resources`
+**Description**: Discover and list all available Parquet files and datasets with comprehensive metadata extraction and schema information.
+
+**Parameters**: None
+
+**Returns**: Dictionary with list of available Parquet resources including file paths, schemas, and metadata.
+
+### `read_parquet_column`
+**Description**: Read specific columns from Parquet files with efficient columnar access and memory optimization.
+
+**Parameters**:
+- `file_path` (str): Path to the Parquet file
+- `column_name` (str): Name of the column to read
+
+**Returns**: Dictionary with column data, data types, and statistical information.
+
+### `get_parquet_schema`
+**Description**: Extract comprehensive schema information from Parquet files including column types and metadata.
+
+**Parameters**:
+- `file_path` (str): Path to the Parquet file
+
+**Returns**: Dictionary with detailed schema information, column definitions, and file metadata.
+
+### `preview_parquet_data`
+**Description**: Preview sample data from Parquet files with configurable row limits and column selection.
+
+**Parameters**:
+- `file_path` (str): Path to the Parquet file
+- `num_rows` (int, optional): Number of rows to preview (default: 10)
+- `columns` (list, optional): Specific columns to preview
+
+**Returns**: Dictionary with preview data, schema information, and file statistics.
+
+## Examples
+
+### 1. Data Discovery and Schema Analysis
+```
+I have Parquet files in my data directory. Can you discover all available files and show me their schemas to understand the data structure?
 ```
 
-## Running the MCP Server
+**Tools called:**
+- `list_parquet_resources` - Discover available Parquet files
+- `get_parquet_schema` - Analyze file schemas and structure
 
-1. Ensure you're in the virtual environment
-2. Start the FastAPI server using uvicorn:
-```bash
-uvicorn src.server:app --reload --host 0.0.0.0 --port 8000
+This prompt will:
+- Use `list_parquet_resources` to discover all available Parquet files
+- Extract schema information using `get_parquet_schema` for each file
+- Provide comprehensive overview of data structure and organization
+- Enable informed data analysis planning
+
+### 2. Selective Column Analysis
+```
+From the weather data file at /data/weather_measurements.parquet, read the temperature column and show me the data distribution and statistics.
 ```
 
-The server will start on `http://localhost:8000` by default.
+**Tools called:**
+- `read_parquet_column` - Read temperature column data
+- `get_parquet_schema` - Get column metadata and types
 
-## Running Tests
+This prompt will:
+- Read temperature column using `read_parquet_column` with optimized memory usage
+- Extract column metadata using `get_parquet_schema`
+- Provide statistical analysis and data distribution insights
+- Support focused analytical workflows
 
-Run all tests:
-```bash
-python3 -m pytest
+### 3. Data Quality Assessment
 ```
-![Successful Tests](images/tests.png)
-
-Run specific test files:
-```bash
-python3 -m pytest tests/test_sort_handler.py
-python3 -m pytest tests/test_parquet_handler.py
-python3 -m pytest tests/test_compression_handler.py
-python3 -m pytest tests/test_pandas_handler.py
+Before processing the large dataset at /analytics/customer_data.parquet, preview the first 50 rows to validate data quality and structure.
 ```
 
-## Project Structure
+**Tools called:**
+- `preview_parquet_data` - Preview dataset sample
+- `get_parquet_schema` - Get comprehensive schema information
+
+This prompt will:
+- Preview sample data using `preview_parquet_data` with specified row count
+- Analyze data structure using `get_parquet_schema`
+- Enable data quality validation before full processing
+- Support data validation and preprocessing workflows
+
+### 4. Multi-Column Data Exploration
 ```
-MCP-Server/
-├── src/
-│   ├── capabilities/
-│   │   ├── __init__.py
-│   │   ├── parquet_handler.py
-│   ├── __init__.py
-│   ├── mcp_handlers.py
-|   └── server.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_parquet_handler.py
-├── data/
-├── images/
-├── README.md
-├── pyproject.toml
-└── pytest.ini
+Explore the sales dataset at /business/quarterly_sales.parquet by reading the revenue, region, and date columns for trend analysis.
 ```
 
-## JSON-RPC Requests and Responses
+**Tools called:**
+- `read_parquet_column` - Read multiple columns (revenue, region, date)
+- `preview_parquet_data` - Preview multi-column data sample
 
-### 1. List Resources
+This prompt will:
+- Read multiple columns using `read_parquet_column` for each required field
+- Preview multi-column data using `preview_parquet_data`
+- Enable comprehensive trend analysis and business intelligence
+- Support multi-dimensional data exploration
 
-![List Resources Request/Response](images/listResources.png)
-
-Request:
-```json
-{
-    "jsonrpc": "2.0",
-    "method": "mcp/listResources",
-    "id": 1
-}
+### 5. Large Dataset Processing Preparation
+```
+I need to process a large Parquet dataset at /warehouse/transaction_logs.parquet. Show me the schema, preview sample data, and help me understand the optimal columns for analysis.
 ```
 
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "result": [
-        {
-            "id": "resource1",
-            "name": "Weather Data",
-            "type": "Parquet",
-            "description": "Weather measurements including temperature, humidity, and pressure",
-            "path": "data/weather_data.parquet",
-            "format": "parquet",
-            "columns": ["temperature", "humidity", "pressure", "timestamp"]
-        },
-        {
-            "id": "resource2",
-            "name": "System Logs",
-            "type": "Log",
-            "description": "System event logs with timestamps",
-            "path": "data/huge_log.txt",
-            "format": "text",
-            "schema": "timestamp:string message:string level:string"
-        },
-        {
-            "id": "resource3",
-            "name": "Student Records",
-            "type": "CSV",
-            "description": "Student academic records with marks",
-            "path": "data/data.csv",
-            "format": "csv",
-            "columns": ["id", "name", "subject", "marks"]
-        },
-        {
-            "id": "resource4",
-            "name": "Application Logs",
-            "type": "Log",
-            "description": "Application startup and runtime logs with timestamps and log levels",
-            "path": "data/output.log",
-            "format": "text",
-            "schema": "timestamp:string level:string message:string",
-            "sample": "[2024-03-16 00:00:15] INFO: Application startup"
-        }
-    ],
-    "id": 1
-}
+**Tools called:**
+- `get_parquet_schema` - Analyze dataset structure
+- `preview_parquet_data` - Sample data for understanding
+- `list_parquet_resources` - Verify resource availability
+
+This prompt will:
+- Analyze dataset structure using `get_parquet_schema`
+- Preview sample data using `preview_parquet_data`
+- Verify resource availability using `list_parquet_resources`
+- Provide optimization recommendations for large dataset processing
+
+### 6. Business Intelligence Data Pipeline
+```
+Set up analysis of our customer behavior data stored in /bi/customer_analytics.parquet by examining schema, previewing key metrics columns, and reading engagement data.
 ```
 
-### 2. Get Resource
+**Tools called:**
+- `get_parquet_schema` - Understand data structure
+- `preview_parquet_data` - Preview key metrics
+- `read_parquet_column` - Read engagement data columns
 
-![Get Resource Request/Response](images/getResource.png)
-
-Request:
-```json
-{
-    "jsonrpc": "2.0",
-    "method": "mcp/getResource",
-    "params": {
-        "id": "resource1"
-    },
-    "id": 1
-}
-```
-
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "result": {
-        "id": "resource1",
-        "name": "Weather Data",
-        "type": "Parquet",
-        "description": "Weather measurements including temperature, humidity, and pressure",
-        "path": "data/weather_data.parquet",
-        "format": "parquet",
-        "columns": ["temperature", "humidity", "pressure", "timestamp"]
-    },
-    "id": 1
-}
-```
-
-### 3. List Available Tools
-
-![List Tools Request/Response](images/listTools.png)
-
-Request:
-```json
-{
-    "jsonrpc": "2.0",
-    "method": "mcp/listTools",
-    "id": 1
-}
-```
-
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "result": [
-        {
-            "id": "tool1",
-            "name": "Parquet Reader",
-            "description": "Reads columns from Parquet files",
-            "usage": "'tool': 'parquet', 'file': 'filename (optional)', 'column': 'column_name' in params."
-        },
-
-    ],
-    "id": 1
-}
-```
-
-### 4. Read Parquet Data
-
-![Read Parquet Data Request/Response](images/parquet.png)
-
-Request:
-```json
-{
-    "jsonrpc": "2.0",
-    "method": "mcp/callTool",
-    "params": {
-        "tool": "parquet",
-        "column": "temperature"
-    },
-    "id": 2
-}
-```
-
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "id": 2,
-    "result": [
-        14.96,
-        2.01,
-        0.56,
-        16.19,
-        30.18,
-        "..."
-    ]
-}
-```
-
+This prompt will:
+- Analyze data structure using `get_parquet_schema`
+- Preview key business metrics using `preview_parquet_data`
+- Extract engagement data using `read_parquet_column`
+- Support business intelligence and analytics workflows

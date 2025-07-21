@@ -5,8 +5,6 @@
 
 HDF5 MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to access, analyze, and manipulate HDF5 scientific data files. This server provides advanced capabilities for hierarchical data structure inspection, dataset previewing, and comprehensive data reading with seamless integration with AI coding assistants.
 
-The system automatically handles HDF5 file operations, provides detailed structure analysis of groups and datasets, and supports scientific computing workflows with comprehensive metadata extraction. It offers professional-grade data access capabilities for scientific research, engineering applications, and data analysis tasks.
-
 **Key Features:**
 - **Comprehensive HDF5 Access**: Full support for HDF5 file inspection, structure analysis, and data extraction
 - **Intelligent Data Processing**: Automatic detection of groups, datasets, and attributes with metadata extraction
@@ -36,8 +34,8 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
 {
   "mcpServers": {
     "hdf5-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/HDF5", "run", "hdf5-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "hdf5"]
     }
   }
 }
@@ -55,8 +53,8 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
   "servers": {
     "hdf5-mcp": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/HDF5", "run", "hdf5-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "hdf5"]
     }
   }
 }
@@ -67,10 +65,10 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
 <details>
 <summary><b>Install in Claude Code</b></summary>
 
-Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/claude-code/mcp) for more info.
+Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
 
 ```sh
-claude mcp add hdf5-mcp -- uv --directory /absolute/path/to/HDF5 run hdf5-mcp
+claude mcp add hdf5-mcp -- uvx iowarp-mcps hdf5
 ```
 
 </details>
@@ -84,11 +82,8 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 {
   "mcpServers": {
     "hdf5-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/HDF5", "run", "hdf5-mcp"],
-      "env": {
-        "UV_PROJECT_ENVIRONMENT": "/absolute/path/to/HDF5/.venv"
-      }
+      "command": "uvx",
+      "args": ["iowarp-mcps", "hdf5"]
     }
   }
 }
@@ -99,16 +94,26 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 <details>
 <summary><b>Manual Setup</b></summary>
 
-1. Clone or download the HDF5 MCP server
-2. Install dependencies:
-   ```bash
-   cd /path/to/HDF5
-   uv sync
-   ```
-3. Test the installation:
-   ```bash
-   uv run hdf5-mcp --version
-   ```
+**Linux/macOS:**
+```bash
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/HDF5 run hdf5-mcp --help
+```
+
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\HDF5 run hdf5-mcp --help
+```
+
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\HDF5 run hdf5-mcp --help
+```
 
 </details>
 

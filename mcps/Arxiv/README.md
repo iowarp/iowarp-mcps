@@ -5,7 +5,6 @@
 
 ArXiv MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to search, analyze, and access research papers from the ArXiv preprint repository. This server provides advanced search capabilities, paper analysis tools, and citation management with seamless integration with AI coding assistants.
 
-The system automatically handles ArXiv API interactions, provides comprehensive paper search across multiple dimensions, and supports academic research workflows with professional citation management. It offers high-performance research paper discovery with support for various search criteria and export formats.
 
 **Key Features:**
 - **Comprehensive Search Capabilities**: Multi-dimensional search by category, author, title, abstract, subject, and date ranges
@@ -36,8 +35,8 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
 {
   "mcpServers": {
     "arxiv-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Arxiv", "run", "arxiv-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "arxiv"]
     }
   }
 }
@@ -55,8 +54,8 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
   "servers": {
     "arxiv-mcp": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Arxiv", "run", "arxiv-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "arxiv"]
     }
   }
 }
@@ -67,10 +66,10 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
 <details>
 <summary><b>Install in Claude Code</b></summary>
 
-Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/claude-code/mcp) for more info.
+Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
 
 ```sh
-claude mcp add arxiv-mcp -- uv --directory /absolute/path/to/Arxiv run arxiv-mcp
+claude mcp add arxiv-mcp -- uvx iowarp-mcps arxiv
 ```
 
 </details>
@@ -84,11 +83,8 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 {
   "mcpServers": {
     "arxiv-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Arxiv", "run", "arxiv-mcp"],
-      "env": {
-        "UV_PROJECT_ENVIRONMENT": "/absolute/path/to/Arxiv/.venv"
-      }
+      "command": "uvx",
+      "args": ["iowarp-mcps", "arxiv"]
     }
   }
 }
@@ -99,16 +95,26 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 <details>
 <summary><b>Manual Setup</b></summary>
 
-1. Clone or download the ArXiv MCP server
-2. Install dependencies:
-   ```bash
-   cd /path/to/Arxiv
-   uv sync
-   ```
-3. Test the installation:
-   ```bash
-   uv run python demo.py
-   ```
+**Linux/macOS:**
+```bash
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/Arxiv run arxiv-mcp --help
+```
+
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\Arxiv run arxiv-mcp --help
+```
+
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\Arxiv run arxiv-mcp --help
+```
 
 </details>
 

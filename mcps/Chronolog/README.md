@@ -1,138 +1,199 @@
-# ChronoLog MCP Server
+# ChronoLog MCP - Distributed Logging for LLMs
 
-An MCP (Model Context Protocol) server that integrates with ChronoLog, a scalable, high-performance distributed shared log store. This server exposes tools to manage interactions between LLM's and User's, making it easy to capture and retrieve events in a structured format.
 
-## Detailed Description
+## Description
 
-The MCP server provides a unified architecture for both real-time capturing of conversation (prompts and responses) and long-term playback of structured event sequences using custom tools, along with additional features such as automated generation and storage of session summaries.
-MCP servers allow teams to rapidly spin up domain-specific logging interfaces—whether for  R&D notebooks, mental-health tracking, or real-time chat systems—without reinventing the I/O layer.
+ChronoLog MCP is a comprehensive Model Context Protocol (MCP) server that integrates with ChronoLog, a scalable, high-performance distributed shared log store. This server enables Language Learning Models (LLMs) to capture, manage, and retrieve conversational interactions in a structured format with enterprise-grade logging capabilities and real-time event processing.
 
-The MCP server isn’t limited to a single LLM or user session, multiple clients and LLM instances can connect simultaneously, read from one another’s chronicles, and share context in real time.
+**Key Features:**
+- **Real-time Event Logging**: Capture conversational interactions between LLMs and users with structured event formatting
+- **Distributed Architecture**: Scalable, high-performance distributed shared log store with multi-client support
+- **Session Management**: Chronicle creation, story handling, and automated session summaries
+- **Cross-Client Communication**: Multiple LLM instances can connect simultaneously and share context
+- **Flexible Retrieval**: Historical interaction playback with timestamp filtering and search capabilities
+- **MCP Integration**: Full Model Context Protocol compliance for seamless LLM integration
 
-## Features
 
-- **start_chronolog**: Creates a chronicle and acquires a story handle.
-- **record_interaction**: Appends log events to the active story.
-- **stop_chronolog**: Releases the story and disconnects the client.
-- **retrieve_interaction**: Returns the logs or messages from the past.
+## 🛠️ Installation
 
-## Prerequisites
+### Requirements
 
-- Python 3.11
+- Python 3.11 or higher
 - [py_chronolog_client](https://github.com/grc-iit/ChronoLog) Python package
-- `python-dotenv` for environment variable management
-- Command-line runner `uv` (install with `pip install uv`)
+- [uv](https://docs.astral.sh/uv/) package manager (recommended)
+- ChronoLog deployment (see [setup guide](https://github.com/iowarp/scientific-mcps/blob/main/Chronolog/docs/Chronolog_setup.md))
 
-## ChronoLog Deployment
+<details>
+<summary><b>Install in Cursor</b></summary>
 
-For ChronoLog Installation and Deployment, refer to [ChronoLog Setup](https://github.com/iowarp/scientific-mcps/blob/main/Chronolog/docs/Chronolog_setup.md).
+Go to: `Settings` -> `Cursor Settings` -> `MCP` -> `Add new global MCP server`
 
-## Installation
-
-1. **Install UV runner**
-   ```bash
-   pip install uv
-   ```
-2. **Running the Server**
-   ```bash
-   uv run server.py
-   ```
-
-### Usage
-
-1. Start Chronolog
-2. Have Conversation
-3. Retrieve Interaction
-4. Stop Chronolog
-
-Demo using an custom mcp client -
-
- ![](https://github.com/iowarp/scientific-mcps/blob/main/Chronolog/assets/mcp-client.png)
-
-## Open Source MCP Client
-
-You can connect the mcp server with any of the open source MCP Clients such as Microsoft Visual Studio Copilot, Claude AI, Windsurf,etc.
-Simply add the configuration below to your Clients settings.json and start the server, the tools will automatically get loaded in your client.
-
-### Configuration
-
-Add the following to your `settings.json` file on Claude or any other client:
+Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file is the recommended approach. You may also install in a specific project by creating `.cursor/mcp.json` in your project folder. See [Cursor MCP docs](https://docs.cursor.com/context/model-context-protocol) for more info.
 
 ```json
 {
-  "chronolog-mcp": {
-    "command": "uv",
-    "args": [
-      "--directory",
-      "/path/to/the/directory",
-      "run",
-      "server.py"
-    ]
+  "mcpServers": {
+    "chronolog-mcp": {
+      "command": "uvx",
+      "args": ["iowarp-mcps", "chronolog"]
+    }
   }
 }
 ```
 
-Some Samples from Visual Studio Copilot:
+</details>
 
- ![](https://github.com/iowarp/scientific-mcps/blob/main/Chronolog/assets/mcp-retievecopilot.png)
+<details>
+<summary><b>Install in VS Code</b></summary>
 
- ![](https://github.com/iowarp/scientific-mcps/blob/main/Chronolog/assets/mcp-retrieve-diseasepred.png)
+Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) for more info.
 
-## Usage
-
-Run the MCP server or client to register the ChronoLog tools:
-
-By default, the server listens for MCP tool invocations and exposes:
-
-1. **start_chronolog()**
-   - **Description**: Connects to ChronoLog, creates a chronicle, and acquires a story handle.
-   - **Returns**: Confirmation message with chronicle and story identifiers.
-
-2. **record_interaction(event: str)**
-   - **Description**: Logs the given event string of user message and LLM output message to the acquired story.
-   - **Args**:
-     - `event` (str): The event name or message to record.
-   - **Returns**: Confirmation of event logging.
-
-3. **stop_chronolog()**
-   - **Description**: Releases the story handle and disconnects from ChronoLog.
-   - **Returns**: Confirmation of clean shutdown.
-
-4. **retrieve_interaction()**
-   - **Description**: Extracts only the records from a specified chronicle and story, writes them to a timestamped text file. Supports both raw nanosecond timestamps and human-readable dates (e.g. “yesterday”, “2025-04-30”).
-   - **Returns**: Generated text file (e.g. records_LLM_conversation_20250502123045.txt), or an error message if the reader fails or finds no record
-   - **Use Case samples**: 
-      - Prompt "retrieve our interaction from yesterday and add  it with the session chat to make a summary."
-      - Prompt "retrieve yesterday's interaction with chronicle name research and story name systems"
-
-## Directory Structure
-
-```
-ChronoMCP/
-├── assets                 #images
-├── README.md              # ← This file
-├── docs                   # ChronoLog Installation and deployment guide
-├── pyproject.toml         # Python package config
-├── uv.lock                # Dependency lock file
-└── src/
-    └── chronomcp/
-        ├── server.py                           # ChronoLog MCP Server
-        ├── capabilities/                       # MCP Capabilities (start, record, retrieve, stop)
-        │   ├── start_handler.py
-        │   ├── record_handler.py
-        │   ├── stop_handler.py
-        │   └── retrieve_handler.py
-        ├── util/
-        │   ├── config.py                       # Chronolog client config
-        │   └── helpers.py                      # Time parsing and reader function
-        └── reader_script/                      # reader emulator
-            ├── build
-            ├── reader.cpp
-            ├── CMakeLists.txt
-            └── HDF5ArchiveReadingAgent.h
+```json
+"mcp": {
+  "servers": {
+    "chronolog-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["iowarp-mcps", "chronolog"]
+    }
+  }
+}
 ```
 
+</details>
 
-## Extending
+<details>
+<summary><b>Install in Claude Code</b></summary>
 
-We’re actively working on additional improvements (search, summaries, analytics, etc.). Contributions and feature requests are welcome!
+Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
+
+```sh
+claude mcp add chronolog-mcp -- uvx iowarp-mcps chronolog
+```
+
+</details>
+
+<details>
+<summary><b>Install in Claude Desktop</b></summary>
+
+Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) for more info.
+
+```json
+{
+  "mcpServers": {
+    "chronolog-mcp": {
+      "command": "uvx",
+      "args": ["iowarp-mcps", "chronolog"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Manual Setup</b></summary>
+
+**Linux/macOS:**
+```bash
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/Chronolog run chronolog-mcp --help
+```
+
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\Chronolog run chronolog-mcp --help
+```
+
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\Chronolog run chronolog-mcp --help
+```
+
+</details>
+
+## Available Actions
+
+### `start_chronolog`
+**Description**: Connects to ChronoLog, creates a chronicle, and acquires a story handle for logging interactions.
+
+**Parameters**: None
+
+**Returns**: Confirmation message with chronicle and story identifiers.
+
+### `record_interaction` 
+**Description**: Logs user messages and LLM responses to the active story with structured event formatting.
+
+**Parameters**:
+- `event` (str): The event name or message content to record
+
+**Returns**: Confirmation of successful event logging with timestamp information.
+
+### `retrieve_interaction`
+**Description**: Extracts logged records from specified chronicle and story, generates timestamped output files with filtering options.
+
+**Parameters**: None (uses current session context)
+
+**Returns**: Generated text file with interaction history or error message if no records found.
+
+### `stop_chronolog`
+**Description**: Releases the story handle and cleanly disconnects from ChronoLog system.
+
+**Parameters**: None
+
+**Returns**: Confirmation of clean shutdown and resource cleanup.
+
+## Examples
+
+### 1. Session Logging and Analysis
+```
+Start logging our conversation, then after we discuss machine learning concepts, retrieve the interaction history for analysis.
+```
+
+**Tools called:**
+- `start_chronolog` - Initialize logging session
+- `record_interaction` - Log conversation events  
+- `retrieve_interaction` - Generate interaction history
+
+This prompt will:
+- Use `start_chronolog` to create a new chronicle and story
+- Automatically log interactions using `record_interaction`
+- Extract conversation history using `retrieve_interaction`
+- Provide structured session analysis
+
+### 2. Multi-Session Context Sharing
+```
+Connect to the research chronicle and retrieve yesterday's discussion about neural networks to continue our conversation.
+```
+
+**Tools called:**
+- `start_chronolog` - Connect to existing chronicle
+- `retrieve_interaction` - Fetch historical interactions
+
+This prompt will:
+- Connect to existing research chronicle using `start_chronolog`
+- Retrieve previous session data using `retrieve_interaction`
+- Enable context continuation across sessions
+- Support multi-client collaborative workflows
+
+### 3. Structured Event Documentation
+```
+Begin recording our software design discussion, ensuring all architectural decisions and code examples are captured for future reference.
+```
+
+**Tools called:**
+- `start_chronolog` - Begin structured logging
+- `record_interaction` - Capture design decisions
+- `stop_chronolog` - Complete session
+
+This prompt will:
+- Initialize structured event logging using `start_chronolog`
+- Capture all conversation elements using `record_interaction`
+- Maintain detailed architectural documentation
+- Provide clean session termination using `stop_chronolog`
+
