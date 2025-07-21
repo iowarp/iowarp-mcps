@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">3</span>
+                    <span class="stat-value">11</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -102,19 +102,59 @@ python3 bin/wrp.py --conf=bin/confs/Gemini.yaml</div>
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">get_node_info</div>
-                    <div class="action-description">Get comprehensive local node information including CPU, memory, disk, and network details</div>
+                    <div class="action-name">get_cpu_info</div>
+                    <div class="action-description">Get comprehensive CPU information including specifications, core configuration, frequency analysis, and performance metrics</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_memory_info</div>
+                    <div class="action-description">Get comprehensive memory information including capacity, usage patterns, and performance characteristics</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_system_info</div>
+                    <div class="action-description">Get comprehensive system information including OS details, kernel version, and platform specifications</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_disk_info</div>
+                    <div class="action-description">Get comprehensive disk and storage information including capacity, usage, and performance metrics</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_network_info</div>
+                    <div class="action-description">Get comprehensive network information including interfaces, configurations, and connectivity status</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_gpu_info</div>
+                    <div class="action-description">Get comprehensive GPU information including specifications, memory, and performance metrics</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_sensor_info</div>
+                    <div class="action-description">Get comprehensive sensor information including temperature, voltage, and fan speed monitoring</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_process_info</div>
+                    <div class="action-description">Get comprehensive process information including resource usage and system performance</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_performance_info</div>
+                    <div class="action-description">Get comprehensive performance information including load averages, uptime, and system metrics</div>
                     <div class="action-params">Parameters: None</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">get_remote_node_info</div>
-                    <div class="action-description">Get hardware information from remote nodes via SSH</div>
-                    <div class="action-params">Parameters: hostname, username, ssh_key_path</div>
+                    <div class="action-description">Get hardware information from remote nodes via SSH with comprehensive monitoring capabilities</div>
+                    <div class="action-params">Parameters: hostname (str), username (str, optional), ssh_key (str, optional), port (int, optional), timeout (int, optional), components (list, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">health_check</div>
-                    <div class="action-description">Perform comprehensive system health check with thresholds</div>
-                    <div class="action-params">Parameters: cpu_threshold, memory_threshold, disk_threshold</div>
+                    <div class="action-description">Perform comprehensive system health check with customizable thresholds and alerting</div>
+                    <div class="action-params">Parameters: cpu_threshold (float, optional), memory_threshold (float, optional), disk_threshold (float, optional), include_detailed_report (bool, optional)</div>
                 </li>
             </ul>
         </div>
@@ -122,42 +162,72 @@ python3 bin/wrp.py --conf=bin/confs/Gemini.yaml</div>
         <div id="examples" class="tab-content">
             <h3>Usage Examples</h3>
             
-            <h4>Local Hardware Information</h4>
-            <div class="code-block">get_node_info()
-get_node_info(components=['cpu', 'memory'])
-get_node_info(exclude_components=['processes', 'sensors'])
-get_node_info(components=['system', 'summary'])
-get_node_info(components=['cpu', 'memory', 'disk', 'performance'])
-get_node_info(components=['sensors', 'gpu'], include_health=True)</div>
+            <h4>Basic Hardware Information</h4>
+            <div class="code-block">// Get CPU information
+get_cpu_info()
+
+// Get memory details
+get_memory_info()
+
+// Get system overview
+get_system_info()
+
+// Get storage information
+get_disk_info()</div>
+            
+            <h4>Advanced Hardware Monitoring</h4>
+            <div class="code-block">// Monitor network interfaces
+get_network_info()
+
+// Check GPU status
+get_gpu_info()
+
+// Monitor system sensors
+get_sensor_info()
+
+// Check running processes
+get_process_info()
+
+// Get performance metrics
+get_performance_info()</div>
             
             <h4>Remote Hardware Information</h4>
-            <div class="code-block">get_remote_node_info(hostname='server1.example.com')
+            <div class="code-block">// Get remote node information
+get_remote_node_info(hostname: "server1.example.com")
+
+// Remote monitoring with SSH key
 get_remote_node_info(
-    hostname='192.168.1.100',
-    username='admin',
-    ssh_key='~/.ssh/id_rsa'
+    hostname: "192.168.1.100",
+    username: "admin",
+    ssh_key: "~/.ssh/id_rsa"
 )
+
+// HPC cluster monitoring
 get_remote_node_info(
-    hostname='server1.example.com',
-    username='admin',
-    port=2222,
-    timeout=60,
-    components=['cpu', 'memory', 'disk']
+    hostname: "hpc-node-01",
+    username: "hpcuser",
+    ssh_key: "~/.ssh/hpc_key",
+    timeout: 120,
+    components: ["cpu", "memory", "gpu"]
 )</div>
             
-            <h4>High-Performance Remote Collection</h4>
-            <div class="code-block">get_remote_node_info(
-    hostname='hpc-node-01',
-    username='hpcuser',
-    ssh_key='~/.ssh/hpc_key',
-    timeout=120,
-    components=['cpu', 'memory', 'gpu']
+            <h4>System Health Monitoring</h4>
+            <div class="code-block">// Basic health check
+health_check()
+
+// Health check with custom thresholds
+health_check(
+    cpu_threshold: 80.0,
+    memory_threshold: 85.0,
+    disk_threshold: 90.0
 )
-get_remote_node_info(
-    hostname='cluster-node-01',
-    components=['performance', 'summary'],
-    include_performance=True,
-    include_health=True
+
+// Detailed health assessment
+health_check(
+    cpu_threshold: 75.0,
+    memory_threshold: 80.0,
+    disk_threshold: 85.0,
+    include_detailed_report: true
 )</div>
         </div>
 

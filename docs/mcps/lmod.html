@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">4</span>
+                    <span class="stat-value">10</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -83,24 +83,54 @@
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">list_modules</div>
-                    <div class="action-description">List available modules in the environment</div>
-                    <div class="action-params">Parameters: category, filter_pattern</div>
+                    <div class="action-name">module_list</div>
+                    <div class="action-description">List all currently loaded environment modules. Shows the active modules in your current shell environment</div>
+                    <div class="action-params">Parameters: None</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">load_module</div>
-                    <div class="action-description">Load a module into the environment</div>
-                    <div class="action-params">Parameters: module_name, version</div>
+                    <div class="action-name">module_avail</div>
+                    <div class="action-description">Search for available modules that can be loaded. Optionally filter by name pattern (e.g., 'python', 'gcc/*', '*mpi*')</div>
+                    <div class="action-params">Parameters: pattern (str, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">unload_module</div>
-                    <div class="action-description">Unload a module from the environment</div>
-                    <div class="action-params">Parameters: module_name</div>
+                    <div class="action-name">module_show</div>
+                    <div class="action-description">Display detailed information about a specific module including its description, dependencies, environment variables it sets, and conflicts</div>
+                    <div class="action-params">Parameters: module_name (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_info</div>
-                    <div class="action-description">Get information about a specific module</div>
-                    <div class="action-params">Parameters: module_name</div>
+                    <div class="action-name">module_load</div>
+                    <div class="action-description">Load one or more environment modules into the current session. Modules modify environment variables like PATH, LD_LIBRARY_PATH, etc.</div>
+                    <div class="action-params">Parameters: modules (list[str])</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">module_unload</div>
+                    <div class="action-description">Unload one or more currently loaded modules from the environment</div>
+                    <div class="action-params">Parameters: modules (list[str])</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">module_swap</div>
+                    <div class="action-description">Swap one module for another (unload old_module and load new_module atomically)</div>
+                    <div class="action-params">Parameters: old_module (str), new_module (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">module_spider</div>
+                    <div class="action-description">Search for modules using spider search functionality with detailed dependency information</div>
+                    <div class="action-params">Parameters: search_term (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">module_save</div>
+                    <div class="action-description">Save the current module environment to a named collection for later restoration</div>
+                    <div class="action-params">Parameters: collection_name (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">module_restore</div>
+                    <div class="action-description">Restore a previously saved module collection</div>
+                    <div class="action-params">Parameters: collection_name (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">module_savelist</div>
+                    <div class="action-description">List all saved module collections available for restoration</div>
+                    <div class="action-params">Parameters: None</div>
                 </li>
             </ul>
         </div>
@@ -108,30 +138,52 @@
         <div id="examples" class="tab-content">
             <h3>Usage Examples</h3>
             
-            <h4>Module Management</h4>
-            <div class="code-block">// List available modules
-list_modules(category: "compiler")
+            <h4>Basic Module Management</h4>
+            <div class="code-block">// List currently loaded modules
+module_list()
+
+// Search for available modules
+module_avail(pattern: "python")
+module_avail(pattern: "gcc/*")
+
+// Get detailed module information
+module_show(module_name: "python/3.9.0")
 
 // Load required modules
-load_module("gcc", version: "11.2.0")
-load_module("python", version: "3.9.0")
+module_load(modules: ["gcc/11.2.0", "python/3.9.0"])</div>
+            
+            <h4>Advanced Module Operations</h4>
+            <div class="code-block">// Swap module versions
+module_swap(old_module: "gcc/10.2.0", new_module: "gcc/11.2.0")
 
-// Get module information
-get_info("gcc")
+// Unload modules
+module_unload(modules: ["python/3.9.0"])
 
-// Unload when done
-unload_module("gcc")</div>
+// Spider search for modules
+module_spider(search_term: "mpi")</div>
+            
+            <h4>Module Collections</h4>
+            <div class="code-block">// Save current environment
+module_save(collection_name: "my_dev_env")
+
+// List saved collections
+module_savelist()
+
+// Restore saved environment
+module_restore(collection_name: "my_dev_env")</div>
             
             <h4>HPC Workflow Integration</h4>
             <div class="code-block">// Set up environment for job
-load_module("gcc", "11.2.0")
-load_module("openmpi", "4.1.0")
-load_module("python", "3.9.0")
+module_load(["gcc/11.2.0", "openmpi/4.1.0", "python/3.9.0"])
+
+// Save this configuration
+module_save("hpc_simulation")
 
 // Submit job with loaded modules
-submit_job(
-  job_script: "#!/bin/bash\n#SBATCH --job-name=simulation\nmpirun ./simulation",
-  nodes: 4
+submit_slurm_job(
+  script_path: "simulation.sh",
+  cores: 16,
+  memory: "32GB"
 )</div>
         </div>
 

@@ -96,79 +96,79 @@ python3 bin/wrp.py --conf=bin/confs/Gemini.yaml</div>
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">load_csv</div>
-                    <div class="action-description">Load CSV files into pandas DataFrames for analysis</div>
-                    <div class="action-params">Parameters: file_path</div>
+                    <div class="action-name">load_data</div>
+                    <div class="action-description">Load and parse data from multiple file formats (CSV, Excel, JSON, Parquet, HDF5) with intelligent parsing capabilities</div>
+                    <div class="action-params">Parameters: file_path (str), file_format (str, optional), sheet_name (str, optional), encoding (str, optional), columns (list, optional), nrows (int, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_info</div>
-                    <div class="action-description">Get detailed information about DataFrame structure and data types</div>
-                    <div class="action-params">Parameters: data</div>
+                    <div class="action-name">save_data</div>
+                    <div class="action-description">Save data to various file formats with optimization and format-specific configurations</div>
+                    <div class="action-params">Parameters: data_file (str), output_file (str), output_format (str, optional), sheet_name (str, optional), index (bool, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">describe_data</div>
-                    <div class="action-description">Generate comprehensive descriptive statistics for all columns</div>
-                    <div class="action-params">Parameters: data</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">filter_data</div>
-                    <div class="action-description">Filter DataFrame rows based on specified conditions</div>
-                    <div class="action-params">Parameters: data, condition</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">sort_data</div>
-                    <div class="action-description">Sort DataFrame by one or more columns</div>
-                    <div class="action-params">Parameters: data, columns, ascending</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">group_data</div>
-                    <div class="action-description">Group data and perform aggregation operations</div>
-                    <div class="action-params">Parameters: data, group_by, aggregations</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">merge_data</div>
-                    <div class="action-description">Merge multiple DataFrames using various join operations</div>
-                    <div class="action-params">Parameters: left_data, right_data, on, how</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">pivot_data</div>
-                    <div class="action-description">Create pivot tables for data reshaping and analysis</div>
-                    <div class="action-params">Parameters: data, index, columns, values, aggfunc</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">clean_data</div>
-                    <div class="action-description">Clean data by removing duplicates and handling inconsistencies</div>
-                    <div class="action-params">Parameters: data, remove_duplicates</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">handle_missing</div>
-                    <div class="action-description">Handle missing values through various strategies</div>
-                    <div class="action-params">Parameters: data, strategy, columns</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">detect_outliers</div>
-                    <div class="action-description">Detect outliers using statistical methods</div>
-                    <div class="action-params">Parameters: data, columns, method</div>
+                    <div class="action-name">statistical_summary</div>
+                    <div class="action-description">Generate comprehensive statistical summaries with descriptive statistics, distribution analysis, and data profiling</div>
+                    <div class="action-params">Parameters: file_path (str), columns (list, optional), include_distributions (bool, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">correlation_analysis</div>
-                    <div class="action-description">Calculate correlation matrices between numerical columns</div>
-                    <div class="action-params">Parameters: data, method</div>
+                    <div class="action-description">Perform advanced correlation analysis with multiple methods and statistical significance testing</div>
+                    <div class="action-params">Parameters: file_path (str), columns (list, optional), method (str, optional), significance_test (bool, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">time_series_analysis</div>
-                    <div class="action-description">Perform time series analysis and trend detection</div>
-                    <div class="action-params">Parameters: data, date_column, value_column</div>
+                    <div class="action-name">hypothesis_testing</div>
+                    <div class="action-description">Perform statistical hypothesis testing with multiple test types and comprehensive statistical analysis</div>
+                    <div class="action-params">Parameters: file_path (str), test_type (str), columns (list), groups (list, optional), alpha (float, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">resample_data</div>
-                    <div class="action-description">Resample time series data with different frequencies</div>
-                    <div class="action-params">Parameters: data, date_column, frequency, aggregation</div>
+                    <div class="action-name">handle_missing_data</div>
+                    <div class="action-description">Handle missing values through various strategies including imputation, deletion, and advanced statistical methods</div>
+                    <div class="action-params">Parameters: file_path (str), strategy (str), columns (list, optional), output_file (str, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">export_data</div>
-                    <div class="action-description">Export processed data to various formats</div>
-                    <div class="action-params">Parameters: data, file_path, format</div>
+                    <div class="action-name">clean_data</div>
+                    <div class="action-description">Comprehensive data cleaning including duplicates removal, outlier handling, and data validation</div>
+                    <div class="action-params">Parameters: file_path (str), remove_duplicates (bool, optional), handle_outliers (bool, optional), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">groupby_operations</div>
+                    <div class="action-description">Perform advanced group-by operations with multiple aggregation functions and statistical analysis</div>
+                    <div class="action-params">Parameters: file_path (str), group_columns (list), aggregations (dict), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">merge_datasets</div>
+                    <div class="action-description">Merge multiple datasets using various join operations with intelligent key detection and data validation</div>
+                    <div class="action-params">Parameters: left_file (str), right_file (str), join_keys (list), join_type (str, optional), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">pivot_table</div>
+                    <div class="action-description">Create sophisticated pivot tables with multiple aggregation functions and advanced reshaping capabilities</div>
+                    <div class="action-params">Parameters: file_path (str), index_columns (list), value_columns (list), agg_functions (list, optional), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">time_series_operations</div>
+                    <div class="action-description">Comprehensive time series analysis including trend detection, seasonality analysis, and forecasting</div>
+                    <div class="action-params">Parameters: file_path (str), date_column (str), value_columns (list), operations (list), frequency (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">validate_data</div>
+                    <div class="action-description">Comprehensive data validation with quality checks, constraint validation, and data integrity assessment</div>
+                    <div class="action-params">Parameters: file_path (str), validation_rules (dict), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">filter_data</div>
+                    <div class="action-description">Advanced data filtering with sophisticated boolean indexing and conditional expressions</div>
+                    <div class="action-params">Parameters: file_path (str), filter_conditions (dict), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">optimize_memory</div>
+                    <div class="action-description">Optimize memory usage with data type optimization and efficient storage strategies</div>
+                    <div class="action-params">Parameters: file_path (str), optimization_level (str, optional), output_file (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">profile_data</div>
+                    <div class="action-description">Generate comprehensive data profiling reports with quality assessment and insights</div>
+                    <div class="action-params">Parameters: file_path (str), columns (list, optional), include_correlations (bool, optional)</div>
                 </li>
             </ul>
         </div>

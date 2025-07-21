@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">12</span>
+                    <span class="stat-value">13</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -103,63 +103,68 @@ python3 bin/wrp.py --conf=bin/confs/Gemini.yaml</div>
             <ul class="actions-list">
                 <li class="action-item">
                     <div class="action-name">submit_slurm_job</div>
-                    <div class="action-description">Submit a job to the Slurm queue with comprehensive job parameters</div>
-                    <div class="action-params">Parameters: job_script, job_name, nodes, tasks, time_limit, partition, memory, output_file</div>
+                    <div class="action-description">Submit Slurm jobs with comprehensive resource specification and intelligent job optimization</div>
+                    <div class="action-params">Parameters: script_path (str), cores (int, default=1), memory (str, default="1GB"), time_limit (str, default="01:00:00"), job_name (str, optional), partition (str, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">check_job_status</div>
-                    <div class="action-description">Check detailed status of specific jobs or all user jobs</div>
-                    <div class="action-params">Parameters: job_id (optional), user (optional)</div>
+                    <div class="action-description">Check comprehensive job status with detailed resource monitoring and performance analytics</div>
+                    <div class="action-params">Parameters: job_id (str, optional), user_filter (str, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">cancel_slurm_job</div>
-                    <div class="action-description">Cancel running or pending jobs with optional signal specification</div>
-                    <div class="action-params">Parameters: job_id, signal (optional)</div>
+                    <div class="action-description">Cancel running or pending Slurm jobs with intelligent cleanup and resource management</div>
+                    <div class="action-params">Parameters: job_id (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">list_jobs</div>
-                    <div class="action-description">List all jobs with filtering options by user, state, or partition</div>
-                    <div class="action-params">Parameters: user (optional), state (optional), partition (optional)</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">get_job_details</div>
-                    <div class="action-description">Get comprehensive job details including resource usage and timing</div>
-                    <div class="action-params">Parameters: job_id</div>
+                    <div class="action-name">list_slurm_jobs</div>
+                    <div class="action-description">List and filter Slurm jobs with comprehensive status tracking and intelligent job analysis</div>
+                    <div class="action-params">Parameters: user_filter (str, optional), state_filter (str, optional), limit (int, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">get_slurm_info</div>
-                    <div class="action-description">Get general Slurm cluster information and configuration</div>
+                    <div class="action-description">Get comprehensive Slurm cluster information including configuration, capabilities, and system status</div>
                     <div class="action-params">Parameters: None</div>
                 </li>
                 <li class="action-item">
+                    <div class="action-name">get_job_details</div>
+                    <div class="action-description">Get detailed job information including resource utilization, performance metrics, and comprehensive analytics</div>
+                    <div class="action-params">Parameters: job_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_job_output</div>
+                    <div class="action-description">Retrieve job output and error logs with intelligent parsing and performance analytics</div>
+                    <div class="action-params">Parameters: job_id (str), output_type (str, optional)</div>
+                </li>
+                <li class="action-item">
                     <div class="action-name">get_queue_info</div>
-                    <div class="action-description">Get detailed partition and queue information</div>
-                    <div class="action-params">Parameters: partition (optional)</div>
+                    <div class="action-description">Get detailed partition and queue information with intelligent load balancing insights</div>
+                    <div class="action-params">Parameters: partition_name (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">submit_array_job</div>
+                    <div class="action-description">Submit Slurm array jobs with advanced task management and intelligent resource distribution</div>
+                    <div class="action-params">Parameters: script_path (str), array_spec (str), cores (int, default=1), memory (str, default="1GB"), time_limit (str, default="01:00:00"), job_name (str, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">get_node_info</div>
-                    <div class="action-description">Get information about cluster nodes and their states</div>
-                    <div class="action-params">Parameters: node_name (optional)</div>
+                    <div class="action-description">Get comprehensive cluster node information including hardware specifications and resource availability</div>
+                    <div class="action-params">Parameters: node_name (str, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">estimate_job_start</div>
-                    <div class="action-description">Estimate when a pending job will start execution</div>
-                    <div class="action-params">Parameters: job_id</div>
+                    <div class="action-name">allocate_slurm_nodes</div>
+                    <div class="action-description">Allocate Slurm nodes for interactive sessions with intelligent resource optimization</div>
+                    <div class="action-params">Parameters: nodes (int), cores_per_node (int, optional), memory (str, optional), time_limit (str, optional), partition (str, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_job_efficiency</div>
-                    <div class="action-description">Calculate job efficiency metrics for completed jobs</div>
-                    <div class="action-params">Parameters: job_id</div>
+                    <div class="action-name">deallocate_slurm_nodes</div>
+                    <div class="action-description">Deallocate Slurm nodes and clean up interactive allocations with resource tracking</div>
+                    <div class="action-params">Parameters: allocation_id (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_accounting_info</div>
-                    <div class="action-description">Get accounting information for jobs and resource usage</div>
-                    <div class="action-params">Parameters: job_id (optional), user (optional), start_time (optional)</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">sacct_query</div>
-                    <div class="action-description">Execute custom sacct queries for detailed job accounting</div>
-                    <div class="action-params">Parameters: query_options</div>
+                    <div class="action-name">get_allocation_status</div>
+                    <div class="action-description">Get status and details of current node allocations with resource utilization monitoring</div>
+                    <div class="action-params">Parameters: allocation_id (str, optional)</div>
                 </li>
             </ul>
         </div>

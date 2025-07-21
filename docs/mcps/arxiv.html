@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">10</span>
+                    <span class="stat-value">13</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -84,53 +84,68 @@
             <ul class="actions-list">
                 <li class="action-item">
                     <div class="action-name">search_arxiv</div>
-                    <div class="action-description">Search ArXiv for research papers by category or topic</div>
-                    <div class="action-params">Parameters: query (default: "cs.AI"), max_results (default: 5)</div>
+                    <div class="action-description">Search ArXiv papers by query with advanced filtering and result customization</div>
+                    <div class="action-params">Parameters: query (str), max_results (int, default=10), sort_by (str, optional), sort_order (str, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">get_recent_papers</div>
-                    <div class="action-description">Get recent papers from a specific ArXiv category</div>
-                    <div class="action-params">Parameters: category (default: "cs.AI"), max_results (default: 5)</div>
+                    <div class="action-description">Get recent papers from specific ArXiv categories with date filtering</div>
+                    <div class="action-params">Parameters: categories (list), days_back (int, default=7), max_results (int, default=20)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">search_papers_by_author</div>
-                    <div class="action-description">Search ArXiv papers by author name</div>
-                    <div class="action-params">Parameters: author (required), max_results (default: 10)</div>
+                    <div class="action-description">Search for papers by specific author name with flexible matching</div>
+                    <div class="action-params">Parameters: author_name (str), max_results (int, default=20), exact_match (bool, default=False)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">search_by_title</div>
-                    <div class="action-description">Search ArXiv papers by title keywords</div>
-                    <div class="action-params">Parameters: title_keywords (required), max_results (default: 10)</div>
+                    <div class="action-description">Search papers by title keywords with advanced text matching</div>
+                    <div class="action-params">Parameters: title_keywords (str), max_results (int, default=15), fuzzy_match (bool, default=True)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">search_by_abstract</div>
-                    <div class="action-description">Search ArXiv papers by abstract keywords</div>
-                    <div class="action-params">Parameters: abstract_keywords (required), max_results (default: 10)</div>
+                    <div class="action-description">Search papers by abstract content with semantic matching capabilities</div>
+                    <div class="action-params">Parameters: abstract_keywords (str), max_results (int, default=15), include_summary (bool, default=True)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">search_by_subject</div>
-                    <div class="action-description">Search ArXiv papers by subject classification</div>
-                    <div class="action-params">Parameters: subject (required), max_results (default: 10)</div>
+                    <div class="action-description">Search papers by ArXiv subject categories with hierarchical browsing</div>
+                    <div class="action-params">Parameters: subject_categories (list), max_results (int, default=25), include_subcategories (bool, default=True)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">search_date_range</div>
-                    <div class="action-description">Search ArXiv papers within a specific date range</div>
-                    <div class="action-params">Parameters: start_date (YYYY-MM-DD, required), end_date (YYYY-MM-DD, required), category (optional), max_results (default: 20)</div>
+                    <div class="action-description">Search papers within specific date ranges with flexible date formatting</div>
+                    <div class="action-params">Parameters: start_date (str), end_date (str), categories (list, optional), max_results (int, default=20)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">get_paper_details</div>
-                    <div class="action-description">Get detailed information about a specific ArXiv paper by ID</div>
-                    <div class="action-params">Parameters: arxiv_id (required)</div>
+                    <div class="action-description">Get comprehensive details for a specific paper including metadata and metrics</div>
+                    <div class="action-params">Parameters: arxiv_id (str), include_references (bool, default=False)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">export_to_bibtex</div>
-                    <div class="action-description">Export search results to BibTeX format for citation management</div>
-                    <div class="action-params">Parameters: papers_json (JSON string, required)</div>
+                    <div class="action-description">Export paper citations to BibTeX format for reference management</div>
+                    <div class="action-params">Parameters: arxiv_ids (list), output_file (str, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">find_similar_papers</div>
-                    <div class="action-description">Find papers similar to a reference paper based on categories and keywords</div>
-                    <div class="action-params">Parameters: reference_paper_id (required), max_results (default: 10)</div>
+                    <div class="action-description">Find papers similar to a given paper using content analysis</div>
+                    <div class="action-params">Parameters: reference_paper_id (str), max_results (int, default=10), similarity_threshold (float, default=0.7)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">download_paper_pdf</div>
+                    <div class="action-description">Download PDF of a specific paper with automatic file management</div>
+                    <div class="action-params">Parameters: arxiv_id (str), download_path (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_pdf_url</div>
+                    <div class="action-description">Get direct PDF URL for a paper without downloading</div>
+                    <div class="action-params">Parameters: arxiv_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">download_multiple_pdfs</div>
+                    <div class="action-description">Download multiple papers in batch with progress tracking</div>
+                    <div class="action-params">Parameters: arxiv_ids (list), download_directory (str), max_concurrent (int, default=3)</div>
                 </li>
             </ul>
         </div>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandas MCP - Scientific MCPs</title>
-    <meta name="description" content="Load, filter, and manipulate CSV data using pandas through the Model Context Protocol.">
+    <title>Compression MCP - Scientific MCPs</title>
+    <meta name="description" content="File compression utility using gzip compression through the Model Context Protocol.">
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
 </head>
@@ -22,13 +22,13 @@
     <main class="main-content" style="grid-template-columns: 1fr; max-width: 1000px;">
         <div class="detail-header">
             <div class="detail-title">
-                <div class="mcp-icon">🐼</div>
+                <div class="mcp-icon">📦</div>
                 <div>
-                    <h1>Pandas</h1>
+                    <h1>Compression</h1>
                     <span class="mcp-category">Data Processing</span>
                 </div>
             </div>
-            <p class="mcp-description">Load, filter, and manipulate CSV data using pandas through the Model Context Protocol. Provides powerful data analysis capabilities for scientific computing workflows.</p>
+            <p class="mcp-description">File compression utility using gzip compression. Provides efficient file compression capabilities for scientific computing workflows.</p>
             
             <div class="detail-stats">
                 <div class="stat-card">
@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">4</span>
+                    <span class="stat-value">1</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -63,17 +63,17 @@
             <div class="code-block">uv pip install scientific-mcps</div>
             
             <h4>Individual MCP Installation</h4>
-            <div class="code-block">uv pip install "scientific-mcps[pandas]"</div>
+            <div class="code-block">uv pip install "scientific-mcps[compression]"</div>
             
             <h4>Direct Server</h4>
-            <div class="code-block">uv run mcp_pandas</div>
+            <div class="code-block">uv run mcp_compression</div>
             
             <h4>Claude Desktop Configuration</h4>
             <div class="code-block">{
   "mcpServers": {
-    "pandas": {
+    "compression": {
       "command": "uv",
-      "args": ["run", "mcp_pandas"]
+      "args": ["run", "mcp_compression"]
     }
   }
 }</div>
@@ -83,24 +83,9 @@
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">load_csv</div>
-                    <div class="action-description">Load CSV files into pandas DataFrames for analysis</div>
-                    <div class="action-params">Parameters: file_path, separator, header_row</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">filter_data</div>
-                    <div class="action-description">Filter DataFrame rows based on conditions</div>
-                    <div class="action-params">Parameters: dataframe, filter_condition, columns</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">get_info</div>
-                    <div class="action-description">Get detailed information about DataFrame structure</div>
-                    <div class="action-params">Parameters: dataframe</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">describe</div>
-                    <div class="action-description">Generate descriptive statistics for numerical columns</div>
-                    <div class="action-params">Parameters: dataframe, include_columns</div>
+                    <div class="action-name">compress_file</div>
+                    <div class="action-description">Compress a file using gzip compression</div>
+                    <div class="action-params">Parameters: file_path (str)</div>
                 </li>
             </ul>
         </div>
@@ -108,28 +93,26 @@
         <div id="examples" class="tab-content">
             <h3>Usage Examples</h3>
             
-            <h4>Loading and Analyzing Data</h4>
-            <div class="code-block">// Load a CSV file
-load_csv("data/experiments.csv", ",", 0)
+            <h4>Basic File Compression</h4>
+            <div class="code-block">// Compress a data file
+compress_file(file_path: "/data/large_dataset.csv")
 
-// Get basic information
-get_info(dataframe)
+// Compress log files
+compress_file(file_path: "/logs/application.log")
 
-// Filter data for specific conditions
-filter_data(dataframe, "temperature > 25", ["temperature", "pressure"])
-
-// Generate descriptive statistics
-describe(dataframe, ["temperature", "pressure", "volume"])</div>
+// Compress simulation results
+compress_file(file_path: "/results/simulation_output.txt")</div>
             
             <h4>Integration with Other MCPs</h4>
-            <div class="code-block">// Load data with pandas
-load_csv("experiment_results.csv")
+            <div class="code-block">// Export data from pandas
+save_data("/data/processed_results.csv", "analysis_results.csv")
 
-// Create visualization with plot MCP
-create_plot(dataframe, "scatter", "temperature", "pressure")
+// Compress the exported file
+compress_file("analysis_results.csv")
 
-// Export processed data
-save_csv(filtered_data, "processed_results.csv")</div>
+// Use in data processing pipelines
+filter_data("/data/raw_data.csv", {"temperature": "> 25"})
+compress_file("/data/filtered_data.csv")</div>
         </div>
 
         <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">

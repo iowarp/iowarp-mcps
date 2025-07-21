@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">3</span>
+                    <span class="stat-value">10</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -83,19 +83,54 @@
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">analyze_io</div>
-                    <div class="action-description">Analyze I/O patterns from Darshan log files</div>
-                    <div class="action-params">Parameters: log_file, analysis_type, time_range</div>
+                    <div class="action-name">load_darshan_log</div>
+                    <div class="action-description">Load and parse Darshan log files for I/O performance analysis</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_stats</div>
-                    <div class="action-description">Extract I/O statistics and performance metrics</div>
-                    <div class="action-params">Parameters: log_file, metric_type</div>
+                    <div class="action-name">get_job_summary</div>
+                    <div class="action-description">Get comprehensive job summary including runtime, I/O statistics, and performance metrics</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">generate_report</div>
-                    <div class="action-description">Generate comprehensive I/O performance reports</div>
-                    <div class="action-params">Parameters: log_file, output_format, include_charts</div>
+                    <div class="action-name">analyze_file_access_patterns</div>
+                    <div class="action-description">Analyze file access patterns including read/write ratios, access sizes, and temporal patterns</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_io_performance_metrics</div>
+                    <div class="action-description">Get detailed I/O performance metrics including bandwidth, latency, and throughput analysis</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">analyze_posix_operations</div>
+                    <div class="action-description">Analyze POSIX I/O operations including file system calls and access patterns</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">analyze_mpiio_operations</div>
+                    <div class="action-description">Analyze MPI-IO operations for parallel I/O performance assessment</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">identify_io_bottlenecks</div>
+                    <div class="action-description">Identify I/O performance bottlenecks and provide optimization recommendations</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_timeline_analysis</div>
+                    <div class="action-description">Get temporal analysis of I/O operations throughout job execution</div>
+                    <div class="action-params">Parameters: log_file_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">compare_darshan_logs</div>
+                    <div class="action-description">Compare multiple Darshan logs to identify performance differences and trends</div>
+                    <div class="action-params">Parameters: log_files (list), comparison_metrics (list, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">generate_io_summary_report</div>
+                    <div class="action-description">Generate comprehensive I/O summary report with visualizations and recommendations</div>
+                    <div class="action-params">Parameters: log_file_path (str), output_format (str, optional)</div>
                 </li>
             </ul>
         </div>

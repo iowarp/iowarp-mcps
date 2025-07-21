@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">5</span>
+                    <span class="stat-value">27</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -100,29 +100,149 @@ python3 bin/wrp.py --conf=bin/confs/Gemini.yaml</div>
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">get_all_packages</div>
-                    <div class="action-description">Get comprehensive list of all available packages in Jarvis ecosystem</div>
+                    <div class="action-name">update_pipeline</div>
+                    <div class="action-description">Re-apply environment & configuration to every package in a Jarvis-CD pipeline</div>
+                    <div class="action-params">Parameters: pipeline_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">build_pipeline_env</div>
+                    <div class="action-description">Rebuild a Jarvis-CD pipeline's env.yaml, capturing only CMAKE_PREFIX_PATH and PATH</div>
+                    <div class="action-params">Parameters: pipeline_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">create_pipeline</div>
+                    <div class="action-description">Create a new Jarvis-CD pipeline environment</div>
+                    <div class="action-params">Parameters: pipeline_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">load_pipeline</div>
+                    <div class="action-description">Load an existing Jarvis-CD pipeline environment</div>
+                    <div class="action-params">Parameters: pipeline_id (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">get_pkg_config</div>
+                    <div class="action-description">Retrieve the configuration of a specific package in a Jarvis-CD pipeline</div>
+                    <div class="action-params">Parameters: pipeline_id (str), pkg_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">append_pkg</div>
+                    <div class="action-description">Append a package to a Jarvis-CD pipeline</div>
+                    <div class="action-params">Parameters: pipeline_id (str), pkg_type (str), pkg_id (str, optional), do_configure (bool, optional), extra_args (dict, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">configure_pkg</div>
+                    <div class="action-description">Configure a package in a Jarvis-CD pipeline</div>
+                    <div class="action-params">Parameters: pipeline_id (str), pkg_id (str), extra_args (dict, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">unlink_pkg</div>
+                    <div class="action-description">Unlink a package from a Jarvis-CD pipeline (preserve files)</div>
+                    <div class="action-params">Parameters: pipeline_id (str), pkg_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">remove_pkg</div>
+                    <div class="action-description">Remove a package entirely from a Jarvis-CD pipeline</div>
+                    <div class="action-params">Parameters: pipeline_id (str), pkg_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">run_pipeline</div>
+                    <div class="action-description">Execute a Jarvis-CD pipeline end-to-end</div>
+                    <div class="action-params">Parameters: pipeline_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">destroy_pipeline</div>
+                    <div class="action-description">Destroy a Jarvis-CD pipeline environment and clean up files</div>
+                    <div class="action-params">Parameters: pipeline_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_create_config</div>
+                    <div class="action-description">Initialize JarvisManager config directories</div>
+                    <div class="action-params">Parameters: config_path (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_load_config</div>
+                    <div class="action-description">Load existing JarvisManager configuration</div>
+                    <div class="action-params">Parameters: config_path (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_save_config</div>
+                    <div class="action-description">Save current JarvisManager configuration</div>
+                    <div class="action-params">Parameters: config_path (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_set_hostfile</div>
+                    <div class="action-description">Set hostfile path for JarvisManager</div>
+                    <div class="action-params">Parameters: hostfile_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_bootstrap_from</div>
+                    <div class="action-description">Bootstrap Jarvis config from a machine template</div>
+                    <div class="action-params">Parameters: machine_name (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_bootstrap_list</div>
+                    <div class="action-description">List available bootstrap machine templates</div>
                     <div class="action-params">Parameters: None</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_package_info</div>
-                    <div class="action-description">Get detailed information about specific packages including dependencies and versions</div>
-                    <div class="action-params">Parameters: package_name</div>
-                </li>
-                <li class="action-item">
-                    <div class="action-name">get_all_repos</div>
-                    <div class="action-description">Get list of all configured repositories in the system</div>
+                    <div class="action-name">jm_reset</div>
+                    <div class="action-description">Reset JarvisManager (destroy all pipelines and data)</div>
                     <div class="action-params">Parameters: None</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">modify_repo</div>
-                    <div class="action-description">Modify repository configuration and settings</div>
-                    <div class="action-params">Parameters: repo_name, action, config</div>
+                    <div class="action-name">jm_list_pipelines</div>
+                    <div class="action-description">List all existing Jarvis pipelines</div>
+                    <div class="action-params">Parameters: None</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_resource_status</div>
-                    <div class="action-description">Get current status of HPC resources and system health</div>
-                    <div class="action-params">Parameters: resource_type</div>
+                    <div class="action-name">jm_cd</div>
+                    <div class="action-description">Change current Jarvis pipeline context</div>
+                    <div class="action-params">Parameters: pipeline_id (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_list_repos</div>
+                    <div class="action-description">List all Jarvis repositories</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_add_repo</div>
+                    <div class="action-description">Add a repository to JarvisManager</div>
+                    <div class="action-params">Parameters: repo_name (str), repo_path (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_remove_repo</div>
+                    <div class="action-description">Remove a repository from JarvisManager</div>
+                    <div class="action-params">Parameters: repo_name (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_promote_repo</div>
+                    <div class="action-description">Promote a repository in JarvisManager</div>
+                    <div class="action-params">Parameters: repo_name (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_get_repo</div>
+                    <div class="action-description">Get repository info from JarvisManager</div>
+                    <div class="action-params">Parameters: repo_name (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_construct_pkg</div>
+                    <div class="action-description">Construct a package skeleton in JarvisManager</div>
+                    <div class="action-params">Parameters: pkg_name (str), pkg_type (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_graph_show</div>
+                    <div class="action-description">Print the current resource graph frames</div>
+                    <div class="action-params">Parameters: None</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_graph_build</div>
+                    <div class="action-description">Build or rebuild the resource graph with a net sleep interval</div>
+                    <div class="action-params">Parameters: sleep_interval (float, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">jm_graph_modify</div>
+                    <div class="action-description">Modify the resource graph using a net sleep interval</div>
+                    <div class="action-params">Parameters: sleep_interval (float, optional)</div>
                 </li>
             </ul>
         </div>
@@ -130,41 +250,65 @@ python3 bin/wrp.py --conf=bin/confs/Gemini.yaml</div>
         <div id="examples" class="tab-content">
             <h3>Usage Examples</h3>
             
-            <h4>Package Discovery</h4>
-            <div class="code-block">get_all_packages()
-get_all_packages(package_type="application")
-get_all_packages(repository_filter="custom_repo")
-get_all_packages(sort_by="popularity")
-get_all_packages(include_descriptions=True, sort_by="name")</div>
+            <h4>Pipeline Management</h4>
+            <div class="code-block">// Create a new pipeline
+create_pipeline(pipeline_id: "my_simulation")
+
+// Load existing pipeline
+load_pipeline(pipeline_id: "my_simulation")
+
+// Update pipeline configuration
+update_pipeline(pipeline_id: "my_simulation")
+
+// Build pipeline environment
+build_pipeline_env(pipeline_id: "my_simulation")</div>
             
-            <h4>Package Information</h4>
-            <div class="code-block">get_package_info("incompact3d")
-get_package_info(
-    "incompact3d",
-    return_config_params=True,
-    return_examples=True,
-    return_dependencies=True
+            <h4>Package Management</h4>
+            <div class="code-block">// Add package to pipeline
+append_pkg(
+    pipeline_id: "my_simulation", 
+    pkg_type: "application", 
+    pkg_id: "openmpi"
 )
-get_package_info(
-    "ior",
-    return_description=True,
-    return_outputs=True,
-    return_performance_notes=True,
-    summary_level="comprehensive"
-)</div>
+
+// Configure package
+configure_pkg(
+    pipeline_id: "my_simulation", 
+    pkg_id: "openmpi",
+    extra_args: {"version": "4.1.0"}
+)
+
+// Get package configuration
+get_pkg_config(pipeline_id: "my_simulation", pkg_id: "openmpi")</div>
             
-            <h4>Repository Management</h4>
-            <div class="code-block">get_all_repos(include_health_status=True, include_package_counts=True)
-get_all_repos(show_priority_order=True)
-modify_repo(
-    repo_name="custom_tools",
-    operation="add",
-    repo_path="/path/to/custom_tools"
-)
-modify_repo(
-    repo_name="custom_tools", 
-    operation="promote"
-)</div>
+            <h4>JarvisManager Operations</h4>
+            <div class="code-block">// Initialize configuration
+jm_create_config()
+
+// List available pipelines
+jm_list_pipelines()
+
+// Add repository
+jm_add_repo(repo_name: "custom_tools", repo_path: "/path/to/tools")
+
+// List repositories
+jm_list_repos()
+
+// Bootstrap from template
+jm_bootstrap_from(machine_name: "cluster_template")</div>
+            
+            <h4>Resource Graph Management</h4>
+            <div class="code-block">// Show current resource graph
+jm_graph_show()
+
+// Build resource graph
+jm_graph_build(sleep_interval: 1.0)
+
+// Modify resource graph
+jm_graph_modify(sleep_interval: 0.5)
+
+// Set hostfile for distributed operations
+jm_set_hostfile(hostfile_path: "/etc/hosts")</div>
         </div>
 
         <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">

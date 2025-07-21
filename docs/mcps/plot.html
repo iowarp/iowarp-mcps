@@ -100,34 +100,34 @@ claude add mcp plot -- uv --directory ~/scientific-mcps/Plot run plot-mcp</div>
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">data_info</div>
-                    <div class="action-description">Get detailed information about dataset structure, column types, and basic statistics</div>
-                    <div class="action-params">Parameters: data_file</div>
-                </li>
-                <li class="action-item">
                     <div class="action-name">line_plot</div>
-                    <div class="action-description">Create line plots for time series data and continuous relationships</div>
-                    <div class="action-params">Parameters: data_file, x_column, y_column, title, save_path</div>
+                    <div class="action-description">Create line plots from CSV or Excel data with customizable styling and formatting. Supports multiple data series, trend analysis, and time-series visualization</div>
+                    <div class="action-params">Parameters: file_path (str), x_column (str), y_column (str), title (str, default="Line Plot"), output_path (str, default="line_plot.png")</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">bar_plot</div>
-                    <div class="action-description">Generate bar charts for categorical data visualization</div>
-                    <div class="action-params">Parameters: data_file, x_column, y_column, title, save_path</div>
+                    <div class="action-description">Create bar charts from CSV or Excel data with advanced styling and categorical data visualization. Supports grouped bars, stacked bars, and horizontal orientation</div>
+                    <div class="action-params">Parameters: file_path (str), x_column (str), y_column (str), title (str, default="Bar Plot"), output_path (str, default="bar_plot.png")</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">scatter_plot</div>
-                    <div class="action-description">Create scatter plots to visualize relationships between two continuous variables</div>
-                    <div class="action-params">Parameters: data_file, x_column, y_column, title, save_path</div>
+                    <div class="action-description">Create scatter plots to visualize relationships between two continuous variables with correlation analysis and trend fitting</div>
+                    <div class="action-params">Parameters: file_path (str), x_column (str), y_column (str), title (str, default="Scatter Plot"), output_path (str, default="scatter_plot.png")</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">histogram_plot</div>
-                    <div class="action-description">Generate histograms to show distribution of continuous data</div>
-                    <div class="action-params">Parameters: data_file, column, bins, title, save_path</div>
+                    <div class="action-description">Create histograms from CSV or Excel data with statistical distribution analysis. Supports density plots, normal distribution overlays, and comprehensive statistical metrics</div>
+                    <div class="action-params">Parameters: file_path (str), column (str), bins (int, default=30), title (str, default="Histogram"), output_path (str, default="histogram.png")</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">heatmap_plot</div>
-                    <div class="action-description">Create correlation heatmaps and matrix visualizations</div>
-                    <div class="action-params">Parameters: data_file, title, save_path</div>
+                    <div class="action-description">Create heatmaps from CSV or Excel data with correlation matrix analysis and color-coded data visualization. Supports hierarchical clustering and advanced color mapping</div>
+                    <div class="action-params">Parameters: file_path (str), title (str, default="Heatmap"), output_path (str, default="heatmap.png")</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">data_info</div>
+                    <div class="action-description">Get comprehensive data file information including detailed schema analysis, data quality assessment, and statistical profiling</div>
+                    <div class="action-params">Parameters: file_path (str)</div>
                 </li>
             </ul>
         </div>

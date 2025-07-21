@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">7</span>
+                    <span class="stat-value">13</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -84,38 +84,68 @@
             <ul class="actions-list">
                 <li class="action-item">
                     <div class="action-name">sort_log_by_timestamp</div>
-                    <div class="action-description">Sort log file entries chronologically by timestamp with graceful handling of invalid entries</div>
-                    <div class="action-params">Parameters: file_path (path to log file)</div>
+                    <div class="action-description">Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format. Handles edge cases like empty files and invalid timestamps</div>
+                    <div class="action-params">Parameters: file_path (str)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">parallel_sort_large_file</div>
-                    <div class="action-description">High-performance parallel processing for large files (>100MB) with configurable chunk sizes and worker processes</div>
-                    <div class="action-params">Parameters: file_path (large log file), chunk_size_mb (optional, default 100), max_workers (optional, default CPU count)</div>
+                    <div class="action-description">Sort large log files using parallel processing with chunked approach for improved performance</div>
+                    <div class="action-params">Parameters: file_path (str), chunk_size_mb (int, default=100), max_workers (int, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">analyze_log_statistics</div>
                     <div class="action-description">Comprehensive statistical analysis including temporal patterns, log level distribution, message analysis, and data quality metrics</div>
-                    <div class="action-params">Parameters: file_path (log file)</div>
+                    <div class="action-params">Parameters: file_path (str)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">detect_log_patterns</div>
                     <div class="action-description">Advanced pattern detection including error clustering, anomaly detection, trending issues, and temporal pattern analysis</div>
-                    <div class="action-params">Parameters: file_path (log file), time_window_minutes (optional, default 5), min_cluster_size (optional, default 3)</div>
+                    <div class="action-params">Parameters: file_path (str), time_window_minutes (int, optional), min_cluster_size (int, optional)</div>
                 </li>
                 <li class="action-item">
                     <div class="action-name">filter_logs</div>
                     <div class="action-description">Multi-condition filtering with complex logical operations (AND, OR, NOT) and multiple operators (equals, contains, regex, between, etc.)</div>
-                    <div class="action-params">Parameters: file_path (log file), filters (array of filter conditions), logical_operator (optional, default AND)</div>
+                    <div class="action-params">Parameters: file_path (str), filters (list), logical_operator (str, optional)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">apply_preset_filter</div>
+                    <div class="action-name">filter_by_time_range</div>
+                    <div class="action-description">Filter log entries by time range with flexible date/time format support</div>
+                    <div class="action-params">Parameters: file_path (str), start_time (str), end_time (str)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">filter_by_log_level</div>
+                    <div class="action-description">Filter log entries by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)</div>
+                    <div class="action-params">Parameters: file_path (str), log_levels (list)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">filter_by_keyword</div>
+                    <div class="action-description">Filter log entries by keyword or regex pattern matching</div>
+                    <div class="action-params">Parameters: file_path (str), keywords (list), case_sensitive (bool, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">apply_filter_preset</div>
                     <div class="action-description">Apply predefined filters for common use cases: errors_only, warnings_and_errors, exclude_debug, connection_issues, authentication_events</div>
-                    <div class="action-params">Parameters: file_path (log file), preset_name (filter preset to apply)</div>
+                    <div class="action-params">Parameters: file_path (str), preset_name (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">export_logs</div>
-                    <div class="action-description">Export processed logs in multiple formats (JSON, CSV, plain text) with optional metadata and summary reports</div>
-                    <div class="action-params">Parameters: file_path (log file), export_format (json|csv|txt), output_path (optional), include_metadata (optional, default false)</div>
+                    <div class="action-name">export_to_json</div>
+                    <div class="action-description">Export processed logs to JSON format with optional metadata and summary reports</div>
+                    <div class="action-params">Parameters: file_path (str), output_path (str), include_metadata (bool, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">export_to_csv</div>
+                    <div class="action-description">Export processed logs to CSV format with structured column layout</div>
+                    <div class="action-params">Parameters: file_path (str), output_path (str), include_headers (bool, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">export_to_text</div>
+                    <div class="action-description">Export processed logs to plain text format with customizable formatting</div>
+                    <div class="action-params">Parameters: file_path (str), output_path (str), format_template (str, optional)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">generate_summary_report</div>
+                    <div class="action-description">Generate comprehensive summary report with statistics, patterns, and insights</div>
+                    <div class="action-params">Parameters: file_path (str), include_charts (bool, optional)</div>
                 </li>
             </ul>
         </div>

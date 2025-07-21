@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">3</span>
+                    <span class="stat-value">5</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -83,19 +83,29 @@
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">read_data</div>
-                    <div class="action-description">Read data from various scientific file formats using ADIOS</div>
-                    <div class="action-params">Parameters: file_path, variable_name, step_number</div>
+                    <div class="action-name">list_bp5</div>
+                    <div class="action-description">Lists all BP5 files in a given directory, the bp5 files are actually directories so both file and directory words are correct</div>
+                    <div class="action-params">Parameters: directory (str, default="data/") - must be an absolute path</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">list_files</div>
-                    <div class="action-description">List available ADIOS files in a directory</div>
-                    <div class="action-params">Parameters: directory_path, file_pattern</div>
+                    <div class="action-name">inspect_variables</div>
+                    <div class="action-description">Inspects variables in a BP5 file. If variable_name is provided, returns data for that specific variable. Otherwise, shows type, shape, and steps for all variables</div>
+                    <div class="action-params">Parameters: filename (str) - absolute path to BP5 file, variable_name (str, optional) - specific variable name</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_metadata</div>
-                    <div class="action-description">Extract metadata and variable information from ADIOS files</div>
-                    <div class="action-params">Parameters: file_path, include_attributes</div>
+                    <div class="action-name">inspect_variables_at_step</div>
+                    <div class="action-description">Inspects a specific variable at a given step in a BP5 file. Shows variable type, shape, min, max. All parameters are required</div>
+                    <div class="action-params">Parameters: filename (str) - absolute path, variable_name (str) - variable name, step (int) - step number</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">inspect_attributes</div>
+                    <div class="action-description">Reads global or variable-specific attributes from a BP5 file</div>
+                    <div class="action-params">Parameters: filename (str) - absolute path, variable_name (str, optional) - variable name for targeted inspection</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">read_variable_at_step</div>
+                    <div class="action-description">Reads a named variable at a specific step from a BP5 file. All parameters are required</div>
+                    <div class="action-params">Parameters: filename (str) - absolute path, variable_name (str) - variable name, target_step (int) - time step number</div>
                 </li>
             </ul>
         </div>
@@ -104,28 +114,43 @@
             <h3>Usage Examples</h3>
             
             <h4>Reading Scientific Data</h4>
-            <div class="code-block">// Read simulation data
-read_data(
-  file_path: "simulation_output.bp",
-  variable_name: "temperature",
-  step_number: 10
+            <div class="code-block">// List available BP5 files
+list_bp5(directory: "/data/simulations/")
+
+// Inspect variables in a simulation file
+inspect_variables(
+  filename: "/data/simulation_output.bp",
+  variable_name: "temperature"
 )
 
-// Get file metadata
-get_metadata("simulation_output.bp", include_attributes: true)
+// Read variable at specific time step
+read_variable_at_step(
+  filename: "/data/simulation_output.bp",
+  variable_name: "temperature",
+  target_step: 10
+)
 
-// List available files
-list_files("./data/", "*.bp")</div>
+// Inspect variable properties at a step
+inspect_variables_at_step(
+  filename: "/data/simulation_output.bp",
+  variable_name: "pressure",
+  step: 25
+)
+
+// Get file attributes and metadata
+inspect_attributes("/data/simulation_output.bp")</div>
             
             <h4>Integration with Analysis Tools</h4>
-            <div class="code-block">// Read ADIOS data
-read_data("simulation.bp", "pressure_field")
+            <div class="code-block">// Read ADIOS data at multiple time steps
+read_variable_at_step("/data/simulation.bp", "pressure_field", 0)
+read_variable_at_step("/data/simulation.bp", "pressure_field", 50)
 
-// Process with pandas
-filter_data(pressure_data, "pressure > 1000")
+// Inspect variable structure across steps
+inspect_variables("/data/simulation.bp", "temperature")
 
-// Visualize with plot MCP
-create_plot(filtered_data, "heatmap", title="High Pressure Regions")</div>
+// Get comprehensive file information
+inspect_attributes("/data/simulation.bp")
+list_bp5("/data/simulation_runs/")</div>
         </div>
 
         <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">

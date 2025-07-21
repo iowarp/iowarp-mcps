@@ -36,7 +36,7 @@
                     <span class="stat-label">Version</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">3</span>
+                    <span class="stat-value">4</span>
                     <span class="stat-label">Actions</span>
                 </div>
                 <div class="stat-card">
@@ -83,19 +83,24 @@
             <h3>Available Actions</h3>
             <ul class="actions-list">
                 <li class="action-item">
-                    <div class="action-name">list_files</div>
+                    <div class="action-name">list_hdf5</div>
                     <div class="action-description">List HDF5 files in a directory</div>
-                    <div class="action-params">Parameters: directory_path, recursive</div>
+                    <div class="action-params">Parameters: directory (str, default="data/")</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">get_structure</div>
-                    <div class="action-description">Get the hierarchical structure of an HDF5 file</div>
-                    <div class="action-params">Parameters: file_path, max_depth</div>
+                    <div class="action-name">inspect_hdf5</div>
+                    <div class="action-description">Inspect HDF5 file structure: lists groups, datasets, and attributes</div>
+                    <div class="action-params">Parameters: filename (str)</div>
                 </li>
                 <li class="action-item">
-                    <div class="action-name">read_dataset</div>
-                    <div class="action-description">Read specific datasets from HDF5 files</div>
-                    <div class="action-params">Parameters: file_path, dataset_path, slice_range</div>
+                    <div class="action-name">preview_hdf5</div>
+                    <div class="action-description">Preview first N elements of each dataset in an HDF5 file</div>
+                    <div class="action-params">Parameters: filename (str), count (int, default=10)</div>
+                </li>
+                <li class="action-item">
+                    <div class="action-name">read_all_hdf5</div>
+                    <div class="action-description">Read every element of every dataset in an HDF5 file</div>
+                    <div class="action-params">Parameters: filename (str)</div>
                 </li>
             </ul>
         </div>
@@ -105,29 +110,26 @@
             
             <h4>HDF5 File Analysis</h4>
             <div class="code-block">// List HDF5 files
-list_files("./data/", recursive: true)
+list_hdf5(directory: "/data/experiments/")
 
-// Get file structure
-get_structure("experiment_data.h5", max_depth: 3)
+// Inspect file structure
+inspect_hdf5(filename: "/data/experiment_data.h5")
 
-// Read specific dataset
-read_dataset(
-  file_path: "experiment_data.h5",
-  dataset_path: "/results/temperature",
-  slice_range: "[0:100, :]"
-)</div>
+// Preview first 10 elements of each dataset
+preview_hdf5(filename: "/data/experiment_data.h5", count: 10)
+
+// Read all data from file
+read_all_hdf5(filename: "/data/small_dataset.h5")</div>
             
             <h4>Data Processing Pipeline</h4>
             <div class="code-block">// Explore HDF5 structure
-get_structure("simulation_output.h5")
+inspect_hdf5("/data/simulation_output.h5")
 
-// Read datasets
-temperature_data = read_dataset("simulation_output.h5", "/fields/temperature")
-pressure_data = read_dataset("simulation_output.h5", "/fields/pressure")
+// Preview datasets for quick analysis
+preview_hdf5("/data/simulation_output.h5", 5)
 
-// Process with pandas
-load_csv(temperature_data)
-describe(dataframe)</div>
+// Read complete dataset for processing
+read_all_hdf5("/data/processed_results.h5")</div>
         </div>
 
         <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
