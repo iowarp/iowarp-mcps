@@ -3,9 +3,7 @@
 
 ## Description
 
-Plot MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to create data visualizations from various data sources. This server provides advanced plotting capabilities with intelligent data handling, multiple visualization types, and seamless integration with AI coding assistants.
-
-The system automatically handles data cleaning, type inference, missing value processing, and generates high-quality plots with professional styling. It supports CSV and Excel formats with automatic format detection and provides comprehensive data analysis alongside visualization capabilities.
+Plot MCP is a Model Context Protocol server that enables LLMs to create professional data visualizations from CSV and Excel files with intelligent data processing capabilities. The server automatically handles data cleaning, type inference, and missing value processing while supporting multiple visualization types including line plots, bar charts, scatter plots, histograms, and correlation heatmaps.
 
 **Key Features:**
 - **Visualization**: Creates plots with 300 DPI resolution and customizable styling
@@ -16,14 +14,20 @@ The system automatically handles data cleaning, type inference, missing value pr
 - **MCP Integration**: Full Model Context Protocol compliance for seamless LLM integration
 
 
-
 ## 🛠️ Installation
 
 ### Requirements
 
 - Python 3.10 or higher
 - [uv](https://docs.astral.sh/uv/) package manager (recommended)
-- Linux/macOS environment (Windows supported with WSL)
+
+### Quick Install
+
+You can also install directly from PyPI:
+
+```bash
+pip install iowarp-mcps
+```
 
 <details>
 <summary><b>Install in Cursor</b></summary>
@@ -36,8 +40,8 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
 {
   "mcpServers": {
     "plot-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Plot", "run", "plot-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "plot"]
     }
   }
 }
@@ -55,8 +59,8 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
   "servers": {
     "plot-mcp": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Plot", "run", "plot-mcp"]
+      "command": "uvx",
+      "args": ["iowarp-mcps", "plot"]
     }
   }
 }
@@ -70,7 +74,7 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
 Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
 
 ```sh
-claude mcp add plot-mcp -- uv --directory /absolute/path/to/Plot run plot-mcp
+claude mcp add plot-mcp -- uvx iowarp-mcps plot
 ```
 
 </details>
@@ -84,11 +88,8 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 {
   "mcpServers": {
     "plot-mcp": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/Plot", "run", "plot-mcp"],
-      "env": {
-        "UV_PROJECT_ENVIRONMENT": "/absolute/path/to/Plot/.venv"
-      }
+      "command": "uvx",
+      "args": ["iowarp-mcps", "plot"]
     }
   }
 }
@@ -99,86 +100,31 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 <details>
 <summary><b>Manual Setup</b></summary>
 
-1. Clone or download the Plot MCP server
-2. Install dependencies:
-   ```bash
-   cd /path/to/Plot
-   uv sync
-   ```
-3. Test the installation:
-   ```bash
-   uv run plot-mcp --version
-   ```
+**Linux/macOS:**
+```bash
+CLONE_DIR=$(pwd)
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$CLONE_DIR/iowarp-mcps/mcps/Plot run plot-mcp --help
+```
+
+**Windows CMD:**
+```cmd
+set CLONE_DIR=%cd%
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=%CLONE_DIR%\iowarp-mcps\mcps\Plot run plot-mcp --help
+```
+
+**Windows PowerShell:**
+```powershell
+$env:CLONE_DIR=$PWD
+git clone https://github.com/iowarp/iowarp-mcps.git
+uv --directory=$env:CLONE_DIR\iowarp-mcps\mcps\Plot run plot-mcp --help
+```
 
 </details>
 
-## Available Actions
+## Capabilities
 
-### `data_info`
-**Description**: Get comprehensive data file information including detailed schema analysis, data quality assessment, and statistical profiling. Provides thorough data exploration with column types, distributions, and data health metrics.
-
-**Parameters**:
-- `file_path` (str): Absolute path to CSV or Excel file
-
-**Returns**: Dictionary containing data schema, quality metrics, statistical summary, and visualization recommendations.
-
-### `line_plot`
-**Description**: Create line plots from CSV or Excel data with customizable styling and formatting. Supports multiple data series, trend analysis, and time-series visualization with advanced customization options.
-
-**Parameters**:
-- `file_path` (str): Absolute path to data file
-- `x_column` (str): Column name for x-axis data
-- `y_column` (str): Column name for y-axis data  
-- `title` (str, optional): Custom title for the plot
-- `output_path` (str, optional): Output file path
-
-**Returns**: Plot information, data summary, file details, and visualization statistics.
-
-### `bar_plot`
-**Description**: Create bar charts from CSV or Excel data with advanced styling and categorical data visualization. Supports grouped bars, stacked bars, and horizontal orientation with customizable colors and annotations.
-
-**Parameters**:
-- `file_path` (str): Absolute path to data file
-- `x_column` (str): Column name for x-axis categories
-- `y_column` (str): Column name for y-axis values
-- `title` (str, optional): Custom title for the plot
-- `output_path` (str, optional): Output file path
-
-**Returns**: Bar chart details, data summary, file information, and distribution metrics.
-
-### `scatter_plot`
-**Description**: Create scatter plots from CSV or Excel data with correlation analysis and trend visualization. Supports multi-dimensional data exploration, regression lines, and statistical annotations for data relationships.
-
-**Parameters**:
-- `file_path` (str): Absolute path to data file
-- `x_column` (str): Column name for x-axis data
-- `y_column` (str): Column name for y-axis data
-- `title` (str, optional): Custom title for the plot
-- `output_path` (str, optional): Output file path
-
-**Returns**: Scatter plot information, correlation statistics, data summary, and relationship analysis.
-
-### `histogram_plot`
-**Description**: Create histograms from CSV or Excel data with statistical distribution analysis. Supports density plots, normal distribution overlays, and comprehensive statistical metrics for data distribution visualization.
-
-**Parameters**:
-- `file_path` (str): Absolute path to data file
-- `column` (str): Column name for histogram generation
-- `bins` (int, optional): Number of bins for histogram (default: 30)
-- `title` (str, optional): Custom title for the plot
-- `output_path` (str, optional): Output file path
-
-**Returns**: Histogram details, distribution statistics, data summary, and statistical metrics.
-
-### `heatmap_plot`
-**Description**: Create heatmaps from CSV or Excel data with correlation matrix analysis and color-coded data visualization. Supports hierarchical clustering, dendrograms, and advanced color mapping for multi-dimensional data exploration.
-
-**Parameters**:
-- `file_path` (str): Absolute path to data file
-- `title` (str, optional): Custom title for the plot
-- `output_path` (str, optional): Output file path
-
-**Returns**: Heatmap information, correlation matrix, data summary, and clustering analysis.
 
 ## Examples
 
