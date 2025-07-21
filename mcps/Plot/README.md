@@ -5,14 +5,6 @@
 
 Plot MCP is a Model Context Protocol server that enables LLMs to create professional data visualizations from CSV and Excel files with intelligent data processing capabilities. The server automatically handles data cleaning, type inference, and missing value processing while supporting multiple visualization types including line plots, bar charts, scatter plots, histograms, and correlation heatmaps.
 
-**Key Features:**
-- **Visualization**: Creates plots with 300 DPI resolution and customizable styling
-- **Intelligent Data Processing**: Automatic data cleaning, type inference, and missing value handling
-- **Multiple Plot Types**: Line plots, bar charts, scatter plots, histograms, and correlation heatmaps
-- **Format Support**: CSV and Excel files (.csv, .xlsx, .xls) with automatic detection
-- **Advanced Analytics**: Statistical analysis, correlation metrics, and data quality assessment
-- **MCP Integration**: Full Model Context Protocol compliance for seamless LLM integration
-
 
 ## 🛠️ Installation
 
@@ -20,14 +12,6 @@ Plot MCP is a Model Context Protocol server that enables LLMs to create professi
 
 - Python 3.10 or higher
 - [uv](https://docs.astral.sh/uv/) package manager (recommended)
-
-### Quick Install
-
-You can also install directly from PyPI:
-
-```bash
-pip install iowarp-mcps
-```
 
 <details>
 <summary><b>Install in Cursor</b></summary>
