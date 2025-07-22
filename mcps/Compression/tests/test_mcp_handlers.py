@@ -1,7 +1,7 @@
 import pytest
 import os
 import tempfile
-from src.compression_mcp.mcp_handlers import compress_file_handler
+from mcp_handlers import compress_file_handler
 
 
 @pytest.fixture

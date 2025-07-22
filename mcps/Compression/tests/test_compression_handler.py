@@ -2,7 +2,7 @@ import pytest
 import os
 import tempfile
 import asyncio
-from src.compression_mcp.capabilities.compression_base import compress_file
+from capabilities.compression_base import compress_file
 
 @pytest.fixture
 def sample_file():

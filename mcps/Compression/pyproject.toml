@@ -1,40 +1,30 @@
-[build-system]
-requires = ["setuptools>=64.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "compression-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Compression MCP server implementation using Model Context Protocol"
 readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["MCP", "JSON-RPC", "FastMCP", "Compression"]
 license = "MIT"
 authors = [
     { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
 ]
+
+keywords = ["compression", "gzip", "storage", "archival", "backup", "analytics", "statistics"]
+
+
 dependencies = [
-    "mcp>=0.1.0",
     "fastmcp>=0.1.0",
-    "fastapi>=0.95.0",
-    "uvicorn>=0.21.0",
-    "httpx>=0.24.0",
     "python-dotenv>=1.0.0",
-    "pydantic>=1.10.0",
-    "pytest>=7.2.0",
-    "pytest-asyncio>=1.0.0"
 ]
 
-[project.optional-dependencies]
-test = ["pytest>=7.0.0", "httpx"]
+[dependency-groups]
+dev = [
+     "pytest-asyncio>=1.0.0"
+]
 
 [project.scripts]
-compression-mcp = "compression_mcp.server:main"
+compression-mcp = "server:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["compression_mcp*"]
-
-[tool.setuptools.package-dir]
-"compression_mcp" = "src/compression_mcp"
-
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

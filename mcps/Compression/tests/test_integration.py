@@ -2,7 +2,7 @@ import pytest
 import json
 import os
 import tempfile
-from src.compression_mcp.server import mcp
+from server import mcp
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def sample_file():
 @pytest.mark.asyncio
 async def test_compress_file_tool(sample_file):
     """Test the MCP tool integration through the handler"""
-    from src.compression_mcp.mcp_handlers import compress_file_handler
+    from mcp_handlers import compress_file_handler
     
     # Call the handler directly (which is what the MCP tool would call)
     result = await compress_file_handler(sample_file)
