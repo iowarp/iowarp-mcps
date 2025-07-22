@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iowarp-mcps"
-version = "0.3.1"
+version = "0.3.2"
 description = "Open Source MCP Servers for Scientific Computing"
 readme = "README.md"
 requires-python = ">=3.10"
