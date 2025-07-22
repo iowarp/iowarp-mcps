@@ -29,177 +29,176 @@ mcp = FastMCP("ParallelSortMCP")
     name="sort_log_by_timestamp",
     description="Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format. Handles edge cases like empty files and invalid timestamps."
 )
-async def sort_log_tool(file_path: str) -> dict:
+async def sort_log_tool(log_file: str, output_file: str = None, reverse: bool = False) -> dict:
     """
-    Sort log file entries by timestamp.
-    
-    Args:
-        file_path: Path to the log file to sort
-        
-    Returns:
-        Dictionary with sorted log entries and processing statistics
-    """
-    logger.info(f"Sorting log file: {file_path}")
-    return await mcp_handlers.sort_log_handler(file_path)
+    Sort log files by timestamp in chronological order with support for standard log formats.
 
+    Args:
+        log_file (str): Path to input log file
+        output_file (str, optional): Path for sorted output file
+        reverse (bool, optional): Sort in descending order (default: False)
+
+    Returns:
+        dict: Dictionary with sorting results, processed line count, and execution time.
+    """
+    logger.info(f"Sorting log file: {log_file}")
+    return await mcp_handlers.sort_log_handler(log_file, output_file, reverse)
 
 @mcp.tool(
     name="parallel_sort_large_file",
     description="Sort large log files using parallel processing with chunked approach for improved performance."
 )
-async def parallel_sort_tool(file_path: str, chunk_size_mb: int = 100, max_workers: int = None) -> dict:
+async def parallel_sort_tool(log_file: str, output_file: str, chunk_size_mb: int = 100, num_workers: int = None) -> dict:
     """
-    Sort large log files using parallel processing.
-    
-    Args:
-        file_path: Path to the log file to sort
-        chunk_size_mb: Size of each chunk in MB (default: 100)
-        max_workers: Maximum number of worker processes (default: CPU count)
-        
-    Returns:
-        Dictionary with sorted log entries and processing statistics
-    """
-    logger.info(f"Parallel sorting large file: {file_path}")
-    return await mcp_handlers.parallel_sort_handler(file_path, chunk_size_mb, max_workers)
+    Sort large log files using parallel processing with chunked approach for memory efficiency.
 
+    Args:
+        log_file (str): Path to large log file
+        output_file (str): Path for sorted output file
+        chunk_size_mb (int, optional): Chunk size in MB (default: 100)
+        num_workers (int, optional): Number of worker processes (default: CPU count)
+
+    Returns:
+        dict: Dictionary with sorting results, performance metrics, and memory usage.
+    """
+    logger.info(f"Parallel sorting large file: {log_file}")
+    return await mcp_handlers.parallel_sort_handler(log_file, output_file, chunk_size_mb, num_workers)
 
 @mcp.tool(
     name="analyze_log_statistics",
     description="Generate comprehensive statistics and analysis for log files including temporal patterns, log levels, and quality metrics."
 )
-async def analyze_statistics_tool(file_path: str) -> dict:
+async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) -> dict:
     """
-    Analyze log file statistics.
-    
-    Args:
-        file_path: Path to the log file to analyze
-        
-    Returns:
-        Dictionary with comprehensive log analysis and statistics
-    """
-    logger.info(f"Analyzing log statistics: {file_path}")
-    return await mcp_handlers.analyze_statistics_handler(file_path)
+    Perform comprehensive statistical analysis of log files including temporal patterns and log levels.
 
+    Args:
+        log_file (str): Path to log file
+        include_patterns (bool, optional): Include pattern analysis (default: True)
+
+    Returns:
+        dict: Dictionary with statistics, temporal analysis, log level distribution, and quality metrics.
+    """
+    logger.info(f"Analyzing log statistics: {log_file}")
+    return await mcp_handlers.analyze_statistics_handler(log_file, include_patterns)
 
 @mcp.tool(
     name="detect_log_patterns",
     description="Detect patterns in log files including anomalies, error clusters, trending issues, and repeated patterns."
 )
-async def detect_patterns_tool(file_path: str, detection_config: dict = None) -> dict:
+async def detect_patterns_tool(log_file: str, pattern_types: list = None, sensitivity: str = None) -> dict:
     """
-    Detect patterns in log files.
-    
-    Args:
-        file_path: Path to the log file to analyze
-        detection_config: Configuration for pattern detection algorithms
-        
-    Returns:
-        Dictionary with detected patterns and analysis
-    """
-    logger.info(f"Detecting patterns in: {file_path}")
-    return await mcp_handlers.detect_patterns_handler(file_path, detection_config)
+    Detect patterns, anomalies, and trends in log files for proactive issue identification.
 
+    Args:
+        log_file (str): Path to log file
+        pattern_types (list, optional): Types of patterns to detect
+        sensitivity (str, optional): Detection sensitivity ('low', 'medium', 'high')
+
+    Returns:
+        dict: Dictionary with detected patterns, anomalies, error clusters, and trend analysis.
+    """
+    logger.info(f"Detecting patterns in: {log_file}")
+    return await mcp_handlers.detect_patterns_handler(log_file, pattern_types, sensitivity)
 
 @mcp.tool(
     name="filter_logs",
     description="Filter log entries based on multiple conditions with support for complex logical operations."
 )
-async def filter_logs_tool(file_path: str, filter_conditions: list, logical_operator: str = "and") -> dict:
+async def filter_logs_tool(log_file: str, filters: list, logical_operator: str = None, output_file: str = None) -> dict:
     """
-    Filter log entries based on conditions.
-    
-    Args:
-        file_path: Path to the log file to filter
-        filter_conditions: List of filter condition dictionaries
-        logical_operator: How to combine conditions ("and", "or")
-        
-    Returns:
-        Dictionary with filtered log entries
-    """
-    logger.info(f"Filtering logs: {file_path}")
-    return await mcp_handlers.filter_logs_handler(file_path, filter_conditions, logical_operator)
+    Apply multiple filter conditions to log files with complex logical operations.
 
+    Args:
+        log_file (str): Path to log file
+        filters (list): List of filter conditions
+        logical_operator (str, optional): Logical operator between filters ('AND', 'OR')
+        output_file (str, optional): Path for filtered output
+
+    Returns:
+        dict: Dictionary with filtered results and applied filter summary.
+    """
+    logger.info(f"Filtering logs: {log_file}")
+    return await mcp_handlers.filter_logs_handler(log_file, filters, logical_operator, output_file)
 
 @mcp.tool(
     name="filter_by_time_range",
     description="Filter log entries by time range using start and end timestamps."
 )
-async def filter_time_range_tool(file_path: str, start_time: str, end_time: str) -> dict:
+async def filter_time_range_tool(log_file: str, start_time: str, end_time: str, output_file: str = None) -> dict:
     """
-    Filter log entries by time range.
-    
-    Args:
-        file_path: Path to the log file
-        start_time: Start time in ISO format or 'YYYY-MM-DD HH:MM:SS'
-        end_time: End time in ISO format or 'YYYY-MM-DD HH:MM:SS'
-        
-    Returns:
-        Dictionary with filtered log entries
-    """
-    logger.info(f"Filtering by time range: {file_path}")
-    return await mcp_handlers.filter_time_range_handler(file_path, start_time, end_time)
+    Filter log entries within a specific time range.
 
+    Args:
+        log_file (str): Path to log file
+        start_time (str): Start timestamp (YYYY-MM-DD HH:MM:SS)
+        end_time (str): End timestamp (YYYY-MM-DD HH:MM:SS)
+        output_file (str, optional): Path for filtered output
+
+    Returns:
+        dict: Dictionary with filtered entries and time range statistics.
+    """
+    logger.info(f"Filtering by time range: {log_file}")
+    return await mcp_handlers.filter_time_range_handler(log_file, start_time, end_time, output_file)
 
 @mcp.tool(
     name="filter_by_log_level",
     description="Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.)."
 )
-async def filter_level_tool(file_path: str, levels: str, exclude: bool = False) -> dict:
+async def filter_level_tool(log_file: str, log_levels: list, output_file: str = None) -> dict:
     """
-    Filter log entries by log level.
-    
-    Args:
-        file_path: Path to the log file
-        levels: Comma-separated list of levels to filter
-        exclude: If True, exclude these levels instead of including
-        
-    Returns:
-        Dictionary with filtered log entries
-    """
-    logger.info(f"Filtering by level: {file_path}")
-    level_list = [level.strip() for level in levels.split(",")]
-    return await mcp_handlers.filter_level_handler(file_path, level_list, exclude)
+    Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).
 
+    Args:
+        log_file (str): Path to log file
+        log_levels (list): List of log levels to include
+        output_file (str, optional): Path for filtered output
+
+    Returns:
+        dict: Dictionary with filtered entries and log level distribution.
+    """
+    logger.info(f"Filtering by level: {log_file}")
+    return await mcp_handlers.filter_level_handler(log_file, log_levels, output_file)
 
 @mcp.tool(
     name="filter_by_keyword",
     description="Filter log entries by keywords in the message content with support for multiple keywords and logical operations."
 )
-async def filter_keyword_tool(file_path: str, keywords: str, case_sensitive: bool = False, match_all: bool = False) -> dict:
+async def filter_keyword_tool(log_file: str, keywords: list, case_sensitive: bool = False, logical_operator: str = None, output_file: str = None) -> dict:
     """
-    Filter log entries by keywords.
-    
-    Args:
-        file_path: Path to the log file
-        keywords: Comma-separated list of keywords
-        case_sensitive: Whether to perform case-sensitive matching
-        match_all: If True, all keywords must be present (AND), else any (OR)
-        
-    Returns:
-        Dictionary with filtered log entries
-    """
-    logger.info(f"Filtering by keywords: {file_path}")
-    keyword_list = [keyword.strip() for keyword in keywords.split(",")]
-    return await mcp_handlers.filter_keyword_handler(file_path, keyword_list, case_sensitive, match_all)
+    Filter log entries containing specific keywords with advanced matching options.
 
+    Args:
+        log_file (str): Path to log file
+        keywords (list): List of keywords to search for
+        case_sensitive (bool, optional): Case sensitive matching (default: False)
+        logical_operator (str, optional): Operator between keywords ('AND', 'OR')
+        output_file (str, optional): Path for filtered output
+
+    Returns:
+        dict: Dictionary with filtered entries and keyword match statistics.
+    """
+    logger.info(f"Filtering by keywords: {log_file}")
+    return await mcp_handlers.filter_keyword_handler(log_file, keywords, case_sensitive, logical_operator, output_file)
 
 @mcp.tool(
     name="apply_filter_preset",
     description="Apply predefined filter presets like 'errors_only', 'warnings_and_errors', 'connection_issues', etc."
 )
-async def filter_preset_tool(file_path: str, preset_name: str) -> dict:
+async def filter_preset_tool(log_file: str, preset_name: str, output_file: str = None) -> dict:
     """
-    Apply a predefined filter preset.
-    
+    Apply predefined filter presets for common log analysis scenarios.
+
     Args:
-        file_path: Path to the log file
-        preset_name: Name of the preset to apply
-        
+        log_file (str): Path to log file
+        preset_name (str): Preset name ('errors_only', 'warnings_and_errors', 'connection_issues', etc.)
+        output_file (str, optional): Path for filtered output
+
     Returns:
-        Dictionary with filtered log entries
+        dict: Dictionary with filtered results and preset configuration details.
     """
-    logger.info(f"Applying filter preset '{preset_name}': {file_path}")
-    return await mcp_handlers.filter_preset_handler(file_path, preset_name)
+    logger.info(f"Applying filter preset '{preset_name}': {log_file}")
+    return await mcp_handlers.filter_preset_handler(log_file, preset_name, output_file)
 
 
 @mcp.tool(

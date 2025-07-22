@@ -31,13 +31,13 @@ mcp = FastMCP("CompressionMCP")
 )
 async def compress_file_tool(file_path: str) -> dict:
     """
-    Compress a file using gzip compression.
-    
+    Compress a file using gzip compression with detailed statistics and performance analytics. Supports all file types with comprehensive error handling.
+
     Args:
-        file_path: Path to the file to compress
-        
+        file_path (str): Absolute path to the file to compress
+
     Returns:
-        Dictionary with compression results
+        dict: Dictionary containing compression results with detailed statistics including original size, compressed size, compression ratio, and output file path.
     """
     logger.info(f"Compressing file: {file_path}")
     return await mcp_handlers.compress_file_handler(file_path)

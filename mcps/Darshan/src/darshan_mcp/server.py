@@ -31,13 +31,13 @@ mcp = FastMCP("DarshanMCP")
 )
 async def load_darshan_log_tool(log_file_path: str) -> dict:
     """
-    Load and parse a Darshan log file.
-    
+    Load and parse a Darshan log file to extract metadata and basic I/O information.
+
     Args:
-        log_file_path: Absolute path to the Darshan log file (.darshan format)
-        
+        log_file_path (str): Absolute path to the .darshan log file
+
     Returns:
-        dict: Basic log information including job metadata, modules, and file summary
+        dict: Dictionary with job information, modules detected, and file count statistics.
     """
     return await darshan_parser.load_darshan_log(log_file_path)
 
@@ -47,13 +47,13 @@ async def load_darshan_log_tool(log_file_path: str) -> dict:
 )
 async def get_job_summary_tool(log_file_path: str) -> dict:
     """
-    Get job-level summary information.
-    
+    Get comprehensive job-level summary including runtime statistics and I/O performance overview.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        
+        log_file_path (str): Path to the Darshan log file
+
     Returns:
-        dict: Job summary with runtime, process count, I/O statistics, and performance metrics
+        dict: Dictionary with runtime metrics, process information, and I/O volume statistics.
     """
     return await darshan_parser.get_job_summary(log_file_path)
 
@@ -63,14 +63,14 @@ async def get_job_summary_tool(log_file_path: str) -> dict:
 )
 async def analyze_file_access_patterns_tool(log_file_path: str, file_pattern: Optional[str] = None) -> dict:
     """
-    Analyze file access patterns.
-    
+    Analyze file access patterns to understand application I/O behavior and optimization opportunities.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        file_pattern: Optional pattern to filter files (e.g., '*.dat', '/path/to/files/*')
-        
+        log_file_path (str): Path to the Darshan log file
+        file_pattern (str, optional): Filter files by pattern (e.g., '*.dat', '/scratch/*')
+
     Returns:
-        dict: File access analysis including access types, patterns, and statistics
+        dict: Dictionary with access pattern analysis including sequential vs random access statistics.
     """
     return await darshan_parser.analyze_file_access_patterns(log_file_path, file_pattern)
 
@@ -80,13 +80,13 @@ async def analyze_file_access_patterns_tool(log_file_path: str, file_pattern: Op
 )
 async def get_io_performance_metrics_tool(log_file_path: str) -> dict:
     """
-    Get I/O performance metrics.
-    
+    Extract detailed I/O performance metrics including bandwidth, IOPS, and request size analysis.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        
+        log_file_path (str): Path to the Darshan log file
+
     Returns:
-        dict: Detailed I/O performance metrics and statistics
+        dict: Dictionary with comprehensive performance metrics and throughput analysis.
     """
     return await darshan_parser.get_io_performance_metrics(log_file_path)
 
@@ -96,13 +96,13 @@ async def get_io_performance_metrics_tool(log_file_path: str) -> dict:
 )
 async def analyze_posix_operations_tool(log_file_path: str) -> dict:
     """
-    Analyze POSIX I/O operations.
-    
+    Analyze POSIX system call patterns including open, read, write, and seek operations.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        
+        log_file_path (str): Path to the Darshan log file
+
     Returns:
-        dict: POSIX operations analysis with call counts, timing, and patterns
+        dict: Dictionary with POSIX operation statistics and system call analysis.
     """
     return await darshan_parser.analyze_posix_operations(log_file_path)
 
@@ -112,13 +112,13 @@ async def analyze_posix_operations_tool(log_file_path: str) -> dict:
 )
 async def analyze_mpiio_operations_tool(log_file_path: str) -> dict:
     """
-    Analyze MPI-IO operations.
-    
+    Analyze MPI-IO operations including collective vs independent I/O patterns and performance.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        
+        log_file_path (str): Path to the Darshan log file
+
     Returns:
-        dict: MPI-IO operations analysis including collective operations and performance
+        dict: Dictionary with MPI-IO operation analysis and collective I/O performance metrics.
     """
     return await darshan_parser.analyze_mpiio_operations(log_file_path)
 
@@ -128,13 +128,13 @@ async def analyze_mpiio_operations_tool(log_file_path: str) -> dict:
 )
 async def identify_io_bottlenecks_tool(log_file_path: str) -> dict:
     """
-    Identify I/O performance bottlenecks.
-    
+    Automatically identify potential I/O performance bottlenecks and optimization opportunities.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        
+        log_file_path (str): Path to the Darshan log file
+
     Returns:
-        dict: Analysis of potential bottlenecks with recommendations
+        dict: Dictionary with identified performance issues and recommended optimizations.
     """
     return await darshan_parser.identify_io_bottlenecks(log_file_path)
 
@@ -144,14 +144,14 @@ async def identify_io_bottlenecks_tool(log_file_path: str) -> dict:
 )
 async def get_timeline_analysis_tool(log_file_path: str, time_resolution: str = "1s") -> dict:
     """
-    Generate timeline analysis of I/O activity.
-    
+    Generate temporal analysis of I/O activity to understand performance patterns over time.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        time_resolution: Time resolution for timeline (e.g., '1s', '100ms', '10ms')
-        
+        log_file_path (str): Path to the Darshan log file
+        time_resolution (str): Time resolution for analysis (e.g., '1s', '100ms')
+
     Returns:
-        dict: Timeline analysis with I/O activity over time
+        dict: Dictionary with timeline analysis and temporal I/O patterns.
     """
     return await darshan_parser.get_timeline_analysis(log_file_path, time_resolution)
 
@@ -161,15 +161,15 @@ async def get_timeline_analysis_tool(log_file_path: str, time_resolution: str = 
 )
 async def compare_darshan_logs_tool(log_file_1: str, log_file_2: str, comparison_metrics: List[str] = None) -> dict:
     """
-    Compare two Darshan log files.
-    
+    Compare two Darshan log files to identify performance differences and optimization results.
+
     Args:
-        log_file_1: Path to the first Darshan log file
-        log_file_2: Path to the second Darshan log file  
-        comparison_metrics: List of metrics to compare (default: ['bandwidth', 'iops', 'file_count'])
-        
+        log_file_1 (str): Path to the first log file
+        log_file_2 (str): Path to the second log file
+        comparison_metrics (list): List of metrics to compare ['bandwidth', 'iops', 'file_count']
+
     Returns:
-        dict: Comparison analysis showing differences and similarities
+        dict: Dictionary with comparative analysis and performance delta identification.
     """
     if comparison_metrics is None:
         comparison_metrics = ['bandwidth', 'iops', 'file_count']
@@ -181,14 +181,14 @@ async def compare_darshan_logs_tool(log_file_1: str, log_file_2: str, comparison
 )
 async def generate_io_summary_report_tool(log_file_path: str, include_visualizations: bool = False) -> dict:
     """
-    Generate comprehensive I/O summary report.
-    
+    Generate comprehensive I/O analysis report with detailed metrics and recommendations.
+
     Args:
-        log_file_path: Path to the Darshan log file
-        include_visualizations: Whether to include visualization data in the report
-        
+        log_file_path (str): Path to the Darshan log file
+        include_visualizations (bool): Whether to include visualization data in the report
+
     Returns:
-        dict: Comprehensive summary report with key findings and recommendations
+        dict: Dictionary with complete I/O analysis report and performance insights.
     """
     return await darshan_parser.generate_io_summary_report(log_file_path, include_visualizations)
 

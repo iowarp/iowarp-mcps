@@ -23,7 +23,15 @@ mcp = FastMCP("HDF5Server")
     description="List HDF5 files in a directory."
 )
 async def list_hdf5_tool(directory: str = "data/") -> dict:
-    """List all HDF5 files in the specified directory."""
+    """
+    List all HDF5 files in a specified directory with comprehensive file discovery and metadata extraction for scientific data management.
+
+    Args:
+        directory (str, optional): Path to directory containing HDF5 files (default: "data/")
+
+    Returns:
+        list: List of HDF5 files (.h5 and .hdf5 extensions) with file paths and basic metadata information.
+    """
     try:
         return await mcp_handlers.list_hdf5_files(directory)
     except Exception as e:
@@ -38,6 +46,15 @@ async def list_hdf5_tool(directory: str = "data/") -> dict:
     description="Inspect HDF5 file structure: lists groups, datasets, and attributes."
 )
 async def inspect_hdf5_tool(filename: str) -> dict:
+    """
+    Inspect HDF5 file structure including detailed analysis of groups, datasets, and attributes for comprehensive data understanding.
+
+    Args:
+        filename (str): Absolute path to HDF5 file
+
+    Returns:
+        dict: Detailed structure information including group hierarchy, dataset properties, attribute metadata, and data organization.
+    """
     try:
         return await mcp_handlers.inspect_hdf5_handler(filename)
     except Exception as e:
@@ -55,6 +72,16 @@ async def preview_hdf5_tool(
     filename: str,
     count: int = 10
 ) -> dict:
+    """
+    Preview first N elements of each dataset in an HDF5 file with configurable data sampling for efficient data exploration.
+
+    Args:
+        filename (str): Absolute path to HDF5 file
+        count (int, optional): Number of elements to preview from each dataset (default: 10)
+
+    Returns:
+        dict: Preview data from all datasets with specified element count, including data types and sample values.
+    """
     try:
         return await mcp_handlers.preview_hdf5_handler(filename, count)
     except Exception as e:
@@ -69,6 +96,15 @@ async def preview_hdf5_tool(
     description="Read every element of every dataset in an HDF5 file."
 )
 async def read_all_hdf5_tool(filename: str) -> dict:
+    """
+    Read every element of every dataset in an HDF5 file with complete data extraction and memory-efficient processing.
+
+    Args:
+        filename (str): Absolute path to HDF5 file
+
+    Returns:
+        dict: Complete dataset contents with all elements, maintaining original data structure and types.
+    """
     try:
         return await mcp_handlers.read_all_hdf5_handler(filename)
     except Exception as e:

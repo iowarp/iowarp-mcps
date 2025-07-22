@@ -31,7 +31,15 @@ mcp = FastMCP("ADIOSMCP")
     description="Lists all BP5 files in a given directory, the bp5 files are actually directories so both file and directory words are correct. The 'directory' parameter must be an absolute path."
 )
 async def list_bp5_tool(directory: str = "data/") -> dict:
-    """List all bp5 files in the specified directory."""
+    """
+    List all BP5 files in a specified directory with comprehensive file information including metadata and structure details.
+
+    Args:
+        directory (str): Absolute path to directory containing BP5 files
+
+    Returns:
+        List of BP5 files with metadata, size information, and basic structure details.
+    """
     try:
         return await mcp_handlers.list_bp5_files(directory)
     except Exception as e:
@@ -47,6 +55,16 @@ async def list_bp5_tool(directory: str = "data/") -> dict:
     description="Inspects variables in a BP5 file. If variable_name is provided, returns data for that specific variable. Otherwise, shows type, shape, and steps for all variables. The 'filename' parameter must be an absolute path to the BP5 file."
 )
 async def inspect_variables_tool(filename: str, variable_name: str = None) -> dict:
+    """
+    Inspect all variables in a BP5 file including type information, shape dimensions, and available time steps for comprehensive data structure analysis. If variable_name is provided, returns data for that specific variable.
+
+    Args:
+        filename (str): Absolute path to BP5 file
+        variable_name (str, optional): Specific variable name for targeted inspection
+
+    Returns:
+        Complete variable inventory with types, shapes, step counts, and data structure information for all variables or specific variable.
+    """
     try:
         return await mcp_handlers.inspect_variables_handler(filename, variable_name)
     except Exception as e:
@@ -64,6 +82,17 @@ async def inspect_variables_tool(filename: str, variable_name: str = None) -> di
 async def inspect_variables_at_step_tool(
     filename: str, variable_name: str, step: int
 ) -> dict:
+    """
+    Inspect a specific variable at a given step in a BP5 file. Shows variable type, shape, and metadata at the specified time step.
+
+    Args:
+        filename (str): Absolute path to BP5 file
+        variable_name (str): Name of the variable to inspect
+        step (int): Step number to inspect
+
+    Returns:
+        Variable information at the specified step including type, shape, and available metadata.
+    """
     try:
         return await mcp_handlers.inspect_variables_at_step_handler(filename, variable_name, step)
     except Exception as e:
@@ -82,6 +111,16 @@ async def inspect_attributes_tool(
     filename: str,
     variable_name: str = None
 ) -> dict:
+    """
+    Read global or variable-specific attributes from a BP5 file with detailed metadata extraction and attribute value analysis.
+
+    Args:
+        filename (str): Absolute path to BP5 file
+        variable_name (str, optional): Specific variable name for targeted attribute inspection
+
+    Returns:
+        Comprehensive attribute dictionary with metadata, variable-specific attributes, and global file attributes.
+    """
     try:
         return await mcp_handlers.inspect_attributes_handler(filename, variable_name)
     except Exception as e:
@@ -101,6 +140,17 @@ import mcp_handlers
 async def read_variable_at_step_tool(
     filename: str, variable_name: str, target_step: int
 ) -> dict:
+    """
+    Read a named variable at a specific time step from a BP5 file with full data extraction and conversion to Python native types.
+
+    Args:
+        filename (str): Absolute path to BP5 file
+        variable_name (str): Name of variable to read
+        target_step (int): Time step number to read from
+
+    Returns:
+        Variable data as Python scalar or list (flattened array) at the specified step.
+    """
     return await mcp_handlers.read_variable_at_step_handler(
         filename, variable_name, target_step
     )

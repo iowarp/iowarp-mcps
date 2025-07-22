@@ -30,10 +30,10 @@ mcp = FastMCP("LmodMCP")
 )
 async def module_list_tool() -> dict:
     """
-    List all currently loaded modules.
-    
+    List all currently loaded environment modules with their versions and status information.
+
     Returns:
-        dict: Contains 'modules' list with loaded module names and versions
+        dict: Dictionary with list of loaded modules, count, and module status information.
     """
     return await lmod_handler.list_loaded_modules()
 
@@ -43,13 +43,13 @@ async def module_list_tool() -> dict:
 )
 async def module_avail_tool(pattern: str = None) -> dict:
     """
-    Search for available modules.
-    
+    Search for available modules that can be loaded with optional pattern matching and filtering.
+
     Args:
-        pattern: Optional search pattern (supports wildcards)
-        
+        pattern (str, optional): Search pattern with wildcards (e.g., 'python*', 'gcc/*')
+
     Returns:
-        dict: Contains 'modules' list with available module names
+        dict: Dictionary with available modules matching the search criteria and their descriptions.
     """
     return await lmod_handler.search_available_modules(pattern)
 
@@ -59,13 +59,13 @@ async def module_avail_tool(pattern: str = None) -> dict:
 )
 async def module_show_tool(module_name: str) -> dict:
     """
-    Show detailed information about a module.
-    
+    Display comprehensive information about a specific module including dependencies and environment changes.
+
     Args:
-        module_name: Name of the module to inspect (e.g., 'python/3.9.0')
-        
+        module_name (str): Name of the module (e.g., 'python/3.9.0')
+
     Returns:
-        dict: Contains module details including path, help, whatis, dependencies, etc.
+        dict: Dictionary with detailed module information, dependencies, and environment modifications.
     """
     return await lmod_handler.show_module_details(module_name)
 
@@ -75,13 +75,13 @@ async def module_show_tool(module_name: str) -> dict:
 )
 async def module_load_tool(modules: list[str]) -> dict:
     """
-    Load specified modules.
-    
+    Load one or more environment modules with automatic dependency resolution and conflict detection.
+
     Args:
-        modules: List of module names to load (e.g., ['python/3.9.0', 'gcc/11.2.0'])
-        
+        modules (list): List of module names to load
+
     Returns:
-        dict: Success status and any warnings/errors
+        dict: Dictionary with loading status, any conflicts detected, and environment changes applied.
     """
     return await lmod_handler.load_modules(modules)
 
@@ -91,13 +91,13 @@ async def module_load_tool(modules: list[str]) -> dict:
 )
 async def module_unload_tool(modules: list[str]) -> dict:
     """
-    Unload specified modules.
-    
+    Unload one or more currently loaded modules with dependency checking and cleanup.
+
     Args:
-        modules: List of module names to unload
-        
+        modules (list): List of module names to unload
+
     Returns:
-        dict: Success status and any warnings/errors
+        dict: Dictionary with unloading status and environment restoration information.
     """
     return await lmod_handler.unload_modules(modules)
 
@@ -107,14 +107,14 @@ async def module_unload_tool(modules: list[str]) -> dict:
 )
 async def module_swap_tool(old_module: str, new_module: str) -> dict:
     """
-    Swap one module for another.
-    
+    Atomically swap one module for another, handling dependencies and version conflicts automatically.
+
     Args:
-        old_module: Module to unload
-        new_module: Module to load in its place
-        
+        old_module (str): Module to unload
+        new_module (str): Module to load in its place
+
     Returns:
-        dict: Success status and any warnings/errors
+        dict: Dictionary with swap operation status and any dependency adjustments made.
     """
     return await lmod_handler.swap_modules(old_module, new_module)
 
@@ -124,13 +124,13 @@ async def module_swap_tool(old_module: str, new_module: str) -> dict:
 )
 async def module_spider_tool(pattern: str = None) -> dict:
     """
-    Search entire module tree using spider.
-    
+    Search the entire module tree comprehensively with deep hierarchy exploration and metadata extraction.
+
     Args:
-        pattern: Optional search pattern
-        
+        pattern (str, optional): Search pattern for comprehensive module discovery
+
     Returns:
-        dict: Comprehensive module information including all versions
+        dict: Dictionary with comprehensive search results including hidden modules and dependency information.
     """
     return await lmod_handler.spider_search(pattern)
 
@@ -140,13 +140,13 @@ async def module_spider_tool(pattern: str = None) -> dict:
 )
 async def module_save_tool(collection_name: str) -> dict:
     """
-    Save current module configuration.
-    
+    Save the current set of loaded modules as a named collection for reproducible environments.
+
     Args:
-        collection_name: Name for the saved collection
-        
+        collection_name (str): Name for the saved collection
+
     Returns:
-        dict: Success status
+        dict: Dictionary with collection save status and included modules list.
     """
     return await lmod_handler.save_module_collection(collection_name)
 
@@ -156,13 +156,13 @@ async def module_save_tool(collection_name: str) -> dict:
 )
 async def module_restore_tool(collection_name: str) -> dict:
     """
-    Restore a saved module collection.
-    
+    Restore a previously saved module collection with automatic environment configuration.
+
     Args:
-        collection_name: Name of the collection to restore
-        
+        collection_name (str): Name of the collection to restore
+
     Returns:
-        dict: Success status and loaded modules
+        dict: Dictionary with restoration status and any conflicts or missing modules.
     """
     return await lmod_handler.restore_module_collection(collection_name)
 
@@ -172,10 +172,10 @@ async def module_restore_tool(collection_name: str) -> dict:
 )
 async def module_savelist_tool() -> dict:
     """
-    List all saved module collections.
-    
+    List all saved module collections with creation dates and module counts.
+
     Returns:
-        dict: List of saved collection names
+        dict: Dictionary with list of saved collections and their metadata information.
     """
     return await lmod_handler.list_saved_collections()
 

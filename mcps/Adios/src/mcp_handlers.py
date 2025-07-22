@@ -9,7 +9,7 @@ class UnknownToolError(Exception):
 
 async def list_bp5_files(directory: str = "data") -> Dict[str, Any]:
     """
-    List BP5 files in a directory.
+    List all BP5 files in a specified directory with comprehensive file information including metadata and structure details.
     
     Args:
         directory: Path to the directory containing BP5 files

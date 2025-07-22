@@ -31,14 +31,14 @@ mcp = FastMCP("ArxivMCP")
 )
 async def search_arxiv_tool(query: str = "cs.AI", max_results: int = 5) -> dict:
     """
-    Search ArXiv for research papers.
-    
+    Search ArXiv for research papers by category or topic with comprehensive filtering and ranking capabilities.
+
     Args:
-        query: Search query or category (default: "cs.AI")
-        max_results: Maximum number of results to return (default: 5)
-        
+        query (str, optional): Search query or category (default: "cs.AI")
+        max_results (int, optional): Maximum number of results to return (default: 5)
+
     Returns:
-        Dictionary with search results
+        Dictionary with search results including paper metadata, abstracts, and ArXiv identifiers.
     """
     logger.info(f"Searching ArXiv for query: {query}")
     return await mcp_handlers.search_arxiv_handler(query, max_results)
@@ -50,14 +50,14 @@ async def search_arxiv_tool(query: str = "cs.AI", max_results: int = 5) -> dict:
 )
 async def get_recent_papers_tool(category: str = "cs.AI", max_results: int = 5) -> dict:
     """
-    Get recent papers from ArXiv category.
-    
+    Get recent papers from a specific ArXiv category with chronological ordering and metadata extraction.
+
     Args:
-        category: ArXiv category (default: "cs.AI")
-        max_results: Maximum number of results to return (default: 5)
-        
+        category (str, optional): ArXiv category (default: "cs.AI")
+        max_results (int, optional): Maximum number of results to return (default: 5)
+
     Returns:
-        Dictionary with recent papers
+        Dictionary with recent papers including publication dates, authors, and paper summaries.
     """
     logger.info(f"Getting recent papers from category: {category}")
     return await mcp_handlers.get_recent_papers_handler(category, max_results)
@@ -69,14 +69,14 @@ async def get_recent_papers_tool(category: str = "cs.AI", max_results: int = 5) 
 )
 async def search_papers_by_author_tool(author: str, max_results: int = 10) -> dict:
     """
-    Search ArXiv papers by author.
-    
+    Search ArXiv papers by author name with comprehensive author matching and publication history.
+
     Args:
-        author: Author name to search for
-        max_results: Maximum number of results to return (default: 10)
-        
+        author (str): Author name to search for
+        max_results (int, optional): Maximum number of results to return (default: 10)
+
     Returns:
-        Dictionary with author's papers
+        Dictionary with author's papers including co-authors, publication timeline, and research areas.
     """
     logger.info(f"Searching papers by author: {author}")
     return await mcp_handlers.search_papers_by_author_handler(author, max_results)
@@ -88,14 +88,14 @@ async def search_papers_by_author_tool(author: str, max_results: int = 10) -> di
 )
 async def search_by_title_tool(title_keywords: str, max_results: int = 10) -> dict:
     """
-    Search ArXiv papers by title keywords.
-    
+    Search ArXiv papers by title keywords with intelligent keyword matching and relevance scoring.
+
     Args:
-        title_keywords: Keywords to search in paper titles
-        max_results: Maximum number of results to return (default: 10)
-        
+        title_keywords (str): Keywords to search in paper titles
+        max_results (int, optional): Maximum number of results to return (default: 10)
+
     Returns:
-        Dictionary with search results
+        Dictionary with search results ranked by title relevance and keyword matching.
     """
     logger.info(f"Searching papers by title: {title_keywords}")
     return await mcp_handlers.search_by_title_handler(title_keywords, max_results)
@@ -107,14 +107,14 @@ async def search_by_title_tool(title_keywords: str, max_results: int = 10) -> di
 )
 async def search_by_abstract_tool(abstract_keywords: str, max_results: int = 10) -> dict:
     """
-    Search ArXiv papers by abstract keywords.
-    
+    Search ArXiv papers by abstract keywords with semantic content analysis and relevance ranking.
+
     Args:
-        abstract_keywords: Keywords to search in paper abstracts
-        max_results: Maximum number of results to return (default: 10)
-        
+        abstract_keywords (str): Keywords to search in paper abstracts
+        max_results (int, optional): Maximum number of results to return (default: 10)
+
     Returns:
-        Dictionary with search results
+        Dictionary with papers matching abstract content with relevance scores and keyword highlights.
     """
     logger.info(f"Searching papers by abstract: {abstract_keywords}")
     return await mcp_handlers.search_by_abstract_handler(abstract_keywords, max_results)
@@ -126,14 +126,14 @@ async def search_by_abstract_tool(abstract_keywords: str, max_results: int = 10)
 )
 async def search_by_subject_tool(subject: str, max_results: int = 10) -> dict:
     """
-    Search ArXiv papers by subject classification.
-    
+    Search ArXiv papers by subject classification with comprehensive category-based filtering.
+
     Args:
-        subject: ArXiv subject classification (e.g., 'cs.AI', 'physics.astro-ph')
-        max_results: Maximum number of results to return (default: 10)
-        
+        subject (str): ArXiv subject classification (e.g., 'cs.AI', 'physics.astro-ph')
+        max_results (int, optional): Maximum number of results to return (default: 10)
+
     Returns:
-        Dictionary with search results
+        Dictionary with papers from specified subject areas with classification metadata.
     """
     logger.info(f"Searching papers by subject: {subject}")
     return await mcp_handlers.search_by_subject_handler(subject, max_results)
@@ -145,16 +145,16 @@ async def search_by_subject_tool(subject: str, max_results: int = 10) -> dict:
 )
 async def search_date_range_tool(start_date: str, end_date: str, category: str = "", max_results: int = 20) -> dict:
     """
-    Search ArXiv papers within a date range.
-    
+    Search ArXiv papers within a specific date range with optional category filtering and chronological organization.
+
     Args:
-        start_date: Start date in YYYY-MM-DD format
-        end_date: End date in YYYY-MM-DD format
-        category: Optional category filter (e.g., 'cs.AI')
-        max_results: Maximum number of results to return (default: 20)
-        
+        start_date (str): Start date in YYYY-MM-DD format
+        end_date (str): End date in YYYY-MM-DD format
+        category (str, optional): Optional category filter (e.g., 'cs.AI')
+        max_results (int, optional): Maximum number of results to return (default: 20)
+
     Returns:
-        Dictionary with search results
+        Dictionary with papers published within date range with temporal metadata and category information.
     """
     logger.info(f"Searching papers by date range: {start_date} to {end_date}")
     return await mcp_handlers.search_date_range_handler(start_date, end_date, category, max_results)
@@ -166,13 +166,13 @@ async def search_date_range_tool(start_date: str, end_date: str, category: str =
 )
 async def get_paper_details_tool(arxiv_id: str) -> dict:
     """
-    Get detailed paper information.
-    
+    Get detailed information about a specific ArXiv paper by ID with comprehensive metadata extraction.
+
     Args:
-        arxiv_id: ArXiv paper ID (e.g., '2301.12345' or 'cs/0501001')
-        
+        arxiv_id (str): ArXiv paper ID (e.g., '2301.12345' or 'cs/0501001')
+
     Returns:
-        Dictionary with detailed paper information
+        Dictionary with detailed paper information including full abstract, authors, categories, and publication data.
     """
     logger.info(f"Getting paper details for: {arxiv_id}")
     return await mcp_handlers.get_paper_details_handler(arxiv_id)
@@ -184,13 +184,13 @@ async def get_paper_details_tool(arxiv_id: str) -> dict:
 )
 async def export_to_bibtex_tool(papers_json: str) -> dict:
     """
-    Export papers to BibTeX format.
-    
+    Export search results to BibTeX format for citation management and bibliography generation.
+
     Args:
-        papers_json: JSON string containing list of papers to export
-        
+        papers_json (str): JSON string containing list of papers to export
+
     Returns:
-        Dictionary with BibTeX citations
+        Dictionary with BibTeX citations properly formatted for academic reference management.
     """
     logger.info("Exporting papers to BibTeX format")
     return await mcp_handlers.export_to_bibtex_handler(papers_json)
@@ -202,14 +202,14 @@ async def export_to_bibtex_tool(papers_json: str) -> dict:
 )
 async def find_similar_papers_tool(reference_paper_id: str, max_results: int = 10) -> dict:
     """
-    Find similar papers to a reference paper.
-    
+    Find papers similar to a reference paper based on categories, keywords, and content analysis.
+
     Args:
-        reference_paper_id: ArXiv ID of the reference paper
-        max_results: Maximum number of similar papers to return (default: 10)
-        
+        reference_paper_id (str): ArXiv ID of the reference paper
+        max_results (int, optional): Maximum number of similar papers to return (default: 10)
+
     Returns:
-        Dictionary with similar papers
+        Dictionary with similar papers ranked by relevance with similarity scores and matching criteria.
     """
     logger.info(f"Finding papers similar to: {reference_paper_id}")
     return await mcp_handlers.find_similar_papers_handler(reference_paper_id, max_results)
@@ -221,14 +221,14 @@ async def find_similar_papers_tool(reference_paper_id: str, max_results: int = 1
 )
 async def download_paper_pdf_tool(arxiv_id: str, download_path: str = None) -> dict:
     """
-    Download PDF of an ArXiv paper.
-    
+    Download the PDF of a paper from ArXiv with automatic file management and error handling.
+
     Args:
-        arxiv_id: ArXiv paper ID (e.g., '2301.12345' or 'cs/0501001')
-        download_path: Optional path to save the PDF
-        
+        arxiv_id (str): ArXiv paper ID (e.g., '2301.12345' or 'cs/0501001')
+        download_path (str, optional): Optional path to save the PDF
+
     Returns:
-        Dictionary with download information
+        Dictionary with download information.
     """
     logger.info(f"Downloading PDF for paper: {arxiv_id}")
     return await mcp_handlers.download_paper_pdf_handler(arxiv_id, download_path)
