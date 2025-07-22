@@ -75,7 +75,12 @@ This tool provides detailed CPU analysis including:
 **Returns**: Structured CPU information with performance insights and optimization recommendations."""
 )
 async def get_cpu_info_tool() -> dict:
-    """Get CPU information with beautiful formatting."""
+    """
+    Get comprehensive CPU information including specifications, core configuration, frequency analysis, and performance metrics.
+
+    Returns:
+        dict: Structured CPU information with performance insights and optimization recommendations.
+    """
     try:
         logger.info("Collecting CPU information")
         return mcp_handlers.cpu_info_handler()
@@ -110,7 +115,12 @@ This tool provides detailed memory analysis including:
 **Returns**: Structured memory information with usage insights and optimization recommendations."""
 )
 async def get_memory_info_tool() -> dict:
-    """Get memory information with beautiful formatting."""
+    """
+    Get comprehensive memory information including capacity, usage patterns, and performance characteristics.
+
+    Returns:
+        dict: Structured memory information with usage insights and optimization recommendations.
+    """
     try:
         logger.info("Collecting memory information")
         return mcp_handlers.memory_info_handler()
@@ -145,7 +155,12 @@ This tool provides detailed system analysis including:
 **Returns**: Structured system information with configuration insights and security recommendations."""
 )
 async def get_system_info_tool() -> dict:
-    """Get system information with beautiful formatting."""
+    """
+    Get comprehensive system information including operating system details, platform configuration, and system status.
+
+    Returns:
+        dict: Structured system information with configuration insights and security recommendations.
+    """
     try:
         logger.info("Collecting system information")
         return mcp_handlers.system_info_handler()
@@ -180,7 +195,12 @@ This tool provides detailed disk analysis including:
 **Returns**: Structured disk information with performance insights and maintenance recommendations."""
 )
 async def get_disk_info_tool() -> dict:
-    """Get disk information with beautiful formatting."""
+    """
+    Get comprehensive disk information including storage devices, partitions, and I/O performance metrics.
+
+    Returns:
+        dict: Structured disk information with performance insights and maintenance recommendations.
+    """
     try:
         logger.info("Collecting disk information")
         return mcp_handlers.disk_info_handler()
@@ -215,7 +235,12 @@ This tool provides detailed network analysis including:
 **Returns**: Structured network information with performance insights and security recommendations."""
 )
 async def get_network_info_tool() -> dict:
-    """Get network information with beautiful formatting."""
+    """
+    Get comprehensive network information including interfaces, connections, and bandwidth analysis.
+
+    Returns:
+        dict: Structured network information with performance insights and security recommendations.
+    """
     try:
         logger.info("Collecting network information")
         return mcp_handlers.network_info_handler()
@@ -250,7 +275,12 @@ This tool provides detailed GPU analysis including:
 **Returns**: Structured GPU information with performance insights and optimization recommendations."""
 )
 async def get_gpu_info_tool() -> dict:
-    """Get GPU information with beautiful formatting."""
+    """
+    Get comprehensive GPU information including specifications, memory, and compute capabilities.
+
+    Returns:
+        dict: Structured GPU information with performance insights and optimization recommendations.
+    """
     try:
         logger.info("Collecting GPU information")
         return mcp_handlers.gpu_info_handler()
@@ -320,7 +350,12 @@ This tool provides detailed sensor analysis including:
 **Returns**: Structured sensor information with thermal insights and health recommendations."""
 )
 async def get_sensor_info_tool() -> dict:
-    """Get sensor information with beautiful formatting."""
+    """
+    Get sensor information including temperature, fan speeds, and thermal data.
+
+    Returns:
+        dict: Structured sensor information with thermal insights and health recommendations.
+    """
     try:
         logger.info("Collecting sensor information")
         return mcp_handlers.sensor_info_handler()
@@ -355,7 +390,12 @@ This tool provides detailed process analysis including:
 **Returns**: Structured process information with resource insights and optimization recommendations."""
 )
 async def get_process_info_tool() -> dict:
-    """Get process information with beautiful formatting."""
+    """
+    Get process information including running processes and resource usage.
+
+    Returns:
+        dict: Structured process information with resource insights and optimization recommendations.
+    """
     try:
         logger.info("Collecting process information")
         return mcp_handlers.process_info_handler()
@@ -390,7 +430,12 @@ This tool provides comprehensive performance analysis including:
 **Returns**: Structured performance information with bottleneck analysis and optimization recommendations."""
 )
 async def get_performance_info_tool() -> dict:
-    """Get performance information with beautiful formatting."""
+    """
+    Get real-time performance metrics including CPU, memory, and disk usage.
+
+    Returns:
+        dict: Structured performance information with bottleneck analysis and optimization recommendations.
+    """
     try:
         logger.info("Collecting performance information")
         return mcp_handlers.performance_monitor_handler()
@@ -486,95 +531,24 @@ async def get_remote_node_info_tool(
     include_health: bool = True
 ) -> dict:
     """
-    Get comprehensive remote node hardware and system information via SSH with intelligent filtering and advanced analysis.
-    
+    Get comprehensive remote node hardware and system information via SSH with advanced filtering and intelligent analysis.
+
     Args:
-        hostname: Target hostname or IP address for remote collection (required)
-                 Examples: 
-                 - 'server1.example.com' - Connect to named server with DNS resolution
-                 - '192.168.1.100' - Direct IP connection for local network systems
-                 - 'hpc-node-01' - High-performance computing node analysis
-                 - 'database-server.internal' - Internal infrastructure monitoring
-        username: SSH username for remote authentication (defaults to current user for seamless operation)
-                 Examples: 
-                 - 'admin' - Administrative access for comprehensive system analysis
-                 - 'root' - Root access for complete hardware information
-                 - 'monitoring' - Dedicated monitoring user with appropriate permissions
-                 - 'hpcuser' - HPC environment user with cluster access
-        port: SSH port number for remote connection with support for non-standard configurations
-             Examples: 
-             - 22 - Standard SSH port for most systems
-             - 2222 - Common alternative port for security-enhanced systems
-             - 443 - HTTPS port tunneling for firewall-restricted environments
-        ssh_key: Path to SSH private key file for key-based authentication and enhanced security
-                Examples: 
-                - '~/.ssh/id_rsa' - Default RSA key for standard authentication
-                - '/path/to/private/key' - Custom key location for specialized environments
-                - '~/.ssh/id_ed25519' - Modern Ed25519 key for enhanced security
-                - '/etc/ssh/monitoring_key' - System-wide monitoring key
-        timeout: SSH connection timeout in seconds with adaptive configuration for network conditions
-                Examples: 
-                - 30 - Standard timeout for local network connections
-                - 60 - Extended timeout for slower connections or high-latency networks
-                - 120 - Long timeout for international connections or congested networks
-        components: List of specific components to include in collection for focused analysis
-                   Available: ['cpu', 'memory', 'disk', 'network', 'system', 'processes', 'gpu', 'sensors', 'performance', 'summary']
-                   Examples: 
-                   - ['cpu', 'memory'] - Focus on processor and memory analysis with performance metrics
-                   - ['system', 'summary'] - Basic system overview with integrated analysis
-                   - ['gpu', 'sensors'] - Graphics and thermal monitoring for gaming/compute systems
-                   - ['cpu', 'memory', 'disk', 'performance'] - Core system performance analysis
-        exclude_components: List of specific components to exclude from collection for streamlined results
-                           Examples: 
-                           - ['processes', 'sensors'] - Skip resource-intensive collections for faster results
-                           - ['gpu'] - Exclude GPU information for server environments
-                           - ['sensors'] - Skip sensor data for systems without thermal monitoring
-        include_performance: Whether to include real-time performance analysis and optimization recommendations
-                           - True: Comprehensive performance metrics with bottleneck analysis
-                           - False: Basic hardware information without performance overhead
-        include_health: Whether to include health assessment and predictive maintenance insights
-                       - True: Full health monitoring with predictive analytics
-                       - False: Basic information without health analysis overhead
-    
+        hostname (str): Target hostname or IP address for remote collection.
+        username (Optional[str]): SSH username for remote authentication.
+        port (int): SSH port number for remote connection.
+        ssh_key (Optional[str]): Path to SSH private key file for authentication.
+        timeout (int): SSH connection timeout in seconds.
+        components (Optional[List[str]]): List of specific components to include in collection.
+        exclude_components (Optional[List[str]]): List of specific components to exclude from collection.
+        include_performance (bool): Whether to include real-time performance analysis.
+        include_health (bool): Whether to include health assessment and predictive maintenance insights.
+
     Returns:
-        Dictionary containing comprehensive remote hardware and system analysis:
-        - **hardware_data**: Complete remote hardware and system information organized by component type
-        - **collection_metadata**: Detailed metadata including requested vs collected components and success rates
-        - **performance_analysis**: Real-time performance metrics with bottleneck identification and optimization recommendations
-        - **health_assessment**: Comprehensive health monitoring with predictive maintenance insights and failure prediction
-        - **ssh_connection_info**: SSH connection metadata including authentication details, performance metrics, and connection status
-        - **error_information**: Detailed error information for any failed component collections with troubleshooting suggestions
-        - **intelligent_insights**: AI-powered insights and recommendations based on collected remote data and analysis
-        - **optimization_recommendations**: Remote system optimization suggestions with implementation guidance
-        - **beautiful_formatting**: Structured, readable output with rich formatting and comprehensive summaries
-        
-    Component Selection Examples:
-        - components=['cpu', 'memory'] - Processor and memory analysis for performance tuning
-        - components=['system', 'summary'] - Basic system overview for inventory and documentation
-        - components=['gpu', 'sensors'] - Graphics and thermal monitoring for gaming/AI workloads
-        - components=['disk', 'network'] - Storage and network analysis for I/O performance optimization
-        - exclude_components=['processes'] - Skip process information for faster collection in production
-        - exclude_components=['sensors', 'gpu'] - Exclude specialized components for server environments
-        - No filters - Comprehensive information collection from all available components
-        
-    Remote Collection Examples:
-        - hostname='server1.example.com' - Standard remote server analysis with default configuration
-        - hostname='192.168.1.100', username='admin' - Local network server with administrative access
-        - ssh_key='~/.ssh/id_rsa' - Key-based authentication for secure, passwordless connection
-        - port=2222, timeout=60 - Custom port and extended timeout for specialized network configurations
-        - hostname='hpc-node-01', components=['cpu', 'memory', 'gpu'] - HPC node analysis with compute focus
-        - hostname='database-server', exclude_components=['processes'] - Database server monitoring without process overhead
-        
-    Advanced Remote Usage Examples:
-        - Performance Analysis: hostname='server1', components=['cpu', 'memory', 'disk', 'performance'], include_performance=True
-        - Health Monitoring: hostname='server2', components=['sensors', 'disk', 'gpu'], include_health=True
-        - Quick Overview: hostname='server3', components=['summary'], include_performance=False, include_health=False
-        - Infrastructure Audit: hostname='server4', include_performance=True, include_health=True
-        - Distributed HPC Analysis: hostname='hpc-cluster', components=['cpu', 'memory', 'gpu', 'network']
+        dict: Comprehensive remote hardware and system analysis, including hardware_data, collection_metadata, performance_analysis, health_assessment, ssh_connection_info, error_information, intelligent_insights, optimization_recommendations, and beautiful_formatting.
     """
     try:
         logger.info(f"Collecting comprehensive remote hardware information from {hostname}: components={components}, exclude={exclude_components}")
-        
         return mcp_handlers.get_remote_node_info_handler(
             hostname=hostname,
             username=username,
@@ -652,30 +626,10 @@ Use this tool when:
 )
 async def health_check_tool() -> dict:
     """
-    Perform comprehensive health check of the Node Hardware MCP server with advanced system diagnostics.
-    
+    Perform comprehensive health check and system diagnostics with advanced capability verification.
+
     Returns:
-        Dictionary containing comprehensive health assessment:
-        - **server_status**: Overall MCP server health status and functionality verification with performance metrics
-        - **capability_status**: Individual tool functionality and system compatibility assessment with detailed testing results
-        - **system_compatibility**: Platform compatibility, dependency verification, and requirements analysis with recommendations
-        - **performance_metrics**: Server performance assessment, response times, and efficiency analysis with benchmarking
-        - **diagnostic_insights**: System diagnostic information, health indicators, and status assessment with trend analysis
-        - **optimization_recommendations**: System optimization suggestions and performance improvements with implementation guidance
-        - **troubleshooting_guide**: Diagnostic troubleshooting information and problem resolution guidance with step-by-step instructions
-        - **predictive_maintenance**: Predictive maintenance insights and recommendations with failure prediction analysis
-        - **security_assessment**: Security posture analysis and vulnerability assessment with remediation recommendations
-        - **health_summary**: Comprehensive health summary with actionable insights, recommendations, and next steps
-        
-    Health Check Results:
-        - **Comprehensive Status**: Complete system health overview with all components and capabilities
-        - **Performance Metrics**: Detailed performance analysis with benchmarking and optimization opportunities
-        - **Capability Verification**: Individual tool testing results with functionality validation
-        - **System Compatibility**: Platform compatibility analysis with dependency verification
-        - **Diagnostic Information**: Detailed diagnostic data with health indicators and trend analysis
-        - **Optimization Guidance**: Intelligent optimization recommendations with implementation strategies
-        - **Troubleshooting Support**: Comprehensive troubleshooting guidance with problem resolution steps
-        - **Predictive Insights**: Predictive maintenance recommendations with failure prediction analysis
+        dict: Comprehensive health assessment, including server_status, capability_status, system_compatibility, performance_metrics, diagnostic_insights, optimization_recommendations, troubleshooting_guide, predictive_maintenance, security_assessment, and health_summary.
     """
     try:
         logger.info("Performing comprehensive health check and system diagnostics with advanced analysis")

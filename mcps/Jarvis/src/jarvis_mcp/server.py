@@ -38,7 +38,15 @@ manager = JarvisManager.get_instance()
     description="Re-apply environment & configuration to every package in a Jarvis-CD pipeline."
 )
 async def update_pipeline_tool(pipeline_id: str) -> dict:
-    """Tool wrapper for the update_pipeline function."""
+    """
+    Re-apply environment and configuration to every package in a Jarvis pipeline.
+
+    Args:
+        pipeline_id (str): ID of the pipeline to update
+
+    Returns:
+        dict: Status and results of the update operation.
+    """
     return await update_pipeline(pipeline_id)
 
 @mcp.tool(
@@ -48,58 +56,149 @@ async def update_pipeline_tool(pipeline_id: str) -> dict:
 async def build_pipeline_env_tool(
     pipeline_id: str
 ) -> dict:
+    """
+    Build the pipeline execution environment for a given pipeline.
+
+    Args:
+        pipeline_id (str): ID of the pipeline to build
+
+    Returns:
+        dict: Status and results of the environment build operation.
+    """
     return await build_pipeline_env(pipeline_id)
 
 
 
 @mcp.tool(name="create_pipeline", description="Create a new Jarvis-CD pipeline environment.")
 async def create_pipeline_tool(pipeline_id: str) -> dict:
-    """Create a new pipeline with the given pipeline ID."""
+    """
+    Create a new pipeline environment for data-centric workflows.
+
+    Args:
+        pipeline_id (str): Name/ID for the new pipeline
+
+    Returns:
+        dict: Status and details of the created pipeline.
+    """
     return await create_pipeline(pipeline_id)
 
 
 @mcp.tool(name="load_pipeline", description="Load an existing Jarvis-CD pipeline environment.")
 async def load_pipeline_tool(pipeline_id: str = None) -> dict:
-    """Load an existing pipeline by ID, or the current one if not specified."""
+    """
+    Load an existing pipeline environment by ID, or the current one if not specified.
+
+    Args:
+        pipeline_id (str, optional): ID of the pipeline to load
+
+    Returns:
+        dict: Status and details of the loaded pipeline.
+    """
     return await load_pipeline(pipeline_id)
 
 @mcp.tool(name="get_pkg_config",description="Retrieve the configuration of a specific package in a Jarvis-CD pipeline.")
 async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
+    """
+    Retrieve the configuration of a specific package in a pipeline.
+
+    Args:
+        pipeline_id (str): ID of the pipeline
+        pkg_id (str): ID of the package
+
+    Returns:
+        dict: Current configuration of the package.
+    """
     return await get_pkg_config(pipeline_id, pkg_id)
 
 @mcp.tool(name="append_pkg", description="Append a package to a Jarvis-CD pipeline.")
 async def append_pkg_tool(pipeline_id: str, pkg_type: str, pkg_id: str = None, do_configure: bool = True, extra_args: dict = None) -> dict:
-    """Append a package to a pipeline."""
+    """
+    Add a package to a pipeline for execution or analysis.
+
+    Args:
+        pipeline_id (str): ID of the pipeline
+        pkg_type (str): Type of package to add
+        pkg_id (str, optional): ID for the new package
+        do_configure (bool, optional): Whether to configure after adding
+        extra_args (dict, optional): Additional configuration arguments
+
+    Returns:
+        dict: Status and details of the package addition.
+    """
     return await append_pkg(pipeline_id,pkg_type,pkg_id=pkg_id,do_configure=do_configure,**(extra_args or {}))
 
 
 @mcp.tool(name="configure_pkg", description="Configure a package in a Jarvis-CD pipeline.")
 async def configure_pkg_tool(pipeline_id: str, pkg_id: str, extra_args: dict = None) -> dict:
-    """Reconfigure a package within a pipeline using optional extra arguments."""
+    """
+    Configure a package in a pipeline with new settings.
+
+    Args:
+        pipeline_id (str): ID of the pipeline
+        pkg_id (str): ID of the package
+        extra_args (dict, optional): Configuration arguments
+
+    Returns:
+        dict: Status and details of the configuration operation.
+    """
     return await configure_pkg(pipeline_id, pkg_id, **(extra_args or {}))
 
 
 @mcp.tool(name="unlink_pkg", description="Unlink a package from a Jarvis-CD pipeline (preserve files).")
 async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
-    """Unlink (but don’t delete) a package from a pipeline."""
+    """
+    Unlink a package from a pipeline without deleting its files.
+
+    Args:
+        pipeline_id (str): ID of the pipeline
+        pkg_id (str): ID of the package to unlink
+
+    Returns:
+        dict: Status and details of the unlink operation.
+    """
     return await unlink_pkg(pipeline_id, pkg_id)
 
 
 @mcp.tool(name="remove_pkg", description="Remove a package entirely from a Jarvis-CD pipeline.")
 async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
-    """Completely remove a package and its files from the pipeline."""
+    """
+    Remove a package and its files from a pipeline.
+
+    Args:
+        pipeline_id (str): ID of the pipeline
+        pkg_id (str): ID of the package to remove
+
+    Returns:
+        dict: Status and details of the removal operation.
+    """
     return await remove_pkg(pipeline_id, pkg_id)
 
 
 @mcp.tool(name="run_pipeline", description="Execute a Jarvis-CD pipeline end-to-end.")
 async def run_pipeline_tool(pipeline_id: str) -> dict:
-    """Run the entire pipeline, executing each step sequentially."""
+    """
+    Execute the pipeline, running all configured steps.
+
+    Args:
+        pipeline_id (str): ID of the pipeline to run
+
+    Returns:
+        dict: Status and results of the pipeline execution.
+    """
     return await run_pipeline(pipeline_id)
 
 
 @mcp.tool(name="destroy_pipeline", description="Destroy a Jarvis-CD pipeline environment and clean up files.")
 async def destroy_pipeline_tool(pipeline_id: str) -> dict:
-    """Completely destroy the pipeline and clean up associated resources."""
+    """
+    Destroy a pipeline and clean up all associated files and resources.
+
+    Args:
+        pipeline_id (str): ID of the pipeline to destroy
+
+    Returns:
+        dict: Status and details of the destruction operation.
+    """
     return await destroy_pipeline(pipeline_id)
 
 
