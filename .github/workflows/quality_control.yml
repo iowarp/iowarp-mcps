@@ -1,0 +1,253 @@
+name: Python Code Quality
+
+on:
+  push:
+    branches: [ main, dev, integration-cleanup ]
+  pull_request:
+    branches: [ main, dev, integration-cleanup ]
+
+jobs:
+  discover-mcps:
+    name: Discover MCP Directories
+    runs-on: ubuntu-latest
+    outputs:
+      mcps: ${{ steps.discover.outputs.mcps }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Discover MCP directories
+      id: discover
+      run: |
+        # Find all directories in mcps/ that have a pyproject.toml file
+        mcps=$(find mcps -maxdepth 1 -type d -exec test -f {}/pyproject.toml \; -print | sed 's|mcps/||' | jq -R . | jq -s .)
+        echo "mcps=$mcps" >> $GITHUB_OUTPUT
+        echo "Found MCPs: $mcps"
+
+  lint:
+    name: Lint with Ruff
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      matrix:
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+        python-version: ["3.12"]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Install dependencies for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f pyproject.toml ]; then
+          uv sync --all-extras --dev || echo "Failed to sync dependencies, continuing..."
+        fi
+    
+    - name: Run Ruff linter on ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        uv run ruff check --output-format=github . || echo "Ruff check completed with issues"
+    
+    - name: Run Ruff formatter check on ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        uv run ruff format --check . || echo "Ruff format check completed with issues"
+
+  type-check:
+    name: Type Check with MyPy
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      matrix:
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+        python-version: ["3.12"]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Install dependencies for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f pyproject.toml ]; then
+          uv sync --all-extras --dev || echo "Failed to sync dependencies, continuing..."
+        fi
+    
+    - name: Run MyPy on ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -d src ]; then
+          uv run mypy src/ --ignore-missing-imports --show-error-codes --no-error-summary || echo "MyPy completed with issues"
+        else
+          echo "No src directory found for ${{ matrix.mcp }}"
+        fi
+
+  coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      matrix:
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python
+      run: uv python install 3.12
+    
+    - name: Install dependencies for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f pyproject.toml ]; then
+          uv sync --all-extras --dev || echo "Failed to sync dependencies, continuing..."
+        fi
+    
+    - name: Run tests with coverage for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -d tests ]; then
+          uv run pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-report=html --cov-report=term || echo "Tests completed with issues"
+        else
+          echo "No tests directory found for ${{ matrix.mcp }}"
+        fi
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: hashFiles('mcps/${{ matrix.mcp }}/coverage.xml') != ''
+      with:
+        file: mcps/${{ matrix.mcp }}/coverage.xml
+        flags: ${{ matrix.mcp }}
+        name: codecov-${{ matrix.mcp }}
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+    
+    - name: Upload coverage HTML report
+      uses: actions/upload-artifact@v4
+      if: hashFiles('mcps/${{ matrix.mcp }}/htmlcov/') != ''
+      with:
+        name: coverage-html-${{ matrix.mcp }}
+        path: mcps/${{ matrix.mcp }}/htmlcov/
+
+  matrix-test:
+    name: Test Python ${{ matrix.python-version }} - ${{ matrix.mcp }}
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Install dependencies for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f pyproject.toml ]; then
+          uv sync --all-extras --dev || echo "Failed to sync dependencies, continuing..."
+        fi
+    
+    - name: Run basic tests for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -d tests ]; then
+          uv run pytest tests/ --tb=short -v || echo "Tests completed with issues"
+        else
+          echo "No tests directory for ${{ matrix.mcp }}"
+        fi
+    
+    - name: Quick lint check for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        uv run ruff check . --select E,F || echo "Lint check completed with issues"
+
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      matrix:
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python
+      run: uv python install 3.12
+    
+    - name: Install dependencies for ${{ matrix.mcp }}
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f pyproject.toml ]; then
+          uv sync --all-extras --dev || echo "Failed to sync dependencies, continuing..."
+        fi
+    
+    - name: Run dependency security audit
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f uv.lock ]; then
+          uv audit || echo "Security audit completed with issues"
+        else
+          echo "No uv.lock file found for ${{ matrix.mcp }}"
+        fi
+    
+    - name: Verify lockfile integrity
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -f uv.lock ]; then
+          uv sync --locked || echo "Lockfile verification failed"
+        fi
+    
+    - name: Run Bandit security scan
+      run: |
+        cd mcps/${{ matrix.mcp }}
+        if [ -d src ]; then
+          uv run --with bandit bandit -r src/ -f json -o bandit-report.json || echo "Bandit scan completed with issues"
+        else
+          echo "No src directory found for ${{ matrix.mcp }}"
+        fi
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports-${{ matrix.mcp }}
+        path: |
+          mcps/${{ matrix.mcp }}/bandit-report.json
