@@ -18,7 +18,16 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+<<<<<<< HEAD
      "pytest-asyncio>=1.0.0"
+=======
+     "mypy>=1.17.0",
+     "pip-audit>=2.9.0",
+     "pytest>=8.4.1",
+     "pytest-asyncio>=1.0.0",
+     "pytest-cov>=6.2.1",
+     "ruff>=0.12.5",
+>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
 ]
 
 [project.scripts]

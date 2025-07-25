@@ -32,4 +32,16 @@ pandas-mcp = "server:main"
 
 [build-system]
 requires = ["setuptools>=64.0", "wheel"]
+<<<<<<< HEAD
 build-backend = "setuptools.build_meta"
+=======
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "pip-audit>=2.9.0",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.5",
+]
+>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)

@@ -1,0 +1,322 @@
+commit 26f7aed27493e1f88db4a6304db17e91f1ac2e28
+Author: Isa <imuradli@hawk.iit.edu>
+Date:   Fri Jul 25 17:58:16 2025 -0500
+
+    Updated the security job of the workflow to run the code audit on the MCPs
+
+diff --git a/.github/workflows/quality_control.yml b/.github/workflows/quality_control.yml
+index 2ec95e3..4369b61 100644
+--- a/.github/workflows/quality_control.yml
++++ b/.github/workflows/quality_control.yml
+@@ -29,7 +29,7 @@ jobs:
+           mcps_list=$(echo "$mcps_list" | grep -v -E "^($blacklisted_mcps)$")
+         fi
+         
+-        mcps=$(echo "$mcps_list" | jq -R -s -c 'split("\n")[:-1]')
++        mcps=$(echo "$mcps_list" | jq -R -s -c 'split("\n")[:-1]')`
+         echo "mcps=$mcps" >> $GITHUB_OUTPUT
+         echo "Found MCPs: $mcps"
+ 
+@@ -61,7 +61,7 @@ jobs:
+         if [ -f pyproject.toml ]; then
+           uv sync --all-extras --dev 
+         fi
+-        uv add --dev ruff || echo "Failed to add ruff, continuing..."
++        uv add --dev ruff"
+     
+     - name: Run Ruff linter on ${{ matrix.mcp }}
+       run: |
+@@ -101,7 +101,7 @@ jobs:
+         if [ -f pyproject.toml ]; then
+           uv sync --all-extras --dev
+         fi
+-        uv add --dev mypy || echo "Failed to add mypy, continuing..."
++        uv add --dev mypy "
+     
+     - name: Run MyPy on ${{ matrix.mcp }}
+       run: |
+@@ -169,7 +169,7 @@ jobs:
+         path: mcps/${{ matrix.mcp }}/htmlcov/
+ 
+   security:
+-    name: Security - ${{ matrix.mcp }}
++    name: Security Audit - ${{ matrix.mcp }}
+     runs-on: ubuntu-latest
+     needs: discover-mcps
+     strategy:
+@@ -194,41 +194,18 @@ jobs:
+       run: |
+         cd mcps/${{ matrix.mcp }}
+         if [ -f pyproject.toml ]; then
+-          uv sync --all-extras --dev 
+-        fi
+-    
+-    - name: Run dependency security audit
+-      run: |
+-        cd mcps/${{ matrix.mcp }}
+-        if [ -f uv.lock ]; then
+-          uv audit 
+-        else
+-          echo "No uv.lock file found for ${{ matrix.mcp }}"
+-        fi
+-    
+-    - name: Verify lockfile integrity
+-      run: |
+-        cd mcps/${{ matrix.mcp }}
+-        if [ -f uv.lock ]; then
+-          uv sync --locked 
++          uv sync --all-extras --dev
+         fi
++        uv add --dev pip-audit"
+     
+-    - name: Run Bandit security scan
++    - name: Run security audit for ${{ matrix.mcp }}
+       run: |
+         cd mcps/${{ matrix.mcp }}
+-        if [ -d src ]; then
+-          uv run --with bandit bandit -r src/ -f json -o bandit-report.json 
++        if [ -f pyproject.toml ]; then
++          uv run pip-audit
+         else
+-          echo "No src directory found for ${{ matrix.mcp }}"
++          echo "No pyproject.toml found for ${{ matrix.mcp }}, skipping security audit"
+         fi
+-    
+-    - name: Upload security reports
+-      uses: actions/upload-artifact@v4
+-      if: always()
+-      with:
+-        name: security-reports-${{ matrix.mcp }}
+-        path: |
+-          mcps/${{ matrix.mcp }}/bandit-report.json
+ 
+   python-3-10:
+     name: Python 3.10 - ${{ matrix.mcp }}
+diff --git a/mcps/Adios/pyproject.toml b/mcps/Adios/pyproject.toml
+index d5975a8..6abf67f 100644
+--- a/mcps/Adios/pyproject.toml
++++ b/mcps/Adios/pyproject.toml
+@@ -28,6 +28,7 @@ dependencies = [
+ [dependency-groups]
+ dev = [
+     "mypy>=1.17.0",
++    "pip-audit>=2.9.0",
+     "pytest>=8.0.0",
+     "pytest-cov>=6.2.1",
+     "ruff>=0.12.5",
+diff --git a/mcps/Arxiv/pyproject.toml b/mcps/Arxiv/pyproject.toml
+index c28c342..402cde9 100644
+--- a/mcps/Arxiv/pyproject.toml
++++ b/mcps/Arxiv/pyproject.toml
+@@ -18,7 +18,16 @@ dependencies = [
+ 
+ [dependency-groups]
+ dev = [
++<<<<<<< HEAD
+      "pytest-asyncio>=1.0.0"
++=======
++     "mypy>=1.17.0",
++     "pip-audit>=2.9.0",
++     "pytest>=8.4.1",
++     "pytest-asyncio>=1.0.0",
++     "pytest-cov>=6.2.1",
++     "ruff>=0.12.5",
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
+ ]
+ 
+ [project.scripts]
+diff --git a/mcps/Chronolog/pyproject.toml b/mcps/Chronolog/pyproject.toml
+index 7721f79..8a9476d 100644
+--- a/mcps/Chronolog/pyproject.toml
++++ b/mcps/Chronolog/pyproject.toml
+@@ -37,4 +37,14 @@ chronolog-mcp = "chronomcp.server:main"
+ 
+ [build-system]
+ requires = ["setuptools>=64.0", "wheel"]
+-build-backend = "setuptools.build_meta"
+\ No newline at end of file
++<<<<<<< HEAD
++build-backend = "setuptools.build_meta"
++=======
++build-backend = "setuptools.build_meta"
++
++[dependency-groups]
++dev = [
++    "pip-audit>=2.9.0",
++    "ruff>=0.12.5",
++]
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
+diff --git a/mcps/Compression/pyproject.toml b/mcps/Compression/pyproject.toml
+index 4c973a0..bf20244 100644
+--- a/mcps/Compression/pyproject.toml
++++ b/mcps/Compression/pyproject.toml
+@@ -19,7 +19,16 @@ dependencies = [
+ 
+ [dependency-groups]
+ dev = [
++<<<<<<< HEAD
+      "pytest-asyncio>=1.0.0"
++=======
++     "mypy>=1.17.0",
++     "pip-audit>=2.9.0",
++     "pytest>=8.3.5",
++     "pytest-asyncio>=1.0.0",
++     "pytest-cov>=6.2.1",
++     "ruff>=0.12.5",
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
+ ]
+ 
+ [project.scripts]
+diff --git a/mcps/Darshan/pyproject.toml b/mcps/Darshan/pyproject.toml
+index 5c347cc..01ac908 100644
+--- a/mcps/Darshan/pyproject.toml
++++ b/mcps/Darshan/pyproject.toml
+@@ -34,6 +34,7 @@ where = ["src"]
+ 
+ [tool.uv]
+ dev-dependencies = [
++    "pip-audit>=2.9.0",
+     "pytest>=8.4.0",
+     "pytest-asyncio>=0.21.0"
+ ]
+\ No newline at end of file
+diff --git a/mcps/HDF5/pyproject.toml b/mcps/HDF5/pyproject.toml
+index 9ddc825..db0f0ad 100644
+--- a/mcps/HDF5/pyproject.toml
++++ b/mcps/HDF5/pyproject.toml
+@@ -19,6 +19,7 @@ keywords = ["hdf5", "scientific-data", "hierarchical-data", "data-analysis", "sc
+ 
+ [tool.uv]
+ dev-dependencies = [
++    "pip-audit>=2.9.0",
+     "pytest>=8.4.0",
+     "pytest-asyncio>=0.21.0"
+ ]
+diff --git a/mcps/Jarvis/pyproject.toml b/mcps/Jarvis/pyproject.toml
+index e741527..e973d68 100644
+--- a/mcps/Jarvis/pyproject.toml
++++ b/mcps/Jarvis/pyproject.toml
+@@ -21,6 +21,7 @@ keywords = ["jarvis", "pipeline-management", "high-performance-computing", "hpc"
+ 
+ [tool.uv]
+ dev-dependencies = [
++    "pip-audit>=2.9.0",
+     "pytest>=8.4.0",
+     "pytest-asyncio>=0.21.0"
+ ]
+diff --git a/mcps/Node_Hardware/pyproject.toml b/mcps/Node_Hardware/pyproject.toml
+index 1a20610..ef5e9e2 100644
+--- a/mcps/Node_Hardware/pyproject.toml
++++ b/mcps/Node_Hardware/pyproject.toml
+@@ -19,6 +19,7 @@ keywords = ["hardware-monitoring", "system-analysis", "performance-metrics", "no
+ 
+ [tool.uv]
+ dev-dependencies = [
++    "pip-audit>=2.9.0",
+     "pytest>=8.4.0",
+     "pytest-asyncio>=0.21.0"
+ ]
+diff --git a/mcps/Pandas/pyproject.toml b/mcps/Pandas/pyproject.toml
+index ef4053f..2a5dd17 100644
+--- a/mcps/Pandas/pyproject.toml
++++ b/mcps/Pandas/pyproject.toml
+@@ -32,4 +32,16 @@ pandas-mcp = "server:main"
+ 
+ [build-system]
+ requires = ["setuptools>=64.0", "wheel"]
+-build-backend = "setuptools.build_meta"
+\ No newline at end of file
++<<<<<<< HEAD
++build-backend = "setuptools.build_meta"
++=======
++build-backend = "setuptools.build_meta"
++
++[dependency-groups]
++dev = [
++    "pip-audit>=2.9.0",
++    "pytest>=8.4.1",
++    "pytest-cov>=6.2.1",
++    "ruff>=0.12.5",
++]
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
+diff --git a/mcps/Parallel_Sort/pyproject.toml b/mcps/Parallel_Sort/pyproject.toml
+index e61339d..d227cf1 100644
+--- a/mcps/Parallel_Sort/pyproject.toml
++++ b/mcps/Parallel_Sort/pyproject.toml
+@@ -20,7 +20,14 @@ dependencies = [
+ 
+ [dependency-groups]
+ dev = [
++<<<<<<< HEAD
+     "pytest-asyncio>=0.23.0"
++=======
++    "pip-audit>=2.9.0",
++    "pytest-asyncio>=0.23.0",
++    "ruff>=0.12.5",
++    "types-aiofiles>=23.0.0",
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
+ ]
+ 
+ [project.scripts]
+diff --git a/mcps/Plot/pyproject.toml b/mcps/Plot/pyproject.toml
+index 346c2d2..1197e23 100644
+--- a/mcps/Plot/pyproject.toml
++++ b/mcps/Plot/pyproject.toml
+@@ -23,6 +23,7 @@ dependencies = [
+ 
+ [dependency-groups]
+ dev = [
++    "pip-audit>=2.9.0",
+     "pytest>=8.4.0",
+ ]
+ 
+diff --git a/mcps/Slurm/pyproject.toml b/mcps/Slurm/pyproject.toml
+index 3b79231..67004c5 100644
+--- a/mcps/Slurm/pyproject.toml
++++ b/mcps/Slurm/pyproject.toml
+@@ -24,7 +24,12 @@ dev = [
+     "black>=23.0.0",
+     "isort>=5.12.0",
+     "mypy>=1.7.0",
++<<<<<<< HEAD
+     "ruff>=0.1.0"
++=======
++    "ruff>=0.1.0",
++    "pip-audit>=2.9.0",
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
+ ]
+ 
+ [project.scripts]
+diff --git a/mcps/lmod/pyproject.toml b/mcps/lmod/pyproject.toml
+index 14981b2..b1fe9b8 100644
+--- a/mcps/lmod/pyproject.toml
++++ b/mcps/lmod/pyproject.toml
+@@ -18,6 +18,7 @@ keywords = ["lmod", "environment-modules", "module-management", "hpc", "scientif
+ 
+ [tool.uv]
+ dev-dependencies = [
++    "pip-audit>=2.9.0",
+     "pytest>=8.4.0",
+     "pytest-asyncio>=0.21.0"
+ ]
+diff --git a/mcps/parquet/pyproject.toml b/mcps/parquet/pyproject.toml
+index 3d519ee..9dfa5c4 100644
+--- a/mcps/parquet/pyproject.toml
++++ b/mcps/parquet/pyproject.toml
+@@ -26,4 +26,14 @@ parquet-mcp = "server:main"
+ 
+ [build-system]
+ requires = ["setuptools>=64.0", "wheel"]
+-build-backend = "setuptools.build_meta"
+\ No newline at end of file
++<<<<<<< HEAD
++build-backend = "setuptools.build_meta"
++=======
++build-backend = "setuptools.build_meta"
++
++[dependency-groups]
++dev = [
++    "pip-audit>=2.9.0",
++    "ruff>=0.12.5",
++]
++>>>>>>> 856c64f (Updating the security job for Github Action and updated the pyproject of each MCP to include pip-audit in dependency list)
