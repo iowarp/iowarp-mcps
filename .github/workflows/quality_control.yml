@@ -169,66 +169,33 @@ jobs:
         path: mcps/${{ matrix.mcp }}/htmlcov/
 
   security:
-    name: Security - ${{ matrix.mcp }}
+    name: Run pip-audit using uv with Python 3.12
     runs-on: ubuntu-latest
-    needs: discover-mcps
-    strategy:
-      fail-fast: false
-      matrix:
-        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
-      max-parallel: 20
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Set up Python 3.12
-      run: uv python install 3.12
-    
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd mcps/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev 
-        fi
-    
-    - name: Run dependency security audit
-      run: |
-        cd mcps/${{ matrix.mcp }}
-        if [ -f uv.lock ]; then
-          uv audit 
-        else
-          echo "No uv.lock file found for ${{ matrix.mcp }}"
-        fi
-    
-    - name: Verify lockfile integrity
-      run: |
-        cd mcps/${{ matrix.mcp }}
-        if [ -f uv.lock ]; then
-          uv sync --locked 
-        fi
-    
-    - name: Run Bandit security scan
-      run: |
-        cd mcps/${{ matrix.mcp }}
-        if [ -d src ]; then
-          uv run --with bandit bandit -r src/ -f json -o bandit-report.json 
-        else
-          echo "No src directory found for ${{ matrix.mcp }}"
-        fi
-    
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-reports-${{ matrix.mcp }}
-        path: |
-          mcps/${{ matrix.mcp }}/bandit-report.json
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and pip-audit
+        run: pip install uv pip-audit
+
+      - name: Create virtual environment with uv
+        run: uv venv
+
+      - name: Install dependencies using uv
+        run: |
+          . .venv/bin/activate
+          uv pip install
+
+      - name: Run pip-audit
+        run: |
+          . .venv/bin/activate
+          pip-audit
 
   python-3-10:
     name: Python 3.10 - ${{ matrix.mcp }}
