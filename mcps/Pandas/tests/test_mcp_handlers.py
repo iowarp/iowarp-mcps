@@ -159,7 +159,7 @@ class TestPandasMCPHandlers:
         assert "error" in result["_meta"]
         assert result["_meta"]["tool"] == "load_data"
 
-    @patch("pandasmcp.capabilities.data_io.load_data_file")
+    @patch("pandasmcp.mcp_handlers.load_data_file")
     def test_handler_exception_handling(self, mock_load_data):
         """Test exception handling in handlers"""
         # Mock an exception
