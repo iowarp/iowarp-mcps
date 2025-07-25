@@ -12,7 +12,8 @@ authors = [
 dependencies = [
   "fastmcp",
   "python-dotenv>=1.0.0",
-  "h5py>=3.0.0"
+  "h5py>=3.0.0",
+  "psutil>=5.9.0"
 ]
 
 keywords = ["hdf5", "scientific-data", "hierarchical-data", "data-analysis", "scientific-computing", "mcp", "llm-integration", "data-structures"]
