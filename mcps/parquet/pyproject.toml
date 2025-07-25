@@ -27,3 +27,8 @@ parquet-mcp = "server:main"
 [build-system]
 requires = ["setuptools>=64.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.5",
+]
