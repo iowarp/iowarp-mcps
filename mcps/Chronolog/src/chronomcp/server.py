@@ -1,11 +1,12 @@
 # server.py
 import utils.config as config
-from capabilities.start_handler    import start_chronolog as _start
+from capabilities.start_handler import start_chronolog as _start
 from capabilities.record_handler import record_interaction as _record
-from capabilities.stop_handler     import stop_chronolog  as _stop
+from capabilities.stop_handler import stop_chronolog as _stop
 from capabilities.retrieve_handler import retrieve_interaction as _retrieve
 
 mcp = config.mcp
+
 
 @mcp.tool()
 async def start_chronolog(chronicle_name: str = None, story_name: str = None):
@@ -21,6 +22,7 @@ async def start_chronolog(chronicle_name: str = None, story_name: str = None):
     """
     return await _start(chronicle_name, story_name)
 
+
 @mcp.tool()
 async def record_interaction(user_message: str, assistant_message: str):
     """
@@ -35,6 +37,7 @@ async def record_interaction(user_message: str, assistant_message: str):
     """
     return await _record(user_message, assistant_message)
 
+
 @mcp.tool()
 async def stop_chronolog():
     """
@@ -45,12 +48,13 @@ async def stop_chronolog():
     """
     return await _stop()
 
+
 @mcp.tool()
 async def retrieve_interaction(
     chronicle_name: str = None,
     story_name: str = None,
     start_time: str = None,
-    end_time: str = None
+    end_time: str = None,
 ):
     """
     Extracts logged records from specified chronicle and story, generates timestamped output files with filtering options.
@@ -66,8 +70,10 @@ async def retrieve_interaction(
     """
     return await _retrieve(chronicle_name, story_name, start_time, end_time)
 
+
 def main():
     mcp.run()
+
 
 if __name__ == "__main__":
     main()

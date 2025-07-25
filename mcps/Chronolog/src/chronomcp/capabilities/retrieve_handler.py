@@ -4,21 +4,26 @@ import utils.helpers as helpers
 import re
 from datetime import datetime
 
+
 async def retrieve_interaction(
     chronicle_name: str = None,
     story_name: str = None,
     start_time: str = None,
-    end_time: str = None
+    end_time: str = None,
 ) -> str:
     chronicle = chronicle_name or config.DEFAULT_CHRONICLE
-    story     = story_name     or config.DEFAULT_STORY
+    story = story_name or config.DEFAULT_STORY
 
     cmd = [
-        "stdbuf", "-o0",
+        "stdbuf",
+        "-o0",
         config.READER_BINARY,
-        "-c", config.CONFIG_FILE,
-        "-C", chronicle,
-        "-S", story
+        "-c",
+        config.CONFIG_FILE,
+        "-C",
+        chronicle,
+        "-S",
+        story,
     ]
     if start_time:
         st_ns = helpers.parse_time_arg(start_time, is_end=False)
