@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 load_dotenv()
 
 # Initialize MCP server
-mcp = FastMCP("PlotServer")
+mcp: FastMCP = FastMCP("PlotServer")
 
 
 @mcp.tool(
