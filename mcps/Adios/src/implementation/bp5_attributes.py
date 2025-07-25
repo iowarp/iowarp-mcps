@@ -1,12 +1,11 @@
 from adios2 import FileReader
 import numpy as np
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 
 def inspect_attributes(
-    filename: str,
-    variable_name: Optional[str] = None
-) -> Dict[str, Dict[str, Any]]:
+    filename: str, variable_name: Optional[str] = None
+) -> Union[Dict[str, Dict[str, Any]], Dict[str, str]]:
     """
     List and read attributes from a BP5 file.
     If variable_name is None, returns global attributes;
@@ -29,13 +28,15 @@ def inspect_attributes(
 
         result: Dict[str, Dict[str, Any]] = {}
         if attrs_meta is None or not attrs_meta:
-            return {"Invalid Variable name or no attributes found"}
+            return {"error": "Invalid Variable name or no attributes found"}
         for attr_name, meta in attrs_meta.items():
             # Build full attribute path for reading
             full_name = f"{variable_name}/{attr_name}" if variable_name else attr_name
             raw = stream.read_attribute(full_name)
             # Convert NumPy types/arrays to native Python types
-            if isinstance(raw, np.generic) or (hasattr(raw, "shape") and raw.shape == ()):  # scalar
+            if isinstance(raw, np.generic) or (
+                hasattr(raw, "shape") and raw.shape == ()
+            ):  # scalar
                 val = np.array(raw).item()
             else:
                 val = np.array(raw).flatten().tolist()

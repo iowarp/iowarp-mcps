@@ -1,8 +1,8 @@
 """
 Slurm MCP Server - Comprehensive HPC Job Management and Cluster Monitoring
 
-This server provides comprehensive HPC job management and cluster monitoring capabilities through 
-the Model Context Protocol, enabling users to submit jobs, monitor cluster resources, and manage 
+This server provides comprehensive HPC job management and cluster monitoring capabilities through
+the Model Context Protocol, enabling users to submit jobs, monitor cluster resources, and manage
 workloads across Slurm-managed HPC systems with intelligent job scheduling and resource optimization.
 
 Following MCP best practices, this server is designed with a workflow-first approach
@@ -13,6 +13,7 @@ and resource optimization workflows.
 import os
 import sys
 import logging
+from typing import Optional
 
 # Try to import required dependencies with fallbacks
 try:
@@ -23,9 +24,13 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
-    print("Warning: python-dotenv not available. Environment variables may not be loaded.", file=sys.stderr)
+    print(
+        "Warning: python-dotenv not available. Environment variables may not be loaded.",
+        file=sys.stderr,
+    )
 
 # Add current directory to path for relative imports
 sys.path.insert(0, os.path.dirname(__file__))
@@ -41,23 +46,31 @@ from implementation.job_output import get_job_output
 from implementation.queue_info import get_queue_info
 from implementation.array_jobs import submit_array_job
 from implementation.node_info import get_node_info
-from implementation.node_allocation import allocate_nodes, deallocate_nodes, get_allocation_status
+from implementation.node_allocation import (
+    allocate_nodes,
+    deallocate_nodes,
+    get_allocation_status,
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server instance
-mcp = FastMCP("Slurm-MCP-JobManagement")
+mcp: FastMCP = FastMCP("Slurm-MCP-JobManagement")
+
 
 # Custom exception for Slurm MCP errors
 class SlurmMCPError(Exception):
     """Custom exception for Slurm MCP-related errors"""
+
     pass
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SLURM JOB MANAGEMENT TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="submit_slurm_job",
@@ -98,19 +111,19 @@ Use this tool when:
 - Deploying batch workloads with specific resource requirements and intelligent scheduling optimization
 - Running scientific applications with AI-powered resource allocation and performance monitoring
 - Executing high-throughput computing workflows with intelligent job scheduling and queue management
-- Optimizing job submission for cost-effectiveness and performance efficiency with predictive analysis"""
+- Optimizing job submission for cost-effectiveness and performance efficiency with predictive analysis""",
 )
 async def submit_slurm_job_tool(
-    script_path: str, 
-    cores: int = 1, 
+    script_path: str,
+    cores: int = 1,
     memory: str = "1GB",
     time_limit: str = "01:00:00",
-    job_name: str = None,
-    partition: str = None
+    job_name: Optional[str] = None,
+    partition: Optional[str] = None,
 ) -> dict:
     """
     Submit a job script to Slurm scheduler with advanced resource specification and intelligent optimization.
-    
+
     Args:
         script_path: Path to the job script file (required)
         cores: Number of CPU cores to request with intelligent resource allocation (default: 1, must be > 0)
@@ -118,22 +131,28 @@ async def submit_slurm_job_tool(
         time_limit: Time limit in HH:MM:SS format with intelligent duration estimation (default: "01:00:00")
         job_name: Custom job name for easy identification (default: derived from script filename)
         partition: Slurm partition selection with automatic queue optimization (default: system default)
-        
+
     Returns:
         Dictionary containing comprehensive job submission results with scheduling insights
     """
     try:
-        logger.info(f"Submitting comprehensive Slurm job: {script_path} with {cores} cores and advanced resource optimization")
-        
+        logger.info(
+            f"Submitting comprehensive Slurm job: {script_path} with {cores} cores and advanced resource optimization"
+        )
+
         return submit_slurm_job(
             script_path, cores, memory, time_limit, job_name, partition
         )
     except Exception as e:
         logger.error(f"Job submission error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "JobSubmissionError", "troubleshooting": "Check script path, resource requirements, and cluster connectivity"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "JobSubmissionError", "troubleshooting": "Check script path, resource requirements, and cluster connectivity"}}'
+                }
+            ],
             "_meta": {"tool": "submit_slurm_job", "error": "JobSubmissionError"},
-            "isError": True
+            "isError": True,
         }
 
 
@@ -181,28 +200,34 @@ Use this tool when:
 - Tracking resource utilization and performance metrics with predictive insights and efficiency recommendations
 - Identifying job issues and optimization opportunities with AI-powered diagnostic analysis and resolution strategies
 - Analyzing job performance for optimization and efficiency improvement with comprehensive metrics and recommendations
-- Monitoring job health and predicting completion times with intelligent analysis and trend monitoring"""
+- Monitoring job health and predicting completion times with intelligent analysis and trend monitoring""",
 )
 async def check_job_status_tool(job_id: str) -> dict:
     """
     Check comprehensive status of a Slurm job with advanced monitoring and intelligent analysis.
-    
+
     Args:
         job_id: The Slurm job ID to check (required)
-        
+
     Returns:
         Dictionary containing comprehensive job status with performance insights and optimization recommendations
     """
     try:
-        logger.info(f"Checking comprehensive status for job: {job_id} with advanced monitoring and intelligent analysis")
-        
+        logger.info(
+            f"Checking comprehensive status for job: {job_id} with advanced monitoring and intelligent analysis"
+        )
+
         return get_job_status(job_id)
     except Exception as e:
         logger.error(f"Job status check error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "JobStatusError", "troubleshooting": "Verify job ID exists and cluster connectivity"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "JobStatusError", "troubleshooting": "Verify job ID exists and cluster connectivity"}}'
+                }
+            ],
             "_meta": {"tool": "check_job_status", "error": "JobStatusError"},
-            "isError": True
+            "isError": True,
         }
 
 
@@ -242,15 +267,15 @@ Use this tool when:
 - Canceling problematic jobs with intelligent resource recovery ("Cancel job with resource optimization analysis")
 - Terminating jobs that are no longer needed with efficient resource cleanup and cost analysis
 - Managing job priorities with intelligent cancellation and resource reallocation strategies
-- Optimizing cluster resources through strategic job cancellation and queue management"""
+- Optimizing cluster resources through strategic job cancellation and queue management""",
 )
 async def cancel_slurm_job_tool(job_id: str) -> dict:
     """
     Cancel a Slurm job.
-    
+
     Args:
         job_id: The Slurm job ID to cancel
-        
+
     Returns:
         Dictionary with cancellation results
     """
@@ -301,16 +326,18 @@ Use this tool when:
 - Analyzing job queues and workload patterns with intelligent optimization insights ("Show me all jobs with performance analysis")
 - Monitoring cluster utilization and job efficiency with comprehensive metrics and optimization recommendations
 - Managing job priorities and resource allocation with intelligent scheduling and queue optimization strategies
-- Tracking job performance trends and identifying optimization opportunities with AI-powered analysis and recommendations"""
+- Tracking job performance trends and identifying optimization opportunities with AI-powered analysis and recommendations""",
 )
-async def list_slurm_jobs_tool(user: str = None, state: str = None) -> dict:
+async def list_slurm_jobs_tool(
+    user: Optional[str] = None, state: Optional[str] = None
+) -> dict:
     """
     List Slurm jobs with optional filtering.
-    
+
     Args:
         user: Username to filter by (default: current user)
         state: Job state to filter by (PENDING, RUNNING, COMPLETED, etc.)
-        
+
     Returns:
         Dictionary with list of jobs
     """
@@ -361,15 +388,15 @@ Use this tool when:
 - Assessing cluster capabilities and resource availability with intelligent analysis ("Show me cluster status with optimization insights")
 - Planning job submissions with resource availability analysis and optimization recommendations
 - Monitoring cluster health and performance with predictive insights and optimization guidance
-- Analyzing cluster efficiency and identifying optimization opportunities with AI-powered recommendations and cost analysis"""
+- Analyzing cluster efficiency and identifying optimization opportunities with AI-powered recommendations and cost analysis""",
 )
 async def get_slurm_info_tool() -> dict:
     """
     Get information about the Slurm cluster.
-    
+
     Args:
         None
-        
+
     Returns:
         Dictionary with cluster information
     """
@@ -413,15 +440,15 @@ Use this tool when:
 - Analyzing job performance and resource utilization with comprehensive metrics ("Get detailed job analysis with optimization insights")
 - Investigating job efficiency and identifying optimization opportunities with AI-powered recommendations
 - Monitoring resource usage patterns for cost optimization and performance improvement strategies
-- Evaluating job configurations for future optimization and efficiency enhancement recommendations"""
+- Evaluating job configurations for future optimization and efficiency enhancement recommendations""",
 )
 async def get_job_details_tool(job_id: str) -> dict:
     """
     Get detailed information about a Slurm job.
-    
+
     Args:
         job_id: The Slurm job ID
-        
+
     Returns:
         Dictionary with detailed job information
     """
@@ -465,16 +492,16 @@ Use this tool when:
 - Retrieving job results with intelligent analysis and error detection ("Get job output with performance analysis")
 - Troubleshooting job issues with automated error detection and diagnostic recommendations
 - Analyzing job performance through output content with efficiency insights and optimization guidance
-- Investigating job execution with comprehensive output analysis and intelligent troubleshooting recommendations"""
+- Investigating job execution with comprehensive output analysis and intelligent troubleshooting recommendations""",
 )
 async def get_job_output_tool(job_id: str, output_type: str = "stdout") -> dict:
     """
     Get job output content.
-    
+
     Args:
         job_id: The Slurm job ID
         output_type: Type of output ("stdout" or "stderr")
-        
+
     Returns:
         Dictionary with job output content
     """
@@ -518,15 +545,15 @@ Use this tool when:
 - Analyzing queue status and resource availability with intelligent optimization insights ("Show queue status with scheduling optimization")
 - Planning job submissions with resource availability analysis and partition optimization recommendations
 - Monitoring cluster utilization and queue performance with efficiency insights and optimization guidance
-- Optimizing job scheduling and resource allocation with AI-powered queue analysis and performance recommendations"""
+- Optimizing job scheduling and resource allocation with AI-powered queue analysis and performance recommendations""",
 )
-async def get_queue_info_tool(partition: str = None) -> dict:
+async def get_queue_info_tool(partition: Optional[str] = None) -> dict:
     """
     Get job queue information.
-    
+
     Args:
         partition: Specific partition to query (optional)
-        
+
     Returns:
         Dictionary with queue information
     """
@@ -577,20 +604,20 @@ Use this tool when:
 - Running high-throughput parallel computations with intelligent resource optimization ("Submit array job with parallel optimization")
 - Processing large datasets with parallel efficiency and cost optimization
 - Executing parameter sweeps with intelligent task distribution and performance optimization
-- Managing parallel workflows with comprehensive resource allocation and efficiency analysis"""
+- Managing parallel workflows with comprehensive resource allocation and efficiency analysis""",
 )
 async def submit_array_job_tool(
-    script_path: str, 
+    script_path: str,
     array_range: str,
     cores: int = 1,
     memory: str = "1GB",
     time_limit: str = "01:00:00",
-    job_name: str = None,
-    partition: str = None
+    job_name: Optional[str] = None,
+    partition: Optional[str] = None,
 ) -> dict:
     """
     Submit an array job to Slurm scheduler.
-    
+
     Args:
         script_path: Path to the job script file
         array_range: Array range specification (e.g., "1-10", "1-100:2")
@@ -599,11 +626,13 @@ async def submit_array_job_tool(
         time_limit: Time limit per array task in HH:MM:SS format (default: "01:00:00")
         job_name: Base name for the array job (default: derived from script)
         partition: Slurm partition to use (default: system default)
-        
+
     Returns:
         Dictionary with array job submission results
     """
-    logger.info(f"Submitting array job: {script_path}, range: {array_range}, cores: {cores}")
+    logger.info(
+        f"Submitting array job: {script_path}, range: {array_range}, cores: {cores}"
+    )
     return submit_array_job(
         script_path, array_range, cores, memory, time_limit, job_name, partition
     )
@@ -645,15 +674,15 @@ Use this tool when:
 - Analyzing node resources and availability with intelligent optimization insights ("Show node status with resource optimization")
 - Planning resource allocation with node availability analysis and optimization recommendations
 - Monitoring cluster hardware and node performance with efficiency insights and optimization guidance
-- Optimizing resource utilization and node allocation with AI-powered analysis and performance recommendations"""
+- Optimizing resource utilization and node allocation with AI-powered analysis and performance recommendations""",
 )
 async def get_node_info_tool() -> dict:
     """
     Get cluster node information.
-    
+
     Args:
         None
-        
+
     Returns:
         Dictionary with node information
     """
@@ -704,38 +733,40 @@ Use this tool when:
 - Creating interactive computing sessions with optimized resource allocation ("Allocate nodes for interactive analysis with performance optimization")
 - Reserving cluster resources for interactive workloads with intelligent resource management and cost optimization
 - Setting up development environments with optimal resource allocation and efficiency monitoring
-- Managing interactive sessions with comprehensive performance analysis and optimization recommendations"""
+- Managing interactive sessions with comprehensive performance analysis and optimization recommendations""",
 )
 async def allocate_slurm_nodes_tool(
     nodes: int = 1,
     cores: int = 1,
-    memory: str = None,
+    memory: Optional[str] = None,
     time_limit: str = "01:00:00",
-    partition: str = None,
-    job_name: str = None,
-    immediate: bool = False
+    partition: Optional[str] = None,
+    job_name: Optional[str] = None,
+    immediate: bool = False,
 ) -> dict:
     """
     Allocate Slurm nodes using salloc command.
-    
+
     Args:
         nodes: Number of nodes to allocate (default: 1)
-        cores: Number of cores per node (default: 1) 
+        cores: Number of cores per node (default: 1)
         memory: Memory requirement (e.g., "4G", "2048M")
         time_limit: Time limit (e.g., "1:00:00", default: "01:00:00")
         partition: Slurm partition to use
         job_name: Name for the allocation
         immediate: Whether to return immediately without waiting for allocation
-        
+
     Returns:
         Dictionary with allocation information
     """
     logger.info(f"Allocating {nodes} nodes with {cores} cores each")
-    return allocate_nodes(nodes, cores, memory, time_limit, partition, job_name, immediate)
+    return allocate_nodes(
+        nodes, cores, memory, time_limit, partition, job_name, immediate
+    )
 
 
 @mcp.tool(
-    name="deallocate_slurm_nodes", 
+    name="deallocate_slurm_nodes",
     description="""Deallocate Slurm nodes with intelligent resource cleanup and optimization analysis.
 
 This powerful tool provides complete node deallocation capabilities with intelligent resource cleanup,
@@ -770,15 +801,15 @@ Use this tool when:
 - Cleaning up completed interactive sessions with intelligent resource recovery ("Deallocate nodes with resource optimization")
 - Terminating allocations that are no longer needed with efficient resource cleanup and cost analysis
 - Managing allocation lifecycle with intelligent resource management and optimization strategies
-- Optimizing cluster resources through strategic allocation cleanup and resource reallocation"""
+- Optimizing cluster resources through strategic allocation cleanup and resource reallocation""",
 )
 async def deallocate_slurm_nodes_tool(allocation_id: str) -> dict:
     """
     Deallocate Slurm nodes by canceling the allocation.
-    
+
     Args:
         allocation_id: The allocation ID to cancel
-        
+
     Returns:
         Dictionary with deallocation status
     """
@@ -822,15 +853,15 @@ Use this tool when:
 - Monitoring allocation performance and resource utilization with intelligent analysis ("Check allocation status with performance insights")
 - Tracking interactive session efficiency with optimization recommendations and cost analysis
 - Analyzing allocation usage patterns for optimization and efficiency improvement strategies
-- Managing allocation lifecycle with comprehensive monitoring and intelligent optimization guidance"""
+- Managing allocation lifecycle with comprehensive monitoring and intelligent optimization guidance""",
 )
 async def get_allocation_status_tool(allocation_id: str) -> dict:
     """
     Get status of a node allocation.
-    
+
     Args:
         allocation_id: The allocation ID to check
-        
+
     Returns:
         Dictionary with allocation status information
     """
@@ -844,63 +875,63 @@ def main():
     Chooses between stdio and SSE based on command-line arguments or environment variables.
     """
     import argparse
-    
+
     # Handle 'help' command (without dashes) by converting to --help
     if len(sys.argv) > 1 and sys.argv[1] == "help":
         sys.argv[1] = "--help"
-    
+
     parser = argparse.ArgumentParser(
         description="Slurm MCP Server - Comprehensive HPC job management server with intelligent optimization",
-        prog="slurm-mcp"
+        prog="slurm-mcp",
     )
     parser.add_argument(
-        "--version", 
-        action="version", 
-        version="Slurm MCP Server v0.1.0"
+        "--version", action="version", version="Slurm MCP Server v0.1.0"
     )
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse"],
         default="stdio",
-        help="Transport type to use (default: stdio)"
+        help="Transport type to use (default: stdio)",
     )
     parser.add_argument(
-        "--host",
-        default="0.0.0.0",
-        help="Host for SSE transport (default: 0.0.0.0)"
+        "--host", default="0.0.0.0", help="Host for SSE transport (default: 0.0.0.0)"
     )
     parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="Port for SSE transport (default: 8000)"
+        "--port", type=int, default=8000, help="Port for SSE transport (default: 8000)"
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
         logger.info("Starting Slurm MCP Server")
-        
+
         # Use command-line args or environment variables
         transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio").lower()
-        
+
         if transport == "sse":
             # SSE transport for web-based clients
             host = args.host or os.getenv("MCP_SSE_HOST", "0.0.0.0")
             port = args.port or int(os.getenv("MCP_SSE_PORT", "8000"))
             logger.info(f"Starting SSE transport on {host}:{port}")
-            print(f"Starting Slurm MCP Job Management Server on {host}:{port}", file=sys.stderr)
+            print(
+                f"Starting Slurm MCP Job Management Server on {host}:{port}",
+                file=sys.stderr,
+            )
             mcp.run(transport="sse", host=host, port=port)
         else:
             # Default stdio transport
             logger.info("Starting stdio transport")
-            print("Starting Slurm MCP Job Management Server with stdio transport", file=sys.stderr)
+            print(
+                "Starting Slurm MCP Job Management Server with stdio transport",
+                file=sys.stderr,
+            )
             mcp.run(transport="stdio")
-            
+
     except Exception as e:
         logger.error(f"Server error: {e}")
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

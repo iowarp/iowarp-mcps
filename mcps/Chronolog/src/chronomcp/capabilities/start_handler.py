@@ -1,15 +1,18 @@
 # capabilities/start_chronolog.py
 import utils.config as config
 
-async def start_chronolog(chronicle_name: str = None, story_name: str = None) -> str:
+
+async def start_chronolog(
+    chronicle_name: str | None = None, story_name: str | None = None
+) -> str:
     chronicle = chronicle_name or config.DEFAULT_CHRONICLE
-    story     = story_name     or config.DEFAULT_STORY
+    story = story_name or config.DEFAULT_STORY
 
     ret = config.client.Connect()
     if ret != 0:
         return f"Failed to connect to ChronoLog: {ret}"
 
-    attrs = {}
+    attrs: dict[str, str] = {}
     ret = config.client.CreateChronicle(chronicle, attrs, 1)
     if ret != 0:
         config.client.Disconnect()
@@ -22,7 +25,7 @@ async def start_chronolog(chronicle_name: str = None, story_name: str = None) ->
         return f"Failed to acquire story '{story}' in chronicle '{chronicle}': {ret}"
 
     config._active_chronicle = chronicle
-    config._active_story     = story
-    config._story_handle     = handle
+    config._active_story = story
+    config._story_handle = handle
 
     return f"ChronoLog session started: chronicle='{chronicle}', story='{story}'"

@@ -1,6 +1,7 @@
 import h5py
 from typing import Dict, List, Any
 
+
 def preview_hdf5_datasets(fname: str, count: int = 10) -> Dict[str, List[Any]]:
     """
     Reads each dataset in the file and returns the first count
@@ -9,6 +10,7 @@ def preview_hdf5_datasets(fname: str, count: int = 10) -> Dict[str, List[Any]]:
     result: Dict[str, List[Any]] = {}
 
     with h5py.File(fname, "r") as f:
+
         def previewer(name, obj):
             if isinstance(obj, h5py.Dataset):
                 data = obj[()]
