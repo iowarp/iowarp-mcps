@@ -13,4 +13,4 @@ def list_bp5(directory: str = "data") -> list[str]:
     # Use glob to match both *.bp and *.bp5
     bp_files = list(base.glob("*.bp"))
     bp5_files = list(base.glob("*.bp5"))
-    return bp_files + bp5_files
+    return [str(p) for p in bp_files + bp5_files]

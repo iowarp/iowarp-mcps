@@ -1,6 +1,6 @@
 # mcp_handlers.py
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from implementation import (
     bp5_list,
     bp5_inspect_variables,
@@ -28,7 +28,7 @@ async def list_bp5_files(directory: str = "data") -> Dict[str, Any]:
     """
     try:
         files = bp5_list.list_bp5(directory)
-        return files
+        return {"files": files}
     except Exception as e:
         return {
             "content": [{"text": json.dumps({"error": str(e)})}],
@@ -38,7 +38,7 @@ async def list_bp5_files(directory: str = "data") -> Dict[str, Any]:
 
 
 async def inspect_variables_handler(
-    filename: str, variable_name: str = None
+    filename: str, variable_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Async handler for 'inspect_variables' tool.
@@ -94,7 +94,7 @@ async def inspect_variables_at_step_handler(
 
 
 async def inspect_attributes_handler(
-    filename: str, variable_name: str = None
+    filename: str, variable_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Async handler for 'inspect_attributes' tool.
