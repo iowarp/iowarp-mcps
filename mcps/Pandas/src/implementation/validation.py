@@ -9,7 +9,7 @@ from typing import Optional, Any, Dict
 import traceback
 
 
-def validate_data(file_path: str, validation_rules: Dict[str, Dict[str, Any]]) -> dict:
+def validate_data(file_path: str, validation_rules: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """
     Validate data against specified rules.
 
@@ -31,7 +31,7 @@ def validate_data(file_path: str, validation_rules: Dict[str, Dict[str, Any]]) -
         # Load data
         df = pd.read_csv(file_path)
 
-        validation_results = {}
+        validation_results: Dict[str, Any] = {}
         overall_valid = True
 
         for column, rules in validation_rules.items():
@@ -43,7 +43,7 @@ def validate_data(file_path: str, validation_rules: Dict[str, Dict[str, Any]]) -
                 overall_valid = False
                 continue
 
-            column_results = {"valid": True, "violations": [], "statistics": {}}
+            column_results: Dict[str, Any] = {"valid": True, "violations": [], "statistics": {}}
 
             col_data = df[column]
 

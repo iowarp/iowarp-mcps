@@ -5,7 +5,7 @@ Data profiling capabilities for quick dataset analysis.
 import pandas as pd
 import numpy as np
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 import traceback
 
 
@@ -128,7 +128,7 @@ def profile_data(
                 }
 
         # Data quality checks
-        quality_checks = {
+        quality_checks: Dict[str, Any] = {
             "duplicate_rows": int(df.duplicated().sum()),
             "constant_columns": [col for col in df.columns if df[col].nunique() <= 1],
             "high_cardinality_columns": [

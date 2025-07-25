@@ -4,13 +4,13 @@ Data filtering capabilities using boolean indexing.
 
 import pandas as pd
 import os
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 import traceback
 
 
 def filter_data(
     file_path: str, filter_conditions: Dict[str, Any], output_file: Optional[str] = None
-) -> dict:
+) -> Dict[str, Any]:
     """
     Filter data using boolean indexing.
 
@@ -36,7 +36,7 @@ def filter_data(
 
         # Apply filters
         filtered_df = df.copy()
-        applied_filters = []
+        applied_filters: List[Dict[str, Any]] = []
 
         for column, condition in filter_conditions.items():
             if column not in df.columns:
@@ -51,11 +51,11 @@ def filter_data(
                 # Handle validation-style conditions
                 if "min_value" in condition:
                     mask = filtered_df[column] >= condition["min_value"]
-                    applied_filters.append(f"{column} >= {condition['min_value']}")
+                    applied_filters.append({"filter": f"{column} >= {condition['min_value']}"})
                     filtered_df = filtered_df[mask]
                 elif "max_value" in condition:
                     mask = filtered_df[column] <= condition["max_value"]
-                    applied_filters.append(f"{column} <= {condition['max_value']}")
+                    applied_filters.append({"filter": f"{column} <= {condition['max_value']}"})
                     filtered_df = filtered_df[mask]
                 elif "operator" in condition and "value" in condition:
                     # Complex condition with operator

@@ -75,7 +75,7 @@ class BeautifulFormatter:
         Returns:
             Beautifully formatted error response
         """
-        response = {
+        response: Dict[str, Any] = {
             "🎯 Operation": operation.replace("_", " ").title(),
             "❌ Status": "Error",
             "⏰ Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -209,7 +209,7 @@ class BeautifulFormatter:
     @staticmethod
     def format_statistical_summary(stats: Dict) -> Dict:
         """Format statistical summary with enhanced readability."""
-        formatted_stats = {}
+        formatted_stats: Dict[str, Any] = {}
 
         # Format descriptive statistics
         if "descriptive_stats" in stats:
@@ -244,7 +244,7 @@ class BeautifulFormatter:
     @staticmethod
     def format_correlation_matrix(corr_matrix: Dict) -> Dict:
         """Format correlation matrix with visual enhancements."""
-        formatted_corr = {"🔗 Correlation Matrix": {}, "🔍 Strong Correlations": []}
+        formatted_corr: Dict[str, Any] = {"🔗 Correlation Matrix": {}, "🔍 Strong Correlations": []}
 
         # Format correlation matrix
         for col1, correlations in corr_matrix.items():
@@ -270,7 +270,7 @@ class BeautifulFormatter:
     @staticmethod
     def format_data_quality_report(quality_report: Dict) -> Dict:
         """Format data quality report with clear indicators."""
-        formatted_report = {}
+        formatted_report: Dict[str, Any] = {}
 
         # Overall quality score
         if "overall_score" in quality_report:

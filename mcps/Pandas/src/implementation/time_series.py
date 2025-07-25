@@ -5,7 +5,7 @@ Time series analysis capabilities.
 import pandas as pd
 import numpy as np
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 import traceback
 
 
@@ -196,7 +196,7 @@ def time_series_operations(
 
 def detect_seasonality(
     file_path: str, date_column: str, value_column: str, period: Optional[int] = None
-) -> dict:
+) -> Dict[str, Any]:
     """
     Detect seasonality in time series data.
 
@@ -294,7 +294,7 @@ def detect_seasonality(
             seasonality_results.update(
                 {
                     "seasonal_statistics": seasonal_stats.to_dict("records"),
-                    "seasonal_strength": float(
+                    "seasonal_strength": int(
                         seasonal_stats["mean"].std() / seasonal_stats["mean"].mean()
                     ),
                     "has_seasonality": seasonal_stats["mean"].std()

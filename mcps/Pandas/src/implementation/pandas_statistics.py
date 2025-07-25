@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import os
 from scipy import stats
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import traceback
 
 
@@ -45,7 +45,7 @@ def get_statistical_summary(
 
         # Additional statistics for numeric columns
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        additional_stats = {}
+        additional_stats: Dict[str, Dict[str, Any]] = {}
 
         for col in numeric_cols:
             col_data = df[col].dropna()
