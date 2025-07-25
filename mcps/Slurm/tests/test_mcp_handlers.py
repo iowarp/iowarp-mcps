@@ -370,4 +370,3 @@ class TestMCPHandlers:
             # Should be a valid status response
             assert "job_id" in result
             assert "status" in result
-

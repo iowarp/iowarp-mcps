@@ -368,4 +368,3 @@ class TestSlurmCapabilities:
         assert "status" in status
         assert "reason" in status
         assert status["job_id"] == sample_job_id
-
