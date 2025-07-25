@@ -3,14 +3,18 @@
 Lmod MCP Server for managing environment modules.
 Provides tools to search, load, unload, and inspect modules using the Lmod system.
 """
+
 import os
 import sys
 from fastmcp import FastMCP
 from dotenv import load_dotenv
 import logging
+from capabilities import lmod_handler
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Ensure project root is on path
@@ -19,14 +23,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Load environment variables
 load_dotenv()
 
-from capabilities import lmod_handler
-
 # Initialize MCP server
 mcp = FastMCP("LmodMCP")
 
+
 @mcp.tool(
     name="module_list",
-    description="List all currently loaded environment modules. Shows the active modules in your current shell environment."
+    description="List all currently loaded environment modules. Shows the active modules in your current shell environment.",
 )
 async def module_list_tool() -> dict:
     """
@@ -37,9 +40,10 @@ async def module_list_tool() -> dict:
     """
     return await lmod_handler.list_loaded_modules()
 
+
 @mcp.tool(
     name="module_avail",
-    description="Search for available modules that can be loaded. Optionally filter by name pattern (e.g., 'python', 'gcc/*', '*mpi*')."
+    description="Search for available modules that can be loaded. Optionally filter by name pattern (e.g., 'python', 'gcc/*', '*mpi*').",
 )
 async def module_avail_tool(pattern: str = None) -> dict:
     """
@@ -53,9 +57,10 @@ async def module_avail_tool(pattern: str = None) -> dict:
     """
     return await lmod_handler.search_available_modules(pattern)
 
+
 @mcp.tool(
     name="module_show",
-    description="Display detailed information about a specific module including its description, dependencies, environment variables it sets, and conflicts."
+    description="Display detailed information about a specific module including its description, dependencies, environment variables it sets, and conflicts.",
 )
 async def module_show_tool(module_name: str) -> dict:
     """
@@ -69,9 +74,10 @@ async def module_show_tool(module_name: str) -> dict:
     """
     return await lmod_handler.show_module_details(module_name)
 
+
 @mcp.tool(
     name="module_load",
-    description="Load one or more environment modules into the current session. Modules modify environment variables like PATH, LD_LIBRARY_PATH, etc."
+    description="Load one or more environment modules into the current session. Modules modify environment variables like PATH, LD_LIBRARY_PATH, etc.",
 )
 async def module_load_tool(modules: list[str]) -> dict:
     """
@@ -85,9 +91,10 @@ async def module_load_tool(modules: list[str]) -> dict:
     """
     return await lmod_handler.load_modules(modules)
 
+
 @mcp.tool(
     name="module_unload",
-    description="Unload (remove) one or more currently loaded modules from the environment. Reverses the changes made by module load."
+    description="Unload (remove) one or more currently loaded modules from the environment. Reverses the changes made by module load.",
 )
 async def module_unload_tool(modules: list[str]) -> dict:
     """
@@ -101,9 +108,10 @@ async def module_unload_tool(modules: list[str]) -> dict:
     """
     return await lmod_handler.unload_modules(modules)
 
+
 @mcp.tool(
     name="module_swap",
-    description="Swap one module for another (unload old_module and load new_module atomically). Useful for switching between different versions."
+    description="Swap one module for another (unload old_module and load new_module atomically). Useful for switching between different versions.",
 )
 async def module_swap_tool(old_module: str, new_module: str) -> dict:
     """
@@ -118,9 +126,10 @@ async def module_swap_tool(old_module: str, new_module: str) -> dict:
     """
     return await lmod_handler.swap_modules(old_module, new_module)
 
+
 @mcp.tool(
     name="module_spider",
-    description="Search the entire module tree for modules matching a pattern. More comprehensive than module_avail, shows all versions and variants."
+    description="Search the entire module tree for modules matching a pattern. More comprehensive than module_avail, shows all versions and variants.",
 )
 async def module_spider_tool(pattern: str = None) -> dict:
     """
@@ -134,9 +143,10 @@ async def module_spider_tool(pattern: str = None) -> dict:
     """
     return await lmod_handler.spider_search(pattern)
 
+
 @mcp.tool(
     name="module_save",
-    description="Save the current set of loaded modules as a named collection for easy restoration later."
+    description="Save the current set of loaded modules as a named collection for easy restoration later.",
 )
 async def module_save_tool(collection_name: str) -> dict:
     """
@@ -150,9 +160,10 @@ async def module_save_tool(collection_name: str) -> dict:
     """
     return await lmod_handler.save_module_collection(collection_name)
 
+
 @mcp.tool(
     name="module_restore",
-    description="Restore a previously saved module collection, loading all modules that were saved in that collection."
+    description="Restore a previously saved module collection, loading all modules that were saved in that collection.",
 )
 async def module_restore_tool(collection_name: str) -> dict:
     """
@@ -166,9 +177,10 @@ async def module_restore_tool(collection_name: str) -> dict:
     """
     return await lmod_handler.restore_module_collection(collection_name)
 
+
 @mcp.tool(
     name="module_savelist",
-    description="List all saved module collections available for restoration."
+    description="List all saved module collections available for restoration.",
 )
 async def module_savelist_tool() -> dict:
     """
@@ -179,12 +191,14 @@ async def module_savelist_tool() -> dict:
     """
     return await lmod_handler.list_saved_collections()
 
+
 def main():
     """Main entry point for the server."""
     import asyncio
-    
+
     # Run the FastMCP server
     asyncio.run(mcp.run())
+
 
 if __name__ == "__main__":
     main()
