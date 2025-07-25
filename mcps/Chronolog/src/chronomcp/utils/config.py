@@ -33,7 +33,7 @@ client_conf = py_chronolog_client.ClientPortalServiceConf(
 client = py_chronolog_client.Client(client_conf)
 
 # MCP server instance
-mcp = FastMCP("chronologMCP")
+mcp: FastMCP = FastMCP("chronologMCP")
 
 # session state
 _active_chronicle = None

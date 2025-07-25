@@ -1,15 +1,19 @@
 # server.py
 import utils.config as config
+from typing import Optional
+from fastmcp import FastMCP
 from capabilities.start_handler import start_chronolog as _start
 from capabilities.record_handler import record_interaction as _record
 from capabilities.stop_handler import stop_chronolog as _stop
 from capabilities.retrieve_handler import retrieve_interaction as _retrieve
 
-mcp = config.mcp
+mcp: FastMCP = config.mcp
 
 
 @mcp.tool()
-async def start_chronolog(chronicle_name: str = None, story_name: str = None):
+async def start_chronolog(
+    chronicle_name: Optional[str] = None, story_name: Optional[str] = None
+):
     """
     Connects to ChronoLog, creates a chronicle, and acquires a story handle for logging interactions.
 
@@ -51,10 +55,10 @@ async def stop_chronolog():
 
 @mcp.tool()
 async def retrieve_interaction(
-    chronicle_name: str = None,
-    story_name: str = None,
-    start_time: str = None,
-    end_time: str = None,
+    chronicle_name: Optional[str] = None,
+    story_name: Optional[str] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
 ):
     """
     Extracts logged records from specified chronicle and story, generates timestamped output files with filtering options.

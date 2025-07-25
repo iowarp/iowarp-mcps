@@ -6,10 +6,10 @@ from datetime import datetime
 
 
 async def retrieve_interaction(
-    chronicle_name: str = None,
-    story_name: str = None,
-    start_time: str = None,
-    end_time: str = None,
+    chronicle_name: str | None = None,
+    story_name: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
 ) -> str:
     chronicle = chronicle_name or config.DEFAULT_CHRONICLE
     story = story_name or config.DEFAULT_STORY
