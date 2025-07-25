@@ -9,7 +9,9 @@ from typing import Optional, Any, Dict
 import traceback
 
 
-def validate_data(file_path: str, validation_rules: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+def validate_data(
+    file_path: str, validation_rules: Dict[str, Dict[str, Any]]
+) -> Dict[str, Any]:
     """
     Validate data against specified rules.
 
@@ -43,7 +45,11 @@ def validate_data(file_path: str, validation_rules: Dict[str, Dict[str, Any]]) -
                 overall_valid = False
                 continue
 
-            column_results: Dict[str, Any] = {"valid": True, "violations": [], "statistics": {}}
+            column_results: Dict[str, Any] = {
+                "valid": True,
+                "violations": [],
+                "statistics": {},
+            }
 
             col_data = df[column]
 

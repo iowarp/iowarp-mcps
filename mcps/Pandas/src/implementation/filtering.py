@@ -51,11 +51,15 @@ def filter_data(
                 # Handle validation-style conditions
                 if "min_value" in condition:
                     mask = filtered_df[column] >= condition["min_value"]
-                    applied_filters.append({"filter": f"{column} >= {condition['min_value']}"})
+                    applied_filters.append(
+                        {"filter": f"{column} >= {condition['min_value']}"}
+                    )
                     filtered_df = filtered_df[mask]
                 elif "max_value" in condition:
                     mask = filtered_df[column] <= condition["max_value"]
-                    applied_filters.append({"filter": f"{column} <= {condition['max_value']}"})
+                    applied_filters.append(
+                        {"filter": f"{column} <= {condition['max_value']}"}
+                    )
                     filtered_df = filtered_df[mask]
                 elif "operator" in condition and "value" in condition:
                     # Complex condition with operator

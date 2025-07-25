@@ -244,7 +244,10 @@ class BeautifulFormatter:
     @staticmethod
     def format_correlation_matrix(corr_matrix: Dict) -> Dict:
         """Format correlation matrix with visual enhancements."""
-        formatted_corr: Dict[str, Any] = {"🔗 Correlation Matrix": {}, "🔍 Strong Correlations": []}
+        formatted_corr: Dict[str, Any] = {
+            "🔗 Correlation Matrix": {},
+            "🔍 Strong Correlations": [],
+        }
 
         # Format correlation matrix
         for col1, correlations in corr_matrix.items():
