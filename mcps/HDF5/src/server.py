@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 # Initialize FastMCP server instance
-mcp = FastMCP("HDF5Server")
+mcp: FastMCP = FastMCP("HDF5Server")
 
 # ─── HDF5 TOOLS ─────────────────────────────────────────────────────────────
 
