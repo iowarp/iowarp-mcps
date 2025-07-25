@@ -2,7 +2,7 @@
 Sensor information capabilities - provides temperature and other sensor information.
 """
 
-from typing import Dict, List, Any, Union, Optional
+from typing import Dict, Any
 import psutil
 from capabilities.utils import run_command, check_command_available
 

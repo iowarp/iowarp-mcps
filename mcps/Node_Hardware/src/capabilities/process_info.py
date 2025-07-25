@@ -4,7 +4,7 @@ Handles process monitoring and detailed process information.
 """
 
 import psutil
-from typing import Dict, List, Any
+from typing import Dict, Any
 from capabilities.utils import format_bytes, format_percentage
 
 

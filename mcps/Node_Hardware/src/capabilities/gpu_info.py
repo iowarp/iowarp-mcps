@@ -3,7 +3,7 @@ GPU information capabilities.
 Handles GPU information reporting (if available).
 """
 
-from typing import Dict, List, Any
+from typing import Dict, Any
 from capabilities.utils import run_command, check_command_available
 
 
