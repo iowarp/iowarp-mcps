@@ -54,7 +54,9 @@ async def list_bp5_tool(directory: str = "data/") -> dict:
     name="inspect_variables",
     description="Inspects variables in a BP5 file. If variable_name is provided, returns data for that specific variable. Otherwise, shows type, shape, and steps for all variables. The 'filename' parameter must be an absolute path to the BP5 file.",
 )
-async def inspect_variables_tool(filename: str, variable_name: Optional[str] = None) -> dict:
+async def inspect_variables_tool(
+    filename: str, variable_name: Optional[str] = None
+) -> dict:
     """
     Inspect all variables in a BP5 file including type information, shape dimensions, and available time steps for comprehensive data structure analysis. If variable_name is provided, returns data for that specific variable.
 
@@ -111,7 +113,9 @@ async def inspect_variables_at_step_tool(
     name="inspect_attributes",
     description="Reads global or variable-specific attributes from a BP5 file. The 'filename' parameter must be an absolute path. The 'variable_name' is optional.",
 )
-async def inspect_attributes_tool(filename: str, variable_name: Optional[str] = None) -> dict:
+async def inspect_attributes_tool(
+    filename: str, variable_name: Optional[str] = None
+) -> dict:
     """
     Read global or variable-specific attributes from a BP5 file with detailed metadata extraction and attribute value analysis.
 
