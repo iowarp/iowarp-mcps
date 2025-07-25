@@ -235,7 +235,9 @@ async def destroy_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="jm_create_config", description="Initialize JarvisManager config directories."
 )
-def jm_create_config(config_dir: str, private_dir: str, shared_dir: Optional[str] = None) -> list:
+def jm_create_config(
+    config_dir: str, private_dir: str, shared_dir: Optional[str] = None
+) -> list:
     """Initialize manager directories and persist configuration."""
     try:
         manager.create(config_dir, private_dir, shared_dir)
