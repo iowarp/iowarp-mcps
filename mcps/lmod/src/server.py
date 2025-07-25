@@ -7,6 +7,7 @@ Provides tools to search, load, unload, and inspect modules using the Lmod syste
 import os
 import sys
 from fastmcp import FastMCP
+from typing import Optional
 from dotenv import load_dotenv
 import logging
 from capabilities import lmod_handler
@@ -24,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 # Initialize MCP server
-mcp = FastMCP("LmodMCP")
+mcp: FastMCP = FastMCP("LmodMCP")
 
 
 @mcp.tool(
@@ -45,7 +46,7 @@ async def module_list_tool() -> dict:
     name="module_avail",
     description="Search for available modules that can be loaded. Optionally filter by name pattern (e.g., 'python', 'gcc/*', '*mpi*').",
 )
-async def module_avail_tool(pattern: str = None) -> dict:
+async def module_avail_tool(pattern: Optional[str] = None) -> dict:
     """
     Search for available modules that can be loaded with optional pattern matching and filtering.
 
@@ -131,7 +132,7 @@ async def module_swap_tool(old_module: str, new_module: str) -> dict:
     name="module_spider",
     description="Search the entire module tree for modules matching a pattern. More comprehensive than module_avail, shows all versions and variants.",
 )
-async def module_spider_tool(pattern: str = None) -> dict:
+async def module_spider_tool(pattern: Optional[str] = None) -> dict:
     """
     Search the entire module tree comprehensively with deep hierarchy exploration and metadata extraction.
 

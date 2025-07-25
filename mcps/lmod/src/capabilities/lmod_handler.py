@@ -42,7 +42,7 @@ async def _run_module_command(
         stdout_str = stdout.decode("utf-8") if stdout else ""
         stderr_str = stderr.decode("utf-8") if stderr else ""
 
-        return stdout_str, stderr_str, process.returncode
+        return stdout_str, stderr_str, process.returncode or 0
     except FileNotFoundError:
         return "", "Module command not found. Is Lmod installed and in PATH?", 1
     except Exception as e:
@@ -126,7 +126,7 @@ async def show_module_details(module_name: str) -> Dict[str, Any]:
         }
 
     # Parse module information
-    info = {
+    info: Dict[str, Any] = {
         "module": module_name,
         "path": None,
         "help": [],
@@ -135,6 +135,13 @@ async def show_module_details(module_name: str) -> Dict[str, Any]:
         "conflicts": [],
         "environment": [],
     }
+
+    # Ensure list fields are properly typed
+    help_list: List[str] = info["help"]
+    whatis_list: List[str] = info["whatis"]
+    prereq_list: List[str] = info["prerequisites"]
+    conflicts_list: List[str] = info["conflicts"]
+    env_list: List[str] = info["environment"]
 
     lines = stdout.strip().split("\n")
 
@@ -157,25 +164,36 @@ async def show_module_details(module_name: str) -> Dict[str, Any]:
         if "help" in line.lower():
             help_match = re.search(r"help\s*\(\s*\[\[(.+?)\]\]\s*\)", line)
             if help_match:
-                info["help"].append(help_match.group(1))
+                help_list.append(help_match.group(1))
         elif "whatis" in line.lower():
             whatis_match = re.search(r'whatis\s*\(\s*"(.+?)"\s*\)', line)
             if whatis_match:
-                info["whatis"].append(whatis_match.group(1))
+                whatis_list.append(whatis_match.group(1))
         elif "prereq" in line.lower():
             prereq_match = re.search(r'prereq\s*\(\s*"(.+?)"\s*\)', line)
             if prereq_match:
-                info["prerequisites"].append(prereq_match.group(1))
+                prereq_list.append(prereq_match.group(1))
         elif "conflict" in line.lower():
             conflict_match = re.search(r'conflict\s*\(\s*"(.+?)"\s*\)', line)
             if conflict_match:
-                info["conflicts"].append(conflict_match.group(1))
+                conflicts_list.append(conflict_match.group(1))
         elif (
             "setenv" in line.lower()
             or "prepend_path" in line.lower()
             or "append_path" in line.lower()
         ):
-            info["environment"].append(line.strip())
+            env_list.append(line.strip())
+
+    # Update info dict with modified lists
+    info.update(
+        {
+            "help": help_list,
+            "whatis": whatis_list,
+            "prerequisites": prereq_list,
+            "conflicts": conflicts_list,
+            "environment": env_list,
+        }
+    )
 
     return {"success": True, **info}
 
