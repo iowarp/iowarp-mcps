@@ -13,6 +13,7 @@ and resource optimization workflows.
 import os
 import sys
 import logging
+from typing import Optional
 
 # Try to import required dependencies with fallbacks
 try:
@@ -56,7 +57,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server instance
-mcp = FastMCP("Slurm-MCP-JobManagement")
+mcp: FastMCP = FastMCP("Slurm-MCP-JobManagement")
 
 
 # Custom exception for Slurm MCP errors
@@ -117,8 +118,8 @@ async def submit_slurm_job_tool(
     cores: int = 1,
     memory: str = "1GB",
     time_limit: str = "01:00:00",
-    job_name: str = None,
-    partition: str = None,
+    job_name: Optional[str] = None,
+    partition: Optional[str] = None,
 ) -> dict:
     """
     Submit a job script to Slurm scheduler with advanced resource specification and intelligent optimization.
@@ -327,7 +328,9 @@ Use this tool when:
 - Managing job priorities and resource allocation with intelligent scheduling and queue optimization strategies
 - Tracking job performance trends and identifying optimization opportunities with AI-powered analysis and recommendations""",
 )
-async def list_slurm_jobs_tool(user: str = None, state: str = None) -> dict:
+async def list_slurm_jobs_tool(
+    user: Optional[str] = None, state: Optional[str] = None
+) -> dict:
     """
     List Slurm jobs with optional filtering.
 
@@ -544,7 +547,7 @@ Use this tool when:
 - Monitoring cluster utilization and queue performance with efficiency insights and optimization guidance
 - Optimizing job scheduling and resource allocation with AI-powered queue analysis and performance recommendations""",
 )
-async def get_queue_info_tool(partition: str = None) -> dict:
+async def get_queue_info_tool(partition: Optional[str] = None) -> dict:
     """
     Get job queue information.
 
@@ -609,8 +612,8 @@ async def submit_array_job_tool(
     cores: int = 1,
     memory: str = "1GB",
     time_limit: str = "01:00:00",
-    job_name: str = None,
-    partition: str = None,
+    job_name: Optional[str] = None,
+    partition: Optional[str] = None,
 ) -> dict:
     """
     Submit an array job to Slurm scheduler.
@@ -735,10 +738,10 @@ Use this tool when:
 async def allocate_slurm_nodes_tool(
     nodes: int = 1,
     cores: int = 1,
-    memory: str = None,
+    memory: Optional[str] = None,
     time_limit: str = "01:00:00",
-    partition: str = None,
-    job_name: str = None,
+    partition: Optional[str] = None,
+    job_name: Optional[str] = None,
     immediate: bool = False,
 ) -> dict:
     """

@@ -174,13 +174,13 @@ def _allocate_real_slurm_nodes(
         allocation_info = _parse_salloc_output(output)
 
         if allocation_info.get("allocation_id"):
-            allocation_id = allocation_info["allocation_id"]
+            allocation_id = str(allocation_info["allocation_id"])
             print(
                 f"✅ Real Slurm allocation successful! Allocation ID: {allocation_id}"
             )
 
             # Get additional info if not already present
-            if not allocation_info.get("allocated_nodes"):
+            if not allocation_info.get("allocated_nodes") and allocation_id:
                 time.sleep(1)  # Brief wait for allocation to be visible in squeue
                 node_info = _get_allocation_nodes(allocation_id)
                 if node_info:
