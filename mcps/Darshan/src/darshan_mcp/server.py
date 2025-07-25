@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 # Initialize MCP server
-mcp = FastMCP("DarshanMCP")
+mcp: FastMCP = FastMCP("DarshanMCP")
 
 
 @mcp.tool(
@@ -177,7 +177,7 @@ async def get_timeline_analysis_tool(
     description="Compare two Darshan log files to identify differences in I/O patterns, performance changes, and behavioral variations between different runs or configurations.",
 )
 async def compare_darshan_logs_tool(
-    log_file_1: str, log_file_2: str, comparison_metrics: List[str] = None
+    log_file_1: str, log_file_2: str, comparison_metrics: Optional[List[str]] = None
 ) -> dict:
     """
     Compare two Darshan log files to identify performance differences and optimization results.

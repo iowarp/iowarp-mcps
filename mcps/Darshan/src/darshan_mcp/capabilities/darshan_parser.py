@@ -11,7 +11,9 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 
 
-async def _run_darshan_command(args: List[str], log_file: str) -> Tuple[str, str, int]:
+async def _run_darshan_command(
+    args: List[str], log_file: str
+) -> Tuple[str, str, Optional[int]]:
     """
     Run a darshan command and return stdout, stderr, and return code.
 
@@ -65,10 +67,15 @@ async def _parse_darshan_text(log_file: str) -> Dict[str, Any]:
         return {"error": stderr or "Failed to parse Darshan log", "success": False}
 
     # Parse text output to extract key information
-    parsed_data = {"job": {}, "modules": [], "files": {}, "success": True}
+    parsed_data: Dict[str, Any] = {
+        "job": {},
+        "modules": [],
+        "files": {},
+        "success": True,
+    }
 
     lines = stdout.split("\n")
-    current_section = None
+    current_section: Optional[str] = None
 
     for line in lines:
         line = line.strip()
@@ -244,7 +251,7 @@ async def analyze_file_access_patterns(
             }
 
         # Analyze access patterns
-        access_patterns = {
+        access_patterns: Dict[str, Any] = {
             "read_only_files": 0,
             "write_only_files": 0,
             "read_write_files": 0,
@@ -343,7 +350,7 @@ async def get_io_performance_metrics(log_file_path: str) -> Dict[str, Any]:
         files = parsed_data.get("files", {})
 
         # Calculate performance metrics
-        metrics = {
+        metrics: Dict[str, Any] = {
             "success": True,
             "read_metrics": {},
             "write_metrics": {},
@@ -358,8 +365,8 @@ async def get_io_performance_metrics(log_file_path: str) -> Dict[str, Any]:
         total_read_time = 0
         total_write_time = 0
 
-        read_sizes = []
-        write_sizes = []
+        read_sizes: List[float] = []
+        write_sizes: List[float] = []
 
         for file_data in files.values():
             if not isinstance(file_data, dict):
@@ -473,7 +480,7 @@ async def analyze_posix_operations(log_file_path: str) -> Dict[str, Any]:
             }
 
         # Parse POSIX operations from output
-        posix_analysis = {
+        posix_analysis: Dict[str, Any] = {
             "success": True,
             "operations": {
                 "opens": 0,
@@ -501,6 +508,9 @@ async def analyze_posix_operations(log_file_path: str) -> Dict[str, Any]:
             elif "POSIX_SEEKS:" in line:
                 posix_analysis["operations"]["seeks"] = int(line.split(":")[1].strip())
 
+        # Type cast the nested dictionaries to avoid mypy errors
+        posix_analysis["operations"] = dict(posix_analysis["operations"])
+
         return posix_analysis
 
     except Exception as e:
@@ -525,13 +535,21 @@ async def analyze_mpiio_operations(log_file_path: str) -> Dict[str, Any]:
                 "operations": {},
             }
 
-        mpiio_analysis = {
+        mpiio_analysis: Dict[str, Any] = {
             "success": True,
             "collective_operations": {"reads": 0, "writes": 0},
             "independent_operations": {"reads": 0, "writes": 0},
             "file_views": 0,
             "performance_metrics": {},
         }
+
+        # Type cast the nested dictionaries to avoid mypy errors
+        mpiio_analysis["collective_operations"] = dict(
+            mpiio_analysis["collective_operations"]
+        )
+        mpiio_analysis["independent_operations"] = dict(
+            mpiio_analysis["independent_operations"]
+        )
 
         # Parse MPI-IO specific operations from output
         lines = stdout.split("\n")
@@ -576,7 +594,7 @@ async def identify_io_bottlenecks(log_file_path: str) -> Dict[str, Any]:
                 "error": "Failed to get required metrics for bottleneck analysis",
             }
 
-        bottlenecks = {
+        bottlenecks: Dict[str, Any] = {
             "success": True,
             "identified_issues": [],
             "recommendations": [],
@@ -684,7 +702,7 @@ async def get_timeline_analysis(
     try:
         # This would require timestamp data from Darshan logs
         # For now, provide a basic analysis structure
-        timeline = {
+        timeline: Dict[str, Any] = {
             "success": True,
             "time_resolution": time_resolution,
             "message": "Timeline analysis requires timestamp data from Darshan logs",
@@ -737,7 +755,7 @@ async def compare_darshan_logs(
                 "error": "Failed to get metrics for one or both log files",
             }
 
-        comparison = {
+        comparison: Dict[str, Any] = {
             "success": True,
             "log_file_1": log_file_1,
             "log_file_2": log_file_2,
@@ -791,7 +809,7 @@ async def generate_io_summary_report(
         performance = await get_io_performance_metrics(log_file_path)
         bottlenecks = await identify_io_bottlenecks(log_file_path)
 
-        report = {
+        report: Dict[str, Any] = {
             "success": True,
             "log_file": log_file_path,
             "generated_at": datetime.now().isoformat(),
