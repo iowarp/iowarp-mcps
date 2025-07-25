@@ -20,7 +20,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest-asyncio>=0.23.0"
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.12.5",
+    "types-aiofiles>=23.0.0",
 ]
 
 [project.scripts]

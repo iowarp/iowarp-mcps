@@ -1,12 +1,12 @@
 """
 Tests for the MCP server functionality.
 """
-import pytest
+
 import sys
 import os
 
 # Add the src directory to the path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from server import mcp
 

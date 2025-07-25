@@ -1,8 +1,8 @@
 """
 Slurm MCP Server - A comprehensive Model Context Protocol server for Slurm job management.
 
-This package provides a FastMCP-based server that enables interaction with Slurm 
-workload manager through the Model Context Protocol, offering job submission, 
+This package provides a FastMCP-based server that enables interaction with Slurm
+workload manager through the Model Context Protocol, offering job submission,
 monitoring, and cluster management capabilities.
 """
 

@@ -35,5 +35,6 @@ where = ["src"]
 [tool.uv]
 dev-dependencies = [
     "pytest>=8.4.0",
-    "pytest-asyncio>=0.21.0"
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.12.5",
 ]

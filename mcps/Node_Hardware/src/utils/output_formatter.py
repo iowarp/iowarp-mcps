@@ -2,11 +2,10 @@
 Beautiful output formatting utilities for Node Hardware MCP server.
 Provides structured, readable, and visually appealing output formatting.
 """
+
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from datetime import datetime
-import psutil
-import platform
 
 
 class NodeHardwareFormatter:
@@ -15,7 +14,7 @@ class NodeHardwareFormatter:
     that enhances readability and provides consistent formatting across
     all node hardware MCP operations.
     """
-    
+
     @staticmethod
     def format_success_response(
         operation: str,
@@ -23,11 +22,11 @@ class NodeHardwareFormatter:
         summary: Optional[Dict] = None,
         metadata: Optional[Dict] = None,
         insights: Optional[List[str]] = None,
-        hostname: Optional[str] = None
+        hostname: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Format a successful operation response with beautiful structure.
-        
+
         Args:
             operation: Name of the operation performed
             data: Main data result
@@ -35,7 +34,7 @@ class NodeHardwareFormatter:
             metadata: Additional metadata about the operation
             insights: Key insights or recommendations
             hostname: Target hostname for remote operations
-            
+
         Returns:
             Beautifully formatted response dictionary
         """
@@ -43,41 +42,41 @@ class NodeHardwareFormatter:
             "🖥️ Operation": operation.replace("_", " ").title(),
             "✅ Status": "Success",
             "⏰ Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "🔧 Hardware Data": NodeHardwareFormatter._format_hardware_data(data)
+            "🔧 Hardware Data": NodeHardwareFormatter._format_hardware_data(data),
         }
-        
+
         if hostname:
             response["🌐 Target Host"] = hostname
-            
+
         if summary:
             response["📊 Summary"] = NodeHardwareFormatter._format_summary(summary)
-            
+
         if metadata:
             response["🔍 Metadata"] = NodeHardwareFormatter._format_metadata(metadata)
-            
+
         if insights:
             response["💡 Insights"] = NodeHardwareFormatter._format_insights(insights)
-            
+
         return response
-    
+
     @staticmethod
     def format_error_response(
         operation: str,
         error_message: str,
         error_type: str,
         suggestions: Optional[List[str]] = None,
-        hostname: Optional[str] = None
+        hostname: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Format an error response with helpful information.
-        
+
         Args:
             operation: Name of the operation that failed
             error_message: Detailed error message
             error_type: Type of error that occurred
             suggestions: Suggested solutions or next steps
             hostname: Target hostname for remote operations
-            
+
         Returns:
             Beautifully formatted error response
         """
@@ -86,17 +85,19 @@ class NodeHardwareFormatter:
             "❌ Status": "Error",
             "⏰ Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "🚨 Error Type": error_type,
-            "📝 Error Message": error_message
+            "📝 Error Message": error_message,
         }
-        
+
         if hostname:
             response["🌐 Target Host"] = hostname
-            
+
         if suggestions:
-            response["💭 Suggestions"] = NodeHardwareFormatter._format_suggestions(suggestions)
-            
+            response["💭 Suggestions"] = NodeHardwareFormatter._format_suggestions(
+                suggestions
+            )
+
         return response
-    
+
     @staticmethod
     def _format_hardware_data(data: Any) -> Any:
         """Format hardware data with appropriate structure."""
@@ -106,7 +107,7 @@ class NodeHardwareFormatter:
             return NodeHardwareFormatter._format_list(data)
         else:
             return data
-    
+
     @staticmethod
     def _format_dict(data: Dict) -> Dict:
         """Format dictionary with nested structure handling."""
@@ -147,23 +148,25 @@ class NodeHardwareFormatter:
                 formatted_key = f"📏 {key.replace('_', ' ').title()}"
             else:
                 formatted_key = f"🔧 {key.replace('_', ' ').title()}"
-            
+
             if isinstance(value, (dict, list)):
-                formatted[formatted_key] = NodeHardwareFormatter._format_hardware_data(value)
+                formatted[formatted_key] = NodeHardwareFormatter._format_hardware_data(
+                    value
+                )
             else:
                 formatted[formatted_key] = value
         return formatted
-    
+
     @staticmethod
     def _format_list(data: List) -> List:
         """Format list with appropriate item formatting."""
         return [NodeHardwareFormatter._format_hardware_data(item) for item in data]
-    
+
     @staticmethod
     def _format_summary(summary: Dict) -> Dict:
         """Format summary information with visual enhancements."""
         formatted_summary = {}
-        
+
         for key, value in summary.items():
             # Add appropriate emoji prefixes for common summary items
             if "count" in key.lower():
@@ -184,16 +187,16 @@ class NodeHardwareFormatter:
                 formatted_key = f"🖥️ {key.replace('_', ' ').title()}"
             else:
                 formatted_key = f"📋 {key.replace('_', ' ').title()}"
-            
+
             formatted_summary[formatted_key] = value
-        
+
         return formatted_summary
-    
+
     @staticmethod
     def _format_metadata(metadata: Dict) -> Dict:
         """Format metadata with visual enhancements."""
         formatted_metadata = {}
-        
+
         for key, value in metadata.items():
             # Add appropriate emoji prefixes for metadata items
             if "hostname" in key.lower():
@@ -212,16 +215,16 @@ class NodeHardwareFormatter:
                 formatted_key = f"📋 {key.replace('_', ' ').title()}"
             else:
                 formatted_key = f"ℹ️ {key.replace('_', ' ').title()}"
-            
+
             formatted_metadata[formatted_key] = value
-        
+
         return formatted_metadata
-    
+
     @staticmethod
     def _format_insights(insights: List[str]) -> List[str]:
         """Format insights with visual enhancements."""
         formatted_insights = []
-        
+
         for insight in insights:
             if "error" in insight.lower() or "fail" in insight.lower():
                 formatted_insights.append(f"🚨 {insight}")
@@ -233,56 +236,57 @@ class NodeHardwareFormatter:
                 formatted_insights.append(f"💡 {insight}")
             else:
                 formatted_insights.append(f"ℹ️ {insight}")
-        
+
         return formatted_insights
-    
+
     @staticmethod
     def _format_suggestions(suggestions: List[str]) -> List[str]:
         """Format suggestions with visual enhancements."""
         formatted_suggestions = []
-        
+
         for suggestion in suggestions:
             formatted_suggestions.append(f"💭 {suggestion}")
-        
+
         return formatted_suggestions
-    
+
     @staticmethod
     def create_filtered_response(
         operation: str,
         data: Any,
         filters: Optional[Dict] = None,
         total_items: Optional[int] = None,
-        filtered_items: Optional[int] = None
+        filtered_items: Optional[int] = None,
     ) -> Dict:
         """
         Create a filtered response with filter information.
-        
+
         Args:
             operation: Name of the operation
             data: Filtered data
             filters: Applied filters
             total_items: Total number of items before filtering
             filtered_items: Number of items after filtering
-            
+
         Returns:
             Beautifully formatted filtered response
         """
         response = NodeHardwareFormatter.format_success_response(
-            operation=operation,
-            data=data
+            operation=operation, data=data
         )
-        
+
         if filters:
             response["🔍 Applied Filters"] = NodeHardwareFormatter._format_dict(filters)
-        
+
         if total_items is not None and filtered_items is not None:
             response["📊 Filter Results"] = {
                 "🔢 Total Items": total_items,
                 "✅ Filtered Items": filtered_items,
                 "📉 Filtered Out": total_items - filtered_items,
-                "📊 Filter Ratio": f"{(filtered_items / total_items * 100):.1f}%" if total_items > 0 else "0%"
+                "📊 Filter Ratio": f"{(filtered_items / total_items * 100):.1f}%"
+                if total_items > 0
+                else "0%",
             }
-        
+
         return response
 
 
@@ -297,11 +301,11 @@ def create_beautiful_response(
     error_message: Optional[str] = None,
     error_type: Optional[str] = None,
     suggestions: Optional[List[str]] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict:
     """
     Create a beautiful response with MCP-compliant format.
-    
+
     Args:
         operation: Name of the operation
         success: Whether the operation was successful
@@ -314,7 +318,7 @@ def create_beautiful_response(
         error_type: Error type if failed
         suggestions: Suggestions if failed
         **kwargs: Additional arguments
-        
+
     Returns:
         MCP-compliant response with beautiful formatting
     """
@@ -325,7 +329,7 @@ def create_beautiful_response(
             summary=summary,
             metadata=metadata,
             insights=insights,
-            hostname=hostname
+            hostname=hostname,
         )
     else:
         formatted_response = NodeHardwareFormatter.format_error_response(
@@ -333,15 +337,11 @@ def create_beautiful_response(
             error_message=error_message or "Unknown error",
             error_type=error_type or "UnknownError",
             suggestions=suggestions,
-            hostname=hostname
+            hostname=hostname,
         )
-    
+
     return {
         "content": [{"text": json.dumps(formatted_response, indent=2)}],
-        "_meta": {
-            "tool": operation,
-            "success": success,
-            "hostname": hostname
-        },
-        "isError": not success
-    } 
+        "_meta": {"tool": operation, "success": success, "hostname": hostname},
+        "isError": not success,
+    }

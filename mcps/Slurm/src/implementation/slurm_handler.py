@@ -18,7 +18,11 @@ For new code, consider importing directly from specific capability modules:
 """
 
 # Re-export all functions for backward compatibility
-from .job_submission import submit_slurm_job, _submit_real_slurm_job, _create_sbatch_script
+from .job_submission import (
+    submit_slurm_job,
+    _submit_real_slurm_job,
+    _create_sbatch_script,
+)
 from .job_status import get_job_status
 from .job_cancellation import cancel_slurm_job
 from .job_listing import list_slurm_jobs
@@ -30,24 +34,26 @@ from .array_jobs import submit_array_job
 from .node_info import get_node_info
 from .utils import check_slurm_available
 
+
 # Keep old function name for backward compatibility
 def _check_slurm_available():
     """Check if Slurm is available on the system (deprecated - use check_slurm_available)."""
     return check_slurm_available()
 
+
 __all__ = [
-    'submit_slurm_job',
-    '_submit_real_slurm_job',
-    '_create_sbatch_script',
-    'get_job_status',
-    'cancel_slurm_job',
-    'list_slurm_jobs',
-    'get_job_details',
-    'get_job_output',
-    'get_slurm_info',
-    'get_queue_info',
-    'submit_array_job',
-    'get_node_info',
-    '_check_slurm_available',
-    'check_slurm_available'
+    "submit_slurm_job",
+    "_submit_real_slurm_job",
+    "_create_sbatch_script",
+    "get_job_status",
+    "cancel_slurm_job",
+    "list_slurm_jobs",
+    "get_job_details",
+    "get_job_output",
+    "get_slurm_info",
+    "get_queue_info",
+    "submit_array_job",
+    "get_node_info",
+    "_check_slurm_available",
+    "check_slurm_available",
 ]

@@ -24,18 +24,29 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
-    print("Warning: python-dotenv not available. Environment variables may not be loaded.", file=sys.stderr)
+    print(
+        "Warning: python-dotenv not available. Environment variables may not be loaded.",
+        file=sys.stderr,
+    )
 
 # Add current directory to path for relative imports
 sys.path.insert(0, os.path.dirname(__file__))
 
 # Import implementation modules directly
-from implementation.data_io import load_data_file, save_data_file, get_file_info
-from implementation.pandas_statistics import get_statistical_summary, get_correlation_analysis
+from implementation.data_io import load_data_file, save_data_file
+from implementation.pandas_statistics import (
+    get_statistical_summary,
+    get_correlation_analysis,
+)
 from implementation.data_cleaning import handle_missing_data, clean_data
-from implementation.transformations import groupby_operations, merge_datasets, create_pivot_table
+from implementation.transformations import (
+    groupby_operations,
+    merge_datasets,
+    create_pivot_table,
+)
 from implementation.data_profiling import profile_data
 from implementation.time_series import time_series_operations
 from implementation.memory_optimization import optimize_memory_usage
@@ -47,16 +58,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server instance
-mcp = FastMCP("Pandas-MCP-DataAnalysis")
+mcp: FastMCP = FastMCP("Pandas-MCP-DataAnalysis")
+
 
 # Custom exception for pandas-related errors
 class PandasMCPError(Exception):
     """Custom exception for pandas MCP-related errors"""
+
     pass
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA I/O TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="load_data",
@@ -94,7 +109,7 @@ Use this tool when:
 - Exploring new datasets for the first time
 - Converting between different data formats
 - Sampling large datasets for initial analysis
-- Validating data structure and quality"""
+- Validating data structure and quality""",
 )
 async def load_data_tool(
     file_path: str,
@@ -102,11 +117,11 @@ async def load_data_tool(
     sheet_name: Optional[str] = None,
     encoding: Optional[str] = None,
     columns: Optional[List[str]] = None,
-    nrows: Optional[int] = None
+    nrows: Optional[int] = None,
 ) -> dict:
     """
     Load data from various file formats with comprehensive parsing options.
-    
+
     Args:
         file_path: Absolute path to the data file
         file_format: File format (csv, excel, json, parquet, hdf5) - auto-detected if None
@@ -114,7 +129,7 @@ async def load_data_tool(
         encoding: Character encoding (utf-8, latin-1, etc.) - auto-detected if None
         columns: List of specific columns to load (None loads all columns)
         nrows: Maximum number of rows to load (None loads all rows)
-    
+
     Returns:
         Dictionary containing:
         - data: Loaded dataset in structured format
@@ -124,14 +139,21 @@ async def load_data_tool(
     """
     try:
         logger.info(f"Loading data from: {file_path}")
-        return load_data_file(file_path, file_format, sheet_name, encoding, columns, nrows)
+        return load_data_file(
+            file_path, file_format, sheet_name, encoding, columns, nrows
+        )
     except Exception as e:
         logger.error(f"Data loading error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataLoadingError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataLoadingError"}}'
+                }
+            ],
             "_meta": {"tool": "load_data", "error": "DataLoadingError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="save_data",
@@ -169,23 +191,20 @@ Use this tool when:
 - Converting between different data formats
 - Creating compressed versions of large datasets
 - Saving intermediate results in analysis workflows
-- Preparing data for external systems or applications"""
+- Preparing data for external systems or applications""",
 )
 async def save_data_tool(
-    data: dict,
-    file_path: str,
-    file_format: Optional[str] = None,
-    index: bool = True
+    data: dict, file_path: str, file_format: Optional[str] = None, index: bool = True
 ) -> dict:
     """
     Save data to various file formats with comprehensive export options.
-    
+
     Args:
         data: Data dictionary to save (structured data format)
         file_path: Absolute path where the file will be saved
         file_format: Output format (csv, excel, json, parquet, hdf5) - auto-detected if None
         index: Whether to include row indices in the output file
-    
+
     Returns:
         Dictionary containing:
         - save_info: File save details including size and format
@@ -199,14 +218,20 @@ async def save_data_tool(
     except Exception as e:
         logger.error(f"Data saving error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataSavingError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataSavingError"}}'
+                }
+            ],
             "_meta": {"tool": "save_data", "error": "DataSavingError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STATISTICAL ANALYSIS TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="statistical_summary",
@@ -245,21 +270,21 @@ Use this tool when:
 - Understanding data characteristics and quality
 - Identifying patterns and anomalies in data
 - Preparing data for modeling or analysis
-- Generating reports for stakeholders"""
+- Generating reports for stakeholders""",
 )
 async def statistical_summary_tool(
     file_path: str,
     columns: Optional[List[str]] = None,
-    include_distributions: bool = False
+    include_distributions: bool = False,
 ) -> dict:
     """
     Generate comprehensive statistical summary with advanced analytics.
-    
+
     Args:
         file_path: Absolute path to the data file
         columns: List of specific columns to analyze (None analyzes all numerical columns)
         include_distributions: Whether to include distribution analysis and normality tests
-    
+
     Returns:
         Dictionary containing:
         - descriptive_stats: Mean, median, mode, standard deviation, and percentiles
@@ -273,10 +298,18 @@ async def statistical_summary_tool(
     except Exception as e:
         logger.error(f"Statistical analysis error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "StatisticalAnalysisError"}}'}],
-            "_meta": {"tool": "statistical_summary", "error": "StatisticalAnalysisError"},
-            "isError": True
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "StatisticalAnalysisError"}}'
+                }
+            ],
+            "_meta": {
+                "tool": "statistical_summary",
+                "error": "StatisticalAnalysisError",
+            },
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="correlation_analysis",
@@ -320,21 +353,19 @@ Use this tool when:
 - Feature selection for machine learning
 - Identifying redundant or highly correlated features
 - Understanding data structure and dependencies
-- Detecting multicollinearity in regression analysis"""
+- Detecting multicollinearity in regression analysis""",
 )
 async def correlation_analysis_tool(
-    file_path: str,
-    method: str = "pearson",
-    columns: Optional[List[str]] = None
+    file_path: str, method: str = "pearson", columns: Optional[List[str]] = None
 ) -> dict:
     """
     Perform comprehensive correlation analysis with statistical significance testing.
-    
+
     Args:
         file_path: Absolute path to the data file
         method: Correlation method (pearson, spearman, kendall) for different data types
         columns: List of specific columns to analyze (None analyzes all numerical columns)
-    
+
     Returns:
         Dictionary containing:
         - correlation_matrix: Full correlation matrix with coefficient values
@@ -348,10 +379,18 @@ async def correlation_analysis_tool(
     except Exception as e:
         logger.error(f"Correlation analysis error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "CorrelationAnalysisError"}}'}],
-            "_meta": {"tool": "correlation_analysis", "error": "CorrelationAnalysisError"},
-            "isError": True
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "CorrelationAnalysisError"}}'
+                }
+            ],
+            "_meta": {
+                "tool": "correlation_analysis",
+                "error": "CorrelationAnalysisError",
+            },
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="hypothesis_testing",
@@ -398,25 +437,25 @@ Use this tool when:
 - Comparing groups or treatments
 - Validating assumptions for modeling
 - Making statistical inferences and decisions
-- Preparing results for publication or reporting"""
+- Preparing results for publication or reporting""",
 )
 async def hypothesis_testing_tool(
     file_path: str,
     test_type: str,
     column1: str,
     column2: Optional[str] = None,
-    alpha: float = 0.05
+    alpha: float = 0.05,
 ) -> dict:
     """
     Perform comprehensive statistical hypothesis testing with multiple test types and advanced analysis.
-    
+
     Args:
         file_path: Absolute path to the data file
         test_type: Type of hypothesis test (t_test, chi_square, anova, normality, mann_whitney)
         column1: Primary column for testing (numerical or categorical based on test type)
         column2: Secondary column for two-sample tests (None for single-sample tests)
         alpha: Significance level for hypothesis testing (typically 0.05, 0.01, or 0.10)
-    
+
     Returns:
         Dictionary containing:
         - test_results: Statistical test results including test statistic and p-value
@@ -430,14 +469,20 @@ async def hypothesis_testing_tool(
     except Exception as e:
         logger.error(f"Hypothesis testing error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "HypothesisTestingError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "HypothesisTestingError"}}'
+                }
+            ],
             "_meta": {"tool": "hypothesis_testing", "error": "HypothesisTestingError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA CLEANING TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="handle_missing_data",
@@ -482,23 +527,23 @@ Use this tool when:
 - Preparing data for analysis or modeling
 - Understanding missing data patterns and mechanisms
 - Choosing optimal imputation strategies
-- Validating data completeness requirements"""
+- Validating data completeness requirements""",
 )
 async def handle_missing_data_tool(
     file_path: str,
     strategy: str = "detect",
     method: Optional[str] = None,
-    columns: Optional[List[str]] = None
+    columns: Optional[List[str]] = None,
 ) -> dict:
     """
     Handle missing data with comprehensive strategies and statistical methods.
-    
+
     Args:
         file_path: Absolute path to the data file
         strategy: Missing data strategy (detect, impute, remove, analyze)
         method: Imputation method (mean, median, mode, forward_fill, backward_fill, interpolate)
         columns: List of specific columns to process (None processes all columns)
-    
+
     Returns:
         Dictionary containing:
         - missing_data_report: Detailed analysis of missing data patterns
@@ -512,10 +557,15 @@ async def handle_missing_data_tool(
     except Exception as e:
         logger.error(f"Missing data handling error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "MissingDataError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "MissingDataError"}}'
+                }
+            ],
             "_meta": {"tool": "handle_missing_data", "error": "MissingDataError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="clean_data",
@@ -561,23 +611,23 @@ Use this tool when:
 - Improving data quality and consistency
 - Removing noise and anomalies from datasets
 - Standardizing data formats and types
-- Ensuring data integrity before processing"""
+- Ensuring data integrity before processing""",
 )
 async def clean_data_tool(
     file_path: str,
     remove_duplicates: bool = False,
     detect_outliers: bool = False,
-    convert_types: bool = False
+    convert_types: bool = False,
 ) -> dict:
     """
     Perform comprehensive data cleaning with advanced quality improvement techniques.
-    
+
     Args:
         file_path: Absolute path to the data file
         remove_duplicates: Whether to identify and remove duplicate records
         detect_outliers: Whether to detect outliers using statistical methods (IQR, Z-score)
         convert_types: Whether to automatically convert data types for optimization
-    
+
     Returns:
         Dictionary containing:
         - cleaning_report: Detailed summary of cleaning operations performed
@@ -591,14 +641,20 @@ async def clean_data_tool(
     except Exception as e:
         logger.error(f"Data cleaning error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataCleaningError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataCleaningError"}}'
+                }
+            ],
             "_meta": {"tool": "clean_data", "error": "DataCleaningError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA TRANSFORMATION TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="groupby_operations",
@@ -645,23 +701,23 @@ Use this tool when:
 - Calculating group-wise statistics and metrics
 - Analyzing patterns across different data segments
 - Creating aggregated reports and dashboards
-- Performing business intelligence analysis"""
+- Performing business intelligence analysis""",
 )
 async def groupby_operations_tool(
     file_path: str,
     group_by: List[str],
     operations: Dict[str, str],
-    filter_condition: Optional[str] = None
+    filter_condition: Optional[str] = None,
 ) -> dict:
     """
     Perform sophisticated groupby operations with comprehensive aggregation options.
-    
+
     Args:
         file_path: Absolute path to the data file
         group_by: List of columns to group by
         operations: Dictionary of column:operation pairs (sum, mean, count, min, max, std)
         filter_condition: Optional filter condition to apply before grouping
-    
+
     Returns:
         Dictionary containing:
         - grouped_results: Results of groupby operations with aggregated data
@@ -675,10 +731,15 @@ async def groupby_operations_tool(
     except Exception as e:
         logger.error(f"Groupby operations error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "GroupbyOperationsError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "GroupbyOperationsError"}}'
+                }
+            ],
             "_meta": {"tool": "groupby_operations", "error": "GroupbyOperationsError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="merge_datasets",
@@ -731,7 +792,7 @@ Use this tool when:
 - Enriching datasets with additional information
 - Creating comprehensive analytical datasets
 - Integrating related data tables
-- Performing data warehouse-style operations"""
+- Performing data warehouse-style operations""",
 )
 async def merge_datasets_tool(
     left_file: str,
@@ -739,11 +800,11 @@ async def merge_datasets_tool(
     join_type: str = "inner",
     left_on: Optional[str] = None,
     right_on: Optional[str] = None,
-    on: Optional[str] = None
+    on: Optional[str] = None,
 ) -> dict:
     """
     Merge and join datasets with comprehensive integration capabilities.
-    
+
     Args:
         left_file: Absolute path to the left dataset file
         right_file: Absolute path to the right dataset file
@@ -751,7 +812,7 @@ async def merge_datasets_tool(
         left_on: Column name in left dataset for joining
         right_on: Column name in right dataset for joining
         on: Common column name for joining (if same in both datasets)
-    
+
     Returns:
         Dictionary containing:
         - merged_data: Results of the merge operation
@@ -765,10 +826,15 @@ async def merge_datasets_tool(
     except Exception as e:
         logger.error(f"Dataset merge error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DatasetMergeError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DatasetMergeError"}}'
+                }
+            ],
             "_meta": {"tool": "merge_datasets", "error": "DatasetMergeError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="pivot_table",
@@ -823,25 +889,25 @@ Use this tool when:
 - Analyzing data across multiple dimensions
 - Performing cross-tabulation analysis
 - Reshaping data for visualization
-- Creating business intelligence reports"""
+- Creating business intelligence reports""",
 )
 async def pivot_table_tool(
     file_path: str,
     index: List[str],
     columns: Optional[List[str]] = None,
     values: Optional[List[str]] = None,
-    aggfunc: str = "mean"
+    aggfunc: str = "mean",
 ) -> dict:
     """
     Create sophisticated pivot tables with comprehensive aggregation options.
-    
+
     Args:
         file_path: Absolute path to the data file
         index: List of columns to use as row index
         columns: List of columns to use as column headers (None for simple aggregation)
         values: List of columns to aggregate (None uses all numerical columns)
         aggfunc: Aggregation function (mean, sum, count, min, max, std, var)
-    
+
     Returns:
         Dictionary containing:
         - pivot_results: The pivot table with aggregated data
@@ -855,14 +921,20 @@ async def pivot_table_tool(
     except Exception as e:
         logger.error(f"Pivot table error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "PivotTableError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "PivotTableError"}}'
+                }
+            ],
             "_meta": {"tool": "pivot_table", "error": "PivotTableError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TIME SERIES TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="time_series_operations",
@@ -916,25 +988,25 @@ Use this tool when:
 - Preparing data for forecasting models
 - Detecting seasonal patterns and cycles
 - Creating time-based features for modeling
-- Performing time series decomposition and analysis"""
+- Performing time series decomposition and analysis""",
 )
 async def time_series_operations_tool(
     file_path: str,
     date_column: str,
     operation: str,
     window_size: Optional[int] = None,
-    frequency: Optional[str] = None
+    frequency: Optional[str] = None,
 ) -> dict:
     """
     Perform comprehensive time series operations with advanced temporal analysis.
-    
+
     Args:
         file_path: Absolute path to the data file
         date_column: Column name containing datetime information
         operation: Time series operation (resample, rolling_mean, lag, trend, seasonality)
         window_size: Window size for rolling operations (required for rolling operations)
         frequency: Frequency for resampling (D, W, M, Q, Y) (required for resampling)
-    
+
     Returns:
         Dictionary containing:
         - time_series_results: Results of the time series operation
@@ -944,18 +1016,26 @@ async def time_series_operations_tool(
     """
     try:
         logger.info(f"Performing time series operations on: {file_path}")
-        return time_series_operations(file_path, date_column, operation, window_size, frequency)
+        return time_series_operations(
+            file_path, date_column, operation, window_size, frequency
+        )
     except Exception as e:
         logger.error(f"Time series operations error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "TimeSeriesError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "TimeSeriesError"}}'
+                }
+            ],
             "_meta": {"tool": "time_series_operations", "error": "TimeSeriesError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA VALIDATION TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="validate_data",
@@ -1018,21 +1098,20 @@ Use this tool when:
 - Validating data against business rules
 - Preparing data for critical applications
 - Monitoring data quality over time
-- Compliance checking and auditing"""
+- Compliance checking and auditing""",
 )
 async def validate_data_tool(
-    file_path: str,
-    validation_rules: Dict[str, Dict[str, Any]]
+    file_path: str, validation_rules: Dict[str, Dict[str, Any]]
 ) -> dict:
     """
     Perform comprehensive data validation with advanced constraint checking and quality assessment.
-    
+
     Args:
         file_path: Absolute path to the data file
         validation_rules: Dictionary of validation rules with structure:
                          {column_name: {rule_type: rule_value}}
                          Supported rules: min, max, type, regex, not_null, unique, in_list
-    
+
     Returns:
         Dictionary containing:
         - validation_results: Detailed validation results for each column and rule
@@ -1046,14 +1125,20 @@ async def validate_data_tool(
     except Exception as e:
         logger.error(f"Data validation error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataValidationError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataValidationError"}}'
+                }
+            ],
             "_meta": {"tool": "validate_data", "error": "DataValidationError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA FILTERING TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="filter_data",
@@ -1114,23 +1199,21 @@ Use this tool when:
 - Removing outliers and anomalies
 - Creating focused datasets for reporting
 - Implementing business logic and rules
-- Preparing data for specific analytical tasks"""
+- Preparing data for specific analytical tasks""",
 )
 async def filter_data_tool(
-    file_path: str,
-    filter_conditions: Dict[str, Any],
-    output_file: Optional[str] = None
+    file_path: str, filter_conditions: Dict[str, Any], output_file: Optional[str] = None
 ) -> dict:
     """
     Perform advanced data filtering with sophisticated boolean indexing and conditional expressions.
-    
+
     Args:
         file_path: Absolute path to the data file
         filter_conditions: Dictionary of filtering conditions with structure:
                           {column_name: {operator: value}} or {column_name: value}
                           Supported operators: eq, ne, gt, lt, ge, le, in, not_in, contains, regex
         output_file: Optional absolute path to save filtered data (None returns in memory)
-    
+
     Returns:
         Dictionary containing:
         - filtered_data: Results of filtering operation with matching records
@@ -1144,14 +1227,20 @@ async def filter_data_tool(
     except Exception as e:
         logger.error(f"Data filtering error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataFilteringError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataFilteringError"}}'
+                }
+            ],
             "_meta": {"tool": "filter_data", "error": "DataFilteringError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MEMORY OPTIMIZATION TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="optimize_memory",
@@ -1205,21 +1294,19 @@ Use this tool when:
 - Optimizing data processing performance
 - Reducing memory footprint for applications
 - Preparing data for memory-constrained environments
-- Improving overall system efficiency"""
+- Improving overall system efficiency""",
 )
 async def optimize_memory_tool(
-    file_path: str,
-    optimize_dtypes: bool = True,
-    chunk_size: Optional[int] = None
+    file_path: str, optimize_dtypes: bool = True, chunk_size: Optional[int] = None
 ) -> dict:
     """
     Perform advanced memory optimization for large datasets with intelligent strategies.
-    
+
     Args:
         file_path: Absolute path to the data file
         optimize_dtypes: Whether to automatically optimize data types for memory efficiency
         chunk_size: Chunk size for processing large files (None for automatic sizing)
-    
+
     Returns:
         Dictionary containing:
         - memory_optimization_results: Before/after memory usage comparison
@@ -1233,14 +1320,20 @@ async def optimize_memory_tool(
     except Exception as e:
         logger.error(f"Memory optimization error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "MemoryOptimizationError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "MemoryOptimizationError"}}'
+                }
+            ],
             "_meta": {"tool": "optimize_memory", "error": "MemoryOptimizationError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA PROFILING TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="profile_data",
@@ -1294,21 +1387,21 @@ Use this tool when:
 - Understanding data characteristics and quality
 - Planning data analysis and modeling strategies
 - Documenting data for stakeholders
-- Identifying data quality issues and opportunities"""
+- Identifying data quality issues and opportunities""",
 )
 async def profile_data_tool(
     file_path: str,
     include_correlations: bool = False,
-    sample_size: Optional[int] = None
+    sample_size: Optional[int] = None,
 ) -> dict:
     """
     Perform comprehensive data profiling with detailed statistical analysis and quality assessment.
-    
+
     Args:
         file_path: Absolute path to the data file
         include_correlations: Whether to include correlation analysis between variables
         sample_size: Number of rows to sample for large datasets (None uses full dataset)
-    
+
     Returns:
         Dictionary containing:
         - data_profile: Comprehensive dataset overview including shape, types, and statistics
@@ -1322,10 +1415,15 @@ async def profile_data_tool(
     except Exception as e:
         logger.error(f"Data profiling error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataProfilingError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DataProfilingError"}}'
+                }
+            ],
             "_meta": {"tool": "profile_data", "error": "DataProfilingError"},
-            "isError": True
+            "isError": True,
         }
+
 
 def main():
     """
@@ -1333,15 +1431,22 @@ def main():
     Chooses between stdio and SSE based on MCP_TRANSPORT environment variable.
     """
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
-    
+
     if transport == "sse":
         host = os.getenv("MCP_SSE_HOST", "0.0.0.0")
         port = int(os.getenv("MCP_SSE_PORT", "8000"))
-        print(f"Starting Pandas MCP Data Analysis Server on {host}:{port}", file=sys.stderr)
+        print(
+            f"Starting Pandas MCP Data Analysis Server on {host}:{port}",
+            file=sys.stderr,
+        )
         mcp.run(transport="sse", host=host, port=port)
     else:
-        print("Starting Pandas MCP Data Analysis Server with stdio transport", file=sys.stderr)
+        print(
+            "Starting Pandas MCP Data Analysis Server with stdio transport",
+            file=sys.stderr,
+        )
         mcp.run(transport="stdio")
+
 
 if __name__ == "__main__":
     main()
