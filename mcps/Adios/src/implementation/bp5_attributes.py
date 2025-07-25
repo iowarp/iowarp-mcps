@@ -4,8 +4,7 @@ from typing import Optional, Dict, Any
 
 
 def inspect_attributes(
-    filename: str,
-    variable_name: Optional[str] = None
+    filename: str, variable_name: Optional[str] = None
 ) -> Dict[str, Dict[str, Any]]:
     """
     List and read attributes from a BP5 file.
@@ -35,7 +34,9 @@ def inspect_attributes(
             full_name = f"{variable_name}/{attr_name}" if variable_name else attr_name
             raw = stream.read_attribute(full_name)
             # Convert NumPy types/arrays to native Python types
-            if isinstance(raw, np.generic) or (hasattr(raw, "shape") and raw.shape == ()):  # scalar
+            if isinstance(raw, np.generic) or (
+                hasattr(raw, "shape") and raw.shape == ()
+            ):  # scalar
                 val = np.array(raw).item()
             else:
                 val = np.array(raw).flatten().tolist()
