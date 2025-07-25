@@ -28,9 +28,7 @@ def inspect_attributes(
 
         result: Dict[str, Dict[str, Any]] = {}
         if attrs_meta is None or not attrs_meta:
-            return {
-                "error": {"message": "Invalid Variable name or no attributes found"}
-            }
+            return {"Invalid Variable name or no attributes found"}
         for attr_name, meta in attrs_meta.items():
             # Build full attribute path for reading
             full_name = f"{variable_name}/{attr_name}" if variable_name else attr_name

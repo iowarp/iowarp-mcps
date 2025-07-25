@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def list_bp5(directory: str = "data") -> list[str]:
+def list_bp5(directory: str = "data") -> list[Path]:
     """
     Return a list of all .bp and .bp5 file paths under the specified directory.
     Raises FileNotFoundError if the directory doesn't exist.
@@ -13,4 +13,4 @@ def list_bp5(directory: str = "data") -> list[str]:
     # Use glob to match both *.bp and *.bp5
     bp_files = list(base.glob("*.bp"))
     bp5_files = list(base.glob("*.bp5"))
-    return [str(p) for p in bp_files + bp5_files]
+    return bp_files + bp5_files

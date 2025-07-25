@@ -31,4 +31,4 @@ def inspect_variables(filename: str, variable_name: Optional[str] = None) -> dic
         if variable_name in all_vars:
             return {variable_name: all_vars[variable_name]}
         else:
-            return {"error": f"Variable '{variable_name}' not found in file."}
+            return f"Variable '{variable_name}' not found in file."
