@@ -3,10 +3,11 @@ GPU information capabilities.
 Handles GPU information reporting (if available).
 """
 
+from typing import Dict, List, Any
 from capabilities.utils import run_command, check_command_available
 
 
-def get_gpu_info() -> dict:
+def get_gpu_info() -> Dict[str, Any]:
     """
     Get GPU information if available.
 
@@ -14,7 +15,7 @@ def get_gpu_info() -> dict:
         Dictionary with GPU information
     """
     try:
-        gpu_info = {
+        gpu_info: Dict[str, Any] = {
             "gpus": [],
             "nvidia_available": False,
             "amd_available": False,

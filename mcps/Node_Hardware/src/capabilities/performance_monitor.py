@@ -5,10 +5,11 @@ Handles real-time performance monitoring and metrics.
 
 import psutil
 import time
+from typing import Dict, Any
 from capabilities.utils import format_bytes, format_percentage
 
 
-def monitor_performance(duration: int = 5) -> dict:
+def monitor_performance(duration: int = 5) -> Dict[str, Any]:
     """
     Monitor system performance for a specified duration.
 
@@ -43,8 +44,8 @@ def monitor_performance(duration: int = 5) -> dict:
         cpu_usage = psutil.cpu_percent(interval=1, percpu=True)
 
         # Disk I/O rates
-        disk_read_rate = 0
-        disk_write_rate = 0
+        disk_read_rate = 0.0
+        disk_write_rate = 0.0
         if initial_disk_io and final_disk_io:
             disk_read_rate = (
                 final_disk_io.read_bytes - initial_disk_io.read_bytes
@@ -54,8 +55,8 @@ def monitor_performance(duration: int = 5) -> dict:
             ) / actual_duration
 
         # Network I/O rates
-        net_recv_rate = 0
-        net_sent_rate = 0
+        net_recv_rate = 0.0
+        net_sent_rate = 0.0
         if initial_net_io and final_net_io:
             net_recv_rate = (
                 final_net_io.bytes_recv - initial_net_io.bytes_recv

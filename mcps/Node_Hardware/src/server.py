@@ -47,7 +47,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server instance
-mcp = FastMCP("NodeHardware-MCP-SystemMonitoring")
+mcp: FastMCP = FastMCP("NodeHardware-MCP-SystemMonitoring")
 
 
 # Custom exception for hardware monitoring errors

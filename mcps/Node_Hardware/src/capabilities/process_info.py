@@ -4,10 +4,11 @@ Handles process monitoring and detailed process information.
 """
 
 import psutil
+from typing import Dict, List, Any
 from capabilities.utils import format_bytes, format_percentage
 
 
-def get_process_info(limit: int = 10) -> dict:
+def get_process_info(limit: int = 10) -> Dict[str, Any]:
     """
     Get process information.
 
@@ -33,7 +34,7 @@ def get_process_info(limit: int = 10) -> dict:
             ]
         ):
             try:
-                process_info = proc.info
+                process_info = proc.as_dict()
                 # Convert memory info to more readable format
                 if process_info["memory_info"]:
                     process_info["memory_rss_formatted"] = format_bytes(

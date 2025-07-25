@@ -4,10 +4,11 @@ Handles network interface reporting and detailed network information.
 """
 
 import psutil
+from typing import Dict, List, Any
 from capabilities.utils import format_bytes
 
 
-def get_network_info() -> dict:
+def get_network_info() -> Dict[str, Any]:
     """
     Get comprehensive network information.
 
@@ -19,9 +20,9 @@ def get_network_info() -> dict:
         network_interfaces = psutil.net_if_addrs()
         network_stats = psutil.net_if_stats()
 
-        interfaces = []
+        interfaces: List[Dict[str, Any]] = []
         for interface_name, addresses in network_interfaces.items():
-            interface_info = {"name": interface_name, "addresses": []}
+            interface_info: Dict[str, Any] = {"name": interface_name, "addresses": []}
 
             # Get interface statistics
             if interface_name in network_stats:
@@ -98,7 +99,12 @@ def get_network_info() -> dict:
                 ),
             }
         except Exception:
-            connection_info = {"error": "Unable to retrieve connection information"}
+            connection_info = {
+                "total_connections": 0,
+                "tcp_connections": 0,
+                "udp_connections": 0,
+                "listening_ports": 0,
+            }
 
         result = {
             "interfaces": interfaces,

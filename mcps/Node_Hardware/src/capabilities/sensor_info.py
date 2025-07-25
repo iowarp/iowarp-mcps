@@ -1,22 +1,13 @@
 """
-Sensor information capabili                        temp_info = {
-                            "label": sensor.label or "Unknown",
-                            "current": sensor.current,
-                            "high": sensor.high,
-                            "critical": sensor.critical,
-                            "current_formatted": f"{sensor.current:.1f}C"
-                        }
-                        if sensor.high:
-                            temp_info["high_formatted"] = f"{sensor.high:.1f}C"
-                        if sensor.critical:
-                            temp_info["critical_formatted"] = f"{sensor.critical:.1f}C"es temperature and other sensor information.
+Sensor information capabilities - provides temperature and other sensor information.
 """
 
+from typing import Dict, List, Any, Union, Optional
 import psutil
 from capabilities.utils import run_command, check_command_available
 
 
-def get_sensor_info() -> dict:
+def get_sensor_info() -> Dict[str, Any]:
     """
     Get sensor information including temperatures.
 
@@ -24,7 +15,7 @@ def get_sensor_info() -> dict:
         Dictionary with sensor information
     """
     try:
-        sensor_info = {
+        sensor_info: Dict[str, Any] = {
             "temperatures": {},
             "fans": {},
             "battery": {},
