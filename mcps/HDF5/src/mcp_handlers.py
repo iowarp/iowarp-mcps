@@ -34,7 +34,7 @@ async def inspect_hdf5_handler(filename: str) -> Dict[str, Any]:
     try:
         lines = inspect_hdf5.inspect_hdf5_file(filename)
         text = "\n".join(lines)
-        return text
+        return {"result": text}
     except Exception as e:
         return {
             "content": [{"text": json.dumps({"error": str(e)})}],
