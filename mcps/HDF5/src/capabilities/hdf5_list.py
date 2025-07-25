@@ -1,6 +1,5 @@
-
-import glob
 from pathlib import Path
+
 
 def list_hdf5(directory: str = "data") -> list[str]:
     """

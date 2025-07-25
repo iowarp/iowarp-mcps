@@ -5,12 +5,13 @@ Covers:
  - Successful listing of .hdf5 files in a directory
  - Directory‑not‑found error
 """
+
 import os
 import sys
 import pytest
 
 # Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from capabilities import hdf5_list
 

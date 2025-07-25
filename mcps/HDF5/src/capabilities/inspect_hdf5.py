@@ -1,6 +1,7 @@
 import h5py
 from typing import List
 
+
 def inspect_hdf5_file(fname: str) -> List[str]:
     """
     Walks the HDF5 file and returns a list of lines describing
