@@ -22,7 +22,7 @@ from jarvis_cd.basic.jarvis_manager import JarvisManager
 load_dotenv()
 
 # Initialize FastMCP server instance
-mcp = FastMCP("JarvisServer")
+mcp: FastMCP = FastMCP("JarvisServer")
 
 # Create a singleton instance of JarvisManager
 manager = JarvisManager.get_instance()
