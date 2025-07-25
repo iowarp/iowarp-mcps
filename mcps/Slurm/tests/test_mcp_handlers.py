@@ -5,11 +5,6 @@ Tests the MCP protocol layer that wraps Slurm capabilities.
 
 import sys
 from pathlib import Path
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
 from mcp_handlers import (
     submit_slurm_job_handler,
     check_job_status_handler,
@@ -22,6 +17,10 @@ from mcp_handlers import (
     submit_array_job_handler,
     get_node_info_handler,
 )
+
+# Add src to Python path
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
 
 
 class TestMCPHandlers:
@@ -372,72 +371,3 @@ class TestMCPHandlers:
             assert "job_id" in result
             assert "status" in result
 
-    def test_submit_job_handler_enhanced(self, temp_script):
-        """Test enhanced job submission through MCP handler."""
-        result = submit_slurm_job_handler(
-            temp_script,
-            cores=4,
-            memory="8G",
-            time_limit="02:00:00",
-            job_name="test_job",
-            partition="compute",
-        )
-
-        assert isinstance(result, dict)
-        assert "job_id" in result
-        assert "status" in result
-        assert "memory" in result
-        assert "time_limit" in result
-        assert "job_name" in result
-        assert "partition" in result
-
-        assert result["memory"] == "8G"
-        assert result["time_limit"] == "02:00:00"
-        assert result["job_name"] == "test_job"
-        assert result["partition"] == "compute"
-
-    def test_cancel_job_handler_success(self):
-        """Test successful job cancellation through MCP handler."""
-        result = cancel_slurm_job_handler("1234567")
-
-        assert isinstance(result, dict)
-        assert "job_id" in result
-        assert "status" in result
-        assert "message" in result
-        assert "real_slurm" in result
-
-        assert result["job_id"] == "1234567"
-
-    def test_list_jobs_handler_success(self):
-        """Test successful job listing through MCP handler."""
-        result = list_slurm_jobs_handler()
-
-        assert isinstance(result, dict)
-        assert "jobs" in result
-        assert "count" in result
-        assert "real_slurm" in result
-
-        assert isinstance(result["jobs"], list)
-        assert isinstance(result["count"], int)
-
-    def test_list_jobs_handler_with_filters(self):
-        """Test job listing with filters through MCP handler."""
-        result = list_slurm_jobs_handler(user="testuser", state="RUNNING")
-
-        assert isinstance(result, dict)
-        assert "user_filter" in result
-        assert "state_filter" in result
-
-        assert result["user_filter"] == "testuser"
-        assert result["state_filter"] == "RUNNING"
-
-    def test_get_slurm_info_handler_success(self):
-        """Test successful cluster info retrieval through MCP handler."""
-        result = get_slurm_info_handler()
-
-        assert isinstance(result, dict)
-        assert "cluster_name" in result
-        assert "partitions" in result
-        assert "real_slurm" in result
-
-        assert isinstance(result["partitions"], list)

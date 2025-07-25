@@ -15,12 +15,6 @@ import os
 import sys
 import concurrent.futures
 from pathlib import Path
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
-# Import implementation modules directly
 from implementation.job_submission import submit_slurm_job
 from implementation.job_status import get_job_status
 from implementation.job_cancellation import cancel_slurm_job
@@ -30,6 +24,10 @@ from implementation.job_details import get_job_details
 from implementation.queue_info import get_queue_info
 from implementation.array_jobs import submit_array_job
 from implementation.node_info import get_node_info
+
+# Add src to Python path
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
 
 
 class TestSlurmMCPPerformance:

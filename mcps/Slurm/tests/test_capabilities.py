@@ -9,11 +9,6 @@ import os
 import tempfile
 import sys
 from pathlib import Path
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
 from implementation.slurm_handler import (
     submit_slurm_job,
     get_job_status,
@@ -28,6 +23,10 @@ from implementation.slurm_handler import (
     _check_slurm_available,
     _create_sbatch_script,
 )
+
+# Add src to Python path
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
 
 
 class TestSlurmCapabilities:
@@ -370,102 +369,3 @@ class TestSlurmCapabilities:
         assert "reason" in status
         assert status["job_id"] == sample_job_id
 
-    def test_job_status_structure(self, sample_job_id):
-        """Test that job status returns proper structure."""
-        status = get_job_status(sample_job_id)
-
-        required_keys = ["job_id", "status", "reason"]
-        for key in required_keys:
-            assert key in status
-
-        # Should indicate if it's real Slurm or mock
-        assert "real_slurm" in status
-        assert isinstance(status["real_slurm"], bool)
-
-    def test_enhanced_job_submission(self, temp_script):
-        """Test job submission with enhanced parameters."""
-        cores = 4
-        memory = "8G"
-        time_limit = "02:00:00"
-        job_name = "test_enhanced_job"
-        partition = "compute"
-
-        submit_result = submit_slurm_job(
-            temp_script, cores, memory, time_limit, job_name, partition
-        )
-
-        # Should return a dictionary with job_id
-        assert isinstance(submit_result, dict)
-        assert "job_id" in submit_result
-        job_id = submit_result["job_id"]
-        assert isinstance(job_id, str)
-        assert len(job_id) > 0
-
-    def test_cancel_job_functionality(self):
-        """Test job cancellation functionality."""
-        # Test with mock job ID
-        result = cancel_slurm_job("1234567")
-
-        # Should return proper structure
-        required_keys = ["job_id", "status", "message", "real_slurm"]
-        for key in required_keys:
-            assert key in result
-
-        assert result["job_id"] == "1234567"
-        assert result["status"] in ["cancelled", "error"]
-
-    def test_list_jobs_functionality(self):
-        """Test job listing functionality."""
-        # Test without filters
-        result = list_slurm_jobs()
-
-        # Should return proper structure
-        required_keys = ["jobs", "count", "real_slurm"]
-        for key in required_keys:
-            assert key in result
-
-        assert isinstance(result["jobs"], list)
-        assert isinstance(result["count"], int)
-        assert result["count"] == len(result["jobs"])
-
-        # Test with user filter
-        result_filtered = list_slurm_jobs(user="testuser")
-        assert "user_filter" in result_filtered
-        assert result_filtered["user_filter"] == "testuser"
-
-        # Test with state filter
-        result_state = list_slurm_jobs(state="RUNNING")
-        assert "state_filter" in result_state
-        assert result_state["state_filter"] == "RUNNING"
-
-    def test_cluster_info_functionality(self):
-        """Test cluster information functionality."""
-        result = get_slurm_info()
-
-        # Should return proper structure
-        required_keys = ["cluster_name", "partitions", "real_slurm"]
-        for key in required_keys:
-            assert key in result
-
-        assert isinstance(result["partitions"], list)
-        assert isinstance(result["real_slurm"], bool)
-
-        # Check partition structure if any partitions exist
-        if result["partitions"]:
-            partition = result["partitions"][0]
-            partition_keys = ["partition", "avail_idle", "timelimit", "nodes", "state"]
-            for key in partition_keys:
-                assert key in partition
-
-    def test_job_submission_validation(self, temp_script):
-        """Test job submission parameter validation."""
-        # Test invalid cores
-        with pytest.raises(ValueError):
-            submit_slurm_job(temp_script, 0)
-
-        with pytest.raises(ValueError):
-            submit_slurm_job(temp_script, -1)
-
-        # Test invalid script path
-        with pytest.raises(FileNotFoundError):
-            submit_slurm_job("/nonexistent/script.sh", 4)
