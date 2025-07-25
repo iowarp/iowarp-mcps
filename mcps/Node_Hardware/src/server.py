@@ -2,8 +2,8 @@
 """
 Node Hardware MCP Server - Comprehensive Hardware Monitoring and System Analysis
 
-This server provides comprehensive hardware monitoring and system analysis capabilities through 
-the Model Context Protocol, enabling users to collect detailed hardware information, monitor 
+This server provides comprehensive hardware monitoring and system analysis capabilities through
+the Model Context Protocol, enabling users to collect detailed hardware information, monitor
 system performance, and analyze resource utilization across local and remote systems.
 
 Following MCP best practices, this server is designed with a workflow-first approach
@@ -15,7 +15,7 @@ import os
 import sys
 import json
 import logging
-from typing import Optional, List, Any, Dict
+from typing import Optional, List
 
 # Try to import required dependencies with fallbacks
 try:
@@ -26,9 +26,13 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
-    print("Warning: python-dotenv not available. Environment variables may not be loaded.", file=sys.stderr)
+    print(
+        "Warning: python-dotenv not available. Environment variables may not be loaded.",
+        file=sys.stderr,
+    )
 
 # Add current directory to path for relative imports
 sys.path.insert(0, os.path.dirname(__file__))
@@ -37,20 +41,26 @@ sys.path.insert(0, os.path.dirname(__file__))
 import mcp_handlers
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server instance
 mcp = FastMCP("NodeHardware-MCP-SystemMonitoring")
 
+
 # Custom exception for hardware monitoring errors
 class NodeHardwareMCPError(Exception):
     """Custom exception for Node Hardware MCP-related errors"""
+
     pass
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # INDIVIDUAL HARDWARE COMPONENT TOOLS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="get_cpu_info",
@@ -72,7 +82,7 @@ This tool provides detailed CPU analysis including:
 - Thermal monitoring and cooling assessment
 - Hardware upgrade planning and compatibility checking
 
-**Returns**: Structured CPU information with performance insights and optimization recommendations."""
+**Returns**: Structured CPU information with performance insights and optimization recommendations.""",
 )
 async def get_cpu_info_tool() -> dict:
     """
@@ -87,10 +97,15 @@ async def get_cpu_info_tool() -> dict:
     except Exception as e:
         logger.error(f"CPU information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "CPUCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "CPUCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_cpu_info", "error": "CPUCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_memory_info",
@@ -112,7 +127,7 @@ This tool provides detailed memory analysis including:
 - Memory upgrade planning and capacity assessment
 - Memory-intensive workload analysis
 
-**Returns**: Structured memory information with usage insights and optimization recommendations."""
+**Returns**: Structured memory information with usage insights and optimization recommendations.""",
 )
 async def get_memory_info_tool() -> dict:
     """
@@ -127,10 +142,15 @@ async def get_memory_info_tool() -> dict:
     except Exception as e:
         logger.error(f"Memory information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "MemoryCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "MemoryCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_memory_info", "error": "MemoryCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_system_info",
@@ -152,7 +172,7 @@ This tool provides detailed system analysis including:
 - System configuration documentation
 - Platform-specific optimization and tuning
 
-**Returns**: Structured system information with configuration insights and security recommendations."""
+**Returns**: Structured system information with configuration insights and security recommendations.""",
 )
 async def get_system_info_tool() -> dict:
     """
@@ -167,10 +187,15 @@ async def get_system_info_tool() -> dict:
     except Exception as e:
         logger.error(f"System information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "SystemCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "SystemCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_system_info", "error": "SystemCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_disk_info",
@@ -192,7 +217,7 @@ This tool provides detailed disk analysis including:
 - Backup strategy development and storage allocation
 - Disk health monitoring and predictive maintenance
 
-**Returns**: Structured disk information with performance insights and maintenance recommendations."""
+**Returns**: Structured disk information with performance insights and maintenance recommendations.""",
 )
 async def get_disk_info_tool() -> dict:
     """
@@ -207,10 +232,15 @@ async def get_disk_info_tool() -> dict:
     except Exception as e:
         logger.error(f"Disk information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "DiskCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "DiskCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_disk_info", "error": "DiskCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_network_info",
@@ -232,7 +262,7 @@ This tool provides detailed network analysis including:
 - Network configuration documentation and management
 - Network-intensive application analysis
 
-**Returns**: Structured network information with performance insights and security recommendations."""
+**Returns**: Structured network information with performance insights and security recommendations.""",
 )
 async def get_network_info_tool() -> dict:
     """
@@ -247,10 +277,15 @@ async def get_network_info_tool() -> dict:
     except Exception as e:
         logger.error(f"Network information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "NetworkCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "NetworkCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_network_info", "error": "NetworkCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_gpu_info",
@@ -272,7 +307,7 @@ This tool provides detailed GPU analysis including:
 - GPU upgrade planning and compatibility checking
 - GPU health monitoring and thermal management
 
-**Returns**: Structured GPU information with performance insights and optimization recommendations."""
+**Returns**: Structured GPU information with performance insights and optimization recommendations.""",
 )
 async def get_gpu_info_tool() -> dict:
     """
@@ -287,10 +322,15 @@ async def get_gpu_info_tool() -> dict:
     except Exception as e:
         logger.error(f"GPU information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "GPUCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "GPUCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_gpu_info", "error": "GPUCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 # @mcp.tool(
 #     name="get_hardware_summary",
@@ -327,6 +367,7 @@ async def get_gpu_info_tool() -> dict:
 #             "isError": True
 #         }
 
+
 @mcp.tool(
     name="get_sensor_info",
     description="""Get sensor information including temperature, fan speeds, and thermal data.
@@ -347,7 +388,7 @@ This tool provides detailed sensor analysis including:
 - Environmental monitoring and data center management
 - Thermal throttling analysis and optimization
 
-**Returns**: Structured sensor information with thermal insights and health recommendations."""
+**Returns**: Structured sensor information with thermal insights and health recommendations.""",
 )
 async def get_sensor_info_tool() -> dict:
     """
@@ -362,10 +403,15 @@ async def get_sensor_info_tool() -> dict:
     except Exception as e:
         logger.error(f"Sensor information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "SensorCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "SensorCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_sensor_info", "error": "SensorCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_process_info",
@@ -387,7 +433,7 @@ This tool provides detailed process analysis including:
 - Process management and optimization
 - Resource-intensive application analysis
 
-**Returns**: Structured process information with resource insights and optimization recommendations."""
+**Returns**: Structured process information with resource insights and optimization recommendations.""",
 )
 async def get_process_info_tool() -> dict:
     """
@@ -402,10 +448,15 @@ async def get_process_info_tool() -> dict:
     except Exception as e:
         logger.error(f"Process information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "ProcessCollectionError"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "ProcessCollectionError"}}'
+                }
+            ],
             "_meta": {"tool": "get_process_info", "error": "ProcessCollectionError"},
-            "isError": True
+            "isError": True,
         }
+
 
 @mcp.tool(
     name="get_performance_info",
@@ -427,7 +478,7 @@ This tool provides comprehensive performance analysis including:
 - Capacity planning and resource allocation
 - Performance benchmarking and comparison
 
-**Returns**: Structured performance information with bottleneck analysis and optimization recommendations."""
+**Returns**: Structured performance information with bottleneck analysis and optimization recommendations.""",
 )
 async def get_performance_info_tool() -> dict:
     """
@@ -442,14 +493,23 @@ async def get_performance_info_tool() -> dict:
     except Exception as e:
         logger.error(f"Performance information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "PerformanceCollectionError"}}'}],
-            "_meta": {"tool": "get_performance_info", "error": "PerformanceCollectionError"},
-            "isError": True
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "PerformanceCollectionError"}}'
+                }
+            ],
+            "_meta": {
+                "tool": "get_performance_info",
+                "error": "PerformanceCollectionError",
+            },
+            "isError": True,
         }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # REMOTE NODE HARDWARE MONITORING VIA SSH
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="get_remote_node_info",
@@ -517,7 +577,7 @@ Use this tool when:
 - Monitoring remote system health and performance characteristics with predictive maintenance insights for distributed systems
 - Planning remote system upgrades and capacity requirements with trend analysis and recommendations for distributed infrastructure
 - Troubleshooting remote hardware and performance issues with intelligent diagnostic capabilities across distributed systems
-- Conducting distributed infrastructure assessments with comprehensive analysis and optimization guidance for remote systems"""
+- Conducting distributed infrastructure assessments with comprehensive analysis and optimization guidance for remote systems""",
 )
 async def get_remote_node_info_tool(
     hostname: str,
@@ -528,7 +588,7 @@ async def get_remote_node_info_tool(
     components: Optional[List[str]] = None,
     exclude_components: Optional[List[str]] = None,
     include_performance: bool = True,
-    include_health: bool = True
+    include_health: bool = True,
 ) -> dict:
     """
     Get comprehensive remote node hardware and system information via SSH with advanced filtering and intelligent analysis.
@@ -548,7 +608,9 @@ async def get_remote_node_info_tool(
         dict: Comprehensive remote hardware and system analysis, including hardware_data, collection_metadata, performance_analysis, health_assessment, ssh_connection_info, error_information, intelligent_insights, optimization_recommendations, and beautiful_formatting.
     """
     try:
-        logger.info(f"Collecting comprehensive remote hardware information from {hostname}: components={components}, exclude={exclude_components}")
+        logger.info(
+            f"Collecting comprehensive remote hardware information from {hostname}: components={components}, exclude={exclude_components}"
+        )
         return mcp_handlers.get_remote_node_info_handler(
             hostname=hostname,
             username=username,
@@ -556,20 +618,28 @@ async def get_remote_node_info_tool(
             ssh_key=ssh_key,
             timeout=timeout,
             include_filters=components,
-            exclude_filters=exclude_components
+            exclude_filters=exclude_components,
         )
     except Exception as e:
         logger.error(f"Remote hardware information collection error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "RemoteHardwareCollectionError", "troubleshooting": "Check SSH connectivity, authentication, and remote system permissions"}}'}],
-            "_meta": {"tool": "get_remote_node_info", "error": "RemoteHardwareCollectionError"},
-            "isError": True
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "RemoteHardwareCollectionError", "troubleshooting": "Check SSH connectivity, authentication, and remote system permissions"}}'
+                }
+            ],
+            "_meta": {
+                "tool": "get_remote_node_info",
+                "error": "RemoteHardwareCollectionError",
+            },
+            "isError": True,
         }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SYSTEM HEALTH AND DIAGNOSTICS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.tool(
     name="health_check",
@@ -622,7 +692,7 @@ Use this tool when:
 - Troubleshooting system problems and performance issues with intelligent diagnostics
 - Conducting system audits and compliance checking with best practice validation
 - Planning system maintenance and optimization with predictive insights
-- Establishing baseline health metrics for ongoing monitoring and trend analysis"""
+- Establishing baseline health metrics for ongoing monitoring and trend analysis""",
 )
 async def health_check_tool() -> dict:
     """
@@ -632,8 +702,10 @@ async def health_check_tool() -> dict:
         dict: Comprehensive health assessment, including server_status, capability_status, system_compatibility, performance_metrics, diagnostic_insights, optimization_recommendations, troubleshooting_guide, predictive_maintenance, security_assessment, and health_summary.
     """
     try:
-        logger.info("Performing comprehensive health check and system diagnostics with advanced analysis")
-        
+        logger.info(
+            "Performing comprehensive health check and system diagnostics with advanced analysis"
+        )
+
         # Comprehensive health assessment with intelligent analysis
         health_status = {
             "server_status": "healthy",
@@ -641,47 +713,51 @@ async def health_check_tool() -> dict:
             "capabilities": {
                 "get_node_info": "available",
                 "get_remote_node_info": "available",
-                "local_collection": "available", 
+                "local_collection": "available",
                 "remote_collection": "available",
                 "ssh_support": "available",
                 "component_filtering": "available",
                 "performance_analysis": "available",
                 "health_assessment": "available",
                 "intelligent_insights": "available",
-                "predictive_maintenance": "available"
+                "predictive_maintenance": "available",
             },
             "system_compatibility": {
                 "python_version": sys.version,
                 "platform": os.name,
                 "dependencies": "loaded",
                 "ssh_support": "available",
-                "hardware_monitoring": "available"
+                "hardware_monitoring": "available",
             },
             "performance_metrics": {
                 "response_time": "optimal",
                 "resource_usage": "efficient",
                 "collection_speed": "high",
-                "network_efficiency": "optimized"
+                "network_efficiency": "optimized",
             },
             "health_indicators": {
                 "overall_health": "excellent",
                 "system_stability": "stable",
                 "performance_status": "optimal",
-                "security_posture": "secure"
-            }
+                "security_posture": "secure",
+            },
         }
-        
+
         return {
             "content": [{"text": json.dumps(health_status, indent=2)}],
             "_meta": {"tool": "health_check", "status": "success"},
-            "isError": False
+            "isError": False,
         }
     except Exception as e:
         logger.error(f"Health check error: {e}")
         return {
-            "content": [{"text": f'{{"success": false, "error": "{str(e)}", "error_type": "HealthCheckError", "troubleshooting": "Check system permissions, dependencies, and server configuration"}}'}],
+            "content": [
+                {
+                    "text": f'{{"success": false, "error": "{str(e)}", "error_type": "HealthCheckError", "troubleshooting": "Check system permissions, dependencies, and server configuration"}}'
+                }
+            ],
             "_meta": {"tool": "health_check", "error": "HealthCheckError"},
-            "isError": True
+            "isError": True,
         }
 
 
@@ -691,15 +767,22 @@ def main():
     Chooses between stdio and SSE based on MCP_TRANSPORT environment variable.
     """
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
-    
+
     if transport == "sse":
         host = os.getenv("MCP_SSE_HOST", "0.0.0.0")
         port = int(os.getenv("MCP_SSE_PORT", "8000"))
-        print(f"Starting Node Hardware MCP System Monitoring Server on {host}:{port}", file=sys.stderr)
+        print(
+            f"Starting Node Hardware MCP System Monitoring Server on {host}:{port}",
+            file=sys.stderr,
+        )
         mcp.run(transport="sse", host=host, port=port)
     else:
-        print("Starting Node Hardware MCP System Monitoring Server with stdio transport", file=sys.stderr)
+        print(
+            "Starting Node Hardware MCP System Monitoring Server with stdio transport",
+            file=sys.stderr,
+        )
         mcp.run(transport="stdio")
+
 
 if __name__ == "__main__":
     main()
