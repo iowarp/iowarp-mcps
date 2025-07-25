@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "mcp-server"
+version = "0.1.0"
+description = "MCP Server"
+authors = ["Leela"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.95.0"
+uvicorn = "^0.20.0"
+pytest = "^7.0.0"
+
+[tool.poetry.dev-dependencies]
+uv = "^1.0.0"

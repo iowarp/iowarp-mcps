@@ -1,0 +1,41 @@
+[project]
+name = "adios-mcp"
+version = "1.0.0"
+description = "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "IOWarp Team", email = "team@iowarp.com" }
+]
+
+keywords = [
+  "mcp",
+  "adios2",
+  "bp5",
+  "scientific data",
+  "data access",
+  "variable inspection",
+  "attribute extraction"
+]
+
+dependencies = [
+    "fastmcp",
+    "numpy",
+    "adios2"
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.5",
+]
+
+[project.scripts]
+adios-mcp = "server:main"
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

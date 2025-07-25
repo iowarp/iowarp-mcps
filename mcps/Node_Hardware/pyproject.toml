@@ -1,0 +1,31 @@
+[project]
+name = "node-hardware-mcp"
+version = "1.0.0"
+description = "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+dependencies = [
+  "fastmcp",
+  "python-dotenv>=1.0.0",
+  "psutil>=5.9.0"
+]
+
+keywords = ["hardware-monitoring", "system-analysis", "performance-metrics", "node-information", "ssh-monitoring", "remote-hardware", "mcp", "llm-integration", "infrastructure-monitoring", "distributed-systems"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.4.0",
+    "pytest-asyncio>=0.21.0"
+]
+
+[project.scripts]
+node-hardware-mcp = "server:main"
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

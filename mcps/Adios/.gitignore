@@ -1,0 +1,27 @@
+
+.venv/
+
+
+__pycache__/
+*.pyc
+
+
+*.gz
+*.png
+*.log
+
+
+*.coverage
+.coverage
+htmlcov/
+
+
+.vscode/
+.idea/
+
+# Python packaging artifacts
+*.egg-info/
+*.egg-info
+build/
+dist/
+*.egg

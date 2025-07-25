@@ -1,0 +1,35 @@
+[project]
+name = "pandas-mcp"
+version = "1.0.0"
+description = "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+keywords = ["pandas", "data-analysis", "statistical-analysis", "data-science", "data-manipulation", "time-series", "data-cleaning", "data-transformation", "mcp", "llm-integration"]
+
+dependencies = [
+  "fastmcp",
+  "python-dotenv>=1.0.0",
+  "pandas>=2.2.0",
+  "numpy<2",
+  "scipy>=1.11.0",
+  "pyarrow>=15.0.0",
+  "openpyxl>=3.1.0",
+  "xlrd>=2.0.0",
+  "tables>=3.9.0",
+  "psutil>=5.9.0",
+  "pytest>=7.2.0"
+]
+
+
+[project.scripts]
+pandas-mcp = "server:main"
+
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

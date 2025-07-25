@@ -1,0 +1,12 @@
+# Pre-configured for Claude and the Jarvis MCP server.
+LLM:
+  Provider: Claude
+  # TODO: Replace with your Anthropic API key.
+  # For one-time use, you can instead run:
+  # export ANTHROPIC_API_KEY="your-key-here"
+  # And change the line below to: api_key: $ANTHROPIC_API_KEY
+  api_key: 
+  model_name: claude-3-5-sonnet-20240620
+
+MCP:
+  - Jarvis

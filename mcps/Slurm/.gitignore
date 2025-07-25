@@ -1,0 +1,71 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments (uv creates .venv/)
+.venv/
+venv/
+env/
+ENV/
+
+# uv lock and PDM / Poetry caches (if used)
+*.lock
+.pdm.toml
+poetry.lock
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# VS Code settings
+.history/
+
+# Pytest
+.pytest_cache/
+.cache/
+
+# mypy
+.mypy_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.nox/
+
+# Logs and debug
+*.log
+*.out
+*.err
+
+# Slurm output files (organized in logs/slurm_output/)
+logs/slurm_output/*.out
+logs/slurm_output/*.err
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# macOS
+*.DS_Store
+
+# Windows
+Thumbs.db
+
+# Ignore user-specific files
+.env

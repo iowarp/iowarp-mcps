@@ -1,0 +1,47 @@
+__pycache__/
+*.py[cod]
+*.class
+.env
+venv/
+.venv/
+env/
+.DS_Store
+.idea/
+.vscode/
+Jarvis-MCP/src/jarvis_mcp/.env
+
+# Python build artifacts
+*.egg-info/
+*.dist-info/
+build/
+dist/
+
+# Testing
+.pytest_cache/
+.coverage*
+htmlcov/
+coverage.xml
+.tox/
+
+# Editor files
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# OS files
+Thumbs.db
+
+# Application logs and temporary files
+*.log
+*.log.*
+tmp/
+temp/
+
+# Profiling output
+profiling.json
+*.profile
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/

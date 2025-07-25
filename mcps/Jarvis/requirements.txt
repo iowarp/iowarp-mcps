@@ -1,0 +1,9 @@
+-e .
+git+https://github.com/grc-iit/jarvis-util.git@main#egg=jarvis-util
+git+https://github.com/grc-iit/jarvis-cd.git@main#egg=jarvis-cd
+
+fastmcp>=2.3.3
+fastapi>=0.115.12
+python-dotenv>=1.0.0
+google-genai>=1.0.0
+pandas

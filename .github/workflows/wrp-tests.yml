@@ -1,0 +1,64 @@
+name: WRP Framework Tests
+
+# This workflow tests the WRP (Universal Scientific MCP Client) framework with agent integration
+# 
+# Setup Requirements:
+# 1. Create a GitHub environment named "ai-testing"
+# 2. Add ANTHROPIC_API_KEY and/or GEMINI_API_KEY as secrets in that environment
+# 3. Tests will run if at least one API key is available, otherwise skip
+#
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  wrp-tests:
+    runs-on: ubuntu-latest
+    environment: ai-testing  # This environment should have ANTHROPIC_API_KEY secret
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Check if API keys are available
+      id: check-api-keys
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
+          echo "api_keys_available=false" >> $GITHUB_OUTPUT
+          echo "Neither ANTHROPIC_API_KEY nor GEMINI_API_KEY available in ai-testing environment"
+        else
+          echo "api_keys_available=true" >> $GITHUB_OUTPUT
+          echo "At least one API key is available:"
+          [ -n "$ANTHROPIC_API_KEY" ] && echo "  - ANTHROPIC_API_KEY: available"
+          [ -n "$GEMINI_API_KEY" ] && echo "  - GEMINI_API_KEY: available"
+        fi
+    
+    - name: Install dependencies
+      if: steps.check-api-keys.outputs.api_keys_available == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio jsonschema pyyaml
+        
+        # Install MCP dependencies
+        pip install mcp fastapi uvicorn requests feedparser
+    
+    - name: Run WRP Framework Tests
+      if: steps.check-api-keys.outputs.api_keys_available == 'true'
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        echo "Running WRP framework tests..."
+        python -m pytest test_wrp_framework.py -v --tb=short

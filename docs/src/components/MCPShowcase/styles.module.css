@@ -1,0 +1,331 @@
+/* Main showcase container */
+.showcase {
+  padding: 2rem 0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.showcaseHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.showcaseTitle {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.showcaseSubtitle {
+  font-size: 1.2rem;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Search bar */
+.searchContainer {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.searchBox {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  opacity: 0.6;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 1rem 1rem 1rem 3rem;
+  border: 2px solid var(--ifm-color-emphasis-200);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  transition: all 0.2s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 3px var(--ifm-color-primary-lightest);
+}
+
+/* Category filter */
+.categoryFilter {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.categoryButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--ifm-color-emphasis-200);
+  border-radius: 25px;
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.categoryButton:hover {
+  border-color: var(--category-color);
+  background: var(--category-color);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.categoryButton.active {
+  border-color: var(--category-color);
+  background: var(--category-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.categoryIcon {
+  font-size: 1.1rem;
+}
+
+.categoryName {
+  font-size: 0.9rem;
+}
+
+.categoryCount {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.categoryButton:not(.active) .categoryCount {
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-font-color-base);
+}
+
+/* Sections */
+.featuredSection,
+.allMcpsSection {
+  margin-bottom: 3rem;
+}
+
+.sectionTitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--ifm-font-color-base);
+}
+
+/* MCP Grid */
+.mcpGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 0 1rem;
+}
+
+/* Enhanced responsive grid for large screens */
+@media (min-width: 1200px) {
+  .mcpGrid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 0 2rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .mcpGrid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+    padding: 0 2rem;
+  }
+}
+
+/* MCP Cards */
+.mcpCard {
+  display: block;
+  padding: 1.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 12px;
+  background: var(--ifm-background-color);
+  text-decoration: none;
+  color: var(--ifm-font-color-base);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mcpCard:hover {
+  text-decoration: none;
+  color: var(--ifm-font-color-base);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: var(--ifm-color-primary);
+}
+
+.mcpCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ifm-color-primary), var(--ifm-color-secondary));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mcpCard:hover::before {
+  opacity: 1;
+}
+
+.mcpCardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.mcpIcon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.mcpCardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.mcpName {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  color: var(--ifm-font-color-base);
+}
+
+.mcpCategory {
+  font-size: 0.85rem;
+  color: white;
+  background: var(--ifm-color-primary);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.platformIcons {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.platformIcon {
+  font-size: 1rem;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.mcpCard:hover .platformIcon {
+  opacity: 1;
+}
+
+.mcpDescription {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 1rem;
+}
+
+.mcpStats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.mcpVersion {
+  background: var(--ifm-color-emphasis-100);
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.mcpActions {
+  font-weight: 500;
+}
+
+/* No results */
+.noResults {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.clearFilters {
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--ifm-color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.clearFilters:hover {
+  background: var(--ifm-color-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .showcase {
+    padding: 1rem 0;
+  }
+  
+  .showcaseTitle {
+    font-size: 2rem;
+  }
+  
+  .mcpGrid {
+    grid-template-columns: 1fr;
+    padding: 0 0.5rem;
+  }
+  
+  .categoryFilter {
+    padding: 0 1rem;
+  }
+  
+  .categoryButton {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .searchBox {
+    margin: 0 1rem;
+  }
+}

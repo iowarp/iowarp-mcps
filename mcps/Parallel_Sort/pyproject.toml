@@ -1,0 +1,31 @@
+[project]
+name = "parallel-sort-mcp"
+version = "1.0.0"
+description = "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+keywords = ["parallel-sorting", "log-processing", "log-analysis", "high-performance", "timestamp-sorting", "pattern-detection", "log-filtering", "data-export"]
+
+dependencies = [
+  "fastmcp",
+  "python-dotenv>=1.0.0",
+  "pandas>=1.5.0",
+  "aiofiles>=23.0.0"
+]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=0.23.0"
+]
+
+[project.scripts]
+parallel-sort-mcp = "server:main"
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

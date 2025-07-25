@@ -1,0 +1,12 @@
+# Pre-configured for OpenAI and the Jarvis MCP server.
+LLM:
+  Provider: OpenAI
+  # TODO: Replace with your OpenAI API key.
+  # For one-time use, you can instead run:
+  # export OPENAI_API_KEY="your-key-here"
+  # And change the line below to: api_key: $OPENAI_API_KEY
+  api_key: 
+  model_name: gpt-4o-mini
+
+MCP:
+  - Jarvis 

@@ -1,0 +1,28 @@
+# -----------------
+# LLM Configuration
+# -----------------
+LLM:
+  # Provider can be: Gemini, Ollama, OpenAI, Claude
+  Provider: Gemini
+  # The API key for the selected provider.
+  # For long-term use, it's recommended to set it here.
+  # For one-time use, you can set it as an environment variable (e.g., GEMINI_API_KEY)
+  # and set the value below to '$GEMINI_API_KEY'.
+  api_key: # TODO: Add your API key here or use environment variable
+  # (Optional) Specify a model name. Defaults will be used if omitted.
+  model_name: gemini-1.5-flash
+
+# -----------------
+# MCP Configuration
+# -----------------
+MCP:
+  # List of MCP servers to connect to. The script will connect to them sequentially.
+  # The names must correspond to the directory names in the repository root.
+  - Jarvis
+  # - HDF5
+  # - Slurm
+  # - Adios
+
+# Example for a server with specific configuration (not yet implemented in the client)
+#  - FileSystem:
+#      Allowed: $CWD/Adios/data 

@@ -1,0 +1,4 @@
+2024-03-15 10:30:45 INFO Server started successfully
+2024-03-15 09:15:22 WARNING High CPU usage detected
+2024-03-15 11:00:45 INFO Scheduled maintenance started
+2024-03-15 09:30:55 WARNING Network latency increased

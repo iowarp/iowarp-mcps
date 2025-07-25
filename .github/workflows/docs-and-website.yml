@@ -1,0 +1,125 @@
+name: Update Documentation and Deploy Website
+
+on:
+  push:
+    branches: [main, workflow/docusaurus-for-webpage]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: write
+  pull-requests: write
+  pages: write
+  id-token: write
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ github.head_ref || github.ref }}
+        fetch-depth: 0
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Install Python dependencies
+      run: |
+        if [ -f pyproject.toml ]; then
+          uv sync
+        fi
+
+    # Step 1: Update README files (for PRs to dev branch)
+    - name: Update MCP README files
+      if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+      run: python3 scripts/readme_filler.py mcps
+
+    - name: Commit README updates
+      if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        if [[ -n $(git status --porcelain) ]]; then
+          git add mcps/*/README.md
+          git commit -m "Auto-update MCP README files"
+          git push
+        else
+          echo "No README changes to commit"
+        fi
+
+    # Step 2: Generate Docusaurus documentation
+    - name: Generate Docusaurus documentation
+      run: |
+        python3 scripts/generate_docs.py mcps docs
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: './docs/package-lock.json'
+
+    - name: Install Node.js dependencies
+      working-directory: ./docs
+      run: npm ci
+
+    - name: Build Docusaurus website
+      working-directory: ./docs
+      run: npm run build
+
+    # Step 3: Deploy to GitHub Pages (only on main branch push)
+    - name: Setup Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: './docs/build'
+
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+    # Step 4: Commit generated documentation (for workflow branch)
+    - name: Commit generated documentation
+      if: github.ref == 'refs/heads/workflow/docusaurus-for-webpage' && github.event_name == 'push'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        if [[ -n $(git status --porcelain) ]]; then
+          git add docs/docs/mcps/ docs/src/data/mcpData.js
+          git commit -m "Auto-update MCP documentation files"
+          git push
+        else
+          echo "No documentation changes to commit"
+        fi
+
+    # Step 5: Summary
+    - name: Job Summary
+      run: |
+        echo "## Documentation Update Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Generated Docusaurus documentation" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Built website successfully" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" = "push" ]; then
+          echo "- 🚀 Deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" = "dev" ]; then
+          echo "- 📝 Updated README files" >> $GITHUB_STEP_SUMMARY
+        fi

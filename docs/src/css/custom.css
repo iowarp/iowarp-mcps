@@ -1,0 +1,38 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #149dcc;
+  --ifm-color-primary-dark: #1289b5;
+  --ifm-color-primary-darker: #1181ab;
+  --ifm-color-primary-darkest: #0e6b8d;
+  --ifm-color-primary-light: #16b1e3;
+  --ifm-color-primary-lighter: #17b9ed;
+  --ifm-color-primary-lightest: #29c5f0;
+  --ifm-background-color: #f8f9fa;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #242526;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #149dcc;
+  --ifm-color-primary-dark: #1289b5;
+  --ifm-color-primary-darker: #1181ab;
+  --ifm-color-primary-darkest: #0e6b8d;
+  --ifm-color-primary-light: #16b1e3;
+  --ifm-color-primary-lighter: #17b9ed;
+  --ifm-color-primary-lightest: #29c5f0;
+  --ifm-background-color: #242526;
+  --ifm-background-surface-color: #242526;
+  --ifm-navbar-background-color: #242526;
+  --ifm-footer-background-color: #242526;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}

@@ -1,0 +1,29 @@
+[project]
+name = "parquet-mcp"
+version = "1.0.0"
+description = "MCP server with Parquet file operations and data analytics"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+
+keywords = ["Parquet", "columnar", "data", "analytics", "pandas"]
+
+dependencies = [
+  "fastapi>=0.95,<1.0",
+  "uvicorn[standard]>=0.20",
+  "pandas>=1.0",
+  "pyarrow>=19.0.1",
+  "fastmcp"
+]
+
+[project.scripts]
+parquet-mcp = "server:main"
+
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

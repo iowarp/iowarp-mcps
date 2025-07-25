@@ -1,0 +1,10 @@
+# Pre-configured for a local Ollama instance and the Jarvis MCP server.
+# Ensure the Ollama service is running before using this configuration.
+LLM:
+  Provider: Ollama
+  # (Optional) If your Ollama instance is not at the default location, uncomment and change this.
+  # host: http://localhost:11434
+  model_name: llama3 # Or llama2, or any other model you have pulled.
+
+MCP:
+  - Jarvis 

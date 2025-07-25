@@ -1,0 +1,7 @@
+LLM:
+  Provider: Gemini
+  # Uses environment variable ANTHROPIC_API_KEY 
+  model_name: gemini-1.5-flash
+
+MCP:
+  - Slurm

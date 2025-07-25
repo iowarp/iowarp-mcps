@@ -1,0 +1,12 @@
+# Pre-configured for Gemini and the Jarvis MCP server.
+LLM:
+  Provider: Gemini
+  # TODO: Replace with your Google Gemini API key.
+  # For one-time use, you can instead run:
+  # export GEMINI_API_KEY="your-key-here"
+  # And change the line below to: api_key: $GEMINI_API_KEY
+  api_key: your-key-here
+  model_name: gemini-1.5-flash
+
+MCP:
+  - Adios

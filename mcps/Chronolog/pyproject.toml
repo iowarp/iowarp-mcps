@@ -1,0 +1,40 @@
+[project]
+name = "chronolog-mcp"
+version = "1.0.0"
+description = "ChronoLog MCP server implementation using Model Context Protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+keywords = [ "distributed logging",
+    "chronolog",
+    "event logging",
+    "session management",
+    "context sharing",
+    "real-time",
+    "model context protocol",
+    "scientific data",
+    "conversational ai",
+    "high-performance",
+    "shared log",
+    "multi-client",
+    "historical retrieval",
+    "enterprise logging"
+    ]
+
+dependencies = [
+    "fastmcp",
+    "python-dotenv",
+    "google-genai",
+    "h5py"
+]
+
+[project.scripts]
+chronolog-mcp = "chronomcp.server:main"
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

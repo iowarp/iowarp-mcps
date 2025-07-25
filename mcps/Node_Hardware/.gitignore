@@ -1,0 +1,257 @@
+# =============================================================================
+# Node Hardware MCP Server - Git Ignore Configuration
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python Specific
+# -----------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# -----------------------------------------------------------------------------
+# Virtual Environments & Package Managers
+# -----------------------------------------------------------------------------
+# Virtual environments (uv creates .venv/)
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# UV specific files
+uv.lock
+.python-version
+
+# Other package managers
+.pdm.toml
+poetry.lock
+Pipfile.lock
+requirements-dev.txt
+
+# -----------------------------------------------------------------------------
+# Development Tools & IDEs
+# -----------------------------------------------------------------------------
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# VS Code settings
+.history/
+
+# Vim
+.vim/
+
+# Emacs
+.emacs.d/
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# -----------------------------------------------------------------------------
+# Testing & Code Quality
+# -----------------------------------------------------------------------------
+# Pytest
+.pytest_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# -----------------------------------------------------------------------------
+# Documentation
+# -----------------------------------------------------------------------------
+# Sphinx documentation
+docs/_build/
+.doctrees/
+site/
+
+# -----------------------------------------------------------------------------
+# Logging & Output Files
+# -----------------------------------------------------------------------------
+# Logs and debug files
+*.log
+*.out
+*.err
+*.trace
+debug.log
+error.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# -----------------------------------------------------------------------------
+# MCP Server Specific
+# -----------------------------------------------------------------------------
+# Server runtime files
+.server_state
+server.log
+mcp_server.log
+hardware_cache/
+node_info_cache/
+
+# Configuration files with sensitive data
+config.local.*
+.env.local
+.env.production
+.env.development
+secrets.json
+auth_keys/
+
+# SSH related files (for remote node access)
+ssh_keys/
+known_hosts.local
+*.pem
+*.key
+
+# -----------------------------------------------------------------------------
+# System & OS Specific
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# -----------------------------------------------------------------------------
+# Data & Temporary Files
+# -----------------------------------------------------------------------------
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.swp
+*.tmp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+
+# -----------------------------------------------------------------------------
+# Environment & Configuration
+# -----------------------------------------------------------------------------
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Local configuration overrides
+config.local.yaml
+config.local.json
+local_settings.py
+
+# -----------------------------------------------------------------------------
+# Node Hardware MCP Specific Ignores
+# -----------------------------------------------------------------------------
+# Hardware monitoring cache files
+hardware_data_cache/
+system_info_cache/
+performance_logs/
+monitoring_data/
+
+# Remote node connection logs
+remote_connections.log
+ssh_session_logs/
+
+# Hardware test outputs
+hardware_test_results/
+benchmark_outputs/
+system_diagnostics/
+
+# Temporary monitoring files
+temp_monitoring/
+.monitoring_tmp/

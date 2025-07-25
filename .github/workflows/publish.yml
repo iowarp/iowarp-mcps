@@ -1,0 +1,98 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - main  # Only trigger on push to main branch
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write  # Required for version bumping commits
+  id-token: write  # Required for PyPI trusted publishing
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/iowarp-mcps
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for version bumping
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    
+    - name: Auto-bump version
+      id: version_bump
+      run: |
+        # Get the latest commit message
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        echo "Commit message: $COMMIT_MSG"
+        
+        # Get current version
+        CURRENT_VERSION=$(grep -E '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+        echo "Current version: $CURRENT_VERSION"
+        
+        # Parse version components
+        IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+        
+        # Determine bump type based on commit message
+        if echo "$COMMIT_MSG" | grep -qE '\[major\]|BREAKING CHANGE:'; then
+          # Major bump
+          major=$((major + 1))
+          minor=0
+          patch=0
+          echo "bump_type=major" >> $GITHUB_OUTPUT
+        elif echo "$COMMIT_MSG" | grep -qE '^feat:|^\[minor\]'; then
+          # Minor bump
+          minor=$((minor + 1))
+          patch=0
+          echo "bump_type=minor" >> $GITHUB_OUTPUT
+        else
+          # Patch bump (default)
+          patch=$((patch + 1))
+          echo "bump_type=patch" >> $GITHUB_OUTPUT
+        fi
+        
+        # Create new version
+        NEW_VERSION="${major}.${minor}.${patch}"
+        echo "New version: $NEW_VERSION"
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "old_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        
+        # Update pyproject.toml
+        sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+        
+        # Check if version actually changed
+        if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+          echo "version_changed=true" >> $GITHUB_OUTPUT
+          
+          # Commit the version bump
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add pyproject.toml
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+          git push
+        else
+          echo "version_changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Build package
+      run: uv build
+    
+    - name: Publish to PyPI
+      if: steps.version_bump.outputs.version_changed == 'true'
+      uses: pypa/gh-action-pypi-publish@release/v1
+    
+    - name: Skip publish - no version change
+      if: steps.version_bump.outputs.version_changed == 'false'
+      run: echo "Version unchanged, skipping PyPI publish"

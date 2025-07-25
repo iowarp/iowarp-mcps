@@ -1,0 +1,29 @@
+[project]
+name = "arxiv-mcp"
+version = "1.0.0"
+description = "ArXiv MCP server implementation using Model Context Protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+keywords = ["data processing", "arxiv", "publications", "scientific data", "research", "papers"]
+
+dependencies = [
+    "fastmcp",
+    "httpx>=0.24.0",
+]
+
+[dependency-groups]
+dev = [
+     "pytest-asyncio>=1.0.0"
+]
+
+[project.scripts]
+arxiv-mcp = "server:main"
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,31 @@
+[project]
+name = "hdf5-mcp"
+version = "1.0.0"
+description = "HDF5 MCP - Scientific Data Access for LLMs with comprehensive HDF5 file operations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "IoWarp Scientific MCPs", email = "contact@iowarp.org" }
+]
+
+dependencies = [
+  "fastmcp",
+  "python-dotenv>=1.0.0",
+  "h5py>=3.0.0"
+]
+
+keywords = ["hdf5", "scientific-data", "hierarchical-data", "data-analysis", "scientific-computing", "mcp", "llm-integration", "data-structures"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.4.0",
+    "pytest-asyncio>=0.21.0"
+]
+
+[project.scripts]
+hdf5-mcp = "server:main"
+
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
