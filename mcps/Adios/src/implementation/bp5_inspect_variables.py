@@ -1,8 +1,10 @@
 from adios2 import FileReader
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
-def inspect_variables(filename: str, variable_name: Optional[str] = None) -> dict:
+def inspect_variables(
+    filename: str, variable_name: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Discover variables in a BP5 file.
 
@@ -31,4 +33,4 @@ def inspect_variables(filename: str, variable_name: Optional[str] = None) -> dic
         if variable_name in all_vars:
             return {variable_name: all_vars[variable_name]}
         else:
-            return f"Variable '{variable_name}' not found in file."
+            return {"error": f"Variable '{variable_name}' not found in file."}

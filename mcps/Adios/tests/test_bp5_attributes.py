@@ -61,7 +61,7 @@ class TestInspectAttributes:
 
         result = inspect_attributes("test.bp")
 
-        assert result == {"Invalid Variable name or no attributes found"}
+        assert result == {"error": "Invalid Variable name or no attributes found"}
 
     @patch("src.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_empty_dict(self, mock_file_reader):
@@ -71,7 +71,7 @@ class TestInspectAttributes:
 
         result = inspect_attributes("test.bp")
 
-        assert result == {"Invalid Variable name or no attributes found"}
+        assert result == {"error": "Invalid Variable name or no attributes found"}
 
     @patch("src.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_scalar_conversion(self, mock_file_reader):

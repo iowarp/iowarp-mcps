@@ -76,7 +76,7 @@ class TestInspectVariables:
 
         result = inspect_variables("test.bp", "nonexistent_var")
 
-        assert "Variable 'nonexistent_var' not found in file." in result
+        assert result["error"] == "Variable 'nonexistent_var' not found in file."
 
     @patch("src.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_empty_file(self, mock_file_reader):
@@ -162,4 +162,4 @@ class TestInspectVariables:
 
         result = inspect_variables("test.bp", "temperature")
 
-        assert "Variable 'temperature' not found in file." in result
+        assert result["error"] == "Variable 'temperature' not found in file."
