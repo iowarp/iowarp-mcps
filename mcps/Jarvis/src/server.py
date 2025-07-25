@@ -2,6 +2,7 @@ from fastmcp import FastMCP
 import os
 import sys
 from dotenv import load_dotenv
+from typing import Optional
 from capabilities.jarvis_handler import (
     create_pipeline,
     load_pipeline,
@@ -83,7 +84,7 @@ async def create_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="load_pipeline", description="Load an existing Jarvis-CD pipeline environment."
 )
-async def load_pipeline_tool(pipeline_id: str = None) -> dict:
+async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
     """
     Load an existing pipeline environment by ID, or the current one if not specified.
 
@@ -118,9 +119,9 @@ async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
 async def append_pkg_tool(
     pipeline_id: str,
     pkg_type: str,
-    pkg_id: str = None,
+    pkg_id: Optional[str] = None,
     do_configure: bool = True,
-    extra_args: dict = None,
+    extra_args: Optional[dict] = None,
 ) -> dict:
     """
     Add a package to a pipeline for execution or analysis.
@@ -148,7 +149,7 @@ async def append_pkg_tool(
     name="configure_pkg", description="Configure a package in a Jarvis-CD pipeline."
 )
 async def configure_pkg_tool(
-    pipeline_id: str, pkg_id: str, extra_args: dict = None
+    pipeline_id: str, pkg_id: str, extra_args: Optional[dict] = None
 ) -> dict:
     """
     Configure a package in a pipeline with new settings.
@@ -234,7 +235,7 @@ async def destroy_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="jm_create_config", description="Initialize JarvisManager config directories."
 )
-def jm_create_config(config_dir: str, private_dir: str, shared_dir: str = None) -> list:
+def jm_create_config(config_dir: str, private_dir: str, shared_dir: Optional[str] = None) -> list:
     """Initialize manager directories and persist configuration."""
     try:
         manager.create(config_dir, private_dir, shared_dir)

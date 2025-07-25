@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from jarvis_cd.basic.pkg import Pipeline
+from typing import Optional
 
 
 async def create_pipeline(pipeline_id: str) -> dict:
@@ -10,7 +11,7 @@ async def create_pipeline(pipeline_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Create failed: {e}")
 
 
-async def load_pipeline(pipeline_id: str = None) -> dict:
+async def load_pipeline(pipeline_id: Optional[str] = None) -> dict:
     try:
         Pipeline().load(pipeline_id)
         return {"pipeline_id": pipeline_id, "status": "loaded"}
@@ -21,7 +22,7 @@ async def load_pipeline(pipeline_id: str = None) -> dict:
 async def append_pkg(
     pipeline_id: str,
     pkg_type: str,
-    pkg_id: str = None,
+    pkg_id: Optional[str] = None,
     do_configure: bool = True,
     **kwargs,
 ) -> dict:
