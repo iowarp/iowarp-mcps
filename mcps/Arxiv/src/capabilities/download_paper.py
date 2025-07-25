@@ -4,7 +4,7 @@ ArXiv PDF download and management capabilities.
 
 import os
 import httpx
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 import asyncio
 from pathlib import Path
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 async def download_paper_pdf(
-    arxiv_id: str, download_path: str = None
+    arxiv_id: str, download_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Download the PDF of a paper from ArXiv.
@@ -143,7 +143,7 @@ async def get_pdf_url(arxiv_id: str) -> Dict[str, Any]:
 
 
 async def download_multiple_pdfs(
-    arxiv_ids: list, download_path: str = None, max_concurrent: int = 3
+    arxiv_ids: list, download_path: Optional[str] = None, max_concurrent: int = 3
 ) -> Dict[str, Any]:
     """
     Download multiple PDFs concurrently with rate limiting.

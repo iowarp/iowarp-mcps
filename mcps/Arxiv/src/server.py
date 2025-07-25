@@ -10,6 +10,7 @@ import json
 from fastmcp import FastMCP
 from dotenv import load_dotenv
 import logging
+from typing import Optional
 import mcp_handlers
 
 # Configure logging
@@ -25,7 +26,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 load_dotenv()
 
 # Initialize MCP server
-mcp = FastMCP("ArxivMCP")
+mcp: FastMCP = FastMCP("ArxivMCP")
 
 
 @mcp.tool(
@@ -226,7 +227,9 @@ async def find_similar_papers_tool(
 @mcp.tool(
     name="download_paper_pdf", description="Download the PDF of a paper from ArXiv."
 )
-async def download_paper_pdf_tool(arxiv_id: str, download_path: str = None) -> dict:
+async def download_paper_pdf_tool(
+    arxiv_id: str, download_path: Optional[str] = None
+) -> dict:
     """
     Download the PDF of a paper from ArXiv with automatic file management and error handling.
 
@@ -264,7 +267,7 @@ async def get_pdf_url_tool(arxiv_id: str) -> dict:
     description="Download multiple PDFs concurrently with rate limiting.",
 )
 async def download_multiple_pdfs_tool(
-    arxiv_ids_json: str, download_path: str = None, max_concurrent: int = 3
+    arxiv_ids_json: str, download_path: str | None = None, max_concurrent: int = 3
 ) -> dict:
     """
     Download multiple PDFs concurrently.

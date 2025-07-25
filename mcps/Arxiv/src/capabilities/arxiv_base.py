@@ -4,13 +4,15 @@ Base utilities for ArXiv search capabilities.
 
 import httpx
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union, cast
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def parse_arxiv_entry(entry: ET.Element) -> Dict[str, Any]:
+def parse_arxiv_entry(
+    entry: ET.Element,
+) -> Dict[str, Union[str, List[str], List[Dict[str, str]]]]:
     """
     Parse a single ArXiv entry from XML response.
 
@@ -22,38 +24,37 @@ def parse_arxiv_entry(entry: ET.Element) -> Dict[str, Any]:
     """
     ns = {"atom": "http://www.w3.org/2005/Atom"}
 
-    paper = {}
+    paper: Dict[str, Union[str, List[str], List[Dict[str, str]]]] = {}
 
     # Extract basic information
-    paper["id"] = (
-        entry.find("atom:id", ns).text if entry.find("atom:id", ns) is not None else ""
-    )
+    id_elem = entry.find("atom:id", ns)
+    paper["id"] = id_elem.text if id_elem is not None and id_elem.text else ""
+    title_elem = entry.find("atom:title", ns)
     paper["title"] = (
-        entry.find("atom:title", ns).text.strip()
-        if entry.find("atom:title", ns) is not None
-        else ""
+        title_elem.text.strip() if title_elem is not None and title_elem.text else ""
     )
+    summary_elem = entry.find("atom:summary", ns)
     paper["summary"] = (
-        entry.find("atom:summary", ns).text.strip()
-        if entry.find("atom:summary", ns) is not None
+        summary_elem.text.strip()
+        if summary_elem is not None and summary_elem.text
         else ""
     )
+    published_elem = entry.find("atom:published", ns)
     paper["published"] = (
-        entry.find("atom:published", ns).text
-        if entry.find("atom:published", ns) is not None
+        published_elem.text
+        if published_elem is not None and published_elem.text
         else ""
     )
+    updated_elem = entry.find("atom:updated", ns)
     paper["updated"] = (
-        entry.find("atom:updated", ns).text
-        if entry.find("atom:updated", ns) is not None
-        else ""
+        updated_elem.text if updated_elem is not None and updated_elem.text else ""
     )
 
     # Extract authors
     authors = []
     for author in entry.findall("atom:author", ns):
         name_elem = author.find("atom:name", ns)
-        if name_elem is not None:
+        if name_elem is not None and name_elem.text:
             authors.append(name_elem.text)
     paper["authors"] = authors
 
@@ -79,7 +80,9 @@ def parse_arxiv_entry(entry: ET.Element) -> Dict[str, Any]:
     return paper
 
 
-async def execute_arxiv_query(params: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def execute_arxiv_query(
+    params: Dict[str, Any],
+) -> List[Dict[str, Union[str, List[str], List[Dict[str, str]]]]]:
     """
     Execute an ArXiv API query and return parsed papers.
 
@@ -125,7 +128,9 @@ async def execute_arxiv_query(params: Dict[str, Any]) -> List[Dict[str, Any]]:
         raise Exception(f"ArXiv query failed: {str(e)}")
 
 
-def generate_bibtex(paper: Dict[str, Any]) -> str:
+def generate_bibtex(
+    paper: Dict[str, Union[str, List[str], List[Dict[str, str]]]],
+) -> str:
     """
     Generate BibTeX citation for a paper.
 
@@ -136,17 +141,33 @@ def generate_bibtex(paper: Dict[str, Any]) -> str:
         BibTeX formatted string
     """
     # Extract ArXiv ID from the paper ID URL
-    arxiv_id = paper.get("id", "").split("/")[-1] if paper.get("id") else "unknown"
+    paper_id = paper.get("id", "")
+    arxiv_id = (
+        paper_id.split("/")[-1] if isinstance(paper_id, str) and paper_id else "unknown"
+    )
 
     # Clean title and remove newlines
-    title = paper.get("title", "").replace("\n", " ").strip()
+    paper_title = paper.get("title", "")
+    title = (
+        paper_title.replace("\n", " ").strip() if isinstance(paper_title, str) else ""
+    )
 
     # Format authors
-    authors = " and ".join(paper.get("authors", []))
+    paper_authors = paper.get("authors", [])
+    if isinstance(paper_authors, list) and all(
+        isinstance(author, str) for author in paper_authors
+    ):
+        authors = " and ".join(cast(List[str], paper_authors))
+    else:
+        authors = ""
 
     # Extract year from published date
-    published = paper.get("published", "")
-    year = published.split("-")[0] if published else "unknown"
+    paper_published = paper.get("published", "")
+    year = (
+        paper_published.split("-")[0]
+        if isinstance(paper_published, str) and paper_published
+        else "unknown"
+    )
 
     # Generate BibTeX entry
     bibtex = f"""@article{{{arxiv_id},
@@ -155,7 +176,7 @@ def generate_bibtex(paper: Dict[str, Any]) -> str:
     year = {{{year}}},
     eprint = {{{arxiv_id}}},
     archivePrefix = {{arXiv}},
-    primaryClass = {{{paper.get("categories", [""])[0] if paper.get("categories") else ""}}},
+    primaryClass = {{{paper.get("categories", [""])[0] if isinstance(paper.get("categories"), list) and paper.get("categories") else ""}}},
     url = {{http://arxiv.org/abs/{arxiv_id}}}
 }}"""
 

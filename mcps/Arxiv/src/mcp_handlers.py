@@ -4,7 +4,7 @@ These handlers wrap the ArXiv capabilities for MCP protocol compliance.
 """
 
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from capabilities.category_search import (
     search_arxiv,
     get_recent_papers,
@@ -285,7 +285,7 @@ async def find_similar_papers_handler(
 
 
 async def download_paper_pdf_handler(
-    arxiv_id: str, download_path: str = None
+    arxiv_id: str, download_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Handler wrapping the PDF download capability for MCP.
@@ -332,7 +332,7 @@ async def get_pdf_url_handler(arxiv_id: str) -> Dict[str, Any]:
 
 
 async def download_multiple_pdfs_handler(
-    arxiv_ids_json: str, download_path: str = None, max_concurrent: int = 3
+    arxiv_ids_json: str, download_path: Optional[str] = None, max_concurrent: int = 3
 ) -> Dict[str, Any]:
     """
     Handler wrapping the multiple PDF download capability for MCP.

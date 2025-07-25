@@ -24,7 +24,7 @@ async def get_paper_details(arxiv_id: str) -> Dict[str, Any]:
     base_url = "https://export.arxiv.org/api/query"
 
     # Construct paper details query
-    params = {"id_list": arxiv_id, "max_results": 1}
+    params = {"id_list": arxiv_id, "max_results": "1"}
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -51,21 +51,21 @@ async def get_paper_details(arxiv_id: str) -> Dict[str, Any]:
             ".//arxiv:doi", {"arxiv": "http://arxiv.org/schemas/atom"}
         )
         if doi_elem is not None:
-            paper["doi"] = doi_elem.text
+            paper["doi"] = doi_elem.text or ""
 
         # Extract journal reference if available
         journal_elem = entry.find(
             ".//arxiv:journal_ref", {"arxiv": "http://arxiv.org/schemas/atom"}
         )
         if journal_elem is not None:
-            paper["journal_ref"] = journal_elem.text
+            paper["journal_ref"] = journal_elem.text or ""
 
         # Extract comments if available
         comment_elem = entry.find(
             ".//arxiv:comment", {"arxiv": "http://arxiv.org/schemas/atom"}
         )
         if comment_elem is not None:
-            paper["comment"] = comment_elem.text
+            paper["comment"] = comment_elem.text or ""
 
         return {
             "success": True,
