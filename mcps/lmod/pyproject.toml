@@ -18,6 +18,7 @@ keywords = ["lmod", "environment-modules", "module-management", "hpc", "scientif
 
 [tool.uv]
 dev-dependencies = [
+    "pip-audit>=2.9.0",
     "pytest>=8.4.0",
     "pytest-asyncio>=0.21.0"
 ]
