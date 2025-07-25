@@ -19,6 +19,7 @@ keywords = ["hdf5", "scientific-data", "hierarchical-data", "data-analysis", "sc
 
 [tool.uv]
 dev-dependencies = [
+    "pip-audit>=2.9.0",
     "pytest>=8.4.0",
     "pytest-asyncio>=0.21.0"
 ]
