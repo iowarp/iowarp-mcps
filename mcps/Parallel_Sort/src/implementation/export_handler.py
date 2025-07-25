@@ -7,7 +7,7 @@ import json
 import csv
 import io
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, cast
 
 
 async def export_to_json(
@@ -211,7 +211,7 @@ async def export_summary_report(data: Dict[str, Any]) -> Dict[str, Any]:
         invalid_lines = data.get("invalid_lines", 0)
 
         # Analyze log levels
-        level_counts = {}
+        level_counts: Dict[str, int] = {}
         timestamps = []
 
         for line in lines:
@@ -267,11 +267,13 @@ async def export_summary_report(data: Dict[str, Any]) -> Dict[str, Any]:
         report_text.append("")
 
         report_text.append("PROCESSING STATISTICS:")
-        stats = report["processing_statistics"]
-        report_text.append(f"  Total lines processed: {stats['total_lines_processed']}")
-        report_text.append(f"  Valid entries: {stats['valid_entries']}")
-        report_text.append(f"  Invalid entries: {stats['invalid_entries']}")
-        report_text.append(f"  Success rate: {stats['success_rate']}%")
+        processing_stats = cast(Dict[str, Any], report["processing_statistics"])
+        report_text.append(
+            f"  Total lines processed: {processing_stats['total_lines_processed']}"
+        )
+        report_text.append(f"  Valid entries: {processing_stats['valid_entries']}")
+        report_text.append(f"  Invalid entries: {processing_stats['invalid_entries']}")
+        report_text.append(f"  Success rate: {processing_stats['success_rate']}%")
         report_text.append("")
 
         if level_counts:

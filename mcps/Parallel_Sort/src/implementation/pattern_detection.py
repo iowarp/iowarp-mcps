@@ -6,12 +6,12 @@ Detects anomalies, repeated patterns, error clusters, and trending issues.
 import re
 from datetime import datetime
 from collections import defaultdict, Counter
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, cast
 import statistics
 
 
 async def detect_patterns(
-    file_path: str, detection_config: Dict[str, Any] = None
+    file_path: str, detection_config: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Detect various patterns in log files including anomalies, trends, and clusters.
@@ -174,7 +174,7 @@ def detect_anomalies(parsed_entries: List[Dict], config: Dict) -> Dict[str, Any]
         return {"anomalies": [], "total_anomalies": 0}
 
     # Group entries by hour
-    hourly_counts = defaultdict(int)
+    hourly_counts: Dict[str, int] = defaultdict(int)
     for entry in parsed_entries:
         hour_key = entry["timestamp"].strftime("%Y-%m-%d %H")
         hourly_counts[hour_key] += 1
@@ -239,7 +239,7 @@ def detect_repeated_patterns(
     min_frequency = config["pattern_min_frequency"]
 
     # Extract message patterns (simplified)
-    message_counts = Counter()
+    message_counts: Counter[str] = Counter()
     normalized_messages = {}
 
     for entry in parsed_entries:
@@ -312,7 +312,7 @@ def detect_trending_issues(parsed_entries: List[Dict], config: Dict) -> Dict[str
     config["trending_window"]
 
     # Group entries by time windows
-    time_windows = defaultdict(lambda: defaultdict(int))
+    time_windows: Dict[datetime, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     for entry in parsed_entries:
         # Create time window key (rounded to hour)
@@ -356,7 +356,7 @@ def detect_trending_issues(parsed_entries: List[Dict], config: Dict) -> Dict[str
                 )
 
     # Sort by trend factor
-    trending_issues.sort(key=lambda x: x["trend_factor"], reverse=True)
+    trending_issues.sort(key=lambda x: cast(float, x["trend_factor"]), reverse=True)
 
     return {
         "trending_issues": trending_issues[:10],  # Top 10 trending issues
@@ -370,9 +370,9 @@ def detect_temporal_patterns(
     """
     Detect patterns based on time of day, day of week, etc.
     """
-    hour_counts = defaultdict(int)
-    day_counts = defaultdict(int)
-    level_by_hour = defaultdict(lambda: defaultdict(int))
+    hour_counts: Dict[int, int] = defaultdict(int)
+    day_counts: Dict[str, int] = defaultdict(int)
+    level_by_hour: Dict[int, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     for entry in parsed_entries:
         hour = entry["timestamp"].hour
@@ -493,7 +493,7 @@ def detect_message_patterns(parsed_entries: List[Dict], config: Dict) -> Dict[st
 
 def generate_pattern_summary(patterns: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a summary of all detected patterns."""
-    summary = {
+    summary: Dict[str, Any] = {
         "high_priority_findings": [],
         "medium_priority_findings": [],
         "low_priority_findings": [],

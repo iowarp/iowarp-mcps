@@ -152,8 +152,8 @@ def generate_temporal_analysis(parsed_entries: List[Dict]) -> Dict[str, Any]:
     duration = latest - earliest
 
     # Entries per hour analysis
-    hourly_counts = defaultdict(int)
-    daily_counts = defaultdict(int)
+    hourly_counts: Dict[str, int] = defaultdict(int)
+    daily_counts: Dict[str, int] = defaultdict(int)
 
     for ts in timestamps:
         hour_key = ts.strftime("%Y-%m-%d %H:00")
@@ -214,7 +214,7 @@ def generate_log_level_analysis(parsed_entries: List[Dict]) -> Dict[str, Any]:
         "TRACE": "low",
     }
 
-    severity_counts = defaultdict(int)
+    severity_counts: Dict[str, int] = defaultdict(int)
     for level, count in level_counts.items():
         severity = severity_mapping.get(level, "unknown")
         severity_counts[severity] += count

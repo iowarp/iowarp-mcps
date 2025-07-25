@@ -518,7 +518,7 @@ def parse_time_string(time_str: str) -> datetime:
 
 
 # Predefined filter presets
-FILTER_PRESETS = {
+FILTER_PRESETS: Dict[str, Dict[str, Any]] = {
     "errors_only": {
         "description": "Show only ERROR, FATAL, and CRITICAL level entries",
         "conditions": [

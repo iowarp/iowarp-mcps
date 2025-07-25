@@ -10,12 +10,12 @@ import aiofiles
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import cpu_count
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import tempfile
 
 
 async def parallel_sort_large_file(
-    file_path: str, chunk_size_mb: int = 100, max_workers: int = None
+    file_path: str, chunk_size_mb: int = 100, max_workers: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Sort large log files using parallel processing with chunked approach.
@@ -109,7 +109,7 @@ async def split_file_into_chunks(file_path: str, chunk_size_bytes: int) -> List[
             os.close(temp_fd)
 
             bytes_read = 0
-            lines_in_chunk = []
+            lines_in_chunk: List[str] = []
 
             # Read lines until chunk size is reached
             async for line in f:
@@ -330,7 +330,7 @@ async def cleanup_temp_files(temp_files: List[str]) -> None:
 
 
 async def parallel_analyze_large_file(
-    file_path: str, chunk_size_mb: int = 50, max_workers: int = None
+    file_path: str, chunk_size_mb: int = 50, max_workers: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Analyze large log files using parallel processing.
@@ -508,7 +508,7 @@ def merge_analysis_results(chunk_analyses: List[Dict[str, Any]]) -> Dict[str, An
         total_lines = 0
         total_valid = 0
         total_invalid = 0
-        merged_level_counts = {}
+        merged_level_counts: Dict[str, int] = {}
         all_timestamps = []
 
         for analysis in chunk_analyses:

@@ -7,6 +7,7 @@ Provides log file sorting capabilities by timestamp.
 import os
 import sys
 import json
+from typing import Optional
 from fastmcp import FastMCP
 from dotenv import load_dotenv
 import logging
@@ -25,7 +26,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 load_dotenv()
 
 # Initialize MCP server
-mcp = FastMCP("ParallelSortMCP")
+mcp: FastMCP = FastMCP("ParallelSortMCP")
 
 
 @mcp.tool(
@@ -33,7 +34,7 @@ mcp = FastMCP("ParallelSortMCP")
     description="Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format. Handles edge cases like empty files and invalid timestamps.",
 )
 async def sort_log_tool(
-    log_file: str, output_file: str = None, reverse: bool = False
+    log_file: str, output_file: Optional[str] = None, reverse: bool = False
 ) -> dict:
     """
     Sort log files by timestamp in chronological order with support for standard log formats.
@@ -55,7 +56,10 @@ async def sort_log_tool(
     description="Sort large log files using parallel processing with chunked approach for improved performance.",
 )
 async def parallel_sort_tool(
-    log_file: str, output_file: str, chunk_size_mb: int = 100, num_workers: int = None
+    log_file: str,
+    output_file: str,
+    chunk_size_mb: int = 100,
+    num_workers: Optional[int] = None,
 ) -> dict:
     """
     Sort large log files using parallel processing with chunked approach for memory efficiency.
@@ -99,7 +103,9 @@ async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) 
     description="Detect patterns in log files including anomalies, error clusters, trending issues, and repeated patterns.",
 )
 async def detect_patterns_tool(
-    log_file: str, pattern_types: list = None, sensitivity: str = None
+    log_file: str,
+    pattern_types: Optional[list] = None,
+    sensitivity: Optional[str] = None,
 ) -> dict:
     """
     Detect patterns, anomalies, and trends in log files for proactive issue identification.
@@ -123,7 +129,10 @@ async def detect_patterns_tool(
     description="Filter log entries based on multiple conditions with support for complex logical operations.",
 )
 async def filter_logs_tool(
-    log_file: str, filters: list, logical_operator: str = None, output_file: str = None
+    log_file: str,
+    filters: list,
+    logical_operator: Optional[str] = None,
+    output_file: Optional[str] = None,
 ) -> dict:
     """
     Apply multiple filter conditions to log files with complex logical operations.
@@ -148,7 +157,7 @@ async def filter_logs_tool(
     description="Filter log entries by time range using start and end timestamps.",
 )
 async def filter_time_range_tool(
-    log_file: str, start_time: str, end_time: str, output_file: str = None
+    log_file: str, start_time: str, end_time: str, output_file: Optional[str] = None
 ) -> dict:
     """
     Filter log entries within a specific time range.
@@ -173,7 +182,7 @@ async def filter_time_range_tool(
     description="Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).",
 )
 async def filter_level_tool(
-    log_file: str, log_levels: list, output_file: str = None
+    log_file: str, log_levels: list, output_file: Optional[str] = None
 ) -> dict:
     """
     Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).
@@ -198,8 +207,8 @@ async def filter_keyword_tool(
     log_file: str,
     keywords: list,
     case_sensitive: bool = False,
-    logical_operator: str = None,
-    output_file: str = None,
+    logical_operator: Optional[str] = None,
+    output_file: Optional[str] = None,
 ) -> dict:
     """
     Filter log entries containing specific keywords with advanced matching options.
@@ -225,7 +234,7 @@ async def filter_keyword_tool(
     description="Apply predefined filter presets like 'errors_only', 'warnings_and_errors', 'connection_issues', etc.",
 )
 async def filter_preset_tool(
-    log_file: str, preset_name: str, output_file: str = None
+    log_file: str, preset_name: str, output_file: Optional[str] = None
 ) -> dict:
     """
     Apply predefined filter presets for common log analysis scenarios.

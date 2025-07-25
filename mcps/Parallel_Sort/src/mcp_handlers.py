@@ -4,7 +4,7 @@ These handlers wrap all implementation for MCP protocol compliance.
 """
 
 import json
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Optional
 from implementation.sort_handler import sort_log_by_timestamp
 from implementation.statistics_handler import analyze_log_statistics
 from implementation.pattern_detection import detect_patterns
@@ -40,7 +40,7 @@ async def sort_log_handler(file_path: str) -> Dict[str, Any]:
 
 
 async def parallel_sort_handler(
-    file_path: str, chunk_size_mb: int = 100, max_workers: int = None
+    file_path: str, chunk_size_mb: int = 100, max_workers: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Handler wrapping the parallel sort capability for MCP.
@@ -72,7 +72,7 @@ async def analyze_statistics_handler(file_path: str) -> Dict[str, Any]:
 
 
 async def detect_patterns_handler(
-    file_path: str, detection_config: Dict[str, Any] = None
+    file_path: str, detection_config: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Handler wrapping the pattern detection capability for MCP.
