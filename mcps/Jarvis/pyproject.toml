@@ -22,7 +22,8 @@ keywords = ["jarvis", "pipeline-management", "high-performance-computing", "hpc"
 [tool.uv]
 dev-dependencies = [
     "pytest>=8.4.0",
-    "pytest-asyncio>=0.21.0"
+    "pytest-asyncio>=0.21.0",
+    "pip-audit>=2.9.0"
 ]
 
 [project.scripts]

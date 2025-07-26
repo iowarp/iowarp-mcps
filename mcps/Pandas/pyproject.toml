@@ -25,6 +25,10 @@ dependencies = [
   "pytest>=7.2.0"
 ]
 
+[dependency-groups]
+dev = [
+    "pip-audit>=2.9.0",
+]
 
 [project.scripts]
 pandas-mcp = "server:main"

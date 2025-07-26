@@ -23,11 +23,13 @@ dependencies = [
     "fastmcp",
     "numpy",
     "adios2"
+    
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
+    "pip-audit>=2.9.0",
 ]
 
 [project.scripts]
