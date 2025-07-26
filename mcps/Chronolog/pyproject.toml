@@ -32,6 +32,11 @@ dependencies = [
     "h5py"
 ]
 
+[dependency-groups]
+dev = [
+    "pip-audit>=2.9.0",
+]
+
 [project.scripts]
 chronolog-mcp = "chronomcp.server:main"
 

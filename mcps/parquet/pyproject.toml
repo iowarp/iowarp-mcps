@@ -20,6 +20,11 @@ dependencies = [
   "fastmcp"
 ]
 
+[dependency-groups]
+dev = [
+    "pip-audit>=2.9.0",
+]
+
 [project.scripts]
 parquet-mcp = "server:main"
 
