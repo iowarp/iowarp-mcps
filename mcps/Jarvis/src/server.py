@@ -1,11 +1,8 @@
 from fastmcp import FastMCP
 import os
+import sys
 from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-# Import Jarvis-CD pipeline capabilities
+from typing import Optional
 from capabilities.jarvis_handler import (
     create_pipeline,
     load_pipeline,
@@ -17,15 +14,15 @@ from capabilities.jarvis_handler import (
     destroy_pipeline,
     get_pkg_config,
     update_pipeline,
-    build_pipeline_env
+    build_pipeline_env,
 )
-
-# Import JarvisManager (singleton-based configuration and repo manager)
 from jarvis_cd.basic.jarvis_manager import JarvisManager
-import sys
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize FastMCP server instance
-mcp = FastMCP("JarvisServer")
+mcp: FastMCP = FastMCP("JarvisServer")
 
 # Create a singleton instance of JarvisManager
 manager = JarvisManager.get_instance()
@@ -33,9 +30,10 @@ manager = JarvisManager.get_instance()
 
 # ─── PIPELINE TOOLS ─────────────────────────────────────────────────────────────
 
+
 @mcp.tool(
     name="update_pipeline",
-    description="Re-apply environment & configuration to every package in a Jarvis-CD pipeline."
+    description="Re-apply environment & configuration to every package in a Jarvis-CD pipeline.",
 )
 async def update_pipeline_tool(pipeline_id: str) -> dict:
     """
@@ -49,13 +47,12 @@ async def update_pipeline_tool(pipeline_id: str) -> dict:
     """
     return await update_pipeline(pipeline_id)
 
+
 @mcp.tool(
     name="build_pipeline_env",
-    description="Rebuild a Jarvis-CD pipeline’s env.yaml, capturing only CMAKE_PREFIX_PATH and PATH"
+    description="Rebuild a Jarvis-CD pipeline’s env.yaml, capturing only CMAKE_PREFIX_PATH and PATH",
 )
-async def build_pipeline_env_tool(
-    pipeline_id: str
-) -> dict:
+async def build_pipeline_env_tool(pipeline_id: str) -> dict:
     """
     Build the pipeline execution environment for a given pipeline.
 
@@ -68,8 +65,9 @@ async def build_pipeline_env_tool(
     return await build_pipeline_env(pipeline_id)
 
 
-
-@mcp.tool(name="create_pipeline", description="Create a new Jarvis-CD pipeline environment.")
+@mcp.tool(
+    name="create_pipeline", description="Create a new Jarvis-CD pipeline environment."
+)
 async def create_pipeline_tool(pipeline_id: str) -> dict:
     """
     Create a new pipeline environment for data-centric workflows.
@@ -83,8 +81,10 @@ async def create_pipeline_tool(pipeline_id: str) -> dict:
     return await create_pipeline(pipeline_id)
 
 
-@mcp.tool(name="load_pipeline", description="Load an existing Jarvis-CD pipeline environment.")
-async def load_pipeline_tool(pipeline_id: str = None) -> dict:
+@mcp.tool(
+    name="load_pipeline", description="Load an existing Jarvis-CD pipeline environment."
+)
+async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
     """
     Load an existing pipeline environment by ID, or the current one if not specified.
 
@@ -96,7 +96,11 @@ async def load_pipeline_tool(pipeline_id: str = None) -> dict:
     """
     return await load_pipeline(pipeline_id)
 
-@mcp.tool(name="get_pkg_config",description="Retrieve the configuration of a specific package in a Jarvis-CD pipeline.")
+
+@mcp.tool(
+    name="get_pkg_config",
+    description="Retrieve the configuration of a specific package in a Jarvis-CD pipeline.",
+)
 async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
     """
     Retrieve the configuration of a specific package in a pipeline.
@@ -110,8 +114,15 @@ async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
     """
     return await get_pkg_config(pipeline_id, pkg_id)
 
+
 @mcp.tool(name="append_pkg", description="Append a package to a Jarvis-CD pipeline.")
-async def append_pkg_tool(pipeline_id: str, pkg_type: str, pkg_id: str = None, do_configure: bool = True, extra_args: dict = None) -> dict:
+async def append_pkg_tool(
+    pipeline_id: str,
+    pkg_type: str,
+    pkg_id: Optional[str] = None,
+    do_configure: bool = True,
+    extra_args: Optional[dict] = None,
+) -> dict:
     """
     Add a package to a pipeline for execution or analysis.
 
@@ -125,11 +136,21 @@ async def append_pkg_tool(pipeline_id: str, pkg_type: str, pkg_id: str = None, d
     Returns:
         dict: Status and details of the package addition.
     """
-    return await append_pkg(pipeline_id,pkg_type,pkg_id=pkg_id,do_configure=do_configure,**(extra_args or {}))
+    return await append_pkg(
+        pipeline_id,
+        pkg_type,
+        pkg_id=pkg_id,
+        do_configure=do_configure,
+        **(extra_args or {}),
+    )
 
 
-@mcp.tool(name="configure_pkg", description="Configure a package in a Jarvis-CD pipeline.")
-async def configure_pkg_tool(pipeline_id: str, pkg_id: str, extra_args: dict = None) -> dict:
+@mcp.tool(
+    name="configure_pkg", description="Configure a package in a Jarvis-CD pipeline."
+)
+async def configure_pkg_tool(
+    pipeline_id: str, pkg_id: str, extra_args: Optional[dict] = None
+) -> dict:
     """
     Configure a package in a pipeline with new settings.
 
@@ -144,7 +165,10 @@ async def configure_pkg_tool(pipeline_id: str, pkg_id: str, extra_args: dict = N
     return await configure_pkg(pipeline_id, pkg_id, **(extra_args or {}))
 
 
-@mcp.tool(name="unlink_pkg", description="Unlink a package from a Jarvis-CD pipeline (preserve files).")
+@mcp.tool(
+    name="unlink_pkg",
+    description="Unlink a package from a Jarvis-CD pipeline (preserve files).",
+)
 async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
     """
     Unlink a package from a pipeline without deleting its files.
@@ -159,7 +183,10 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
     return await unlink_pkg(pipeline_id, pkg_id)
 
 
-@mcp.tool(name="remove_pkg", description="Remove a package entirely from a Jarvis-CD pipeline.")
+@mcp.tool(
+    name="remove_pkg",
+    description="Remove a package entirely from a Jarvis-CD pipeline.",
+)
 async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
     """
     Remove a package and its files from a pipeline.
@@ -188,7 +215,10 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
     return await run_pipeline(pipeline_id)
 
 
-@mcp.tool(name="destroy_pipeline", description="Destroy a Jarvis-CD pipeline environment and clean up files.")
+@mcp.tool(
+    name="destroy_pipeline",
+    description="Destroy a Jarvis-CD pipeline environment and clean up files.",
+)
 async def destroy_pipeline_tool(pipeline_id: str) -> dict:
     """
     Destroy a pipeline and clean up all associated files and resources.
@@ -202,8 +232,12 @@ async def destroy_pipeline_tool(pipeline_id: str) -> dict:
     return await destroy_pipeline(pipeline_id)
 
 
-@mcp.tool(name="jm_create_config", description="Initialize JarvisManager config directories.")
-def jm_create_config(config_dir: str, private_dir: str, shared_dir: str = None) -> list:
+@mcp.tool(
+    name="jm_create_config", description="Initialize JarvisManager config directories."
+)
+def jm_create_config(
+    config_dir: str, private_dir: str, shared_dir: Optional[str] = None
+) -> list:
     """Initialize manager directories and persist configuration."""
     try:
         manager.create(config_dir, private_dir, shared_dir)
@@ -213,7 +247,9 @@ def jm_create_config(config_dir: str, private_dir: str, shared_dir: str = None) 
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_load_config", description="Load existing JarvisManager configuration.")
+@mcp.tool(
+    name="jm_load_config", description="Load existing JarvisManager configuration."
+)
 def jm_load_config() -> list:
     """Load manager configuration from saved state."""
     try:
@@ -223,7 +259,9 @@ def jm_load_config() -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_save_config", description="Save current JarvisManager configuration.")
+@mcp.tool(
+    name="jm_save_config", description="Save current JarvisManager configuration."
+)
 def jm_save_config() -> list:
     """Save current configuration state to disk."""
     try:
@@ -244,7 +282,10 @@ def jm_set_hostfile(path: str) -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_bootstrap_from", description="Bootstrap Jarvis config from a machine template.")
+@mcp.tool(
+    name="jm_bootstrap_from",
+    description="Bootstrap Jarvis config from a machine template.",
+)
 def jm_bootstrap_from(machine: str) -> list:
     """Bootstrap configuration based on a predefined machine template."""
     try:
@@ -254,7 +295,9 @@ def jm_bootstrap_from(machine: str) -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_bootstrap_list", description="List available bootstrap machine templates.")
+@mcp.tool(
+    name="jm_bootstrap_list", description="List available bootstrap machine templates."
+)
 def jm_bootstrap_list() -> list:
     """List all bootstrap templates available."""
     try:
@@ -263,7 +306,9 @@ def jm_bootstrap_list() -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_reset", description="Reset JarvisManager (destroy all pipelines and data).")
+@mcp.tool(
+    name="jm_reset", description="Reset JarvisManager (destroy all pipelines and data)."
+)
 def jm_reset() -> list:
     """Reset manager to a clean state by destroying all pipelines and config."""
     try:
@@ -344,7 +389,10 @@ def jm_get_repo(repo_name: str) -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_construct_pkg", description="Construct a package skeleton in JarvisManager.")
+@mcp.tool(
+    name="jm_construct_pkg",
+    description="Construct a package skeleton in JarvisManager.",
+)
 def jm_construct_pkg(pkg_type: str) -> list:
     """Generate a new package skeleton by type."""
     try:
@@ -364,7 +412,10 @@ def jm_graph_show() -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_graph_build", description="Build or rebuild the resource graph with a net sleep interval.")
+@mcp.tool(
+    name="jm_graph_build",
+    description="Build or rebuild the resource graph with a net sleep interval.",
+)
 def jm_graph_build(net_sleep: float) -> list:
     """Construct or rebuild the graph with a given sleep delay."""
     try:
@@ -374,7 +425,10 @@ def jm_graph_build(net_sleep: float) -> list:
         return [{"type": "text", "text": f"Error: {e}"}]
 
 
-@mcp.tool(name="jm_graph_modify", description="Modify the resource graph using a net sleep interval.")
+@mcp.tool(
+    name="jm_graph_modify",
+    description="Modify the resource graph using a net sleep interval.",
+)
 def jm_graph_modify(net_sleep: float) -> list:
     """Modify the current resource graph with a delay between operations."""
     try:
@@ -398,7 +452,9 @@ def main():
     else:
         print("Starting stdio transport", file=sys.stderr)
         mcp.run(transport="stdio")
-        mcp.run(transport="sse",)
+        mcp.run(
+            transport="sse",
+        )
 
 
 if __name__ == "__main__":

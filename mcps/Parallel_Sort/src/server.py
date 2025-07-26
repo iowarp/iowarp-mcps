@@ -3,15 +3,20 @@
 Parallel Sort MCP Server implementation using Model Context Protocol.
 Provides log file sorting capabilities by timestamp.
 """
+
 import os
 import sys
 import json
+from typing import Optional
 from fastmcp import FastMCP
 from dotenv import load_dotenv
 import logging
+import mcp_handlers
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Add current directory to path for relative imports
@@ -20,16 +25,17 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Load environment variables
 load_dotenv()
 
-import mcp_handlers
-
 # Initialize MCP server
-mcp = FastMCP("ParallelSortMCP")
+mcp: FastMCP = FastMCP("ParallelSortMCP")
+
 
 @mcp.tool(
     name="sort_log_by_timestamp",
-    description="Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format. Handles edge cases like empty files and invalid timestamps."
+    description="Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format. Handles edge cases like empty files and invalid timestamps.",
 )
-async def sort_log_tool(log_file: str, output_file: str = None, reverse: bool = False) -> dict:
+async def sort_log_tool(
+    log_file: str, output_file: Optional[str] = None, reverse: bool = False
+) -> dict:
     """
     Sort log files by timestamp in chronological order with support for standard log formats.
 
@@ -44,11 +50,17 @@ async def sort_log_tool(log_file: str, output_file: str = None, reverse: bool = 
     logger.info(f"Sorting log file: {log_file}")
     return await mcp_handlers.sort_log_handler(log_file, output_file, reverse)
 
+
 @mcp.tool(
     name="parallel_sort_large_file",
-    description="Sort large log files using parallel processing with chunked approach for improved performance."
+    description="Sort large log files using parallel processing with chunked approach for improved performance.",
 )
-async def parallel_sort_tool(log_file: str, output_file: str, chunk_size_mb: int = 100, num_workers: int = None) -> dict:
+async def parallel_sort_tool(
+    log_file: str,
+    output_file: str,
+    chunk_size_mb: int = 100,
+    num_workers: Optional[int] = None,
+) -> dict:
     """
     Sort large log files using parallel processing with chunked approach for memory efficiency.
 
@@ -62,11 +74,14 @@ async def parallel_sort_tool(log_file: str, output_file: str, chunk_size_mb: int
         dict: Dictionary with sorting results, performance metrics, and memory usage.
     """
     logger.info(f"Parallel sorting large file: {log_file}")
-    return await mcp_handlers.parallel_sort_handler(log_file, output_file, chunk_size_mb, num_workers)
+    return await mcp_handlers.parallel_sort_handler(
+        log_file, output_file, chunk_size_mb, num_workers
+    )
+
 
 @mcp.tool(
     name="analyze_log_statistics",
-    description="Generate comprehensive statistics and analysis for log files including temporal patterns, log levels, and quality metrics."
+    description="Generate comprehensive statistics and analysis for log files including temporal patterns, log levels, and quality metrics.",
 )
 async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) -> dict:
     """
@@ -82,11 +97,16 @@ async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) 
     logger.info(f"Analyzing log statistics: {log_file}")
     return await mcp_handlers.analyze_statistics_handler(log_file, include_patterns)
 
+
 @mcp.tool(
     name="detect_log_patterns",
-    description="Detect patterns in log files including anomalies, error clusters, trending issues, and repeated patterns."
+    description="Detect patterns in log files including anomalies, error clusters, trending issues, and repeated patterns.",
 )
-async def detect_patterns_tool(log_file: str, pattern_types: list = None, sensitivity: str = None) -> dict:
+async def detect_patterns_tool(
+    log_file: str,
+    pattern_types: Optional[list] = None,
+    sensitivity: Optional[str] = None,
+) -> dict:
     """
     Detect patterns, anomalies, and trends in log files for proactive issue identification.
 
@@ -99,13 +119,21 @@ async def detect_patterns_tool(log_file: str, pattern_types: list = None, sensit
         dict: Dictionary with detected patterns, anomalies, error clusters, and trend analysis.
     """
     logger.info(f"Detecting patterns in: {log_file}")
-    return await mcp_handlers.detect_patterns_handler(log_file, pattern_types, sensitivity)
+    return await mcp_handlers.detect_patterns_handler(
+        log_file, pattern_types, sensitivity
+    )
+
 
 @mcp.tool(
     name="filter_logs",
-    description="Filter log entries based on multiple conditions with support for complex logical operations."
+    description="Filter log entries based on multiple conditions with support for complex logical operations.",
 )
-async def filter_logs_tool(log_file: str, filters: list, logical_operator: str = None, output_file: str = None) -> dict:
+async def filter_logs_tool(
+    log_file: str,
+    filters: list,
+    logical_operator: Optional[str] = None,
+    output_file: Optional[str] = None,
+) -> dict:
     """
     Apply multiple filter conditions to log files with complex logical operations.
 
@@ -119,13 +147,18 @@ async def filter_logs_tool(log_file: str, filters: list, logical_operator: str =
         dict: Dictionary with filtered results and applied filter summary.
     """
     logger.info(f"Filtering logs: {log_file}")
-    return await mcp_handlers.filter_logs_handler(log_file, filters, logical_operator, output_file)
+    return await mcp_handlers.filter_logs_handler(
+        log_file, filters, logical_operator, output_file
+    )
+
 
 @mcp.tool(
     name="filter_by_time_range",
-    description="Filter log entries by time range using start and end timestamps."
+    description="Filter log entries by time range using start and end timestamps.",
 )
-async def filter_time_range_tool(log_file: str, start_time: str, end_time: str, output_file: str = None) -> dict:
+async def filter_time_range_tool(
+    log_file: str, start_time: str, end_time: str, output_file: Optional[str] = None
+) -> dict:
     """
     Filter log entries within a specific time range.
 
@@ -139,13 +172,18 @@ async def filter_time_range_tool(log_file: str, start_time: str, end_time: str, 
         dict: Dictionary with filtered entries and time range statistics.
     """
     logger.info(f"Filtering by time range: {log_file}")
-    return await mcp_handlers.filter_time_range_handler(log_file, start_time, end_time, output_file)
+    return await mcp_handlers.filter_time_range_handler(
+        log_file, start_time, end_time, output_file
+    )
+
 
 @mcp.tool(
     name="filter_by_log_level",
-    description="Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.)."
+    description="Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).",
 )
-async def filter_level_tool(log_file: str, log_levels: list, output_file: str = None) -> dict:
+async def filter_level_tool(
+    log_file: str, log_levels: list, output_file: Optional[str] = None
+) -> dict:
     """
     Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).
 
@@ -160,11 +198,18 @@ async def filter_level_tool(log_file: str, log_levels: list, output_file: str = 
     logger.info(f"Filtering by level: {log_file}")
     return await mcp_handlers.filter_level_handler(log_file, log_levels, output_file)
 
+
 @mcp.tool(
     name="filter_by_keyword",
-    description="Filter log entries by keywords in the message content with support for multiple keywords and logical operations."
+    description="Filter log entries by keywords in the message content with support for multiple keywords and logical operations.",
 )
-async def filter_keyword_tool(log_file: str, keywords: list, case_sensitive: bool = False, logical_operator: str = None, output_file: str = None) -> dict:
+async def filter_keyword_tool(
+    log_file: str,
+    keywords: list,
+    case_sensitive: bool = False,
+    logical_operator: Optional[str] = None,
+    output_file: Optional[str] = None,
+) -> dict:
     """
     Filter log entries containing specific keywords with advanced matching options.
 
@@ -179,13 +224,18 @@ async def filter_keyword_tool(log_file: str, keywords: list, case_sensitive: boo
         dict: Dictionary with filtered entries and keyword match statistics.
     """
     logger.info(f"Filtering by keywords: {log_file}")
-    return await mcp_handlers.filter_keyword_handler(log_file, keywords, case_sensitive, logical_operator, output_file)
+    return await mcp_handlers.filter_keyword_handler(
+        log_file, keywords, case_sensitive, logical_operator, output_file
+    )
+
 
 @mcp.tool(
     name="apply_filter_preset",
-    description="Apply predefined filter presets like 'errors_only', 'warnings_and_errors', 'connection_issues', etc."
+    description="Apply predefined filter presets like 'errors_only', 'warnings_and_errors', 'connection_issues', etc.",
 )
-async def filter_preset_tool(log_file: str, preset_name: str, output_file: str = None) -> dict:
+async def filter_preset_tool(
+    log_file: str, preset_name: str, output_file: Optional[str] = None
+) -> dict:
     """
     Apply predefined filter presets for common log analysis scenarios.
 
@@ -203,16 +253,16 @@ async def filter_preset_tool(log_file: str, preset_name: str, output_file: str =
 
 @mcp.tool(
     name="export_to_json",
-    description="Export log processing results to JSON format with optional metadata."
+    description="Export log processing results to JSON format with optional metadata.",
 )
 async def export_json_tool(data: dict, include_metadata: bool = True) -> dict:
     """
     Export results to JSON format.
-    
+
     Args:
         data: Processing results to export
         include_metadata: Whether to include processing metadata
-        
+
     Returns:
         Dictionary with JSON export results
     """
@@ -222,16 +272,16 @@ async def export_json_tool(data: dict, include_metadata: bool = True) -> dict:
 
 @mcp.tool(
     name="export_to_csv",
-    description="Export log entries to CSV format with structured columns for timestamp, level, and message."
+    description="Export log entries to CSV format with structured columns for timestamp, level, and message.",
 )
 async def export_csv_tool(data: dict, include_headers: bool = True) -> dict:
     """
     Export results to CSV format.
-    
+
     Args:
         data: Processing results to export
         include_headers: Whether to include CSV headers
-        
+
     Returns:
         Dictionary with CSV export results
     """
@@ -241,16 +291,16 @@ async def export_csv_tool(data: dict, include_headers: bool = True) -> dict:
 
 @mcp.tool(
     name="export_to_text",
-    description="Export log entries to plain text format with optional processing summary."
+    description="Export log entries to plain text format with optional processing summary.",
 )
 async def export_text_tool(data: dict, include_summary: bool = True) -> dict:
     """
     Export results to text format.
-    
+
     Args:
         data: Processing results to export
         include_summary: Whether to include processing summary
-        
+
     Returns:
         Dictionary with text export results
     """
@@ -260,15 +310,15 @@ async def export_text_tool(data: dict, include_summary: bool = True) -> dict:
 
 @mcp.tool(
     name="generate_summary_report",
-    description="Generate a comprehensive summary report of log processing results with statistics and analysis."
+    description="Generate a comprehensive summary report of log processing results with statistics and analysis.",
 )
 async def summary_report_tool(data: dict) -> dict:
     """
     Generate a summary report.
-    
+
     Args:
         data: Processing results to summarize
-        
+
     Returns:
         Dictionary with summary report
     """
@@ -283,7 +333,7 @@ def main():
     """
     try:
         logger.info("Starting Parallel Sort MCP Server")
-        
+
         # Determine which transport to use
         transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
         if transport == "sse":
@@ -291,7 +341,10 @@ def main():
             host = os.getenv("MCP_SSE_HOST", "0.0.0.0")
             port = int(os.getenv("MCP_SSE_PORT", "8000"))
             logger.info(f"Starting SSE transport on {host}:{port}")
-            print(json.dumps({"message": f"Starting SSE on {host}:{port}"}), file=sys.stderr)
+            print(
+                json.dumps({"message": f"Starting SSE on {host}:{port}"}),
+                file=sys.stderr,
+            )
             mcp.run(transport="sse", host=host, port=port)
         else:
             # Default stdio transport
@@ -303,6 +356,7 @@ def main():
         logger.error(f"Server error: {e}")
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

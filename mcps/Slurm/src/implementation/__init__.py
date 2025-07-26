@@ -19,18 +19,18 @@ from .node_allocation import allocate_nodes, deallocate_nodes, get_allocation_st
 from .utils import check_slurm_available
 
 __all__ = [
-    'submit_slurm_job',
-    'get_job_status',
-    'cancel_slurm_job',
-    'list_slurm_jobs',
-    'get_job_details',
-    'get_job_output',
-    'get_slurm_info',
-    'get_queue_info',
-    'submit_array_job',
-    'get_node_info',
-    'allocate_nodes',
-    'deallocate_nodes', 
-    'get_allocation_status',
-    'check_slurm_available'
+    "submit_slurm_job",
+    "get_job_status",
+    "cancel_slurm_job",
+    "list_slurm_jobs",
+    "get_job_details",
+    "get_job_output",
+    "get_slurm_info",
+    "get_queue_info",
+    "submit_array_job",
+    "get_node_info",
+    "allocate_nodes",
+    "deallocate_nodes",
+    "get_allocation_status",
+    "check_slurm_available",
 ]

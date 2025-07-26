@@ -23,7 +23,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.17.0",
     "pytest>=8.4.0",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.5",
 ]
 
 [project.scripts]

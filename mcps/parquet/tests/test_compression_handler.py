@@ -3,13 +3,15 @@ import os
 import tempfile
 from src.capabilities.compression_handler import compress_file
 
+
 @pytest.fixture
 def sample_file():
     # create a temporary file with some content
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write("test content\n" * 100)
     yield f.name
     os.unlink(f.name)
+
 
 # test successful compression of a file
 def test_compress_success(sample_file):
@@ -19,6 +21,7 @@ def test_compress_success(sample_file):
     assert os.path.exists(result["compressed_file"])
     os.unlink(result["compressed_file"])
 
+
 # test compression of non-existent file
 def test_compress_nonexistent_file():
     result = compress_file("nonexistent_file.txt")
@@ -26,9 +29,10 @@ def test_compress_nonexistent_file():
     assert result["status"] == "error"
     assert "compression failed" in result["message"].lower()
 
+
 # test compression of empty file
 def test_compress_empty_file():
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write("")
     try:
         result = compress_file(f.name)
@@ -36,4 +40,4 @@ def test_compress_empty_file():
         assert result["status"] == "error"
         assert "compression failed" in result["message"].lower()
     finally:
-        os.unlink(f.name) 
+        os.unlink(f.name)

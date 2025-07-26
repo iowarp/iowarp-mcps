@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from jarvis_cd.basic.pkg import Pipeline
-import os
+from typing import Optional
+
 
 async def create_pipeline(pipeline_id: str) -> dict:
     try:
@@ -9,33 +10,32 @@ async def create_pipeline(pipeline_id: str) -> dict:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Create failed: {e}")
 
-async def load_pipeline(pipeline_id: str = None) -> dict:
+
+async def load_pipeline(pipeline_id: Optional[str] = None) -> dict:
     try:
-        pipeline = Pipeline().load(pipeline_id)
+        Pipeline().load(pipeline_id)
         return {"pipeline_id": pipeline_id, "status": "loaded"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Load failed: {e}")
 
+
 async def append_pkg(
     pipeline_id: str,
     pkg_type: str,
-    pkg_id: str = None,
+    pkg_id: Optional[str] = None,
     do_configure: bool = True,
-    **kwargs
+    **kwargs,
 ) -> dict:
     try:
         # Avoid duplicate do_configure in kwargs
         raw_kwargs = dict(kwargs)
         config_flag = do_configure
-        if 'do_configure' in raw_kwargs:
-            config_flag = raw_kwargs.pop('do_configure')
+        if "do_configure" in raw_kwargs:
+            config_flag = raw_kwargs.pop("do_configure")
 
         pipeline = Pipeline().load(pipeline_id)
         pipeline.append(
-            pkg_type,
-            pkg_id=pkg_id,
-            do_configure=config_flag,
-            **raw_kwargs
+            pkg_type, pkg_id=pkg_id, do_configure=config_flag, **raw_kwargs
         ).save()
         return {"pipeline_id": pipeline_id, "appended": pkg_type}
     except Exception as e:
@@ -58,10 +58,7 @@ async def build_pipeline_env(pipeline_id: str) -> dict:
         # 3. Rebuild the env cache, track only those vars, and save
         pipeline.build_env(env_track_dict).save()
 
-        return {
-            "pipeline_id": pipeline_id,
-            "status": "environment_built"
-        }
+        return {"pipeline_id": pipeline_id, "status": "environment_built"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Build env failed: {e}")
 
@@ -74,7 +71,7 @@ async def update_pipeline(pipeline_id: str) -> dict:
     try:
         pipeline = Pipeline().load(pipeline_id)
         pipeline.update()  # re-run configure on all sub-pkgs
-        pipeline.save()    # persist any changes
+        pipeline.save()  # persist any changes
         return {"pipeline_id": pipeline_id, "status": "updated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Update failed: {e}")
@@ -92,6 +89,7 @@ async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs) -> dict:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Configure failed: {e}")
 
+
 async def get_pkg_config(pipeline_id: str, pkg_id: str) -> dict:
     try:
         # 1. Load the pipeline
@@ -106,12 +104,13 @@ async def get_pkg_config(pipeline_id: str, pkg_id: str) -> dict:
         return {
             "pipeline_id": pipeline.global_id,
             "pkg_id": pkg_id,
-            "config": pkg.config
+            "config": pkg.config,
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Get config failed: {e}")
+
 
 async def unlink_pkg(pipeline_id: str, pkg_id: str) -> dict:
     try:
@@ -120,6 +119,7 @@ async def unlink_pkg(pipeline_id: str, pkg_id: str) -> dict:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unlink failed: {e}")
 
+
 async def remove_pkg(pipeline_id: str, pkg_id: str) -> dict:
     try:
         Pipeline().load(pipeline_id).remove(pkg_id).save()
@@ -127,12 +127,14 @@ async def remove_pkg(pipeline_id: str, pkg_id: str) -> dict:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Remove failed: {e}")
 
+
 async def run_pipeline(pipeline_id: str) -> dict:
     try:
         Pipeline().load(pipeline_id).run()
         return {"pipeline_id": pipeline_id, "status": "running"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Run failed: {e}")
+
 
 async def destroy_pipeline(pipeline_id: str) -> dict:
     try:
