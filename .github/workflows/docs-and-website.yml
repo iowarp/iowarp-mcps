@@ -6,14 +6,14 @@ on:
     paths:
       - 'clio-kit-website/**'
       - 'clio-kit-mcp-servers/**'
-      - 'scripts/generate_docs.py'
+      - 'scripts/**'
       - '.github/workflows/docs-and-website.yml'
   pull_request:
     branches: [main, dev]
     paths:
       - 'clio-kit-website/**'
       - 'clio-kit-mcp-servers/**'
-      - 'scripts/generate_docs.py'
+      - 'scripts/**'
       - '.github/workflows/docs-and-website.yml'
 
 permissions:
@@ -42,11 +42,20 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v3
 
-    - name: Install Python dependencies
+    - name: Install root dependencies
       run: |
         if [ -f pyproject.toml ]; then
           uv sync
         fi
+
+    - name: Pre-sync MCP server environments
+      run: |
+        for dir in clio-kit-mcp-servers/*/; do
+          if [ -f "$dir/pyproject.toml" ]; then
+            echo "Syncing $(basename $dir)..."
+            (cd "$dir" && uv sync --all-extras --dev) || echo "Warning: sync failed for $(basename $dir)"
+          fi
+        done
 
     # Update README files (for PRs to main branch)
     - name: Update MCP README files
@@ -101,7 +110,7 @@ jobs:
         echo "## Documentation Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Generated Docusaurus documentation" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Built website successfully" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" = "dev" ]; then
+        if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" = "main" ]; then
           echo "- 📝 Updated README files" >> $GITHUB_STEP_SUMMARY
         fi
         if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" = "push" ]; then

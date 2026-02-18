@@ -6,7 +6,7 @@ Creates 4 simple sections: General Info, Installation, Available Tools, Examples
 
 import os
 import sys
-import ast
+import subprocess
 import re
 import json
 from pathlib import Path
@@ -193,83 +193,34 @@ class MCPDataExtractor:
         return None
 
     def _extract_tools_from_server(self, mcp_dir: Path) -> List[Dict]:
-        """Extract tool information from server.py files."""
-        server_files = list(mcp_dir.glob("src/**/server.py"))
+        """Extract tool information by importing the server via FastMCP 3.0 API."""
+        script_dir = Path(__file__).parent
+        extract_script = script_dir / "extract_mcp_metadata.py"
 
-        tools = []
-        for server_file in server_files:
-            try:
-                with open(server_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-
-                tree = ast.parse(content)
-
-                for node in ast.walk(tree):
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        tool_info = self._extract_tool_from_function(node)
-                        if tool_info:
-                            tools.append(tool_info)
-
-            except Exception as e:
-                print(f"Error parsing {server_file}: {e}")
-
-        return tools
-
-    def _extract_tool_from_function(self, node) -> Optional[Dict]:
-        """Extract tool information from a function node."""
-        # Check for @mcp.tool decorator
-        for decorator in node.decorator_list:
-            if self._is_mcp_tool_decorator(decorator):
-                name = self._extract_decorator_name(decorator) or node.name
-                description = self._extract_decorator_description(decorator)
-
-                # Get enhanced description from docstring
-                docstring = ast.get_docstring(node)
-                if docstring and not description:
-                    description = docstring.split("\n")[0].strip()
-
-                return {
-                    "name": name,
-                    "description": description or f"Tool: {name}",
-                    "function_name": node.name,
-                }
-
-        return None
-
-    def _is_mcp_tool_decorator(self, decorator) -> bool:
-        """Check if decorator is @mcp.tool."""
-        if isinstance(decorator, ast.Call):
-            if isinstance(decorator.func, ast.Attribute):
-                return (
-                    decorator.func.attr == "tool"
-                    and isinstance(decorator.func.value, ast.Name)
-                    and decorator.func.value.id == "mcp"
-                )
-        elif isinstance(decorator, ast.Attribute):
-            return (
-                decorator.attr == "tool"
-                and isinstance(decorator.value, ast.Name)
-                and decorator.value.id == "mcp"
+        try:
+            result = subprocess.run(
+                ["uv", "run", "python", str(extract_script)],
+                cwd=str(mcp_dir),
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
-        return False
+            if result.returncode != 0:
+                print(f"Warning: metadata extraction failed for {mcp_dir.name}: {result.stderr.strip()}")
+                return []
 
-    def _extract_decorator_name(self, decorator) -> Optional[str]:
-        """Extract name from decorator arguments."""
-        if isinstance(decorator, ast.Call):
-            for keyword in decorator.keywords:
-                if keyword.arg == "name" and isinstance(keyword.value, ast.Constant):
-                    return keyword.value.value
-        return None
-
-    def _extract_decorator_description(self, decorator) -> Optional[str]:
-        """Extract description from decorator arguments."""
-        if isinstance(decorator, ast.Call):
-            for keyword in decorator.keywords:
-                if keyword.arg == "description" and isinstance(
-                    keyword.value, ast.Constant
-                ):
-                    return keyword.value.value
-        return None
+            metadata = json.loads(result.stdout)
+            return [
+                {
+                    "name": tool["name"],
+                    "description": tool.get("description", f"Tool: {tool['name']}"),
+                    "function_name": tool["name"],
+                }
+                for tool in metadata.get("tools", [])
+            ]
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+            print(f"Warning: could not extract metadata for {mcp_dir.name}: {e}")
+            return []
 
 
 class DocusaurusGenerator:
