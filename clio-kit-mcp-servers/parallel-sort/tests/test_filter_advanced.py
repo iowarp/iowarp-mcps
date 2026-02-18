@@ -7,7 +7,7 @@ import pytest
 import tempfile
 import os
 from datetime import datetime
-from implementation.filter_handler import (
+from parallel_sort_mcp.implementation.filter_handler import (
     filter_logs,
     parse_log_entry,
     apply_filters,
@@ -402,7 +402,7 @@ class TestAdvancedFilterOperations:
 2024-01-01 10:00:00 ERROR Error message
 2024-01-01 11:00:00 FATAL Fatal message"""
 
-        from implementation.filter_handler import apply_filter_preset
+        from parallel_sort_mcp.implementation.filter_handler import apply_filter_preset
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".log") as f:
             f.write(content)
@@ -422,7 +422,7 @@ class TestAdvancedFilterOperations:
 2024-01-01 09:00:00 INFO Info message
 2024-01-01 10:00:00 TRACE Trace message"""
 
-        from implementation.filter_handler import apply_filter_preset
+        from parallel_sort_mcp.implementation.filter_handler import apply_filter_preset
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".log") as f:
             f.write(content)
@@ -442,7 +442,7 @@ class TestAdvancedFilterOperations:
 2024-01-01 10:00:00 INFO Database query
 2024-01-01 11:00:00 WARN Invalid token"""
 
-        from implementation.filter_handler import apply_filter_preset
+        from parallel_sort_mcp.implementation.filter_handler import apply_filter_preset
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".log") as f:
             f.write(content)

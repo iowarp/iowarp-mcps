@@ -1,22 +1,36 @@
 """Tests for Chronolog record interaction capabilities."""
 
 import pytest
-import sys
-import os
 import time
 import random
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+try:
+    from fastmcp.exceptions import ToolError
 
-from chronomcp.capabilities.record_handler import record_interaction
-from chronomcp.capabilities.start_handler import start_chronolog
-from chronomcp.capabilities.stop_handler import stop_chronolog
+    from chronomcp.capabilities.record_handler import record_interaction
+    from chronomcp.capabilities.start_handler import start_chronolog
+    from chronomcp.capabilities.stop_handler import stop_chronolog
+
+    HAS_DEPENDENCIES = True
+except ImportError:
+    HAS_DEPENDENCIES = False
+
 from .test_utils import are_chronolog_processes_running
+
+pytestmark = pytest.mark.skipif(
+    not HAS_DEPENDENCIES,
+    reason="ChronoLog system dependencies not available",
+)
 
 
 class TestRecordHandler:
     """Test record interaction functionality"""
+
+    @pytest.mark.asyncio
+    async def test_record_without_session_raises(self):
+        """Test that recording without an active session raises ToolError"""
+        with pytest.raises(ToolError, match="No active ChronoLog session"):
+            await record_interaction("test", "test")
 
     @pytest.mark.asyncio
     async def test_record_interaction_basic(self):

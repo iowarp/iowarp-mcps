@@ -4,17 +4,12 @@ Consolidates complex testing scenarios across all modules.
 """
 
 import pytest
-import sys
-import os
 import asyncio
 from unittest.mock import patch, Mock
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import mcp_handlers
-from capabilities import text_search as search_tools
-from capabilities import export_utils
+from arxiv_mcp import mcp_handlers
+from arxiv_mcp.capabilities import text_search as search_tools
+from arxiv_mcp.capabilities import export_utils
 
 
 class TestAdvancedScenarios:
@@ -420,7 +415,7 @@ class TestAdvancedScenarios:
 
         # Test search_tools integration
         with patch(
-            "capabilities.text_search.search_by_title",
+            "arxiv_mcp.capabilities.text_search.search_by_title",
             Mock(return_value={"papers": [], "count": 0}),
         ) as mock_search:
             if hasattr(search_tools, "search_by_title"):

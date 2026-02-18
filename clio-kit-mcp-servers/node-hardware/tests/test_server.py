@@ -1,33 +1,25 @@
 """
-Fixed server tests - basic functionality tests that work
+Server tests - basic functionality tests for FastMCP v3.
 """
 
-import os
-import sys
 import pytest
 from unittest.mock import patch
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from node_hardware_mcp import server
 
 
 class TestServerFixed:
-    """Fixed server tests that actually work"""
+    """Server tests for FastMCP v3"""
 
     def test_server_initialization(self):
         """Test server initialization"""
-        import server
-
         assert hasattr(server, "mcp")
         assert server.mcp is not None
         assert hasattr(server.mcp, "name")
-        assert server.mcp.name == "NodeHardware-MCP-SystemMonitoring"
+        assert server.mcp.name == "node-hardware"
 
     def test_server_tools_exist(self):
-        """Test that all expected tools exist"""
-        import server
-
-        # Test that tools exist as attributes
+        """Test that all expected tools exist as module-level functions"""
         tools = [
             "get_cpu_info_tool",
             "get_memory_info_tool",
@@ -45,39 +37,40 @@ class TestServerFixed:
             assert hasattr(server, tool_name), f"Tool {tool_name} should exist"
             tool = getattr(server, tool_name)
             assert tool is not None, f"Tool {tool_name} should not be None"
+            assert callable(tool), f"Tool {tool_name} should be callable"
 
     def test_server_logger(self):
         """Test server logger"""
-        import server
-
         assert hasattr(server, "logger")
         assert server.logger is not None
 
     def test_server_exception(self):
         """Test custom exception"""
-        import server
-
-        # Test exception exists
         assert hasattr(server, "NodeHardwareMCPError")
 
-        # Test exception works
         try:
             raise server.NodeHardwareMCPError("Test error")
         except server.NodeHardwareMCPError as e:
             assert str(e) == "Test error"
 
     def test_server_main_function(self):
-        """Test server main function"""
-        import server
-
-        # Test main function exists
+        """Test server main function with stdio transport"""
         assert hasattr(server, "main")
 
-        # Test with stdio transport
-        with patch.dict("os.environ", {"MCP_TRANSPORT": "stdio"}):
+        with patch("sys.argv", ["node-hardware-mcp"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(transport="stdio")
+
+    def test_server_resource_exists(self):
+        """Test that the system_info resource function exists"""
+        assert hasattr(server, "system_info")
+        assert callable(server.system_info)
+
+    def test_server_prompt_exists(self):
+        """Test that the system_health_check prompt function exists"""
+        assert hasattr(server, "system_health_check")
+        assert callable(server.system_health_check)
 
 
 if __name__ == "__main__":

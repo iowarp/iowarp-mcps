@@ -1,16 +1,22 @@
 """Tests for Chronolog start session capabilities."""
 
 import pytest
-import sys
-import os
 import time
 import random
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+try:
+    from chronomcp.capabilities.start_handler import start_chronolog
 
-from chronomcp.capabilities.start_handler import start_chronolog
+    HAS_DEPENDENCIES = True
+except ImportError:
+    HAS_DEPENDENCIES = False
+
 from .test_utils import are_chronolog_processes_running
+
+pytestmark = pytest.mark.skipif(
+    not HAS_DEPENDENCIES,
+    reason="ChronoLog system dependencies not available",
+)
 
 
 class TestStartHandler:

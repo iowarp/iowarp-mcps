@@ -1,11 +1,6 @@
 """Tests for Chronolog utility helper functions."""
 
 import pytest
-import sys
-import os
-
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from chronomcp.utils.helpers import parse_time_arg
 from .test_utils import are_chronolog_processes_running

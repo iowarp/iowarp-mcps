@@ -2,9 +2,9 @@ name: Quality Control
 
 on:
   push:
-    branches: [ main, dev, integration-cleanup, update-workflow-with-correct-code-security ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, dev, integration-cleanup, update-workflow-with-correct-code-security ]
+    branches: [ main, dev ]
 
 # Chronolog MCP tests are handled in dedicated workflow
 
@@ -37,7 +37,6 @@ jobs:
     name: Ruff - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on linting errors
     strategy:
       fail-fast: false
       matrix:
@@ -118,7 +117,6 @@ jobs:
     name: Test - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on test failures
     strategy:
       fail-fast: false
       matrix:
@@ -182,7 +180,6 @@ jobs:
     name: Security Audit - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on security vulnerabilities
     strategy:
       fail-fast: false
       matrix:

@@ -5,7 +5,10 @@ Tests for the sort handler capability.
 import pytest
 import tempfile
 import os
-from implementation.sort_handler import sort_log_by_timestamp, parse_timestamp
+from parallel_sort_mcp.implementation.sort_handler import (
+    sort_log_by_timestamp,
+    parse_timestamp,
+)
 from datetime import datetime
 
 
@@ -167,6 +170,7 @@ Invalid line without timestamp
             os.unlink(temp_path)
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(os.name == "nt", reason="os.chmod cannot remove read on Windows")
     async def test_sort_permission_denied(self):
         """Test handling of permission denied errors."""
         # Create a temporary file

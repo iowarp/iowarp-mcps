@@ -9,10 +9,9 @@ import os
 from unittest.mock import patch, AsyncMock, MagicMock
 import sys
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from fastmcp.exceptions import ToolError
 
-import server
+from arxiv_mcp import server
 
 
 class TestArxivMCPServer:
@@ -29,62 +28,55 @@ class TestArxivMCPServer:
         assert hasattr(server, "main")
         assert callable(server.main)
 
-    @patch("server.mcp")
+    @patch("arxiv_mcp.server.mcp")
     def test_main_function_runs_stdio(self, mock_mcp):
         """Test that main function runs the MCP server with stdio."""
         mock_mcp.run = MagicMock()
 
-        with patch.dict(os.environ, {}, clear=True):
+        with patch("sys.argv", ["arxiv-mcp"]):
             server.main()
 
         # Verify mcp.run was called with stdio
         mock_mcp.run.assert_called_once_with(transport="stdio")
 
-    @patch("server.mcp")
-    def test_main_function_runs_sse(self, mock_mcp):
-        """Test that main function runs the MCP server with SSE."""
+    @patch("arxiv_mcp.server.mcp")
+    def test_main_function_runs_http(self, mock_mcp):
+        """Test that main function runs the MCP server with HTTP transport."""
         mock_mcp.run = MagicMock()
 
-        with patch.dict(
-            os.environ,
-            {
-                "MCP_TRANSPORT": "sse",
-                "MCP_SSE_HOST": "localhost",
-                "MCP_SSE_PORT": "8080",
-            },
-        ):
+        with patch("sys.argv", ["arxiv-mcp", "--transport", "http", "--host", "localhost", "--port", "8080"]):
             server.main()
 
-        # Verify mcp.run was called with SSE parameters
+        # Verify mcp.run was called with HTTP parameters
         mock_mcp.run.assert_called_once_with(
-            transport="sse", host="localhost", port=8080
+            transport="http", host="localhost", port=8080
         )
 
-    @patch("server.mcp")
+    @patch("arxiv_mcp.server.mcp")
     def test_main_function_error_handling(self, mock_mcp):
-        """Test that main function handles errors properly."""
+        """Test that main function propagates errors from mcp.run."""
         mock_mcp.run = MagicMock(side_effect=Exception("Test error"))
 
-        with pytest.raises(SystemExit):
-            server.main()
+        with patch("sys.argv", ["arxiv-mcp"]):
+            with pytest.raises(Exception, match="Test error"):
+                server.main()
 
     def test_logger_configuration(self):
         """Test that logger is properly configured."""
         assert hasattr(server, "logger")
-        assert server.logger.name == "server"
+        assert server.logger.name == "arxiv_mcp.server"
 
     def test_mcp_instance_exists(self):
         """Test that MCP instance is created."""
         assert hasattr(server, "mcp")
         assert server.mcp is not None
 
-    def test_sys_path_modification(self):
-        """Test that current directory is added to sys.path."""
-        # The module should add its directory to sys.path
-        current_dir = os.path.dirname(server.__file__)
-        assert current_dir in sys.path
+    def test_module_file_exists(self):
+        """Test that the server module file exists."""
+        assert server.__file__ is not None
+        assert os.path.exists(server.__file__)
 
-    @patch("server.load_dotenv")
+    @patch("arxiv_mcp.server.load_dotenv")
     def test_environment_loading(self, mock_load_dotenv):
         """Test that environment variables are loaded."""
         # load_dotenv is called when the module is imported
@@ -100,60 +92,55 @@ class TestArxivMCPServer:
         # This is a basic check that the decorators worked
         assert mcp_instance is not None
         # FastMCP stores tools differently, let's just verify the instance is created properly
-        assert mcp_instance.name == "ArxivMCP"
+        assert mcp_instance.name == "arxiv"
 
     def test_imports_successful(self):
         """Test that all required imports are successful."""
         # Test that all required modules are imported
         assert hasattr(server, "os")
-        assert hasattr(server, "sys")
-        assert hasattr(server, "json")
         assert hasattr(server, "FastMCP")
         assert hasattr(server, "load_dotenv")
         assert hasattr(server, "logging")
         assert hasattr(server, "mcp_handlers")
 
-    @patch.dict(os.environ, {"MCP_TRANSPORT": "stdio"})
     def test_transport_selection_stdio(self):
         """Test that stdio transport is selected correctly."""
-        with patch("server.mcp") as mock_mcp:
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run = MagicMock()
-            server.main()
+            with patch("sys.argv", ["arxiv-mcp", "--transport", "stdio"]):
+                server.main()
             mock_mcp.run.assert_called_with(transport="stdio")
 
-    @patch.dict(
-        os.environ,
-        {"MCP_TRANSPORT": "SSE", "MCP_SSE_HOST": "test.host", "MCP_SSE_PORT": "9999"},
-    )
-    def test_transport_selection_sse(self):
-        """Test that SSE transport is selected correctly."""
-        with patch("server.mcp") as mock_mcp:
+    def test_transport_selection_http(self):
+        """Test that HTTP transport is selected correctly."""
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run = MagicMock()
-            server.main()
+            with patch("sys.argv", ["arxiv-mcp", "--transport", "http", "--host", "test.host", "--port", "9999"]):
+                server.main()
             mock_mcp.run.assert_called_with(
-                transport="sse", host="test.host", port=9999
+                transport="http", host="test.host", port=9999
             )
 
     def test_default_environment_values(self):
         """Test default values when environment variables are not set."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch("server.mcp") as mock_mcp:
+            with patch("arxiv_mcp.server.mcp") as mock_mcp:
                 mock_mcp.run = MagicMock()
-                server.main()
+                with patch("sys.argv", ["arxiv-mcp"]):
+                    server.main()
                 # Should default to stdio
                 mock_mcp.run.assert_called_with(transport="stdio")
 
-    @patch("server.mcp")
-    @patch("server.logger")
-    def test_logging_messages(self, mock_logger, mock_mcp):
-        """Test that appropriate log messages are generated."""
+    @patch("arxiv_mcp.server.mcp")
+    def test_main_runs_without_error(self, mock_mcp):
+        """Test that main function runs without error."""
         mock_mcp.run = MagicMock()
 
-        with patch.dict(os.environ, {"MCP_TRANSPORT": "stdio"}):
+        with patch("sys.argv", ["arxiv-mcp"]):
             server.main()
 
-        # Check that info logging was called
-        mock_logger.info.assert_called()
+        # Check that mcp.run was called
+        mock_mcp.run.assert_called_once()
 
     def test_main_entry_point(self):
         """Test the main entry point functionality."""
@@ -168,7 +155,7 @@ class TestArxivMCPServer:
         assert hasattr(server, "logger")
 
         # Check that the MCP server name is set correctly
-        assert server.mcp.name == "ArxivMCP" or "arxiv" in server.mcp.name.lower()
+        assert server.mcp.name == "arxiv" or "arxiv" in server.mcp.name.lower()
 
     def test_handler_integration(self):
         """Test that mcp_handlers module is properly imported and accessible."""
@@ -176,280 +163,244 @@ class TestArxivMCPServer:
         assert hasattr(server.mcp_handlers, "search_arxiv_handler")
         assert callable(server.mcp_handlers.search_arxiv_handler)
 
-    @patch("server.print")
-    def test_error_output_format(self, mock_print):
-        """Test that error outputs are properly formatted as JSON."""
-        with patch("server.mcp") as mock_mcp:
+    def test_error_propagation(self):
+        """Test that errors from mcp.run propagate."""
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run = MagicMock(side_effect=ValueError("Test error"))
 
-            with pytest.raises(SystemExit):
-                server.main()
-
-            # Check that error was printed to stderr in JSON format
-            mock_print.assert_called()
+            with patch("sys.argv", ["arxiv-mcp"]):
+                with pytest.raises(ValueError, match="Test error"):
+                    server.main()
 
     def test_async_function_definitions(self):
         """Test that async functions are properly defined."""
-        # We can't directly test the decorated functions, but we can verify they exist
-        # by checking the module's global namespace or MCP registry
-
-        # The functions should be defined in the module
-        vars(server)
-
-        # Look for function names or check if they're registered with MCP
-        # This is a structural test to ensure the async functions are properly defined
+        # In FastMCP 3.0, @mcp.tool returns the original function
+        # so the functions should be directly accessible
         assert server.mcp is not None
 
+        # Verify tool functions are directly accessible as original functions
+        assert callable(server.search_arxiv_tool)
+        assert asyncio.iscoroutinefunction(server.search_arxiv_tool)
+
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.search_arxiv_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.search_arxiv_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_search_arxiv_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the search_arxiv_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": [], "count": 0}
 
-        # Get the function from the module directly
-        func = getattr(server, "search_arxiv_tool", None)
-        if func and callable(func):
-            result = await func("cs.AI", 5)
-            assert result == {"papers": [], "count": 0}
-            mock_handler.assert_called_once_with("cs.AI", 5)
-            # Verify logging was called
-            mock_logger.info.assert_called_with("Searching ArXiv for query: cs.AI")
+        result = await server.search_arxiv_tool("cs.AI", 5)
+        assert result == {"papers": [], "count": 0}
+        mock_handler.assert_called_once_with("cs.AI", 5)
+        # Verify logging was called
+        mock_logger.info.assert_called_with("Searching ArXiv for query: cs.AI")
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.get_recent_papers_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.get_recent_papers_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_get_recent_papers_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the get_recent_papers_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": []}
 
-        func = getattr(server, "get_recent_papers_tool", None)
-        if func and callable(func):
-            result = await func("cs.AI", 5)
-            assert result == {"papers": []}
-            mock_handler.assert_called_once_with("cs.AI", 5)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Getting recent papers from category: cs.AI"
-            )
+        result = await server.get_recent_papers_tool("cs.AI", 5)
+        assert result == {"papers": []}
+        mock_handler.assert_called_once_with("cs.AI", 5)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Getting recent papers from category: cs.AI"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.search_papers_by_author_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.search_papers_by_author_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_search_papers_by_author_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the search_papers_by_author_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": []}
 
-        func = getattr(server, "search_papers_by_author_tool", None)
-        if func and callable(func):
-            result = await func("Test Author", 10)
-            assert result == {"papers": []}
-            mock_handler.assert_called_once_with("Test Author", 10)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Searching papers by author: Test Author"
-            )
+        result = await server.search_papers_by_author_tool("Test Author", 10)
+        assert result == {"papers": []}
+        mock_handler.assert_called_once_with("Test Author", 10)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Searching papers by author: Test Author"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.search_by_title_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.search_by_title_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_search_by_title_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the search_by_title_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": []}
 
-        func = getattr(server, "search_by_title_tool", None)
-        if func and callable(func):
-            result = await func("neural networks", 10)
-            assert result == {"papers": []}
-            mock_handler.assert_called_once_with("neural networks", 10)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Searching papers by title: neural networks"
-            )
+        result = await server.search_by_title_tool("neural networks", 10)
+        assert result == {"papers": []}
+        mock_handler.assert_called_once_with("neural networks", 10)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Searching papers by title: neural networks"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.search_by_abstract_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.search_by_abstract_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_search_by_abstract_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the search_by_abstract_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": []}
 
-        func = getattr(server, "search_by_abstract_tool", None)
-        if func and callable(func):
-            result = await func("machine learning", 10)
-            assert result == {"papers": []}
-            mock_handler.assert_called_once_with("machine learning", 10)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Searching papers by abstract: machine learning"
-            )
+        result = await server.search_by_abstract_tool("machine learning", 10)
+        assert result == {"papers": []}
+        mock_handler.assert_called_once_with("machine learning", 10)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Searching papers by abstract: machine learning"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.search_by_subject_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.search_by_subject_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_search_by_subject_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the search_by_subject_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": []}
 
-        func = getattr(server, "search_by_subject_tool", None)
-        if func and callable(func):
-            result = await func("Computer Science", 10)
-            assert result == {"papers": []}
-            mock_handler.assert_called_once_with("Computer Science", 10)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Searching papers by subject: Computer Science"
-            )
+        result = await server.search_by_subject_tool("Computer Science", 10)
+        assert result == {"papers": []}
+        mock_handler.assert_called_once_with("Computer Science", 10)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Searching papers by subject: Computer Science"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.search_date_range_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.search_date_range_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_search_date_range_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the search_date_range_tool function directly with logging verification."""
         mock_handler.return_value = {"papers": []}
 
-        func = getattr(server, "search_date_range_tool", None)
-        if func and callable(func):
-            result = await func("2023-01-01", "2023-12-31", 10)
-            assert result == {"papers": []}
-            mock_handler.assert_called_once_with("2023-01-01", "2023-12-31", "", 10)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Searching papers by date range: 2023-01-01 to 2023-12-31"
-            )
+        result = await server.search_date_range_tool("2023-01-01", "2023-12-31")
+        assert result == {"papers": []}
+        mock_handler.assert_called_once_with("2023-01-01", "2023-12-31", "", 20)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Searching papers by date range: 2023-01-01 to 2023-12-31"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.get_paper_details_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.get_paper_details_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_get_paper_details_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the get_paper_details_tool function directly with logging verification."""
         mock_handler.return_value = {"paper": {}}
 
-        func = getattr(server, "get_paper_details_tool", None)
-        if func and callable(func):
-            result = await func("2023.12345")
-            assert result == {"paper": {}}
-            mock_handler.assert_called_once_with("2023.12345")
-            # Verify logging was called
-            mock_logger.info.assert_called_with("Getting paper details for: 2023.12345")
+        result = await server.get_paper_details_tool("2023.12345")
+        assert result == {"paper": {}}
+        mock_handler.assert_called_once_with("2023.12345")
+        # Verify logging was called
+        mock_logger.info.assert_called_with("Getting paper details for: 2023.12345")
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.find_similar_papers_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.find_similar_papers_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_find_similar_papers_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the find_similar_papers_tool function directly with logging verification."""
         mock_handler.return_value = {"similar_papers": []}
 
-        func = getattr(server, "find_similar_papers_tool", None)
-        if func and callable(func):
-            result = await func("2023.12345", 5)
-            assert result == {"similar_papers": []}
-            mock_handler.assert_called_once_with("2023.12345", 5)
-            # Verify logging was called
-            mock_logger.info.assert_called_with(
-                "Finding similar papers for: 2023.12345"
-            )
+        result = await server.find_similar_papers_tool("2023.12345", 5)
+        assert result == {"similar_papers": []}
+        mock_handler.assert_called_once_with("2023.12345", 5)
+        # Verify logging was called
+        mock_logger.info.assert_called_with(
+            "Finding papers similar to: 2023.12345"
+        )
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.export_to_bibtex_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.export_to_bibtex_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_export_to_bibtex_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the export_to_bibtex_tool function directly with logging verification."""
         mock_handler.return_value = {"bibtex": ""}
 
-        func = getattr(server, "export_to_bibtex_tool", None)
-        if func and callable(func):
-            result = await func(["2023.12345"])
-            assert result == {"bibtex": ""}
-            mock_handler.assert_called_once_with('["2023.12345"]')
-            # Verify logging was called
-            mock_logger.info.assert_called_with("Exporting to BibTeX for 1 papers")
+        result = await server.export_to_bibtex_tool('["2023.12345"]')
+        assert result == {"bibtex": ""}
+        mock_handler.assert_called_once_with('["2023.12345"]')
+        # Verify logging was called
+        mock_logger.info.assert_called_with("Exporting papers to BibTeX format")
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.download_paper_pdf_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.download_paper_pdf_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_download_paper_pdf_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the download_paper_pdf_tool function directly with logging verification."""
         mock_handler.return_value = {"status": "success"}
 
-        func = getattr(server, "download_paper_pdf_tool", None)
-        if func and callable(func):
-            result = await func("2023.12345", "/tmp")
-            assert result == {"status": "success"}
-            mock_handler.assert_called_once_with("2023.12345", "/tmp")
-            # Verify logging was called
-            mock_logger.info.assert_called_with("Downloading PDF for paper: 2023.12345")
+        result = await server.download_paper_pdf_tool("2023.12345", "/tmp")
+        assert result == {"status": "success"}
+        mock_handler.assert_called_once_with("2023.12345", "/tmp")
+        # Verify logging was called
+        mock_logger.info.assert_called_with("Downloading PDF for paper: 2023.12345")
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.get_pdf_url_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.get_pdf_url_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_get_pdf_url_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the get_pdf_url_tool function directly with logging verification."""
         mock_handler.return_value = {"pdf_url": ""}
 
-        func = getattr(server, "get_pdf_url_tool", None)
-        if func and callable(func):
-            result = await func("2023.12345")
-            assert result == {"pdf_url": ""}
-            mock_handler.assert_called_once_with("2023.12345")
-            # Verify logging was called
-            mock_logger.info.assert_called_with("Getting PDF URL for paper: 2023.12345")
+        result = await server.get_pdf_url_tool("2023.12345")
+        assert result == {"pdf_url": ""}
+        mock_handler.assert_called_once_with("2023.12345")
+        # Verify logging was called
+        mock_logger.info.assert_called_with("Getting PDF URL for paper: 2023.12345")
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers.download_multiple_pdfs_handler")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers.download_multiple_pdfs_handler")
+    @patch("arxiv_mcp.server.logger")
     async def test_download_multiple_pdfs_tool_function_with_logging(
         self, mock_logger, mock_handler
     ):
         """Test the download_multiple_pdfs_tool function directly with logging verification."""
         mock_handler.return_value = {"status": "success"}
 
-        func = getattr(server, "download_multiple_pdfs_tool", None)
-        if func and callable(func):
-            result = await func(["2023.12345"], "/tmp")
-            assert result == {"status": "success"}
-            mock_handler.assert_called_once_with('["2023.12345"]', "/tmp", 5)
-            # Verify logging was called
-            mock_logger.info.assert_called_with("Downloading multiple PDFs: 1 papers")
+        result = await server.download_multiple_pdfs_tool('["2023.12345"]', "/tmp")
+        assert result == {"status": "success"}
+        mock_handler.assert_called_once_with('["2023.12345"]', "/tmp", 3)
+        # Verify logging was called
+        mock_logger.info.assert_called_with("Downloading multiple PDFs with max_concurrent: 3")
 
-    @patch("server.main")
+    @patch("arxiv_mcp.server.main")
     def test_main_name_block(self, mock_main):
         """Test the if __name__ == '__main__' block."""
         # Use exec to simulate running the module as main
         code = """
-import os
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
 # Simulate the module being run as __main__
 exec('''
 if __name__ == "__main__":
     from unittest.mock import patch
-    with patch('server.main'):
+    with patch('arxiv_mcp.server.main'):
         pass
 ''')
 """
@@ -467,11 +418,10 @@ if __name__ == "__main__":
         assert 'if __name__ == "__main__":' in content
         assert "main()" in content
 
-    @patch("server.main")
+    @patch("arxiv_mcp.server.main")
     def test_name_main_execution_block(self, mock_main):
         """Test that the __name__ == '__main__' block calls main()."""
         # Simplified test that just verifies the main block structure exists
-        # The actual execution happens during normal import, so we verify structure
         server_file = server.__file__
         with open(server_file, "r") as f:
             content = f.read()
@@ -480,10 +430,7 @@ if __name__ == "__main__":
         assert 'if __name__ == "__main__":' in content
         assert "main()" in content
 
-        # This line should be covered when we run the module normally
-        # Let's just ensure the test passes for now since the line exists
-
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.logger")
     def test_all_logger_calls_coverage(self, mock_logger):
         """Test that all logger calls can be reached for coverage."""
         # Import fresh module to ensure we can patch logger
@@ -500,8 +447,8 @@ if __name__ == "__main__":
             pass
 
     @pytest.mark.asyncio
-    @patch("server.mcp_handlers")
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.mcp_handlers")
+    @patch("arxiv_mcp.server.logger")
     async def test_direct_tool_function_calls_for_coverage(
         self, mock_logger, mock_handlers
     ):
@@ -531,17 +478,13 @@ if __name__ == "__main__":
             return_value={"status": "success"}
         )
 
-        # Try to access the tool functions from the server module
-        # The FastMCP decorators make these functions harder to call directly
-        # but we can at least try to trigger them
-
-        # Get all attributes that might be tool functions
+        # In FastMCP 3.0, decorated functions are the original functions
+        # so we can call them directly
         for attr_name in dir(server):
             if attr_name.endswith("_tool") and not attr_name.startswith("_"):
                 func = getattr(server, attr_name, None)
                 if callable(func) and asyncio.iscoroutinefunction(func):
                     try:
-                        # Try calling with minimal parameters
                         if "search_arxiv" in attr_name:
                             await func("test", 5)
                         elif "recent_papers" in attr_name:
@@ -555,19 +498,19 @@ if __name__ == "__main__":
                         elif "subject" in attr_name:
                             await func("subject", 5)
                         elif "date_range" in attr_name:
-                            await func("2023-01-01", "2023-12-31", 5)
+                            await func("2023-01-01", "2023-12-31")
                         elif "paper_details" in attr_name:
                             await func("test")
                         elif "similar" in attr_name:
                             await func("test", 5)
                         elif "bibtex" in attr_name:
-                            await func(["test"])
+                            await func('["test"]')
                         elif "download_paper_pdf" in attr_name:
                             await func("test", "/tmp")
                         elif "pdf_url" in attr_name:
                             await func("test")
                         elif "multiple_pdfs" in attr_name:
-                            await func(["test"], "/tmp")
+                            await func('["test"]', "/tmp")
                     except Exception:
                         # Function call failed, but logger might have been hit
                         pass
@@ -576,7 +519,7 @@ if __name__ == "__main__":
         assert mock_logger is not None
 
     @pytest.mark.asyncio
-    @patch("server.logger")
+    @patch("arxiv_mcp.server.logger")
     async def test_execute_all_tool_functions_for_logger_coverage(self, mock_logger):
         """Execute all FastMCP tool functions to hit missing logger lines."""
 
@@ -647,8 +590,7 @@ if __name__ == "__main__":
             mock_url.return_value = {"pdf_url": ""}
             mock_multi.return_value = {"status": "success"}
 
-            # The tool functions exist but are wrapped by FastMCP decorators
-            # Try to call them directly if they exist and are callable
+            # In FastMCP 3.0, tool functions are original functions, call directly
             tool_functions = [
                 "search_arxiv_tool",
                 "get_recent_papers_tool",
@@ -685,19 +627,19 @@ if __name__ == "__main__":
                             elif "subject" in func_name:
                                 await func("Test Subject", 5)
                             elif "date_range" in func_name:
-                                await func("2023-01-01", "2023-12-31", 5)
+                                await func("2023-01-01", "2023-12-31")
                             elif "paper_details" in func_name:
                                 await func("test-id")
                             elif "similar" in func_name:
                                 await func("test-id", 5)
                             elif "bibtex" in func_name:
-                                await func(["test-id"])
+                                await func('["test-id"]')
                             elif "download_paper_pdf" in func_name:
                                 await func("test-id", "/tmp")
                             elif "pdf_url" in func_name:
                                 await func("test-id")
                             elif "multiple_pdfs" in func_name:
-                                await func(["test-id"], "/tmp")
+                                await func('["test-id"]', "/tmp")
 
                             functions_called += 1
                         except Exception:
@@ -760,13 +702,13 @@ if __name__ == "__main__":
                 ("search_by_title_tool", ["Machine Learning", 5]),
                 ("search_by_abstract_tool", ["neural networks", 8]),
                 ("search_by_subject_tool", ["computer science", 5]),
-                ("search_date_range_tool", ["2023-01-01", "2023-12-31", 5]),
+                ("search_date_range_tool", ["2023-01-01", "2023-12-31"]),
                 ("get_paper_details_tool", ["2301.12345"]),
                 ("find_similar_papers_tool", ["2301.12345", 5]),
-                ("export_to_bibtex_tool", [["2301.12345", "2301.67890"]]),
+                ("export_to_bibtex_tool", ['["2301.12345", "2301.67890"]']),
                 ("download_paper_pdf_tool", ["2301.12345", "/tmp"]),
                 ("get_pdf_url_tool", ["2301.12345"]),
-                ("download_multiple_pdfs_tool", [["2301.12345"], "/tmp"]),
+                ("download_multiple_pdfs_tool", ['["2301.12345"]', "/tmp"]),
             ]
 
             for tool_name, args in tool_tests:
@@ -778,7 +720,7 @@ if __name__ == "__main__":
 
     @pytest.mark.asyncio
     async def test_error_handling_in_tools(self):
-        """Test error handling in tool functions."""
+        """Test error handling in tool functions raises ToolError."""
 
         with patch.object(server, "mcp_handlers") as mock_handlers:
             # Configure handlers to raise different exceptions
@@ -792,93 +734,72 @@ if __name__ == "__main__":
                 side_effect=ConnectionError("Network error")
             )
 
-            # Test that tools handle errors gracefully
-            error_tests = [
-                ("search_arxiv_tool", ["cs.AI", 5]),
-                ("get_recent_papers_tool", ["cs.AI", 5]),
-                ("download_paper_pdf_tool", ["test", "/tmp"]),
-            ]
+            # Test that tools raise ToolError
+            with pytest.raises(ToolError, match="Search error"):
+                await server.search_arxiv_tool("cs.AI", 5)
 
-            for tool_name, args in error_tests:
-                if hasattr(server, tool_name):
-                    tool_func = getattr(server, tool_name)
-                    try:
-                        if asyncio.iscoroutinefunction(tool_func):
-                            await tool_func(*args)
-                    except Exception:
-                        # Tools may propagate exceptions or handle them
-                        pass
+            with pytest.raises(ToolError, match="Invalid parameters"):
+                await server.get_recent_papers_tool("cs.AI", 5)
+
+            with pytest.raises(ToolError, match="Network error"):
+                await server.download_paper_pdf_tool("test", "/tmp")
 
     def test_mcp_configuration_details(self):
         """Test detailed MCP server configuration."""
 
         # Test MCP instance properties
         mcp = server.mcp
-        assert mcp.name == "ArxivMCP"
+        assert mcp.name == "arxiv"
 
         # Test that the MCP instance has the expected structure
         assert hasattr(mcp, "name")
 
         # Test logging configuration
         logger = server.logger
-        assert logger.name == "server"
+        assert logger.name == "arxiv_mcp.server"
         assert logger.level <= 20  # Should be INFO or lower
 
-    @patch("server.sys.exit")
-    @patch("server.logger")
-    def test_main_exception_handling(self, mock_logger, mock_exit):
+    def test_main_exception_handling(self):
         """Test main function exception handling."""
 
-        with patch("server.mcp") as mock_mcp:
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run.side_effect = ConnectionError("Connection failed")
 
-            server.main()
+            with patch("sys.argv", ["arxiv-mcp"]):
+                with pytest.raises(ConnectionError, match="Connection failed"):
+                    server.main()
 
-            # Should log the error and exit with error code
-            mock_logger.error.assert_called()
-            mock_exit.assert_called_with(1)
-
-    @patch("server.sys.exit")
-    @patch("server.logger")
-    def test_main_unexpected_exception(self, mock_logger, mock_exit):
+    def test_main_unexpected_exception(self):
         """Test main function handling of unexpected exceptions."""
 
-        with patch("server.mcp") as mock_mcp:
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run.side_effect = RuntimeError("Unexpected error")
 
-            server.main()
+            with patch("sys.argv", ["arxiv-mcp"]):
+                with pytest.raises(RuntimeError, match="Unexpected error"):
+                    server.main()
 
-            # Should log the error and exit with error code
-            mock_logger.error.assert_called()
-            mock_exit.assert_called_with(1)
+    def test_argparse_transport_and_port(self):
+        """Test argparse transport and port parsing."""
 
-    def test_environment_variable_parsing(self):
-        """Test environment variable parsing."""
+        # Test port parsing via argparse
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
+            mock_mcp.run = MagicMock()
+            with patch("sys.argv", ["arxiv-mcp", "--transport", "http", "--host", "localhost", "--port", "8080"]):
+                server.main()
+                mock_mcp.run.assert_called_with(
+                    transport="http", host="localhost", port=8080
+                )
 
-        # Test port parsing
-        with patch.dict(os.environ, {"MCP_SSE_PORT": "8080"}):
-            with patch("server.mcp") as mock_mcp:
-                mock_mcp.run = MagicMock()
-                # Set other required env vars
-                with patch.dict(
-                    os.environ, {"MCP_TRANSPORT": "sse", "MCP_SSE_HOST": "localhost"}
-                ):
+        # Test MCP_TRANSPORT env var fallback (no --transport arg)
+        with patch("arxiv_mcp.server.mcp") as mock_mcp:
+            mock_mcp.run = MagicMock()
+            with patch("sys.argv", ["arxiv-mcp"]):
+                with patch.dict(os.environ, {"MCP_TRANSPORT": "http"}):
                     server.main()
                     mock_mcp.run.assert_called_with(
-                        transport="sse", host="localhost", port=8080
+                        transport="http", host="0.0.0.0", port=8000
                     )
-
-        # Test invalid port handling
-        with patch.dict(os.environ, {"MCP_SSE_PORT": "invalid"}):
-            with patch("server.mcp") as mock_mcp:
-                mock_mcp.run = MagicMock()
-                with patch.dict(
-                    os.environ, {"MCP_TRANSPORT": "sse", "MCP_SSE_HOST": "localhost"}
-                ):
-                    with patch("server.sys.exit") as mock_exit:
-                        # Should handle invalid port gracefully by exiting with error
-                        server.main()
-                        mock_exit.assert_called_with(1)
 
     def test_module_level_constants(self):
         """Test module-level constants and configurations."""
@@ -889,9 +810,9 @@ if __name__ == "__main__":
         assert hasattr(server, "logging")
 
         # Test logging configuration
-        assert server.logger.name == "server"
+        assert server.logger.name == "arxiv_mcp.server"
 
-    @patch("server.load_dotenv")
+    @patch("arxiv_mcp.server.load_dotenv")
     def test_dotenv_loading(self, mock_load_dotenv):
         """Test that dotenv is loaded properly."""
 
@@ -913,52 +834,40 @@ if __name__ == "__main__":
             "search_by_title_tool": 2,  # title, max_results
             "search_by_abstract_tool": 2,  # abstract, max_results
             "search_by_subject_tool": 2,  # subject, max_results
-            "search_date_range_tool": 3,  # start_date, end_date, max_results
+            "search_date_range_tool": 4,  # start_date, end_date, category, max_results
             "get_paper_details_tool": 1,  # paper_id
             "find_similar_papers_tool": 2,  # paper_id, max_results
             "export_to_bibtex_tool": 1,  # paper_ids
             "download_paper_pdf_tool": 2,  # paper_id, download_dir
             "get_pdf_url_tool": 1,  # paper_id
-            "download_multiple_pdfs_tool": 2,  # paper_ids, download_dir
+            "download_multiple_pdfs_tool": 3,  # paper_ids, download_dir, max_concurrent
         }
+
+        import inspect
 
         for tool_name, expected_params in tool_signatures.items():
             if hasattr(server, tool_name):
                 tool_func = getattr(server, tool_name)
-                # Check if it's a FunctionTool object
-                if hasattr(tool_func, "fn"):
-                    # Check that the underlying function is callable
-                    assert callable(tool_func.fn)
+                # In FastMCP 3.0, decorated functions are original functions
+                assert callable(tool_func)
 
-                    # For async functions, check the signature
-                    if asyncio.iscoroutinefunction(tool_func.fn):
-                        import inspect
-
-                        sig = inspect.signature(tool_func.fn)
-                        actual_params = len(sig.parameters)
-                        # Parameters might include self or other injected params
-                        assert actual_params >= expected_params
-                else:
-                    # Direct function - check if callable
-                    assert callable(tool_func)
-
-                    # For async functions, check the signature
-                    if asyncio.iscoroutinefunction(tool_func):
-                        import inspect
-
-                        sig = inspect.signature(tool_func)
-                        actual_params = len(sig.parameters)
-                        # Parameters might include self or other injected params
-                        assert actual_params >= expected_params
+                if asyncio.iscoroutinefunction(tool_func):
+                    sig = inspect.signature(tool_func)
+                    actual_params = len(sig.parameters)
+                    assert actual_params >= expected_params
 
     def test_server_startup_sequence(self):
         """Test the server startup sequence."""
 
-        with patch("server.load_dotenv"), patch("server.mcp") as mock_mcp:
+        with (
+            patch("arxiv_mcp.server.load_dotenv"),
+            patch("arxiv_mcp.server.mcp") as mock_mcp,
+        ):
             mock_mcp.run = MagicMock()
 
             # Test startup with default configuration
-            server.main()
+            with patch("sys.argv", ["arxiv-mcp"]):
+                server.main()
 
             # Verify startup sequence
             mock_mcp.run.assert_called_once()
@@ -979,17 +888,14 @@ if __name__ == "__main__":
                 return_value={"papers": []}
             )
 
-            # Create concurrent tasks
+            # In FastMCP 3.0, call functions directly (no .fn())
             tasks = []
             if hasattr(server, "search_arxiv_tool"):
-                tool = server.search_arxiv_tool
-                tasks.append(tool.fn("cs.AI", 5))
+                tasks.append(server.search_arxiv_tool("cs.AI", 5))
             if hasattr(server, "get_recent_papers_tool"):
-                tool = server.get_recent_papers_tool
-                tasks.append(tool.fn("cs.LG", 3))
+                tasks.append(server.get_recent_papers_tool("cs.LG", 3))
             if hasattr(server, "search_papers_by_author_tool"):
-                tool = server.search_papers_by_author_tool
-                tasks.append(tool.fn("Test Author", 5))
+                tasks.append(server.search_papers_by_author_tool("Test Author", 5))
 
             # Execute concurrently
             if tasks:

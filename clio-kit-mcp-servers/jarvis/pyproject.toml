@@ -12,7 +12,7 @@ authors = [
 keywords = ["jarvis", "pipeline-management", "high-performance-computing", "hpc", "workflow", "data-pipelines", "scientific-computing", "mcp", "package-management"]
 
 dependencies = [
-  "fastmcp>=2.13.0",
+  "fastmcp>=3.0.0rc2",
   "fastapi",
   "python-dotenv>=1.0.0",
   "jarvis-util @ git+https://github.com/grc-iit/jarvis-util.git@main#egg=jarvis-util",
@@ -25,7 +25,7 @@ Homepage = "https://toolkit.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]
-jarvis-mcp = "server:main"
+jarvis-mcp = "jarvis_mcp.server:main"
 
 [tool.uv]
 dev-dependencies = [
@@ -40,5 +40,16 @@ dev-dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=64.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jarvis_mcp"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

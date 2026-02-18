@@ -1,195 +1,140 @@
 """
 Comprehensive test suite to boost coverage from 81% to >90%
 Targets uncovered lines in server.py, mcp_handlers.py, and output_formatter.py
+Updated for FastMCP v3 (ToolError instead of error dicts, direct function calls).
 """
 
 import os
-import sys
 import json
 import pytest
 from unittest.mock import patch
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
 
 
 class TestServerToolsErrorPaths:
-    """Test error paths in server.py tool functions"""
+    """Test error paths in server.py tool functions -- now expect ToolError"""
 
-    def test_get_cpu_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_cpu_info_tool_error_path(self):
         """Test error handling in get_cpu_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.cpu_info_handler") as mock_handler:
+        with patch("node_hardware_mcp.mcp_handlers.cpu_info_handler") as mock_handler:
             mock_handler.side_effect = Exception("CPU collection failed")
 
-            # Get the actual function from the tool
-            tool_func = (
-                server.get_cpu_info_tool.fn
-                if hasattr(server.get_cpu_info_tool, "fn")
-                else server.get_cpu_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="CPU collection failed"):
+                await server.get_cpu_info_tool()
 
-            assert result is not None
-            assert result["isError"] is True
-            assert "CPU collection failed" in result["content"][0]["text"]
-            assert result["_meta"]["tool"] == "get_cpu_info"
-
-    def test_get_memory_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_memory_info_tool_error_path(self):
         """Test error handling in get_memory_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.memory_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.memory_info_handler"
+        ) as mock_handler:
             mock_handler.side_effect = RuntimeError("Memory access denied")
 
-            tool_func = (
-                server.get_memory_info_tool.fn
-                if hasattr(server.get_memory_info_tool, "fn")
-                else server.get_memory_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="Memory collection failed"):
+                await server.get_memory_info_tool()
 
-            assert result["isError"] is True
-            assert "Memory access denied" in result["content"][0]["text"]
-            assert result["_meta"]["error"] == "MemoryCollectionError"
-
-    def test_get_system_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_system_info_tool_error_path(self):
         """Test error handling in get_system_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.system_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.system_info_handler"
+        ) as mock_handler:
             mock_handler.side_effect = PermissionError("Permission denied")
 
-            tool_func = (
-                server.get_system_info_tool.fn
-                if hasattr(server.get_system_info_tool, "fn")
-                else server.get_system_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="System collection failed"):
+                await server.get_system_info_tool()
 
-            assert result["isError"] is True
-            assert "Permission denied" in result["content"][0]["text"]
-
-    def test_get_disk_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_disk_info_tool_error_path(self):
         """Test error handling in get_disk_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.disk_info_handler") as mock_handler:
+        with patch("node_hardware_mcp.mcp_handlers.disk_info_handler") as mock_handler:
             mock_handler.side_effect = OSError("Disk not accessible")
 
-            tool_func = (
-                server.get_disk_info_tool.fn
-                if hasattr(server.get_disk_info_tool, "fn")
-                else server.get_disk_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="Disk collection failed"):
+                await server.get_disk_info_tool()
 
-            assert result["isError"] is True
-            assert "Disk not accessible" in result["content"][0]["text"]
-
-    def test_get_network_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_network_info_tool_error_path(self):
         """Test error handling in get_network_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.network_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.network_info_handler"
+        ) as mock_handler:
             mock_handler.side_effect = ConnectionError("Network unavailable")
 
-            tool_func = (
-                server.get_network_info_tool.fn
-                if hasattr(server.get_network_info_tool, "fn")
-                else server.get_network_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="Network collection failed"):
+                await server.get_network_info_tool()
 
-            assert result["isError"] is True
-            assert "Network unavailable" in result["content"][0]["text"]
-
-    def test_get_gpu_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_gpu_info_tool_error_path(self):
         """Test error handling in get_gpu_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.gpu_info_handler") as mock_handler:
+        with patch("node_hardware_mcp.mcp_handlers.gpu_info_handler") as mock_handler:
             mock_handler.side_effect = Exception("GPU not found")
 
-            tool_func = (
-                server.get_gpu_info_tool.fn
-                if hasattr(server.get_gpu_info_tool, "fn")
-                else server.get_gpu_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="GPU collection failed"):
+                await server.get_gpu_info_tool()
 
-            assert result["isError"] is True
-            assert "GPU not found" in result["content"][0]["text"]
-
-    def test_get_sensor_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_sensor_info_tool_error_path(self):
         """Test error handling in get_sensor_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.sensor_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.sensor_info_handler"
+        ) as mock_handler:
             mock_handler.side_effect = Exception("Sensor read failed")
 
-            tool_func = (
-                server.get_sensor_info_tool.fn
-                if hasattr(server.get_sensor_info_tool, "fn")
-                else server.get_sensor_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="Sensor collection failed"):
+                await server.get_sensor_info_tool()
 
-            assert result["isError"] is True
-            assert "Sensor read failed" in result["content"][0]["text"]
-
-    def test_get_process_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_process_info_tool_error_path(self):
         """Test error handling in get_process_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.process_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.process_info_handler"
+        ) as mock_handler:
             mock_handler.side_effect = Exception("Process enumeration failed")
 
-            tool_func = (
-                server.get_process_info_tool.fn
-                if hasattr(server.get_process_info_tool, "fn")
-                else server.get_process_info_tool
-            )
-            result = asyncio.run(tool_func())
+            with pytest.raises(ToolError, match="Process collection failed"):
+                await server.get_process_info_tool()
 
-            assert result["isError"] is True
-            assert "Process enumeration failed" in result["content"][0]["text"]
-
-    def test_get_performance_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_performance_info_tool_error_path(self):
         """Test error handling in get_performance_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.performance_monitor_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.performance_monitor_handler"
+        ) as mock_handler:
             mock_handler.side_effect = Exception("Performance monitoring failed")
 
-            tool_func = (
-                server.get_performance_info_tool.fn
-                if hasattr(server.get_performance_info_tool, "fn")
-                else server.get_performance_info_tool
-            )
-            result = asyncio.run(tool_func())
-
-            assert result["isError"] is True
-            assert "Performance monitoring failed" in result["content"][0]["text"]
+            with pytest.raises(ToolError, match="Performance collection failed"):
+                await server.get_performance_info_tool()
 
 
 class TestServerRemoteNodeInfo:
     """Test get_remote_node_info_tool comprehensive functionality"""
 
-    def test_get_remote_node_info_tool_success(self):
+    @pytest.mark.asyncio
+    async def test_get_remote_node_info_tool_success(self):
         """Test successful remote node info collection"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
         mock_result = {
             "content": [{"text": '{"success": true}'}],
@@ -197,61 +142,47 @@ class TestServerRemoteNodeInfo:
             "isError": False,
         }
 
-        with patch("mcp_handlers.get_remote_node_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = mock_result
 
-            tool_func = (
-                server.get_remote_node_info_tool.fn
-                if hasattr(server.get_remote_node_info_tool, "fn")
-                else server.get_remote_node_info_tool
-            )
-            result = asyncio.run(
-                tool_func(
-                    hostname="test.example.com",
-                    username="testuser",
-                    port=22,
-                    ssh_key="/path/to/key",
-                    timeout=30,
-                    components=["cpu", "memory"],
-                    exclude_components=["processes"],
-                    include_performance=True,
-                    include_health=True,
-                )
+            result = await server.get_remote_node_info_tool(
+                hostname="test.example.com",
+                username="testuser",
+                port=22,
+                ssh_key="/path/to/key",
+                timeout=30,
+                components=["cpu", "memory"],
+                exclude_components=["processes"],
+                include_performance=True,
+                include_health=True,
             )
 
             assert result is not None
             assert result["isError"] is False
             mock_handler.assert_called_once()
 
-    def test_get_remote_node_info_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_get_remote_node_info_tool_error_path(self):
         """Test error handling in get_remote_node_info_tool"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        with patch("mcp_handlers.get_remote_node_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info_handler"
+        ) as mock_handler:
             mock_handler.side_effect = Exception("SSH connection failed")
 
-            tool_func = (
-                server.get_remote_node_info_tool.fn
-                if hasattr(server.get_remote_node_info_tool, "fn")
-                else server.get_remote_node_info_tool
-            )
-            result = asyncio.run(
-                tool_func(
+            with pytest.raises(ToolError, match="Remote hardware collection failed"):
+                await server.get_remote_node_info_tool(
                     hostname="test.example.com",
                     username="testuser",
                 )
-            )
 
-            assert result["isError"] is True
-            assert "SSH connection failed" in result["content"][0]["text"]
-            assert "RemoteHardwareCollectionError" in result["content"][0]["text"]
-            assert "troubleshooting" in result["content"][0]["text"]
-
-    def test_get_remote_node_info_tool_with_defaults(self):
+    @pytest.mark.asyncio
+    async def test_get_remote_node_info_tool_with_defaults(self):
         """Test remote node info with default parameters"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
         mock_result = {
             "content": [{"text": '{"success": true}'}],
@@ -259,15 +190,12 @@ class TestServerRemoteNodeInfo:
             "isError": False,
         }
 
-        with patch("mcp_handlers.get_remote_node_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = mock_result
 
-            tool_func = (
-                server.get_remote_node_info_tool.fn
-                if hasattr(server.get_remote_node_info_tool, "fn")
-                else server.get_remote_node_info_tool
-            )
-            result = asyncio.run(tool_func(hostname="192.168.1.100"))
+            result = await server.get_remote_node_info_tool(hostname="192.168.1.100")
 
             assert result is not None
             mock_handler.assert_called_once_with(
@@ -284,17 +212,12 @@ class TestServerRemoteNodeInfo:
 class TestServerHealthCheck:
     """Test health_check_tool comprehensive functionality"""
 
-    def test_health_check_tool_success(self):
+    @pytest.mark.asyncio
+    async def test_health_check_tool_success(self):
         """Test successful health check"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
 
-        tool_func = (
-            server.health_check_tool.fn
-            if hasattr(server.health_check_tool, "fn")
-            else server.health_check_tool
-        )
-        result = asyncio.run(tool_func())
+        result = await server.health_check_tool()
 
         assert result is not None
         assert result["isError"] is False
@@ -313,25 +236,17 @@ class TestServerHealthCheck:
         assert "performance_metrics" in health_data
         assert "health_indicators" in health_data
 
-    def test_health_check_tool_error_path(self):
+    @pytest.mark.asyncio
+    async def test_health_check_tool_error_path(self):
         """Test health check error handling"""
-        import server
-        import asyncio
+        from node_hardware_mcp import server
         import json as json_module
 
         with patch.object(json_module, "dumps") as mock_dumps:
             mock_dumps.side_effect = Exception("JSON serialization failed")
 
-            tool_func = (
-                server.health_check_tool.fn
-                if hasattr(server.health_check_tool, "fn")
-                else server.health_check_tool
-            )
-            result = asyncio.run(tool_func())
-
-            assert result["isError"] is True
-            assert "JSON serialization failed" in result["content"][0]["text"]
-            assert result["_meta"]["error"] == "HealthCheckError"
+            with pytest.raises(ToolError, match="Health check failed"):
+                await server.health_check_tool()
 
 
 class TestServerMainFunction:
@@ -339,44 +254,46 @@ class TestServerMainFunction:
 
     def test_main_with_stdio_transport(self):
         """Test main function with stdio transport"""
-        import server
+        from node_hardware_mcp import server
 
-        with patch.dict("os.environ", {"MCP_TRANSPORT": "stdio"}):
+        with patch("sys.argv", ["node-hardware-mcp", "--transport", "stdio"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(transport="stdio")
 
-    def test_main_with_sse_transport(self):
-        """Test main function with SSE transport"""
-        import server
+    def test_main_with_http_transport(self):
+        """Test main function with HTTP transport"""
+        from node_hardware_mcp import server
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MCP_TRANSPORT": "sse",
-                "MCP_SSE_HOST": "127.0.0.1",
-                "MCP_SSE_PORT": "9000",
-            },
+        with patch(
+            "sys.argv",
+            [
+                "node-hardware-mcp",
+                "--transport",
+                "http",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "9000",
+            ],
         ):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(
-                    transport="sse", host="127.0.0.1", port=9000
+                    transport="http", host="127.0.0.1", port=9000
                 )
 
-    def test_main_with_sse_default_values(self):
-        """Test main function with SSE transport and default values"""
-        import server
+    def test_main_with_http_default_values(self):
+        """Test main function with HTTP transport and default values"""
+        from node_hardware_mcp import server
 
-        with patch.dict("os.environ", {"MCP_TRANSPORT": "sse"}, clear=False):
-            # Remove SSE_HOST and SSE_PORT if they exist
-            os.environ.pop("MCP_SSE_HOST", None)
-            os.environ.pop("MCP_SSE_PORT", None)
-
+        with patch(
+            "sys.argv", ["node-hardware-mcp", "--transport", "http"]
+        ):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(
-                    transport="sse", host="0.0.0.0", port=8000
+                    transport="http", host="0.0.0.0", port=8000
                 )
 
 
@@ -385,7 +302,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_cpu_info_handler_low_usage_insight(self):
         """Test CPU info handler with low usage"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_cpu_data = {
             "logical_cores": 8,
@@ -395,7 +312,7 @@ class TestMcpHandlersEdgeCases:
             "cpu_usage": [10.0, 12.0, 8.0, 15.0],  # Low average usage
         }
 
-        with patch("mcp_handlers.get_cpu_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_cpu_info") as mock_get:
             mock_get.return_value = mock_cpu_data
 
             result = mcp_handlers.cpu_info_handler()
@@ -411,7 +328,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_memory_info_handler_swap_usage_insight(self):
         """Test memory info handler with high swap usage"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_memory_data = {
             "total": 16000000000,
@@ -422,7 +339,7 @@ class TestMcpHandlersEdgeCases:
             "swap_used": 5000000000,  # 62.5% swap usage
         }
 
-        with patch("mcp_handlers.get_memory_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_memory_info") as mock_get:
             mock_get.return_value = mock_memory_data
 
             result = mcp_handlers.memory_info_handler()
@@ -440,7 +357,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_disk_info_handler_low_usage_insight(self):
         """Test disk info handler with low disk usage"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_disk_data = {
             "partitions": [
@@ -452,7 +369,7 @@ class TestMcpHandlersEdgeCases:
             "disk_io": {},
         }
 
-        with patch("mcp_handlers.get_disk_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_disk_info") as mock_get:
             mock_get.return_value = mock_disk_data
 
             result = mcp_handlers.disk_info_handler()
@@ -469,7 +386,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_system_info_handler_high_uptime_insight(self):
         """Test system info handler with high uptime"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_system_data = {
             "hostname": "test-server",
@@ -478,7 +395,7 @@ class TestMcpHandlersEdgeCases:
             "total_users": 3,
         }
 
-        with patch("mcp_handlers.get_system_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_system_info") as mock_get:
             mock_get.return_value = mock_system_data
 
             result = mcp_handlers.system_info_handler()
@@ -493,7 +410,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_system_info_handler_moderate_uptime_insight(self):
         """Test system info handler with moderate uptime"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_system_data = {
             "hostname": "test-server",
@@ -502,7 +419,7 @@ class TestMcpHandlersEdgeCases:
             "total_users": 0,
         }
 
-        with patch("mcp_handlers.get_system_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_system_info") as mock_get:
             mock_get.return_value = mock_system_data
 
             result = mcp_handlers.system_info_handler()
@@ -519,7 +436,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_process_info_handler_high_cpu_processes(self):
         """Test process info handler with high CPU processes"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_process_data = {
             "processes": [
@@ -529,7 +446,7 @@ class TestMcpHandlersEdgeCases:
             ]
         }
 
-        with patch("mcp_handlers.get_process_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_process_info") as mock_get:
             mock_get.return_value = mock_process_data
 
             result = mcp_handlers.process_info_handler()
@@ -546,7 +463,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_hardware_summary_handler_all_components(self):
         """Test hardware summary handler with all components"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_summary_data = {
             "hostname": "test-host",
@@ -556,7 +473,7 @@ class TestMcpHandlersEdgeCases:
             "network_info": {"interfaces": []},
         }
 
-        with patch("mcp_handlers.get_hardware_summary") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_hardware_summary") as mock_get:
             mock_get.return_value = mock_summary_data
 
             result = mcp_handlers.hardware_summary_handler()
@@ -571,7 +488,7 @@ class TestMcpHandlersEdgeCases:
 
     def test_performance_monitor_handler_all_high(self):
         """Test performance monitor handler with all high usage"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_perf_data = {
             "cpu_usage": 85.0,  # High
@@ -579,7 +496,9 @@ class TestMcpHandlersEdgeCases:
             "disk_usage": 95.0,  # High
         }
 
-        with patch("mcp_handlers.monitor_performance") as mock_monitor:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.monitor_performance"
+        ) as mock_monitor:
             mock_monitor.return_value = mock_perf_data
 
             result = mcp_handlers.performance_monitor_handler()
@@ -594,11 +513,11 @@ class TestMcpHandlersEdgeCases:
 
     def test_gpu_info_handler_no_gpus(self):
         """Test GPU info handler with no GPUs"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_gpu_data = {"gpus": [], "nvidia_available": False}
 
-        with patch("mcp_handlers.get_gpu_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_gpu_info") as mock_get:
             mock_get.return_value = mock_gpu_data
 
             result = mcp_handlers.gpu_info_handler()
@@ -615,11 +534,11 @@ class TestMcpHandlersEdgeCases:
 
     def test_sensor_info_handler_no_sensors(self):
         """Test sensor info handler with no sensors"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_sensor_data = {"sensors": []}
 
-        with patch("mcp_handlers.get_sensor_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_sensor_info") as mock_get:
             mock_get.return_value = mock_sensor_data
 
             result = mcp_handlers.sensor_info_handler()
@@ -640,7 +559,7 @@ class TestGetNodeInfoHandlerValidation:
 
     def test_get_node_info_handler_invalid_include_filters_type(self):
         """Test validation of include_filters parameter type"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         result = mcp_handlers.get_node_info_handler(
             include_filters="cpu,memory",  # Should be list, not string
@@ -656,7 +575,7 @@ class TestGetNodeInfoHandlerValidation:
 
     def test_get_node_info_handler_invalid_exclude_filters_type(self):
         """Test validation of exclude_filters parameter type"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         result = mcp_handlers.get_node_info_handler(
             exclude_filters="processes",  # Should be list, not string
@@ -671,9 +590,9 @@ class TestGetNodeInfoHandlerValidation:
 
     def test_get_node_info_handler_with_error_result(self):
         """Test handling of error from get_node_info"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
-        with patch("mcp_handlers.get_node_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_get:
             mock_get.return_value = {
                 "error": "Hardware access failed",
                 "error_type": "HardwareError",
@@ -692,7 +611,7 @@ class TestGetNodeInfoHandlerValidation:
 
     def test_get_node_info_handler_with_filters_applied(self):
         """Test get_node_info_handler with filters applied"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_result = {
             "_metadata": {
@@ -707,7 +626,7 @@ class TestGetNodeInfoHandlerValidation:
             "memory_info": {"total": 16000000000},
         }
 
-        with patch("mcp_handlers.get_node_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_get:
             mock_get.return_value = mock_result
 
             result = mcp_handlers.get_node_info_handler(
@@ -730,7 +649,7 @@ class TestGetNodeInfoHandlerValidation:
 
     def test_get_node_info_handler_with_size_control(self):
         """Test get_node_info_handler with response size control"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_result = {
             "_metadata": {
@@ -745,7 +664,7 @@ class TestGetNodeInfoHandlerValidation:
             "memory_info": {"total": 16000000000},
         }
 
-        with patch("mcp_handlers.get_node_info") as mock_get:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_get:
             mock_get.return_value = mock_result
 
             result = mcp_handlers.get_node_info_handler(max_response_size=5000)
@@ -766,7 +685,7 @@ class TestGetRemoteNodeInfoHandler:
 
     def test_get_remote_node_info_handler_success(self):
         """Test successful remote node info collection"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_result = {
             "_metadata": {
@@ -780,7 +699,9 @@ class TestGetRemoteNodeInfoHandler:
             "cpu_info": {"model": "Remote CPU"},
         }
 
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = mock_result
 
             result = mcp_handlers.get_remote_node_info_handler(
@@ -804,14 +725,16 @@ class TestGetRemoteNodeInfoHandler:
 
     def test_get_remote_node_info_handler_with_error(self):
         """Test remote node info handler with error result"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_result = {
             "error": "Connection refused",
             "error_type": "ConnectionError",
         }
 
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = mock_result
 
             result = mcp_handlers.get_remote_node_info_handler(
@@ -827,9 +750,11 @@ class TestGetRemoteNodeInfoHandler:
 
     def test_get_remote_node_info_handler_exception(self):
         """Test remote node info handler with exception"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.side_effect = Exception("Network timeout")
 
             result = mcp_handlers.get_remote_node_info_handler(hostname="test-host")
@@ -843,7 +768,7 @@ class TestGetRemoteNodeInfoHandler:
 
     def test_get_remote_node_info_handler_password_auth(self):
         """Test remote node info handler with password authentication"""
-        import mcp_handlers
+        from node_hardware_mcp import mcp_handlers
 
         mock_result = {
             "_metadata": {
@@ -857,7 +782,9 @@ class TestGetRemoteNodeInfoHandler:
             "system_info": {"os": "Linux"},
         }
 
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = mock_result
 
             result = mcp_handlers.get_remote_node_info_handler(
@@ -880,7 +807,7 @@ class TestOutputFormatterFilteredResponse:
 
     def test_create_filtered_response_with_filters(self):
         """Test create_filtered_response with filter information"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         data = {"items": [1, 2, 3]}
         filters = {"type": "hardware", "status": "active"}
@@ -903,7 +830,7 @@ class TestOutputFormatterFilteredResponse:
 
     def test_create_filtered_response_without_filters(self):
         """Test create_filtered_response without filter information"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         data = {"items": [1, 2, 3]}
 
@@ -917,7 +844,7 @@ class TestOutputFormatterFilteredResponse:
 
     def test_create_filtered_response_zero_total_items(self):
         """Test create_filtered_response with zero total items"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         data = {"items": []}
 
@@ -935,7 +862,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_error_keyword(self):
         """Test insight formatting with error keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["An error occurred during processing"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -945,7 +872,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_fail_keyword(self):
         """Test insight formatting with fail keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["Operation failed to complete"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -955,7 +882,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_warning_keyword(self):
         """Test insight formatting with warning keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["Warning: High resource usage"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -965,7 +892,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_high_keyword(self):
         """Test insight formatting with high keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["High CPU utilization detected"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -975,7 +902,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_good_keyword(self):
         """Test insight formatting with good keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["Good system performance"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -985,7 +912,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_success_keyword(self):
         """Test insight formatting with success keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["Successfully completed operation"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -995,7 +922,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_recommend_keyword(self):
         """Test insight formatting with recommend keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["Recommend upgrading memory"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -1005,7 +932,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_suggest_keyword(self):
         """Test insight formatting with suggest keyword"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["Suggest increasing disk space"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -1015,7 +942,7 @@ class TestOutputFormatterInsightFormatting:
 
     def test_format_insights_default(self):
         """Test insight formatting with default emoji"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         insights = ["System is operating normally"]
         formatted = NodeHardwareFormatter._format_insights(insights)
@@ -1029,14 +956,14 @@ class TestOutputFormatterSummaryFormatting:
 
     def test_format_summary_with_all_keys(self):
         """Test summary formatting with various key types"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         summary = {
             "count": 10,
             "total_items": 100,
             "response_time": 1.5,
             "memory_size": 8000000000,
-            "errors": 0,  # Changed from error_count to errors to get 🚨 emoji
+            "errors": 0,
             "success_rate": 100,
             "hostname": "test-host",
             "nodes_active": 5,
@@ -1062,7 +989,7 @@ class TestOutputFormatterMetadataFormatting:
 
     def test_format_metadata_with_all_keys(self):
         """Test metadata formatting with various key types"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         metadata = {
             "hostname": "test-host",
@@ -1085,6 +1012,30 @@ class TestOutputFormatterMetadataFormatting:
         assert "🚪" in list(formatted.keys())[4]  # port
         assert "⏳" in list(formatted.keys())[5]  # timeout
         assert "📋" in list(formatted.keys())[6]  # version
+
+
+class TestServerResourceAndPrompt:
+    """Test the new resource and prompt added for FastMCP v3"""
+
+    def test_system_info_resource(self):
+        """Test the system_info resource returns valid data"""
+        from node_hardware_mcp import server
+
+        result = server.system_info()
+        assert isinstance(result, dict)
+        assert "hostname" in result
+        assert "os" in result
+        assert "architecture" in result
+        assert "python_version" in result
+
+    def test_system_health_check_prompt(self):
+        """Test the system_health_check prompt returns messages"""
+        from node_hardware_mcp import server
+
+        result = server.system_health_check()
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], Message)
 
 
 if __name__ == "__main__":

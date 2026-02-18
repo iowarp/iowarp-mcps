@@ -12,7 +12,7 @@ authors = [
 keywords = ["parquet", "columnar-data", "data-analysis", "scientific-computing", "mcp", "llm-integration", "apache-arrow"]
 
 dependencies = [
-    "fastmcp>=2.13.0.1",
+    "fastmcp>=3.0.0rc2",
     "pyarrow>=22.0.0",
     "pydantic>=2.12.3",
 ]

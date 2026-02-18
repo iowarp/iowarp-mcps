@@ -1,11 +1,11 @@
 import pytest
 import numpy as np
 from unittest.mock import Mock, patch
-from src.implementation.bp5_attributes import inspect_attributes
+from adios_mcp.implementation.bp5_attributes import inspect_attributes
 
 
 class TestInspectAttributes:
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_global_attributes_success(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -29,7 +29,7 @@ class TestInspectAttributes:
         assert result["global_attr2"]["value"] == ["test_string"]
         assert result["global_attr2"]["Type"] == "string"
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_variable_attributes_success(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -53,7 +53,7 @@ class TestInspectAttributes:
         assert result["var_attr2"]["value"] == [1, 2, 3]
         assert result["var_attr2"]["Type"] == "int64"
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_no_attributes(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -63,7 +63,7 @@ class TestInspectAttributes:
 
         assert result == {"error": "Invalid Variable name or no attributes found"}
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_empty_dict(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -73,7 +73,7 @@ class TestInspectAttributes:
 
         assert result == {"error": "Invalid Variable name or no attributes found"}
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_scalar_conversion(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -89,7 +89,7 @@ class TestInspectAttributes:
         assert result["scalar_attr"]["value"] == 5.5
         assert isinstance(result["scalar_attr"]["value"], float)
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_array_conversion(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -105,7 +105,7 @@ class TestInspectAttributes:
         assert result["array_attr"]["value"] == [1, 2, 3, 4]
         assert isinstance(result["array_attr"]["value"], list)
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_with_elements_metadata(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -119,7 +119,7 @@ class TestInspectAttributes:
         assert "Elements" in result["test_attr"]
         assert result["test_attr"]["Elements"] == "2"
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_variable_path_construction(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -132,7 +132,7 @@ class TestInspectAttributes:
 
         mock_stream.read_attribute.assert_called_with("my_var/var_attr")
 
-    @patch("src.implementation.bp5_attributes.FileReader")
+    @patch("adios_mcp.implementation.bp5_attributes.FileReader")
     def test_inspect_attributes_file_error(self, mock_file_reader):
         mock_file_reader.side_effect = FileNotFoundError("File not found")
 

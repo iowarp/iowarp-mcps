@@ -2,7 +2,7 @@ import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
-from src.implementation.bp5_list import list_bp5
+from adios_mcp.implementation.bp5_list import list_bp5
 
 
 class TestListBp5:
@@ -15,7 +15,7 @@ class TestListBp5:
             (data_dir / "file2.bp5").touch()
             (data_dir / "file3.txt").touch()
 
-            with patch("src.implementation.bp5_list.Path") as mock_path:
+            with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
                 mock_base = Mock()
                 mock_path.return_value = mock_base
                 mock_base.exists.return_value = True
@@ -28,7 +28,7 @@ class TestListBp5:
                 assert Path("file2.bp5") in result
 
     def test_list_bp5_custom_directory(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True
@@ -43,7 +43,7 @@ class TestListBp5:
             assert len(result) == 2
 
     def test_list_bp5_directory_not_found(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = False
@@ -54,7 +54,7 @@ class TestListBp5:
                 list_bp5("nonexistent")
 
     def test_list_bp5_only_bp_files(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True
@@ -66,7 +66,7 @@ class TestListBp5:
             assert all(str(f).endswith(".bp") for f in result)
 
     def test_list_bp5_only_bp5_files(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True
@@ -78,7 +78,7 @@ class TestListBp5:
             assert all(str(f).endswith(".bp5") for f in result)
 
     def test_list_bp5_mixed_files(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True
@@ -96,7 +96,7 @@ class TestListBp5:
             assert len(bp5_files) == 2
 
     def test_list_bp5_no_files_found(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True
@@ -126,7 +126,7 @@ class TestListBp5:
             assert bp5_files[0].name == "file2.bp5"
 
     def test_list_bp5_glob_patterns(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True
@@ -140,7 +140,7 @@ class TestListBp5:
             assert calls[1][0][0] == "*.bp5"
 
     def test_list_bp5_return_type(self):
-        with patch("src.implementation.bp5_list.Path") as mock_path:
+        with patch("adios_mcp.implementation.bp5_list.Path") as mock_path:
             mock_base = Mock()
             mock_path.return_value = mock_base
             mock_base.exists.return_value = True

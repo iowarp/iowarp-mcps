@@ -22,7 +22,7 @@ def temp_dir():
 @pytest.fixture
 def mock_jarvis_manager():
     """Mock JarvisManager instance."""
-    with patch("server.JarvisManager") as mock_manager_class:
+    with patch("jarvis_mcp.server.JarvisManager") as mock_manager_class:
         mock_manager = Mock()
         mock_manager_class.get_instance.return_value = mock_manager
 
@@ -52,7 +52,7 @@ def mock_jarvis_manager():
 @pytest.fixture
 def mock_pipeline():
     """Mock Pipeline instance."""
-    with patch("capabilities.jarvis_handler.Pipeline") as mock_pipeline_class:
+    with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline_class:
         mock_pipeline = Mock()
         mock_pipeline_class.return_value = mock_pipeline
 
@@ -114,7 +114,7 @@ def sample_package_config():
 @pytest.fixture
 def mock_fastmcp():
     """Mock FastMCP instance."""
-    with patch("server.FastMCP") as mock_mcp_class:
+    with patch("jarvis_mcp.server.FastMCP") as mock_mcp_class:
         mock_mcp = Mock(spec=FastMCP)
         mock_mcp_class.return_value = mock_mcp
         yield mock_mcp
@@ -125,8 +125,8 @@ def mock_environment_vars():
     """Mock environment variables for testing."""
     env_vars = {
         "MCP_TRANSPORT": "stdio",
-        "MCP_SSE_HOST": "127.0.0.1",
-        "MCP_SSE_PORT": "8000",
+        "MCP_HTTP_HOST": "127.0.0.1",
+        "MCP_HTTP_PORT": "8000",
     }
 
     with patch.dict(os.environ, env_vars):
@@ -173,6 +173,6 @@ def create_mock_response(status: str, data: Dict[str, Any] = None) -> Dict[str, 
 @pytest.fixture
 def mock_dotenv():
     """Mock dotenv loading."""
-    with patch("server.load_dotenv") as mock_load:
+    with patch("jarvis_mcp.server.load_dotenv") as mock_load:
         mock_load.return_value = True
         yield mock_load

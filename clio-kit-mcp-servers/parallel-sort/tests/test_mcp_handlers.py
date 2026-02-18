@@ -5,7 +5,8 @@ Tests for MCP handlers.
 import pytest
 import tempfile
 import os
-from mcp_handlers import (
+from fastmcp.exceptions import ToolError
+from parallel_sort_mcp.mcp_handlers import (
     sort_log_handler,
     parallel_sort_handler,
     analyze_statistics_handler,
@@ -67,9 +68,10 @@ class TestMCPHandlers:
     @pytest.mark.asyncio
     async def test_sort_log_handler_file_not_found(self):
         """Test MCP handler with non-existent file."""
+        # The implementation returns error dict (not raises), so handler returns it
         result = await sort_log_handler("/nonexistent/file.log")
 
-        # Should return error in the result
+        # The implementation itself returns {"error": "..."} for file not found
         assert "error" in result
         assert "not found" in result["error"].lower()
 
@@ -211,7 +213,7 @@ class TestMCPHandlers:
     @pytest.mark.asyncio
     async def test_export_json_handler_error(self):
         """Test export JSON handler with invalid data."""
-        # Pass something that will cause an error
+        # The implementation handles None gracefully and returns an error dict
         result = await export_json_handler(None, True)
         assert "error" in result
 

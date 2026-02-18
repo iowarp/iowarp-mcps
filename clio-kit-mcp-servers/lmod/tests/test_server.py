@@ -2,13 +2,10 @@
 
 import pytest
 from unittest.mock import patch, AsyncMock
-import sys
-import os
 
-# Add the src directory to the path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from fastmcp.exceptions import ToolError
 
-import server
+from lmod_mcp import server
 
 
 @pytest.mark.asyncio
@@ -21,14 +18,32 @@ async def test_module_list_tool():
     }
 
     with patch(
-        "server.lmod_handler.list_loaded_modules", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.list_loaded_modules", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_list_tool.fn()
+        result = await server.module_list_tool()
 
         assert result == mock_result
         mock_handler.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_module_list_tool_error():
+    """Test module_list tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "error": "Module command not found",
+        "modules": [],
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.list_loaded_modules", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Module command not found"):
+            await server.module_list_tool()
 
 
 @pytest.mark.asyncio
@@ -42,14 +57,28 @@ async def test_module_avail_tool():
     }
 
     with patch(
-        "server.lmod_handler.search_available_modules", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.search_available_modules", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_avail_tool.fn(pattern="python")
+        result = await server.module_avail_tool(pattern="python")
 
         assert result == mock_result
         mock_handler.assert_called_once_with("python")
+
+
+@pytest.mark.asyncio
+async def test_module_avail_tool_error():
+    """Test module_avail tool raises ToolError on failure."""
+    mock_result = {"success": False, "error": "Failed to search modules", "modules": []}
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.search_available_modules", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to search modules"):
+            await server.module_avail_tool(pattern="nonexistent")
 
 
 @pytest.mark.asyncio
@@ -67,14 +96,32 @@ async def test_module_show_tool():
     }
 
     with patch(
-        "server.lmod_handler.show_module_details", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.show_module_details", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_show_tool.fn("python/3.9.0")
+        result = await server.module_show_tool("python/3.9.0")
 
         assert result == mock_result
         mock_handler.assert_called_once_with("python/3.9.0")
+
+
+@pytest.mark.asyncio
+async def test_module_show_tool_error():
+    """Test module_show tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "error": "Module foo not found",
+        "module": "foo",
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.show_module_details", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Module foo not found"):
+            await server.module_show_tool("foo")
 
 
 @pytest.mark.asyncio
@@ -97,14 +144,37 @@ async def test_module_load_tool():
     }
 
     with patch(
-        "server.lmod_handler.load_modules", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.load_modules", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_load_tool.fn(["gcc/11.2.0", "python/3.9.0"])
+        result = await server.module_load_tool(["gcc/11.2.0", "python/3.9.0"])
 
         assert result == mock_result
         mock_handler.assert_called_once_with(["gcc/11.2.0", "python/3.9.0"])
+
+
+@pytest.mark.asyncio
+async def test_module_load_tool_error():
+    """Test module_load tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "results": [
+            {
+                "module": "bad/1.0",
+                "success": False,
+                "error": "Module bad/1.0 not found",
+            }
+        ],
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.load_modules", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to load modules"):
+            await server.module_load_tool(["bad/1.0"])
 
 
 @pytest.mark.asyncio
@@ -122,14 +192,37 @@ async def test_module_unload_tool():
     }
 
     with patch(
-        "server.lmod_handler.unload_modules", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.unload_modules", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_unload_tool.fn(["python/3.9.0"])
+        result = await server.module_unload_tool(["python/3.9.0"])
 
         assert result == mock_result
         mock_handler.assert_called_once_with(["python/3.9.0"])
+
+
+@pytest.mark.asyncio
+async def test_module_unload_tool_error():
+    """Test module_unload tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "results": [
+            {
+                "module": "notloaded/1.0",
+                "success": False,
+                "error": "Module notloaded/1.0 is not loaded",
+            }
+        ],
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.unload_modules", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to unload modules"):
+            await server.module_unload_tool(["notloaded/1.0"])
 
 
 @pytest.mark.asyncio
@@ -143,14 +236,33 @@ async def test_module_swap_tool():
     }
 
     with patch(
-        "server.lmod_handler.swap_modules", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.swap_modules", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_swap_tool.fn("gcc/10.2.0", "gcc/11.2.0")
+        result = await server.module_swap_tool("gcc/10.2.0", "gcc/11.2.0")
 
         assert result == mock_result
         mock_handler.assert_called_once_with("gcc/10.2.0", "gcc/11.2.0")
+
+
+@pytest.mark.asyncio
+async def test_module_swap_tool_error():
+    """Test module_swap tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "error": "Failed to swap old with new",
+        "old_module": "old",
+        "new_module": "new",
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.swap_modules", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to swap old with new"):
+            await server.module_swap_tool("old", "new")
 
 
 @pytest.mark.asyncio
@@ -166,14 +278,28 @@ async def test_module_spider_tool():
     }
 
     with patch(
-        "server.lmod_handler.spider_search", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.spider_search", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_spider_tool.fn(pattern=None)
+        result = await server.module_spider_tool(pattern=None)
 
         assert result == mock_result
         mock_handler.assert_called_once_with(None)
+
+
+@pytest.mark.asyncio
+async def test_module_spider_tool_error():
+    """Test module_spider tool raises ToolError on failure."""
+    mock_result = {"success": False, "error": "Failed to run spider search", "modules": []}
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.spider_search", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to run spider search"):
+            await server.module_spider_tool(pattern="bad")
 
 
 @pytest.mark.asyncio
@@ -186,14 +312,32 @@ async def test_module_save_tool():
     }
 
     with patch(
-        "server.lmod_handler.save_module_collection", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.save_module_collection", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_save_tool.fn("my_env")
+        result = await server.module_save_tool("my_env")
 
         assert result == mock_result
         mock_handler.assert_called_once_with("my_env")
+
+
+@pytest.mark.asyncio
+async def test_module_save_tool_error():
+    """Test module_save tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "error": "Failed to save collection bad_name",
+        "collection": "bad_name",
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.save_module_collection", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to save collection bad_name"):
+            await server.module_save_tool("bad_name")
 
 
 @pytest.mark.asyncio
@@ -207,14 +351,32 @@ async def test_module_restore_tool():
     }
 
     with patch(
-        "server.lmod_handler.restore_module_collection", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.restore_module_collection", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_restore_tool.fn("my_env")
+        result = await server.module_restore_tool("my_env")
 
         assert result == mock_result
         mock_handler.assert_called_once_with("my_env")
+
+
+@pytest.mark.asyncio
+async def test_module_restore_tool_error():
+    """Test module_restore tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "error": "Failed to restore collection missing",
+        "collection": "missing",
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.restore_module_collection", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to restore collection missing"):
+            await server.module_restore_tool("missing")
 
 
 @pytest.mark.asyncio
@@ -227,30 +389,50 @@ async def test_module_savelist_tool():
     }
 
     with patch(
-        "server.lmod_handler.list_saved_collections", new_callable=AsyncMock
+        "lmod_mcp.server.lmod_handler.list_saved_collections", new_callable=AsyncMock
     ) as mock_handler:
         mock_handler.return_value = mock_result
 
-        result = await server.module_savelist_tool.fn()
+        result = await server.module_savelist_tool()
 
         assert result == mock_result
         mock_handler.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_module_savelist_tool_error():
+    """Test module_savelist tool raises ToolError on failure."""
+    mock_result = {
+        "success": False,
+        "error": "Failed to list saved collections",
+        "collections": [],
+    }
+
+    with patch(
+        "lmod_mcp.server.lmod_handler.list_saved_collections", new_callable=AsyncMock
+    ) as mock_handler:
+        mock_handler.return_value = mock_result
+
+        with pytest.raises(ToolError, match="Failed to list saved collections"):
+            await server.module_savelist_tool()
+
+
 def test_main_function():
     """Test the main function entry point."""
     with (
-        patch("asyncio.run") as mock_run,
+        patch("sys.argv", ["lmod-mcp"]),
         patch.object(server.mcp, "run") as mock_mcp_run,
     ):
         server.main()
 
-        mock_run.assert_called_once_with(mock_mcp_run.return_value)
+        mock_mcp_run.assert_called_once_with(
+            transport="stdio"
+        )
 
 
 def test_main_module_execution():
     """Test __main__ module execution."""
-    with patch("server.main") as mock_main:
+    with patch("lmod_mcp.server.main") as mock_main:
         # Simulate running the module directly
         exec(
             "if __name__ == '__main__': main()",
@@ -258,3 +440,21 @@ def test_main_module_execution():
         )
 
         mock_main.assert_called_once()
+
+
+def test_module_system_status_resource():
+    """Test the lmod://status resource."""
+    result = server.module_system_status()
+    assert result["system"] == "lmod"
+    assert "list" in result["operations"]
+    assert "load" in result["operations"]
+    assert "spider" in result["operations"]
+
+
+def test_setup_environment_prompt():
+    """Test the setup_environment prompt."""
+    messages = server.setup_environment("tensorflow")
+    assert len(messages) == 1
+    text = messages[0].content.text
+    assert "tensorflow" in text
+    assert "Search available modules" in text

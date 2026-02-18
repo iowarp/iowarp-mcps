@@ -3,15 +3,10 @@ Tests for ArXiv base utilities.
 """
 
 import pytest
-import sys
-import os
 import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.arxiv_base import (
+from arxiv_mcp.capabilities.arxiv_base import (
     parse_arxiv_entry,
     execute_arxiv_query,
     generate_bibtex,

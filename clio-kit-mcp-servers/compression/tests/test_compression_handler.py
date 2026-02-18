@@ -1,7 +1,7 @@
 import pytest
 import os
 import tempfile
-from capabilities.compression_base import compress_file
+from compression_mcp.capabilities.compression_base import compress_file, decompress_file
 
 
 @pytest.fixture
@@ -10,7 +10,8 @@ def sample_file():
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write("test content\n" * 100)
     yield f.name
-    os.unlink(f.name)
+    if os.path.exists(f.name):
+        os.unlink(f.name)
 
 
 # test successful compression of a file
@@ -18,18 +19,19 @@ def sample_file():
 async def test_compress_success(sample_file):
     result = await compress_file(sample_file)
     assert isinstance(result, dict)
-    assert not result["isError"]
-    assert result["_meta"]["tool"] == "compress_file"
-    assert os.path.exists(result["_meta"]["compressed_file"])
-    os.unlink(result["_meta"]["compressed_file"])
+    assert result["original_file"] == sample_file
+    assert result["original_size"] > 0
+    assert result["compressed_size"] > 0
+    assert result["compression_ratio"] >= 0
+    assert os.path.exists(result["compressed_file"])
+    os.unlink(result["compressed_file"])
 
 
 # test compression of non-existent file
 @pytest.mark.asyncio
 async def test_compress_nonexistent_file():
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(FileNotFoundError, match="File not found"):
         await compress_file("nonexistent_file.txt")
-    assert "File not found" in str(exc_info.value)
 
 
 # test compression of empty file
@@ -40,11 +42,10 @@ async def test_compress_empty_file():
     try:
         result = await compress_file(f.name)
         assert isinstance(result, dict)
-        assert not result["isError"]
-        assert result["_meta"]["tool"] == "compress_file"
-        # Empty file should still compress successfully
-        assert os.path.exists(result["_meta"]["compressed_file"])
-        os.unlink(result["_meta"]["compressed_file"])
+        assert result["original_size"] == 0
+        assert result["compression_ratio"] == 0.0
+        assert os.path.exists(result["compressed_file"])
+        os.unlink(result["compressed_file"])
     finally:
         os.unlink(f.name)
 
@@ -52,7 +53,7 @@ async def test_compress_empty_file():
 # test compression with permission error
 @pytest.mark.asyncio
 async def test_compress_permission_error():
-    """Test that PermissionError is properly caught and raised"""
+    """Test that PermissionError is properly raised."""
     import unittest.mock as mock
 
     with mock.patch("os.path.exists", return_value=True):
@@ -60,21 +61,49 @@ async def test_compress_permission_error():
             with mock.patch(
                 "builtins.open", side_effect=PermissionError("Permission denied")
             ):
-                with pytest.raises(Exception) as exc_info:
+                with pytest.raises(PermissionError, match="Permission denied"):
                     await compress_file("/some/file.txt")
-                assert "Permission denied" in str(exc_info.value)
 
 
 # test compression with generic exception
 @pytest.mark.asyncio
 async def test_compress_generic_exception():
-    """Test that generic exceptions are properly caught and raised"""
+    """Test that generic exceptions are properly raised."""
     import unittest.mock as mock
 
     with mock.patch("os.path.exists", return_value=True):
         with mock.patch("os.path.getsize", side_effect=RuntimeError("Disk error")):
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(RuntimeError, match="Disk error"):
                 await compress_file("/some/file.txt")
-            assert "Compression failed" in str(exc_info.value) or "Disk error" in str(
-                exc_info.value
-            )
+
+
+# --- DECOMPRESSION TESTS ---
+
+
+@pytest.mark.asyncio
+async def test_decompress_success(sample_file):
+    """Test successful compress then decompress round-trip."""
+    result = await compress_file(sample_file)
+    gz_path = result["compressed_file"]
+
+    decomp_result = await decompress_file(gz_path)
+    assert isinstance(decomp_result, dict)
+    assert decomp_result["compressed_file"] == gz_path
+    assert decomp_result["decompressed_size"] > 0
+    assert os.path.exists(decomp_result["decompressed_file"])
+    os.unlink(decomp_result["decompressed_file"])
+    os.unlink(gz_path)
+
+
+@pytest.mark.asyncio
+async def test_decompress_nonexistent_file():
+    """Test decompression of non-existent file."""
+    with pytest.raises(FileNotFoundError, match="File not found"):
+        await decompress_file("nonexistent_file.gz")
+
+
+@pytest.mark.asyncio
+async def test_decompress_non_gz_file(sample_file):
+    """Test decompression of a file without .gz extension."""
+    with pytest.raises(ValueError, match="Not a gzip file"):
+        await decompress_file(sample_file)

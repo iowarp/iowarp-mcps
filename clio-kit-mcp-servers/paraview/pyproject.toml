@@ -12,7 +12,7 @@ authors = [
 keywords = ["MCP", "ParaView", "visualization", "scientific", "3D"]
 
 dependencies = [
-    "fastmcp>=2.13.0",
+    "fastmcp>=3.0.0rc2",
     "adios2>=2.9.0",
     "numpy>=2.0.0",
     "python-dotenv>=1.0.0",

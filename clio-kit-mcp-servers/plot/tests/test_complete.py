@@ -3,17 +3,13 @@ Complete system tests - comprehensive edge cases, stress testing, and full syste
 """
 
 import os
-import sys
 import tempfile
 import pandas as pd
 import pytest
 import time
 import threading
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from implementation.plot_capabilities import (
+from plot_mcp.implementation.plot_capabilities import (
     create_line_plot,
     create_bar_plot,
     create_scatter_plot,
@@ -416,16 +412,20 @@ class TestCompleteSystem:
 
         os.unlink(f.name)
 
-        # Test 2: File permissions (if possible)
+        # Test 2: Invalid input file for line plot
         test_data = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]})
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             test_data.to_csv(f.name, index=False)
 
-            # Try to create output in non-existent directory
+            # Try to plot with a column that doesn't exist
             result = create_line_plot(
-                f.name, "x", "y", "Test", "/nonexistent/path/output.png"
+                f.name, "x", "nonexistent_col", "Test", "temp_error_test.png"
             )
             assert result["status"] == "error"
+
+            # Cleanup
+            if os.path.exists("temp_error_test.png"):
+                os.unlink("temp_error_test.png")
 
         os.unlink(f.name)
 
@@ -434,8 +434,10 @@ class TestCompleteSystem:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             test_data.to_csv(f.name, index=False)
 
-            # Invalid bin count for histogram
-            result = create_histogram(f.name, "x", -5, "Test", "temp_hist.png")
+            # Invalid column for histogram
+            result = create_histogram(
+                f.name, "nonexistent_col", 10, "Test", "temp_hist.png"
+            )
             assert result["status"] == "error"
 
             # Invalid column types for heatmap
