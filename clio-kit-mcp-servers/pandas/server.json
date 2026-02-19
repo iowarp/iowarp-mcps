@@ -1,0 +1,95 @@
+{
+  "name": "io.github.iowarp/pandas-mcp",
+  "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "pandas"
+    ]
+  },
+  "tools": [
+    {
+      "name": "load_data",
+      "description": "Load and parse data from CSV, Excel, JSON, Parquet, or HDF5 files with optional column selection and row limiting."
+    },
+    {
+      "name": "save_data",
+      "description": "Save data to CSV, Excel, JSON, Parquet, or HDF5 with auto-detected format and optional index inclusion."
+    },
+    {
+      "name": "statistical_summary",
+      "description": "Compute descriptive statistics, distribution analysis, and outlier detection for numerical and categorical columns."
+    },
+    {
+      "name": "correlation_analysis",
+      "description": "Compute correlation matrices (Pearson, Spearman, or Kendall) with significance testing and strong-correlation detection."
+    },
+    {
+      "name": "hypothesis_testing",
+      "description": "Run statistical hypothesis tests (t-test, chi-square, ANOVA, normality, Mann-Whitney) with p-values and effect sizes."
+    },
+    {
+      "name": "handle_missing_data",
+      "description": "Detect, impute, or remove missing values using strategies like mean/median/mode fill, forward/backward fill, or interpolation."
+    },
+    {
+      "name": "clean_data",
+      "description": "Remove duplicates, detect outliers via IQR/Z-score, and optimize data types in a single pass."
+    },
+    {
+      "name": "groupby_operations",
+      "description": "Group data by columns and apply aggregations (sum, mean, count, min, max, std, median) with optional pre-filter."
+    },
+    {
+      "name": "merge_datasets",
+      "description": "Join two datasets using inner, outer, left, or right joins on specified key columns."
+    },
+    {
+      "name": "pivot_table",
+      "description": "Create pivot tables with configurable row index, column headers, value columns, and aggregation function."
+    },
+    {
+      "name": "time_series_operations",
+      "description": "Resample, compute rolling statistics, create lag features, or difference a time series."
+    },
+    {
+      "name": "validate_data",
+      "description": "Validate columns against rules for min/max range, data type, nullability, uniqueness, and regex patterns."
+    },
+    {
+      "name": "filter_data",
+      "description": "Filter rows using comparison, membership, pattern-matching, and null-check operators across multiple columns."
+    },
+    {
+      "name": "optimize_memory",
+      "description": "Analyze and reduce DataFrame memory usage through automatic dtype optimization and chunked-processing recommendations."
+    },
+    {
+      "name": "profile_data",
+      "description": "Generate a full dataset profile: shape, types, missing values, distributions, quality checks, and optional correlations."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "pandas://capabilities",
+      "name": "pandas_capabilities",
+      "description": "Supported pandas operations and file formats."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "analyze_dataset",
+      "description": "Guided workflow for exploring and analyzing a dataset."
+    }
+  ],
+  "tags": [
+    "data-analysis",
+    "pandas",
+    "dataframes",
+    "statistics"
+  ]
+}

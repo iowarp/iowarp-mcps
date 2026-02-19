@@ -1,0 +1,9 @@
+{
+  "clio-parallel-sort": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "parallel-sort"
+    ]
+  }
+}

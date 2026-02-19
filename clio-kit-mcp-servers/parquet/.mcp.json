@@ -1,0 +1,9 @@
+{
+  "clio-parquet": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "parquet"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "clio-chronolog": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "chronolog"
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "name": "io.github.iowarp/plot-mcp",
+  "description": "MCP server for advanced data visualization and plotting operations",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "plot"
+    ]
+  },
+  "tools": [
+    {
+      "name": "line_plot",
+      "description": "Create a line plot from CSV or Excel data with customizable styling."
+    },
+    {
+      "name": "bar_plot",
+      "description": "Create a bar chart from CSV or Excel data with categorical grouping."
+    },
+    {
+      "name": "scatter_plot",
+      "description": "Create a scatter plot from CSV or Excel data for correlation analysis."
+    },
+    {
+      "name": "histogram_plot",
+      "description": "Create a histogram from CSV or Excel data showing value distribution."
+    },
+    {
+      "name": "heatmap_plot",
+      "description": "Create a correlation heatmap from numeric columns in CSV or Excel data."
+    },
+    {
+      "name": "data_info",
+      "description": "Get schema, column types, and summary statistics for a CSV or Excel file."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "plot://styles",
+      "name": "available_styles",
+      "description": "Available matplotlib plot styles and color palettes."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "create_visualization",
+      "description": "Guided workflow for creating a data visualization."
+    }
+  ],
+  "tags": [
+    "data-visualization",
+    "matplotlib",
+    "plotting",
+    "charts"
+  ]
+}

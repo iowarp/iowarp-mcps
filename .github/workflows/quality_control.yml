@@ -194,3 +194,54 @@ jobs:
       run: |
         cd clio-kit-mcp-servers/${{ matrix.mcp }}
         uv run python ../../scripts/validate_fastmcp.py
+
+  validate-server-json:
+    name: Validate server.json - ${{ matrix.mcp }}
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      fail-fast: false
+      matrix:
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+      max-parallel: 20
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - uses: ./.github/actions/setup-mcp
+      with:
+        mcp: ${{ matrix.mcp }}
+
+    - name: Regenerate and diff server.json for ${{ matrix.mcp }}
+      run: |
+        cd clio-kit-mcp-servers/${{ matrix.mcp }}
+        # Extract live metadata
+        LIVE=$(uv run python ../../scripts/extract_mcp_metadata.py)
+
+        # Compare tool/resource/prompt counts from live metadata vs committed server.json
+        if [ ! -f server.json ]; then
+          echo "FAIL: server.json not found for ${{ matrix.mcp }}"
+          exit 1
+        fi
+
+        # Validate JSON is well-formed
+        python3 -c "import json, sys; json.load(open('server.json'))" || {
+          echo "FAIL: server.json is not valid JSON"
+          exit 1
+        }
+
+        # Verify tool names match between live metadata and server.json
+        LIVE_TOOLS=$(echo "$LIVE" | python3 -c "import json,sys; d=json.load(sys.stdin); print('\n'.join(sorted(t['name'] for t in d.get('tools',[]))))")
+        JSON_TOOLS=$(python3 -c "import json; d=json.load(open('server.json')); print('\n'.join(sorted(t['name'] for t in d.get('tools',[]))))")
+
+        if [ "$LIVE_TOOLS" != "$JSON_TOOLS" ]; then
+          echo "FAIL: server.json tools out of sync with live metadata"
+          echo "--- Live tools ---"
+          echo "$LIVE_TOOLS"
+          echo "--- server.json tools ---"
+          echo "$JSON_TOOLS"
+          exit 1
+        fi
+
+        echo "PASS: server.json is in sync for ${{ matrix.mcp }}"

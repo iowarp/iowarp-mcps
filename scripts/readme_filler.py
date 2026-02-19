@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Update README files for all MCP servers using FastMCP 3.0 metadata.
 
-Imports each server via extract_mcp_metadata.py and updates the Capabilities
-section in each server's README.md with real tool/resource/prompt data.
+Imports each server via extract_mcp_metadata.py and updates the Capabilities,
+Claude Code, Claude Desktop, and Gemini CLI sections in each server's README.md.
 
 Usage:
     python scripts/readme_filler.py clio-kit-mcp-servers
@@ -13,10 +13,10 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any
 
 
-def extract_metadata(mcp_dir: Path) -> Optional[Dict]:
+def extract_metadata(mcp_dir: Path) -> dict[str, Any] | None:
     """Extract metadata from an MCP server by running it in its own venv."""
     script_path = Path(__file__).parent / "extract_mcp_metadata.py"
     try:
@@ -36,7 +36,7 @@ def extract_metadata(mcp_dir: Path) -> Optional[Dict]:
         return None
 
 
-def format_capabilities_section(metadata: Dict) -> str:
+def format_capabilities_section(metadata: dict[str, Any]) -> str:
     """Generate the ## Capabilities markdown section from metadata."""
     lines: list[str] = ["## Capabilities\n"]
 
@@ -83,23 +83,102 @@ def format_capabilities_section(metadata: Dict) -> str:
     return "\n".join(lines)
 
 
-def update_readme(readme_file: Path, new_section: str) -> None:
-    """Replace the ## Capabilities section in a README file."""
-    content = readme_file.read_text(encoding="utf-8")
+def format_claude_desktop_section(server_name: str) -> str:
+    """Generate the ## Claude Desktop markdown section for a server."""
+    config = json.dumps(
+        {
+            "mcpServers": {
+                f"clio-{server_name}": {
+                    "command": "uvx",
+                    "args": ["clio-kit", server_name],
+                }
+            }
+        },
+        indent=2,
+    )
+    lines = [
+        "## Claude Desktop\n",
+        "Add to your Claude Desktop config (`claude_desktop_config.json`):\n",
+        "```json",
+        config,
+        "```",
+        "",
+    ]
+    return "\n".join(lines)
 
-    # Replace existing Capabilities section (up to next ## heading or EOF)
-    pattern = r"## Capabilities.*?(?=\n## |\Z)"
+
+def format_claude_code_section(server_name: str) -> str:
+    """Generate the ## Claude Code markdown section for a server."""
+    lines = [
+        "## Claude Code\n",
+        "```bash",
+        f"claude mcp add clio-{server_name} -- uvx clio-kit {server_name}",
+        "```\n",
+        "Or install via the CLIO Kit plugin marketplace:\n",
+        "```",
+        "/plugin marketplace add iowarp/clio-kit",
+        f"/plugin install clio-{server_name}@iowarp-clio-kit",
+        "```",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def format_gemini_section(server_name: str) -> str:
+    """Generate the ## Gemini CLI markdown section for a server."""
+    config = json.dumps(
+        {
+            "mcpServers": {
+                f"clio-{server_name}": {
+                    "command": "uvx",
+                    "args": ["clio-kit", server_name],
+                }
+            }
+        },
+        indent=2,
+    )
+    lines = [
+        "## Gemini CLI\n",
+        "Add to `~/.gemini/settings.json`:\n",
+        "```json",
+        config,
+        "```\n",
+        "Or install the CLIO Kit extension:\n",
+        "```bash",
+        "gemini extensions install https://github.com/iowarp/clio-kit",
+        "```",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def update_section(content: str, heading: str, new_section: str) -> str:
+    """Replace a ## heading section in content, or append before ## Examples / EOF."""
+    pattern = rf"## {re.escape(heading)}.*?(?=\n## |\Z)"
     if re.search(pattern, content, re.DOTALL):
-        updated = re.sub(pattern, new_section.rstrip(), content, flags=re.DOTALL)
-    else:
-        # No existing section — append before ## Examples or at end
-        examples_match = re.search(r"\n(## Examples)", content)
-        if examples_match:
-            pos = examples_match.start(1)
-            updated = content[:pos] + "\n" + new_section + "\n\n" + content[pos:]
-        else:
-            updated = content.rstrip() + "\n\n" + new_section
-    readme_file.write_text(updated, encoding="utf-8")
+        return re.sub(pattern, new_section.rstrip(), content, flags=re.DOTALL)
+    # No existing section — append before ## Examples or at end
+    examples_match = re.search(r"\n(## Examples)", content)
+    if examples_match:
+        pos = examples_match.start(1)
+        return content[:pos] + "\n" + new_section + "\n\n" + content[pos:]
+    return content.rstrip() + "\n\n" + new_section
+
+
+def update_readme(
+    readme_file: Path,
+    capabilities_section: str,
+    claude_code_section: str,
+    claude_desktop_section: str,
+    gemini_section: str,
+) -> None:
+    """Replace Capabilities, Claude Code, Claude Desktop, and Gemini sections."""
+    content = readme_file.read_text(encoding="utf-8")
+    content = update_section(content, "Capabilities", capabilities_section)
+    content = update_section(content, "Claude Code", claude_code_section)
+    content = update_section(content, "Claude Desktop", claude_desktop_section)
+    content = update_section(content, "Gemini CLI", gemini_section)
+    readme_file.write_text(content, encoding="utf-8")
 
 
 def update_all_mcps(mcps_dir: str) -> None:
@@ -121,17 +200,23 @@ def update_all_mcps(mcps_dir: str) -> None:
             print(f"  Skipping {mcp_dir.name}: no README.md")
             continue
 
-        print(f"Processing {mcp_dir.name}...")
+        server_name = mcp_dir.name
+        print(f"Processing {server_name}...")
         metadata = extract_metadata(mcp_dir)
         if metadata is None:
             continue
 
-        section = format_capabilities_section(metadata)
-        update_readme(readme, section)
+        capabilities = format_capabilities_section(metadata)
+        claude_code = format_claude_code_section(server_name)
+        claude_desktop = format_claude_desktop_section(server_name)
+        gemini = format_gemini_section(server_name)
+        update_readme(readme, capabilities, claude_code, claude_desktop, gemini)
         tool_count = len(metadata.get("tools", []))
-        print(f"  Updated README ({tool_count} tools, "
-              f"{len(metadata.get('resources', [])) + len(metadata.get('resource_templates', []))} resources, "
-              f"{len(metadata.get('prompts', []))} prompts)")
+        print(
+            f"  Updated README ({tool_count} tools, "
+            f"{len(metadata.get('resources', [])) + len(metadata.get('resource_templates', []))} resources, "
+            f"{len(metadata.get('prompts', []))} prompts)"
+        )
 
 
 def main() -> None:

@@ -1,0 +1,9 @@
+{
+  "clio-darshan": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "darshan"
+    ]
+  }
+}

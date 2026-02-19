@@ -1,0 +1,9 @@
+{
+  "clio-pandas": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "pandas"
+    ]
+  }
+}

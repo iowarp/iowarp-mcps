@@ -1,0 +1,51 @@
+{
+  "name": "io.github.iowarp/chronolog-mcp",
+  "description": "ChronoLog MCP server implementation using Model Context Protocol",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "chronolog"
+    ]
+  },
+  "tools": [
+    {
+      "name": "start_chronolog",
+      "description": "Connect to ChronoLog, create a chronicle, and acquire a story handle."
+    },
+    {
+      "name": "record_interaction",
+      "description": "Log a user message and LLM response to the active ChronoLog story."
+    },
+    {
+      "name": "stop_chronolog",
+      "description": "Release the story handle and disconnect from ChronoLog."
+    },
+    {
+      "name": "retrieve_interaction",
+      "description": "Retrieve logged records from a chronicle and story, with optional time filtering."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "chronolog://status",
+      "name": "chronolog_status",
+      "description": "Current ChronoLog system status."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "logging_workflow",
+      "description": "Guided workflow for querying and analyzing ChronoLog entries."
+    }
+  ],
+  "tags": [
+    "logging",
+    "distributed-systems",
+    "hpc",
+    "time-series"
+  ]
+}

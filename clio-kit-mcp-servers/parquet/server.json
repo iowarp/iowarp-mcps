@@ -1,0 +1,51 @@
+{
+  "name": "io.github.iowarp/parquet-mcp",
+  "description": "MCP server for Apache Parquet files",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "parquet"
+    ]
+  },
+  "tools": [
+    {
+      "name": "summarize_tool",
+      "description": "Return Parquet schema, row count, and file size."
+    },
+    {
+      "name": "read_slice_tool",
+      "description": "Read a row slice from a Parquet file with optional column projection and filtering."
+    },
+    {
+      "name": "get_column_preview_tool",
+      "description": "Preview values from a specific column with pagination."
+    },
+    {
+      "name": "aggregate_column_tool",
+      "description": "Compute aggregate statistics (min, max, mean, etc.) on a Parquet column."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "parquet://formats",
+      "name": "supported_formats",
+      "description": "Supported Parquet features and capabilities."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "analyze_parquet",
+      "description": "Guided workflow for analyzing a Parquet file."
+    }
+  ],
+  "tags": [
+    "parquet",
+    "apache-arrow",
+    "columnar-data",
+    "data-analysis"
+  ]
+}

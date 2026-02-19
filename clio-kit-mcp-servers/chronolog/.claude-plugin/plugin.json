@@ -1,0 +1,5 @@
+{
+  "name": "clio-chronolog",
+  "description": "ChronoLog MCP server implementation using Model Context Protocol",
+  "version": "1.0.0"
+}
