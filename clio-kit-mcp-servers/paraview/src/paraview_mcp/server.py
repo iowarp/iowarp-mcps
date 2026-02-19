@@ -56,6 +56,7 @@ mcp: FastMCP = FastMCP(
         "Controls ParaView for scientific visualization. "
         "Open data files, apply filters, create renderings, and manage visualization pipelines."
     ),
+    list_page_size=10,
 )
 
 # ParaView manager will be initialized when needed

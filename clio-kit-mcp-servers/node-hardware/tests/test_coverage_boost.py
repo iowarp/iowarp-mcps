@@ -220,21 +220,13 @@ class TestServerHealthCheck:
         result = await server.health_check_tool()
 
         assert result is not None
-        assert result["isError"] is False
-        assert result["_meta"]["tool"] == "health_check"
-        assert result["_meta"]["status"] == "success"
-
-        # Parse the content
-        content_text = result["content"][0]["text"]
-        health_data = json.loads(content_text)
-
-        assert health_data["server_status"] == "healthy"
-        assert "capabilities" in health_data
-        assert health_data["capabilities"]["get_node_info"] == "available"
-        assert health_data["capabilities"]["get_remote_node_info"] == "available"
-        assert "system_compatibility" in health_data
-        assert "performance_metrics" in health_data
-        assert "health_indicators" in health_data
+        assert result["server_status"] == "healthy"
+        assert "capabilities" in result
+        assert result["capabilities"]["get_node_info"] == "available"
+        assert result["capabilities"]["get_remote_node_info"] == "available"
+        assert "system_compatibility" in result
+        assert "performance_metrics" in result
+        assert "health_indicators" in result
 
     @pytest.mark.asyncio
     async def test_health_check_tool_error_path(self):

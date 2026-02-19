@@ -318,11 +318,7 @@ async def health_check_tool() -> dict:
             },
         }
 
-        return {
-            "content": [{"text": json.dumps(health_status, indent=2)}],
-            "_meta": {"tool": "health_check", "status": "success"},
-            "isError": False,
-        }
+        return health_status
     except Exception as e:
         logger.error(f"Health check error: {e}")
         raise ToolError(f"Health check failed: {e}") from e

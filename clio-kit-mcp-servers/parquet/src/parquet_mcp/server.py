@@ -1,5 +1,6 @@
 """FastMCP server for Apache Parquet files."""
 
+import json
 from typing import Optional, List, Union
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -10,6 +11,17 @@ from parquet_mcp.capabilities.parquet_handler import (
     get_column_preview,
     aggregate_column,
 )
+
+
+def _check_error(result: str) -> str:
+    """Check handler result for error status and raise ToolError if found."""
+    try:
+        parsed = json.loads(result)
+        if isinstance(parsed, dict) and parsed.get("status") == "error":
+            raise ToolError(parsed.get("message", "Unknown error"))
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return result
 
 mcp = FastMCP(
     "parquet",
@@ -35,7 +47,7 @@ async def summarize_tool(file_path: str) -> str:
     Returns:
         JSON string with schema, row count, row groups, and file size
     """
-    return await summarize(file_path)
+    return _check_error(await summarize(file_path))
 
 
 @mcp.tool(
@@ -63,7 +75,7 @@ async def read_slice_tool(
     Returns:
         JSON string with status, schema, data, and shape information
     """
-    return await read_slice(file_path, start_row, end_row, columns, filter_json)
+    return _check_error(await read_slice(file_path, start_row, end_row, columns, filter_json))
 
 
 @mcp.tool(
@@ -85,7 +97,7 @@ async def get_column_preview_tool(
     Returns:
         JSON string with column values, type info, and pagination metadata
     """
-    return await get_column_preview(file_path, column_name, start_index, max_items)
+    return _check_error(await get_column_preview(file_path, column_name, start_index, max_items))
 
 
 @mcp.tool(
@@ -115,8 +127,10 @@ async def aggregate_column_tool(
     Returns:
         JSON string with aggregation result and metadata
     """
-    return await aggregate_column(
-        file_path, column_name, operation, filter_json, start_row, end_row
+    return _check_error(
+        await aggregate_column(
+            file_path, column_name, operation, filter_json, start_row, end_row
+        )
     )
 
 
