@@ -11,11 +11,11 @@ import MCPDetail from '@site/src/components/MCPDetail';
   category="Utilities"
   description="Compression MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). GZIP file compression tool for storage optimization, archival, and network transfer. Enables AI agents to compress files efficiently."
   version="1.0.0"
-  actions={["compress_file"]}
+  actions={["compress_file_tool", "decompress_file_tool"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["compression", "gzip", "storage", "archival", "backup", "analytics", "statistics"]}
-  license="MIT"
-  tools={[{"name": "compress_file", "description": "Compress a file using gzip compression.", "function_name": "compress_file_tool"}]}
+  license="BSD-3-Clause"
+  tools={[{"name": "compress_file_tool", "description": "Compress a file using gzip. Returns original/compressed sizes and compression ratio.", "function_name": "compress_file_tool"}, {"name": "decompress_file_tool", "description": "Decompress a gzip-compressed (.gz) file back to its original form.", "function_name": "decompress_file_tool"}]}
 >
 
 ### 1. Log File Compression and Storage Optimization
