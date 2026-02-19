@@ -120,45 +120,88 @@ uv run python src/server.py
 ## Capabilities
 
 ### `list_organizations`
-**Description**: List organizations from the National Data Platform.
-
-**Parameters**:
-- `name_filter` (str, optional): Filter organizations by name substring match
-- `server` (str, optional): Server to query - 'local', 'global', or 'pre_ckan' (default: 'global')
-
-**Returns**: dict: Contains list of organization names and metadata about the request
+**Description**: List organizations available in the National Data Platform.
+**Hints**: read-only, idempotent
+**Tags**: catalogs, organizations
 
 ### `search_datasets`
-**Description**: Search for datasets in the National Data Platform using various search criteria.
-
-**Parameters**:
-- `search_terms` (List[str], optional): List of terms for simple search across all fields
-- `search_keys` (List[str], optional): Corresponding keys for each search term (use null for global search)
-- `dataset_name` (str, optional): Exact or partial dataset name to match
-- `dataset_title` (str, optional): Dataset title to search for
-- `owner_org` (str, optional): Organization name that owns the dataset
-- `resource_url` (str, optional): URL of dataset resource
-- `resource_name` (str, optional): Name of dataset resource
-- `dataset_description` (str, optional): Text to search in dataset descriptions
-- `resource_description` (str, optional): Text to search in resource descriptions
-- `resource_format` (str, optional): Resource format (e.g., CSV, JSON, NetCDF)
-- `search_term` (str, optional): Comma-separated terms to search across all fields
-- `filter_list` (List[str], optional): Field filters in format 'key:value'
-- `timestamp` (str, optional): Filter by timestamp field
-- `server` (str, optional): Server to search - 'local' or 'global' (default: 'global')
-- `limit` (int or str, optional): Maximum number of results to return (default: 20 to prevent context overflow)
-
-**Returns**: dict: Contains list of matching datasets with detailed metadata
+**Description**: Search for datasets in the NDP using term-based or field-specific criteria.
+**Hints**: read-only, idempotent
+**Tags**: datasets, search
 
 ### `get_dataset_details`
-**Description**: Get detailed information about a specific dataset.
+**Description**: Retrieve detailed metadata for a specific dataset by ID or name.
+**Hints**: read-only, idempotent
+**Tags**: datasets, metadata
 
-**Parameters**:
-- `dataset_identifier` (str): The dataset ID or name to retrieve details for
-- `identifier_type` (str, optional): Type of identifier - 'id' or 'name' (default: 'id')
-- `server` (str, optional): Server to query - 'local' or 'global' (default: 'global')
+### Resources
 
-**Returns**: dict: Detailed dataset information including all metadata and resources
+- `ndp://catalogs` - List of available NDP dataset catalogs.
+
+### Prompts
+
+- **explore_datasets**: Guided workflow for discovering and exploring scientific datasets.
+
+## Claude Code
+
+```bash
+claude mcp add clio-ndp -- uvx clio-kit ndp
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-ndp@iowarp-clio-kit
+```
+
+
+
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-ndp": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "ndp"
+      ]
+    }
+  }
+}
+```
+
+
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-ndp": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "ndp"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
+
+
 ## Examples
 
 ### 1. Discover Available Organizations

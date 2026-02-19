@@ -131,121 +131,135 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\slurm run slurm-mcp 
 ## Capabilities
 
 ### `submit_slurm_job`
-**Description**: Submit a job script to Slurm scheduler with advanced resource specification and intelligent optimization.
-
-**Parameters**:
-- `script_path` (str): Parameter for script_path
-- `cores` (int, optional): Parameter for cores (default: 1)
-- `memory` (str, optional): Parameter for memory (default: 1GB)
-- `time_limit` (str, optional): Parameter for time_limit (default: 01:00:00)
-- `job_name` (Any, optional): Parameter for job_name
-- `partition` (Any, optional): Parameter for partition
-
-**Returns**: Dictionary containing comprehensive job submission results with scheduling insights
+**Description**: Submit a job script to the Slurm scheduler with resource requirements.
+**Tags**: jobs, submission
 
 ### `check_job_status`
-**Description**: Check comprehensive status of a Slurm job with advanced monitoring and intelligent analysis.
-
-**Parameters**:
-- `job_id` (str): Parameter for job_id
-
-**Returns**: Dictionary containing comprehensive job status with performance insights and optimization recommendations
+**Description**: Check the status of a Slurm job by its ID.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `cancel_slurm_job`
-**Description**: Cancel a Slurm job.
-
-**Parameters**:
-- `job_id` (str): Parameter for job_id
-
-**Returns**: Dictionary with cancellation results
+**Description**: Cancel a running or pending Slurm job.
+**Hints**: destructive, idempotent
+**Tags**: jobs, management
 
 ### `list_slurm_jobs`
-**Description**: List Slurm jobs with optional filtering.
-
-**Parameters**:
-- `user` (Any, optional): Parameter for user
-- `state` (Any, optional): Parameter for state
-
-**Returns**: Dictionary with list of jobs
+**Description**: List Slurm jobs with optional filtering by user and state.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `get_slurm_info`
-**Description**: Get information about the Slurm cluster.
-
-**Returns**: Dictionary with cluster information
+**Description**: Get Slurm cluster configuration, partitions, and resource availability.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `get_job_details`
-**Description**: Get detailed information about a Slurm job.
-
-**Parameters**:
-- `job_id` (str): Parameter for job_id
-
-**Returns**: Dictionary with detailed job information
+**Description**: Get detailed information about a specific Slurm job.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `get_job_output`
-**Description**: Get job output content.
-
-**Parameters**:
-- `job_id` (str): Parameter for job_id
-- `output_type` (str, optional): Parameter for output_type (default: stdout)
-
-**Returns**: Dictionary with job output content
+**Description**: Retrieve stdout or stderr output from a Slurm job.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `get_queue_info`
-**Description**: Get job queue information.
-
-**Parameters**:
-- `partition` (Any, optional): Parameter for partition
-
-**Returns**: Dictionary with queue information
+**Description**: Get Slurm queue status and partition information.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `submit_array_job`
-**Description**: Submit an array job to Slurm scheduler.
-
-**Parameters**:
-- `script_path` (str): Parameter for script_path
-- `array_range` (str): Parameter for array_range
-- `cores` (int, optional): Parameter for cores (default: 1)
-- `memory` (str, optional): Parameter for memory (default: 1GB)
-- `time_limit` (str, optional): Parameter for time_limit (default: 01:00:00)
-- `job_name` (Any, optional): Parameter for job_name
-- `partition` (Any, optional): Parameter for partition
-
-**Returns**: Dictionary with array job submission results
+**Description**: Submit a Slurm array job for parallel task execution.
+**Tags**: jobs, submission
 
 ### `get_node_info`
-**Description**: Get cluster node information.
-
-**Returns**: Dictionary with node information
+**Description**: Get information about Slurm cluster nodes and their resources.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
 ### `allocate_slurm_nodes`
-**Description**: Allocate Slurm nodes using salloc command.
-
-**Parameters**:
-- `nodes` (int, optional): Parameter for nodes (default: 1)
-- `cores` (int, optional): Parameter for cores (default: 1)
-- `memory` (Any, optional): Parameter for memory
-- `time_limit` (str, optional): Parameter for time_limit (default: 01:00:00)
-- `partition` (Any, optional): Parameter for partition
-- `job_name` (Any, optional): Parameter for job_name
-- `immediate` (bool, optional): Parameter for immediate (default: False)
-
-**Returns**: Dictionary with allocation information
+**Description**: Allocate Slurm nodes for an interactive session using salloc.
+**Tags**: jobs, submission
 
 ### `deallocate_slurm_nodes`
-**Description**: Deallocate Slurm nodes by canceling the allocation.
-
-**Parameters**:
-- `allocation_id` (str): Parameter for allocation_id
-
-**Returns**: Dictionary with deallocation status
+**Description**: Release a Slurm node allocation by canceling it.
+**Hints**: destructive, idempotent
+**Tags**: jobs, management
 
 ### `get_allocation_status`
-**Description**: Get status of a node allocation.
+**Description**: Check the status of a Slurm node allocation.
+**Hints**: read-only, idempotent
+**Tags**: jobs, monitoring
 
-**Parameters**:
-- `allocation_id` (str): Parameter for allocation_id
+### Resources
 
-**Returns**: Dictionary with allocation status information
+- `slurm://cluster-info` - Basic Slurm cluster configuration.
+
+### Prompts
+
+- **submit_job_workflow**: Guided workflow for submitting and monitoring a Slurm job.
+
+## Claude Code
+
+```bash
+claude mcp add clio-slurm -- uvx clio-kit slurm
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-slurm@iowarp-clio-kit
+```
+
+
+
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-slurm": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "slurm"
+      ]
+    }
+  }
+}
+```
+
+
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-slurm": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "slurm"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
+
+
 ## Examples
 
 ### 1. Job Submission and Monitoring

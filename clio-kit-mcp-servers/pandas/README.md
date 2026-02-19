@@ -132,169 +132,148 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\pandas run pandas-mc
 ## Capabilities
 
 ### `load_data`
-**Description**: Load data from various file formats with comprehensive parsing options.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `file_format` (Any, optional): Parameter for file_format
-- `sheet_name` (Any, optional): Parameter for sheet_name
-- `encoding` (Any, optional): Parameter for encoding
-- `columns` (Any, optional): Parameter for columns
-- `nrows` (Any, optional): Parameter for nrows
-
-**Returns**: Dictionary containing: - data: Loaded dataset in structured format - metadata: File information, data types, and loading statistics - data_info: Shape, columns, and data quality metrics - loading_stats: Performance metrics and parsing information
+**Description**: Load and parse data from CSV, Excel, JSON, Parquet, or HDF5 files with optional column selection and row limiting.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, io
 
 ### `save_data`
-**Description**: Save data to various file formats with comprehensive export options.
-
-**Parameters**:
-- `data` (dict): Parameter for data
-- `file_path` (str): Parameter for file_path
-- `file_format` (Any, optional): Parameter for file_format
-- `index` (bool, optional): Parameter for index (default: True)
-
-**Returns**: Dictionary containing: - save_info: File save details including size and format - compression_stats: Space savings and compression metrics - export_stats: Performance metrics and data integrity checks - file_details: Output file specifications and validation
+**Description**: Save data to CSV, Excel, JSON, Parquet, or HDF5 with auto-detected format and optional index inclusion.
+**Hints**: idempotent
+**Tags**: data-analysis, io
 
 ### `statistical_summary`
-**Description**: Generate comprehensive statistical summary with advanced analytics.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `columns` (Any, optional): Parameter for columns
-- `include_distributions` (bool, optional): Parameter for include_distributions (default: False)
-
-**Returns**: Dictionary containing: - descriptive_stats: Mean, median, mode, standard deviation, and percentiles - distribution_analysis: Skewness, kurtosis, and normality test results - data_profiling: Data types, missing values, and unique value counts - outlier_detection: Outlier identification and statistical anomalies
+**Description**: Compute descriptive statistics, distribution analysis, and outlier detection for numerical and categorical columns.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, statistics
 
 ### `correlation_analysis`
-**Description**: Perform comprehensive correlation analysis with statistical significance testing.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `method` (str, optional): Parameter for method (default: pearson)
-- `columns` (Any, optional): Parameter for columns
-
-**Returns**: Dictionary containing: - correlation_matrix: Full correlation matrix with coefficient values - significance_tests: P-values and statistical significance indicators - correlation_insights: Strong correlations and dependency patterns - visualization_data: Data formatted for correlation heatmaps and plots
+**Description**: Compute correlation matrices (Pearson, Spearman, or Kendall) with significance testing and strong-correlation detection.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, statistics
 
 ### `hypothesis_testing`
-**Description**: Perform comprehensive statistical hypothesis testing with multiple test types and advanced analysis.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `test_type` (str): Parameter for test_type
-- `column1` (str): Parameter for column1
-- `column2` (Any, optional): Parameter for column2
-- `alpha` (float, optional): Parameter for alpha (default: 0.05)
-
-**Returns**: Dictionary containing: - test_results: Statistical test results including test statistic and p-value - effect_size: Effect size measures and practical significance assessment - confidence_intervals: Confidence intervals for parameters and differences - interpretation: Statistical interpretation and practical conclusions
+**Description**: Run statistical hypothesis tests (t-test, chi-square, ANOVA, normality, Mann-Whitney) with p-values and effect sizes.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, statistics
 
 ### `handle_missing_data`
-**Description**: Handle missing data with comprehensive strategies and statistical methods.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `strategy` (str, optional): Parameter for strategy (default: detect)
-- `method` (Any, optional): Parameter for method
-- `columns` (Any, optional): Parameter for columns
-
-**Returns**: Dictionary containing: - missing_data_report: Detailed analysis of missing data patterns - imputation_results: Results of imputation with quality metrics - data_completeness: Before/after comparison of data completeness - strategy_recommendations: Suggested approaches for optimal data handling
+**Description**: Detect, impute, or remove missing values using strategies like mean/median/mode fill, forward/backward fill, or interpolation.
+**Hints**: read-only, idempotent
+**Tags**: cleaning, data-analysis
 
 ### `clean_data`
-**Description**: Perform comprehensive data cleaning with advanced quality improvement techniques.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `remove_duplicates` (bool, optional): Parameter for remove_duplicates (default: False)
-- `detect_outliers` (bool, optional): Parameter for detect_outliers (default: False)
-- `convert_types` (bool, optional): Parameter for convert_types (default: False)
-
-**Returns**: Dictionary containing: - cleaning_report: Detailed summary of cleaning operations performed - data_quality_metrics: Before/after data quality comparison - outlier_analysis: Outlier detection results and recommendations - type_conversion_log: Data type changes and optimization results
+**Description**: Remove duplicates, detect outliers via IQR/Z-score, and optimize data types in a single pass.
+**Hints**: read-only, idempotent
+**Tags**: cleaning, data-analysis
 
 ### `groupby_operations`
-**Description**: Perform sophisticated groupby operations with comprehensive aggregation options.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `group_by` (Any): Parameter for group_by
-- `operations` (Any): Parameter for operations
-- `filter_condition` (Any, optional): Parameter for filter_condition
-
-**Returns**: Dictionary containing: - grouped_results: Results of groupby operations with aggregated data - group_statistics: Statistics about group sizes and distributions - aggregation_summary: Summary of all aggregation operations performed - performance_metrics: Groupby operation performance and optimization insights
+**Description**: Group data by columns and apply aggregations (sum, mean, count, min, max, std, median) with optional pre-filter.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, transformation
 
 ### `merge_datasets`
-**Description**: Merge and join datasets with comprehensive integration capabilities.
-
-**Parameters**:
-- `left_file` (str): Parameter for left_file
-- `right_file` (str): Parameter for right_file
-- `join_type` (str, optional): Parameter for join_type (default: inner)
-- `left_on` (Any, optional): Parameter for left_on
-- `right_on` (Any, optional): Parameter for right_on
-- `on` (Any, optional): Parameter for on
-
-**Returns**: Dictionary containing: - merged_data: Results of the merge operation - merge_statistics: Statistics about the merge operation and data overlap - data_quality_report: Quality assessment of the merged dataset - relationship_analysis: Analysis of data relationships and join effectiveness
+**Description**: Join two datasets using inner, outer, left, or right joins on specified key columns.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, transformation
 
 ### `pivot_table`
-**Description**: Create sophisticated pivot tables with comprehensive aggregation options.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `index` (Any): Parameter for index
-- `columns` (Any, optional): Parameter for columns
-- `values` (Any, optional): Parameter for values
-- `aggfunc` (str, optional): Parameter for aggfunc (default: mean)
-
-**Returns**: Dictionary containing: - pivot_results: The pivot table with aggregated data - summary_statistics: Statistical summary of the pivot operation - data_insights: Key insights and patterns from the pivot analysis - visualization_data: Data formatted for pivot table visualization
+**Description**: Create pivot tables with configurable row index, column headers, value columns, and aggregation function.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, transformation
 
 ### `time_series_operations`
-**Description**: Perform comprehensive time series operations with advanced temporal analysis.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `date_column` (str): Parameter for date_column
-- `operation` (str): Parameter for operation
-- `window_size` (Any, optional): Parameter for window_size
-- `frequency` (Any, optional): Parameter for frequency
-
-**Returns**: Dictionary containing: - time_series_results: Results of the time series operation - temporal_analysis: Trend and seasonality analysis - statistical_summary: Time series statistical properties - forecasting_insights: Patterns and insights for forecasting applications
+**Description**: Resample, compute rolling statistics, create lag features, or difference a time series.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, time-series
 
 ### `validate_data`
-**Description**: Perform comprehensive data validation with advanced constraint checking and quality assessment.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `validation_rules` (Any): Parameter for validation_rules
-
-**Returns**: Dictionary containing: - validation_results: Detailed validation results for each column and rule - data_quality_score: Overall data quality score and assessment - violation_summary: Summary of validation violations and error patterns - recommendations: Suggested actions for data quality improvement
+**Description**: Validate columns against rules for min/max range, data type, nullability, uniqueness, and regex patterns.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, validation
 
 ### `filter_data`
-**Description**: Perform advanced data filtering with sophisticated boolean indexing and conditional expressions.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `filter_conditions` (Any): Parameter for filter_conditions
-- `output_file` (Any, optional): Parameter for output_file
-
-**Returns**: Dictionary containing: - filtered_data: Results of filtering operation with matching records - filter_statistics: Summary of filtering results including row counts - data_quality_report: Quality assessment of filtered dataset - performance_metrics: Filtering operation performance and efficiency
+**Description**: Filter rows using comparison, membership, pattern-matching, and null-check operators across multiple columns.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, filtering
 
 ### `optimize_memory`
-**Description**: Perform advanced memory optimization for large datasets with intelligent strategies.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `optimize_dtypes` (bool, optional): Parameter for optimize_dtypes (default: True)
-- `chunk_size` (Any, optional): Parameter for chunk_size
-
-**Returns**: Dictionary containing: - memory_optimization_results: Before/after memory usage comparison - dtype_optimization_log: Details of data type changes and memory savings - chunking_strategy: Optimal chunking recommendations for large datasets - performance_metrics: Speed and efficiency improvements achieved
+**Description**: Analyze and reduce DataFrame memory usage through automatic dtype optimization and chunked-processing recommendations.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, optimization
 
 ### `profile_data`
-**Description**: Perform comprehensive data profiling with detailed statistical analysis and quality assessment.
+**Description**: Generate a full dataset profile: shape, types, missing values, distributions, quality checks, and optional correlations.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, profiling
 
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `include_correlations` (bool, optional): Parameter for include_correlations (default: False)
-- `sample_size` (Any, optional): Parameter for sample_size
+### Resources
 
-**Returns**: Dictionary containing: - data_profile: Comprehensive dataset overview including shape, types, and statistics - column_analysis: Detailed analysis of each column including distributions - data_quality_metrics: Missing values, duplicates, and data quality indicators - correlation_matrix: Variable correlations (if include_correlations is True)
+- `pandas://capabilities` - Supported pandas operations and file formats.
+
+### Prompts
+
+- **analyze_dataset**: Guided workflow for exploring and analyzing a dataset.
+
+## Claude Code
+
+```bash
+claude mcp add clio-pandas -- uvx clio-kit pandas
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-pandas@iowarp-clio-kit
+```
+
+
+
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-pandas": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "pandas"
+      ]
+    }
+  }
+}
+```
+
+
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-pandas": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "pandas"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
+
+
 ## Examples
 
 ### 1. Data Loading and Profiling
