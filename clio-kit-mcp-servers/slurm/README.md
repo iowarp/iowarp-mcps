@@ -199,7 +199,6 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\slurm run slurm-mcp 
 ### Prompts
 
 - **submit_job_workflow**: Guided workflow for submitting and monitoring a Slurm job.
-
 ## Claude Code
 
 ```bash
@@ -212,9 +211,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-slurm@iowarp-clio-kit
 ```
-
-
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -232,9 +228,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
-
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
@@ -258,8 +251,6 @@ Or install the CLIO Kit extension:
 ```bash
 gemini extensions install https://github.com/iowarp/clio-kit
 ```
-
-
 ## Examples
 
 ### 1. Job Submission and Monitoring

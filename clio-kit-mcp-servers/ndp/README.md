@@ -141,7 +141,6 @@ uv run python src/server.py
 ### Prompts
 
 - **explore_datasets**: Guided workflow for discovering and exploring scientific datasets.
-
 ## Claude Code
 
 ```bash
@@ -154,9 +153,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-ndp@iowarp-clio-kit
 ```
-
-
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -174,9 +170,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
-
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
@@ -200,8 +193,6 @@ Or install the CLIO Kit extension:
 ```bash
 gemini extensions install https://github.com/iowarp/clio-kit
 ```
-
-
 ## Examples
 
 ### 1. Discover Available Organizations

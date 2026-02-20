@@ -213,7 +213,6 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\pandas run pandas-mc
 ### Prompts
 
 - **analyze_dataset**: Guided workflow for exploring and analyzing a dataset.
-
 ## Claude Code
 
 ```bash
@@ -226,9 +225,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-pandas@iowarp-clio-kit
 ```
-
-
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -246,9 +242,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
-
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
@@ -272,8 +265,6 @@ Or install the CLIO Kit extension:
 ```bash
 gemini extensions install https://github.com/iowarp/clio-kit
 ```
-
-
 ## Examples
 
 ### 1. Data Loading and Profiling

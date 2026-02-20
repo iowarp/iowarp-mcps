@@ -447,7 +447,6 @@ Returns:
 ### Prompts
 
 - **visualize_data**: Guided workflow for creating a ParaView visualization.
-
 ## Claude Code
 
 ```bash
@@ -460,9 +459,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-paraview@iowarp-clio-kit
 ```
-
-
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -480,9 +476,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
-
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
@@ -506,8 +499,6 @@ Or install the CLIO Kit extension:
 ```bash
 gemini extensions install https://github.com/iowarp/clio-kit
 ```
-
-
 ## Examples
 
 ### Basic Scientific Data Visualization

@@ -158,7 +158,6 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\compression run comp
 ### Prompts
 
 - **compress_workflow**: Guided workflow for compressing a file and verifying the result.
-
 ## Claude Code
 
 ```bash
@@ -171,9 +170,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-compression@iowarp-clio-kit
 ```
-
-
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -191,9 +187,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
-
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
@@ -217,8 +210,6 @@ Or install the CLIO Kit extension:
 ```bash
 gemini extensions install https://github.com/iowarp/clio-kit
 ```
-
-
 ## Examples
 
 ### 1. Log File Compression and Storage Optimization

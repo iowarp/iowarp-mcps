@@ -314,7 +314,6 @@ MIT License - see LICENSE for details
 ### Prompts
 
 - **analyze_parquet**: Guided workflow for analyzing a Parquet file.
-
 ## Claude Code
 
 ```bash
@@ -327,7 +326,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-parquet@iowarp-clio-kit
 ```
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -345,7 +343,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
