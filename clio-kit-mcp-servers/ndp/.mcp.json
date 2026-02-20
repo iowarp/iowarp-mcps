@@ -1,0 +1,9 @@
+{
+  "clio-ndp": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "ndp"
+    ]
+  }
+}

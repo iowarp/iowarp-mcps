@@ -1,0 +1,253 @@
+{
+  "name": "clio-kit",
+  "owner": {
+    "name": "IoWarp Team - Gnosis Research Center",
+    "email": "grc@illinoistech.edu"
+  },
+  "metadata": {
+    "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
+    "version": "1.0.0",
+    "pluginRoot": "./clio-kit-mcp-servers"
+  },
+  "plugins": [
+    {
+      "name": "clio-adios",
+      "source": "./clio-kit-mcp-servers/adios",
+      "description": "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes.",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "scientific-computing",
+        "adios2",
+        "bp5",
+        "data-io",
+        "hpc"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-arxiv",
+      "source": "./clio-kit-mcp-servers/arxiv",
+      "description": "ArXiv MCP server implementation using Model Context Protocol",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "research",
+        "arxiv",
+        "papers",
+        "literature-search"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-chronolog",
+      "source": "./clio-kit-mcp-servers/chronolog",
+      "description": "ChronoLog MCP server implementation using Model Context Protocol",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "logging",
+        "distributed-systems",
+        "hpc",
+        "time-series"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-compression",
+      "source": "./clio-kit-mcp-servers/compression",
+      "description": "Compression MCP server implementation using Model Context Protocol",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "compression",
+        "gzip",
+        "file-operations",
+        "data-management"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-darshan",
+      "source": "./clio-kit-mcp-servers/darshan",
+      "description": "Darshan I/O profiler MCP server for analyzing I/O trace files",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "io-profiling",
+        "performance-analysis",
+        "hpc",
+        "darshan"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-hdf5",
+      "source": "./clio-kit-mcp-servers/hdf5",
+      "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "scientific-computing",
+        "hdf5",
+        "data-analysis",
+        "hierarchical-data"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-jarvis",
+      "source": "./clio-kit-mcp-servers/jarvis",
+      "description": "Jarvis-CD MCP - Pipeline Management for High-Performance Computing with comprehensive workflow operations",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "pipeline-management",
+        "hpc",
+        "workflow-automation"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-lmod",
+      "source": "./clio-kit-mcp-servers/lmod",
+      "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "environment-modules",
+        "hpc",
+        "lmod",
+        "system-administration"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-ndp",
+      "source": "./clio-kit-mcp-servers/ndp",
+      "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "datasets",
+        "ckan",
+        "national-data-platform",
+        "data-discovery"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-node-hardware",
+      "source": "./clio-kit-mcp-servers/node-hardware",
+      "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "hardware-monitoring",
+        "system-info",
+        "performance"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-pandas",
+      "source": "./clio-kit-mcp-servers/pandas",
+      "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "data-analysis",
+        "pandas",
+        "dataframes",
+        "statistics"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-parallel-sort",
+      "source": "./clio-kit-mcp-servers/parallel-sort",
+      "description": "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "log-processing",
+        "sorting",
+        "large-files",
+        "hpc"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-paraview",
+      "source": "./clio-kit-mcp-servers/paraview",
+      "description": "MCP server for ParaView scientific visualization",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "scientific-visualization",
+        "paraview",
+        "3d-rendering",
+        "hpc"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-parquet",
+      "source": "./clio-kit-mcp-servers/parquet",
+      "description": "MCP server for Apache Parquet files",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "parquet",
+        "apache-arrow",
+        "columnar-data",
+        "data-analysis"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-plot",
+      "source": "./clio-kit-mcp-servers/plot",
+      "description": "MCP server for advanced data visualization and plotting operations",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "data-visualization",
+        "matplotlib",
+        "plotting",
+        "charts"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-slurm",
+      "source": "./clio-kit-mcp-servers/slurm",
+      "description": "MCP server for Slurm workload management and HPC job scheduling",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "hpc",
+        "slurm",
+        "job-scheduling",
+        "cluster-management"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    }
+  ]
+}

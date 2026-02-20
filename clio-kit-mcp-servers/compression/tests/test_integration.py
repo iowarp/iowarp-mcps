@@ -1,10 +1,8 @@
 import pytest
 import os
 import tempfile
-import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-from server import mcp
+from compression_mcp.server import mcp
 
 
 @pytest.fixture
@@ -21,20 +19,16 @@ def sample_file():
 
 @pytest.mark.asyncio
 async def test_compress_file_tool(sample_file):
-    """Test the MCP tool integration through the handler"""
-    from mcp_handlers import compress_file_handler
+    """Test the MCP tool integration through the handler."""
+    from compression_mcp.mcp_handlers import compress_file_handler
 
-    # Call the handler directly (which is what the MCP tool would call)
     result = await compress_file_handler(sample_file)
 
     assert isinstance(result, dict)
-    assert not result["isError"]
-    assert result["_meta"]["tool"] == "compress_file"
-    assert os.path.exists(result["_meta"]["compressed_file"])
+    assert result["original_file"] == sample_file
+    assert os.path.exists(result["compressed_file"])
 
 
 def test_mcp_server_initialization():
-    """Test that the MCP server initializes correctly"""
-    assert mcp.name == "CompressionMCP"
-    # Test that the server object exists and has the correct name
-    # We can't easily access internal FastMCP structure, so just verify basic properties
+    """Test that the MCP server initializes correctly."""
+    assert mcp.name == "compression"

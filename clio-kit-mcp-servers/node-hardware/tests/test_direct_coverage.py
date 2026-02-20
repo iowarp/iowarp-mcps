@@ -1,26 +1,18 @@
 """
 Direct coverage tests to improve specific module coverage.
+Updated for FastMCP v3 (no .fn attribute, ToolError for errors, direct function calls).
 """
 
-import os
-import sys
 import pytest
 from unittest.mock import patch
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-# Import modules under test
-import server
-import mcp_handlers
-from utils import output_formatter
-from utils.output_formatter import NodeHardwareFormatter, create_beautiful_response
-
-import os
-import sys
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from node_hardware_mcp import server
+from node_hardware_mcp import mcp_handlers
+from node_hardware_mcp.utils import output_formatter
+from node_hardware_mcp.utils.output_formatter import (
+    NodeHardwareFormatter,
+    create_beautiful_response,
+)
 
 
 class TestDirectModuleCoverage:
@@ -45,14 +37,15 @@ class TestDirectModuleCoverage:
     async def test_server_tool_functions_comprehensive(self):
         """Test server tool function attributes and registration"""
 
-        # Test that tools are registered correctly
+        # Test that tools are registered correctly as callable functions
         assert hasattr(server, "get_cpu_info_tool")
         assert hasattr(server, "get_memory_info_tool")
         assert hasattr(server, "get_disk_info_tool")
 
-        # Test tool attributes exist
+        # Test tool is callable (v3 returns original function)
         cpu_tool = getattr(server, "get_cpu_info_tool")
         assert cpu_tool is not None
+        assert callable(cpu_tool)
 
         # Test that mcp instance exists
         assert hasattr(server, "mcp")
@@ -66,39 +59,43 @@ class TestDirectModuleCoverage:
         """Test server main function with different transport options"""
 
         # Test with stdio transport (default)
-        with patch.dict("os.environ", {"MCP_TRANSPORT": "stdio"}):
+        with patch("sys.argv", ["node-hardware-mcp", "--transport", "stdio"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(transport="stdio")
 
-        # Test with SSE transport
-        with patch.dict(
-            "os.environ",
-            {
-                "MCP_TRANSPORT": "sse",
-                "MCP_SSE_HOST": "localhost",
-                "MCP_SSE_PORT": "9000",
-            },
+        # Test with HTTP transport
+        with patch(
+            "sys.argv",
+            [
+                "node-hardware-mcp",
+                "--transport",
+                "http",
+                "--host",
+                "localhost",
+                "--port",
+                "9000",
+            ],
         ):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(
-                    transport="sse", host="localhost", port=9000
+                    transport="http", host="localhost", port=9000
                 )
 
-        # Test with SSE transport and default host/port
-        with patch.dict("os.environ", {"MCP_TRANSPORT": "sse"}):
+        # Test with HTTP transport and default host/port
+        with patch("sys.argv", ["node-hardware-mcp", "--transport", "http"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(
-                    transport="sse", host="0.0.0.0", port=8000
+                    transport="http", host="0.0.0.0", port=8000
                 )
 
     def test_mcp_handlers_direct_calls(self):
         """Test direct calls to mcp_handlers functions"""
 
         # Test CPU handler with mocked capability
-        with patch("mcp_handlers.get_cpu_info") as mock_cpu:
+        with patch("node_hardware_mcp.mcp_handlers.get_cpu_info") as mock_cpu:
             mock_cpu.return_value = {
                 "logical_cores": 8,
                 "physical_cores": 4,
@@ -112,7 +109,7 @@ class TestDirectModuleCoverage:
             mock_cpu.assert_called_once()
 
         # Test memory handler with mocked capability
-        with patch("mcp_handlers.get_memory_info") as mock_memory:
+        with patch("node_hardware_mcp.mcp_handlers.get_memory_info") as mock_memory:
             mock_memory.return_value = {
                 "total_memory": 16000000000,
                 "available_memory": 8000000000,
@@ -124,7 +121,7 @@ class TestDirectModuleCoverage:
             mock_memory.assert_called_once()
 
         # Test system handler with mocked capability
-        with patch("mcp_handlers.get_system_info") as mock_system:
+        with patch("node_hardware_mcp.mcp_handlers.get_system_info") as mock_system:
             mock_system.return_value = {
                 "system": "Linux",
                 "release": "5.15.0",
@@ -137,7 +134,7 @@ class TestDirectModuleCoverage:
             mock_system.assert_called_once()
 
         # Test disk handler with mocked capability
-        with patch("mcp_handlers.get_disk_info") as mock_disk:
+        with patch("node_hardware_mcp.mcp_handlers.get_disk_info") as mock_disk:
             mock_disk.return_value = {
                 "partitions": [
                     {
@@ -156,7 +153,7 @@ class TestDirectModuleCoverage:
             mock_disk.assert_called_once()
 
         # Test network handler with mocked capability
-        with patch("mcp_handlers.get_network_info") as mock_network:
+        with patch("node_hardware_mcp.mcp_handlers.get_network_info") as mock_network:
             mock_network.return_value = {
                 "interfaces": {
                     "eth0": {
@@ -173,7 +170,7 @@ class TestDirectModuleCoverage:
             mock_network.assert_called_once()
 
         # Test process handler with mocked capability
-        with patch("mcp_handlers.get_process_info") as mock_process:
+        with patch("node_hardware_mcp.mcp_handlers.get_process_info") as mock_process:
             mock_process.return_value = {
                 "processes": [
                     {
@@ -190,7 +187,9 @@ class TestDirectModuleCoverage:
             mock_process.assert_called_once()
 
         # Test hardware summary handler with mocked capability
-        with patch("mcp_handlers.get_hardware_summary") as mock_summary:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_hardware_summary"
+        ) as mock_summary:
             mock_summary.return_value = {
                 "system_type": "Workstation",
                 "total_cores": 8,
@@ -202,7 +201,7 @@ class TestDirectModuleCoverage:
             mock_summary.assert_called_once()
 
         # Test performance monitor handler with mocked capability
-        with patch("mcp_handlers.monitor_performance") as mock_perf:
+        with patch("node_hardware_mcp.mcp_handlers.monitor_performance") as mock_perf:
             mock_perf.return_value = {
                 "cpu_usage": 25.5,
                 "memory_usage": 60.0,
@@ -214,7 +213,7 @@ class TestDirectModuleCoverage:
             mock_perf.assert_called_once()
 
         # Test GPU handler with mocked capability
-        with patch("mcp_handlers.get_gpu_info") as mock_gpu:
+        with patch("node_hardware_mcp.mcp_handlers.get_gpu_info") as mock_gpu:
             mock_gpu.return_value = {
                 "gpus": [
                     {
@@ -230,7 +229,7 @@ class TestDirectModuleCoverage:
             mock_gpu.assert_called_once()
 
         # Test sensor handler with mocked capability
-        with patch("mcp_handlers.get_sensor_info") as mock_sensor:
+        with patch("node_hardware_mcp.mcp_handlers.get_sensor_info") as mock_sensor:
             mock_sensor.return_value = {
                 "temperatures": {"coretemp": [{"current": 45.0, "high": 85.0}]}
             }
@@ -243,7 +242,10 @@ class TestDirectModuleCoverage:
         """Test error handling in mcp_handlers"""
 
         # Test CPU handler with exception
-        with patch("mcp_handlers.get_cpu_info", side_effect=Exception("CPU error")):
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_cpu_info",
+            side_effect=Exception("CPU error"),
+        ):
             result = mcp_handlers.cpu_info_handler()
             assert isinstance(result, dict)
             assert "content" in result
@@ -251,7 +253,8 @@ class TestDirectModuleCoverage:
 
         # Test memory handler with exception
         with patch(
-            "mcp_handlers.get_memory_info", side_effect=MemoryError("Memory error")
+            "node_hardware_mcp.mcp_handlers.get_memory_info",
+            side_effect=MemoryError("Memory error"),
         ):
             result = mcp_handlers.memory_info_handler()
             assert isinstance(result, dict)
@@ -261,7 +264,7 @@ class TestDirectModuleCoverage:
         """Test remaining mcp_handlers for comprehensive coverage"""
 
         # Test get_node_info_handler with various parameters
-        with patch("mcp_handlers.get_node_info") as mock_node:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_node:
             mock_node.return_value = {
                 "hostname": "local-server",
                 "status": "running",
@@ -280,7 +283,7 @@ class TestDirectModuleCoverage:
             mock_node.assert_called_once()
 
         # Test get_node_info_handler with exclude filters
-        with patch("mcp_handlers.get_node_info") as mock_node:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_node:
             mock_node.return_value = {"hostname": "local-server", "cpu": {"cores": 8}}
             result = mcp_handlers.get_node_info_handler(
                 include_filters=None,
@@ -293,14 +296,17 @@ class TestDirectModuleCoverage:
 
         # Test get_node_info_handler with errors
         with patch(
-            "mcp_handlers.get_node_info", side_effect=Exception("Node info error")
+            "node_hardware_mcp.mcp_handlers.get_node_info",
+            side_effect=Exception("Node info error"),
         ):
             result = mcp_handlers.get_node_info_handler()
             assert isinstance(result, dict)
             assert "content" in result
 
         # Test get_remote_node_info_handler with various parameters
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = {
                 "hostname": "remote-server",
                 "status": "connected",
@@ -323,7 +329,7 @@ class TestDirectModuleCoverage:
 
         # Test get_remote_node_info_handler with connection errors
         with patch(
-            "mcp_handlers.get_remote_node_info",
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info",
             side_effect=ConnectionError("SSH connection failed"),
         ):
             result = mcp_handlers.get_remote_node_info_handler(
@@ -334,7 +340,8 @@ class TestDirectModuleCoverage:
 
         # Test get_remote_node_info_handler with timeout errors
         with patch(
-            "mcp_handlers.get_remote_node_info", side_effect=TimeoutError("SSH timeout")
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info",
+            side_effect=TimeoutError("SSH timeout"),
         ):
             result = mcp_handlers.get_remote_node_info_handler(
                 hostname="slow-server.com", timeout=1
@@ -343,21 +350,25 @@ class TestDirectModuleCoverage:
             assert "content" in result
 
         # Test all handlers with empty/None data scenarios
-        with patch("mcp_handlers.get_hardware_summary") as mock_summary:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_hardware_summary"
+        ) as mock_summary:
             mock_summary.return_value = {}
             result = mcp_handlers.hardware_summary_handler()
             assert isinstance(result, dict)
             assert "content" in result
             mock_summary.assert_called_once()
 
-        with patch("mcp_handlers.get_hardware_summary") as mock_summary:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_hardware_summary"
+        ) as mock_summary:
             mock_summary.return_value = None
             result = mcp_handlers.hardware_summary_handler()
             assert isinstance(result, dict)
             assert "content" in result
 
         # Test handlers with large data scenarios
-        with patch("mcp_handlers.get_process_info") as mock_process:
+        with patch("node_hardware_mcp.mcp_handlers.get_process_info") as mock_process:
             # Simulate large process list
             large_process_list = {
                 "processes": [
@@ -375,7 +386,7 @@ class TestDirectModuleCoverage:
         """Test edge cases and boundary conditions in mcp_handlers"""
 
         # Test with malformed data
-        with patch("mcp_handlers.get_cpu_info") as mock_cpu:
+        with patch("node_hardware_mcp.mcp_handlers.get_cpu_info") as mock_cpu:
             mock_cpu.return_value = "invalid_data_format"
             result = mcp_handlers.cpu_info_handler()
             assert isinstance(result, dict)
@@ -383,7 +394,8 @@ class TestDirectModuleCoverage:
 
         # Test with network connectivity issues
         with patch(
-            "mcp_handlers.get_network_info", side_effect=OSError("Network unreachable")
+            "node_hardware_mcp.mcp_handlers.get_network_info",
+            side_effect=OSError("Network unreachable"),
         ):
             result = mcp_handlers.network_info_handler()
             assert isinstance(result, dict)
@@ -391,7 +403,7 @@ class TestDirectModuleCoverage:
 
         # Test with permission errors
         with patch(
-            "mcp_handlers.get_sensor_info",
+            "node_hardware_mcp.mcp_handlers.get_sensor_info",
             side_effect=PermissionError("Permission denied"),
         ):
             result = mcp_handlers.sensor_info_handler()
@@ -399,7 +411,10 @@ class TestDirectModuleCoverage:
             assert "content" in result
 
         # Test with disk I/O errors
-        with patch("mcp_handlers.get_disk_info", side_effect=IOError("Disk I/O error")):
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_disk_info",
+            side_effect=IOError("Disk I/O error"),
+        ):
             result = mcp_handlers.disk_info_handler()
             assert isinstance(result, dict)
             assert "content" in result
@@ -408,7 +423,7 @@ class TestDirectModuleCoverage:
         """Test remote node handlers"""
 
         # Test get_node_info_handler with correct signature
-        with patch("mcp_handlers.get_node_info") as mock_node:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_node:
             mock_node.return_value = {
                 "hostname": "test-server",
                 "status": "connected",
@@ -421,7 +436,9 @@ class TestDirectModuleCoverage:
             mock_node.assert_called_once()
 
         # Test get_remote_node_info_handler with correct signature
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = {
                 "hostname": "remote-server",
                 "status": "connected",
@@ -437,8 +454,8 @@ class TestDirectModuleCoverage:
             mock_remote.assert_called_once()
 
     def test_output_formatter_comprehensive(self):
-        """Test comprehensive output_formatter functionality for Task 3"""
-        from utils.output_formatter import NodeHardwareFormatter
+        """Test comprehensive output_formatter functionality"""
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         # Test NodeHardwareFormatter.format_success_response
         test_data = {
@@ -471,7 +488,7 @@ class TestDirectModuleCoverage:
         assert "❌ Status" in error_result
         assert error_result["❌ Status"] == "Error"
 
-        # Test with minimal parameters - remove invalid 'success' assertion
+        # Test with minimal parameters
         minimal_result = NodeHardwareFormatter.format_success_response(
             operation="minimal_test", data={"test": "value"}
         )
@@ -480,8 +497,8 @@ class TestDirectModuleCoverage:
         assert minimal_result["✅ Status"] == "Success"
 
     def test_output_formatter_error_handling(self):
-        """Test output formatter error handling for Task 3"""
-        from utils.output_formatter import NodeHardwareFormatter
+        """Test output formatter error handling"""
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         # Test error response
         error_result = NodeHardwareFormatter.format_error_response(
@@ -502,8 +519,8 @@ class TestDirectModuleCoverage:
         assert none_result["✅ Status"] == "Success"
 
     def test_output_formatter_create_beautiful_response(self):
-        """Test create_beautiful_response function for Task 3"""
-        from utils.output_formatter import create_beautiful_response
+        """Test create_beautiful_response function"""
+        from node_hardware_mcp.utils.output_formatter import create_beautiful_response
 
         test_data = {"cpu": "Intel i7", "memory": "16GB"}
 
@@ -563,7 +580,7 @@ class TestServerDirectCoverage:
 
         # Test that the app has a name (shows it's properly initialized)
         assert hasattr(server.mcp, "name")
-        assert server.mcp.name == "NodeHardware-MCP-SystemMonitoring"
+        assert server.mcp.name == "node-hardware"
 
 
 class TestMcpHandlersExtensiveCoverage:
@@ -776,7 +793,8 @@ class TestOutputFormatterExtensiveCoverage:
 
         # Test with network interface errors
         with patch(
-            "mcp_handlers.get_network_info", side_effect=OSError("Interface down")
+            "node_hardware_mcp.mcp_handlers.get_network_info",
+            side_effect=OSError("Interface down"),
         ):
             result = mcp_handlers.network_info_handler()
             assert isinstance(result, dict)
@@ -784,7 +802,7 @@ class TestOutputFormatterExtensiveCoverage:
 
         # Test with sensor permission errors
         with patch(
-            "mcp_handlers.get_sensor_info",
+            "node_hardware_mcp.mcp_handlers.get_sensor_info",
             side_effect=PermissionError("Sensors access denied"),
         ):
             result = mcp_handlers.sensor_info_handler()
@@ -793,7 +811,7 @@ class TestOutputFormatterExtensiveCoverage:
 
         # Test with process enumeration errors
         with patch(
-            "mcp_handlers.get_process_info",
+            "node_hardware_mcp.mcp_handlers.get_process_info",
             side_effect=Exception("Process list unavailable"),
         ):
             result = mcp_handlers.process_info_handler()
@@ -802,7 +820,7 @@ class TestOutputFormatterExtensiveCoverage:
 
     def test_output_formatter_missing_coverage(self):
         """Test output_formatter for missing coverage lines"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         # Test format_error_response with correct signature
         error_result = NodeHardwareFormatter.format_error_response(
@@ -829,42 +847,43 @@ class TestOutputFormatterExtensiveCoverage:
     def test_server_main_function_coverage(self):
         """Test server main function branches for coverage"""
 
-        # Test without environment variables (default stdio)
-        with patch.dict("os.environ", {}, clear=True):
+        # Test without arguments (default stdio via env fallback)
+        with patch("sys.argv", ["node-hardware-mcp"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(transport="stdio")
 
-        # Test with invalid transport (should default to stdio)
-        with patch.dict("os.environ", {"MCP_TRANSPORT": "invalid"}):
-            with patch.object(server.mcp, "run") as mock_run:
-                server.main()
-                mock_run.assert_called_once_with(transport="stdio")
+        # Test with MCP_TRANSPORT env var fallback to stdio
+        with patch("sys.argv", ["node-hardware-mcp"]):
+            with patch.dict("os.environ", {"MCP_TRANSPORT": "stdio"}):
+                with patch.object(server.mcp, "run") as mock_run:
+                    server.main()
+                    mock_run.assert_called_once_with(transport="stdio")
 
     def test_mcp_handlers_function_signature_coverage(self):
         """Test mcp_handlers functions to improve coverage"""
 
         # Test get_node_info_handler with correct signature
-        with patch("mcp_handlers.get_node_info") as mock_node:
+        with patch("node_hardware_mcp.mcp_handlers.get_node_info") as mock_node:
             mock_node.return_value = {"hostname": "localhost", "status": "active"}
             result = mcp_handlers.get_node_info_handler()
             assert isinstance(result, dict)
             assert "content" in result
-            # get_node_info is called with default parameters: (None, None, 15000)
             mock_node.assert_called_once()
 
         # Test get_remote_node_info_handler with correct signature
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = {"hostname": "remote", "status": "connected"}
             result = mcp_handlers.get_remote_node_info_handler(hostname="remote-server")
             assert isinstance(result, dict)
             assert "content" in result
-            # get_remote_node_info has many default parameters
             mock_remote.assert_called_once()
 
     def test_output_formatter_edge_cases_coverage(self):
         """Test output_formatter edge cases for better coverage"""
-        from utils.output_formatter import NodeHardwareFormatter
+        from node_hardware_mcp.utils.output_formatter import NodeHardwareFormatter
 
         # Test with empty data dictionary
         result = NodeHardwareFormatter.format_success_response(

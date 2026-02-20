@@ -1,0 +1,43 @@
+{
+  "name": "io.github.iowarp/compression-mcp",
+  "description": "Compression MCP server implementation using Model Context Protocol",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "compression"
+    ]
+  },
+  "tools": [
+    {
+      "name": "compress_file_tool",
+      "description": "Compress a file using gzip. Returns original/compressed sizes and compression ratio."
+    },
+    {
+      "name": "decompress_file_tool",
+      "description": "Decompress a gzip-compressed (.gz) file back to its original form."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "compression://capabilities",
+      "name": "compression_capabilities",
+      "description": "Supported compression formats and their capabilities."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "compress_workflow",
+      "description": "Guided workflow for compressing a file and verifying the result."
+    }
+  ],
+  "tags": [
+    "compression",
+    "gzip",
+    "file-operations",
+    "data-management"
+  ]
+}

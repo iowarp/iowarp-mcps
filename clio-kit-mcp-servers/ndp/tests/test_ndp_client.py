@@ -1,17 +1,11 @@
 """Tests specifically for the NDPClient class."""
 
-import os
-
-# Import the NDPClient
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from server import Dataset, NDPClient
+from ndp_mcp.server import Dataset, NDPClient
 
 
 class TestNDPClientEdgeCases:

@@ -7,12 +7,8 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-import sys
 
-# Add the parent directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.time_series import (
+from pandas_mcp.implementation.time_series import (
     time_series_operations,
     detect_seasonality,
 )

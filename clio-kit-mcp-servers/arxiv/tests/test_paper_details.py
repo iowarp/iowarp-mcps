@@ -3,13 +3,8 @@ Tests for ArXiv paper details and analysis capabilities.
 """
 
 import pytest
-import sys
-import os
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.paper_details import get_paper_details, find_similar_papers
+from arxiv_mcp.capabilities.paper_details import get_paper_details, find_similar_papers
 
 
 class TestPaperDetails:

@@ -6,25 +6,20 @@ Tests end-to-end functionality from MCP tools through to Slurm capabilities.
 import pytest
 import tempfile
 import os
-import sys
 import time
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from slurm_mcp.implementation.job_submission import submit_slurm_job
+from slurm_mcp.implementation.job_status import get_job_status
+from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
+from slurm_mcp.implementation.job_listing import list_slurm_jobs
+from slurm_mcp.implementation.cluster_info import get_slurm_info
+from slurm_mcp.implementation.job_details import get_job_details
+from slurm_mcp.implementation.job_output import get_job_output
+from slurm_mcp.implementation.queue_info import get_queue_info
+from slurm_mcp.implementation.array_jobs import submit_array_job
+from slurm_mcp.implementation.node_info import get_node_info
 
-# Import implementation modules directly
-from implementation.job_submission import submit_slurm_job
-from implementation.job_status import get_job_status
-from implementation.job_cancellation import cancel_slurm_job
-from implementation.job_listing import list_slurm_jobs
-from implementation.cluster_info import get_slurm_info
-from implementation.job_details import get_job_details
-from implementation.job_output import get_job_output
-from implementation.queue_info import get_queue_info
-from implementation.array_jobs import submit_array_job
-from implementation.node_info import get_node_info
-
-from implementation.slurm_handler import _check_slurm_available
+from slurm_mcp.implementation.slurm_handler import _check_slurm_available
 
 
 class TestIntegration:

@@ -1,7 +1,10 @@
 """FastMCP server for Apache Parquet files."""
 
+import json
 from typing import Optional, List, Union
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
 from parquet_mcp.capabilities.parquet_handler import (
     summarize,
     read_slice,
@@ -9,15 +12,39 @@ from parquet_mcp.capabilities.parquet_handler import (
     aggregate_column,
 )
 
-mcp = FastMCP("parquet-mcp")
+
+def _check_error(result: str) -> str:
+    """Check handler result for error status and raise ToolError if found."""
+    try:
+        parsed = json.loads(result)
+        if isinstance(parsed, dict) and parsed.get("status") == "error":
+            raise ToolError(parsed.get("message", "Unknown error"))
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return result
+
+
+mcp = FastMCP(
+    "parquet",
+    instructions=(
+        "Reads and analyzes Apache Parquet files. "
+        "Use summarize_tool for file overview, read_slice_tool for row access, "
+        "get_column_preview_tool for column samples, aggregate_column_tool for statistics."
+    ),
+)
 
 
 @mcp.tool(
-    description="Return structured JSON with Parquet schema, row count, and file size"
+    description="Return Parquet schema, row count, and file size.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"parquet", "data-analysis"},
 )
 async def summarize_tool(file_path: str) -> str:
-    """
-    Summarize a Parquet file's structure and metadata.
+    """Summarize a Parquet file's structure and metadata.
 
     Args:
         file_path: Path to the Parquet file
@@ -25,11 +52,17 @@ async def summarize_tool(file_path: str) -> str:
     Returns:
         JSON string with schema, row count, row groups, and file size
     """
-    return await summarize(file_path)
+    return _check_error(await summarize(file_path))
 
 
 @mcp.tool(
-    description="Read a horizontal slice of a Parquet file with optional column projection and filtering"
+    description="Read a row slice from a Parquet file with optional column projection and filtering.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"parquet", "data-analysis"},
 )
 async def read_slice_tool(
     file_path: str,
@@ -38,8 +71,7 @@ async def read_slice_tool(
     columns: Optional[List[str]] = None,
     filter_json: Optional[str] = None,
 ) -> str:
-    """
-    Read a specific range of rows from a Parquet file with optional column filtering and row filtering.
+    """Read a specific range of rows from a Parquet file.
 
     Args:
         file_path: Path to the Parquet file
@@ -52,17 +84,24 @@ async def read_slice_tool(
     Returns:
         JSON string with status, schema, data, and shape information
     """
-    return await read_slice(file_path, start_row, end_row, columns, filter_json)
+    return _check_error(
+        await read_slice(file_path, start_row, end_row, columns, filter_json)
+    )
 
 
 @mcp.tool(
-    description="Get a preview of values from a specific column with pagination support"
+    description="Preview values from a specific column with pagination.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"parquet", "data-analysis"},
 )
 async def get_column_preview_tool(
     file_path: str, column_name: str, start_index: int = 0, max_items: int = 100
 ) -> str:
-    """
-    Get a preview of values from a named column in a Parquet file.
+    """Get a preview of values from a named column in a Parquet file.
 
     Args:
         file_path: Path to the Parquet file
@@ -73,11 +112,19 @@ async def get_column_preview_tool(
     Returns:
         JSON string with column values, type info, and pagination metadata
     """
-    return await get_column_preview(file_path, column_name, start_index, max_items)
+    return _check_error(
+        await get_column_preview(file_path, column_name, start_index, max_items)
+    )
 
 
 @mcp.tool(
-    description="Compute aggregate statistics on a column with optional filtering"
+    description="Compute aggregate statistics (min, max, mean, etc.) on a Parquet column.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"parquet", "data-analysis", "statistics"},
 )
 async def aggregate_column_tool(
     file_path: str,
@@ -87,8 +134,7 @@ async def aggregate_column_tool(
     start_row: Optional[Union[int, float]] = None,
     end_row: Optional[Union[int, float]] = None,
 ) -> str:
-    """
-    Compute aggregate statistics on a column with optional filtering and range bounds.
+    """Compute aggregate statistics on a column with optional filtering and range bounds.
 
     Args:
         file_path: Path to the Parquet file
@@ -102,32 +148,51 @@ async def aggregate_column_tool(
     Returns:
         JSON string with aggregation result and metadata
     """
-    return await aggregate_column(
-        file_path, column_name, operation, filter_json, start_row, end_row
+    return _check_error(
+        await aggregate_column(
+            file_path, column_name, operation, filter_json, start_row, end_row
+        )
     )
 
 
-def main():
-    """Start the Parquet MCP server."""
-    import sys
-    import logging
+@mcp.resource("parquet://formats")
+def supported_formats() -> dict:
+    """Supported Parquet features and capabilities."""
+    return {
+        "read_formats": ["parquet"],
+        "compression_codecs": ["snappy", "gzip", "lz4", "zstd", "brotli"],
+        "features": ["column pruning", "row group filtering", "schema inspection"],
+    }
 
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    logger = logging.getLogger(__name__)
 
-    try:
-        # Run with stdio transport (default for MCP)
-        logger.info("Starting Parquet MCP server with stdio transport")
-        mcp.run(transport="stdio")
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
-    except Exception as e:
-        logger.error(f"Server failed: {e}")
-        sys.exit(1)
+@mcp.prompt()
+def analyze_parquet(file_path: str) -> list[Message]:
+    """Guided workflow for analyzing a Parquet file."""
+    return [
+        Message(
+            f"I need to analyze the Parquet file at {file_path}. "
+            "First summarize its schema and row count, then preview the first few columns, "
+            "and compute basic statistics on numeric columns."
+        ),
+    ]
+
+
+def main() -> None:
+    """Main entry point for the Parquet MCP server."""
+    import os
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Parquet MCP Server")
+    parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args()
+    transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    if transport == "http":
+        mcp.run(transport=transport, host=args.host, port=args.port)
+
+    else:
+        mcp.run(transport=transport)
 
 
 if __name__ == "__main__":

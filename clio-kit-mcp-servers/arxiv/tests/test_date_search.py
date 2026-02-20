@@ -3,14 +3,9 @@ Tests for ArXiv date-based search capabilities.
 """
 
 import pytest
-import sys
-import os
 from unittest.mock import AsyncMock, patch
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.date_search import search_date_range
+from arxiv_mcp.capabilities.date_search import search_date_range
 
 
 class TestDateSearch:
@@ -35,7 +30,8 @@ class TestDateSearch:
         ]
 
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = mock_papers
 
@@ -74,7 +70,8 @@ class TestDateSearch:
         ]
 
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = mock_papers
 
@@ -101,7 +98,8 @@ class TestDateSearch:
     async def test_search_date_range_no_results(self):
         """Test date range search with no results"""
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = []
 
@@ -118,7 +116,8 @@ class TestDateSearch:
         mock_papers = [{"id": f"paper_{i}"} for i in range(50)]
 
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = mock_papers
 
@@ -147,7 +146,8 @@ class TestDateSearch:
         ]
 
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = []
 
@@ -162,7 +162,8 @@ class TestDateSearch:
     async def test_search_date_range_with_empty_category(self):
         """Test date range search with empty category string"""
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = []
 
@@ -179,7 +180,8 @@ class TestDateSearch:
     async def test_search_date_range_exception_handling(self):
         """Test that exceptions from execute_arxiv_query are propagated"""
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.side_effect = Exception("API Error")
 
@@ -190,7 +192,8 @@ class TestDateSearch:
     async def test_search_date_range_complex_category(self):
         """Test date range search with complex category string"""
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = []
 
@@ -210,7 +213,8 @@ class TestDateSearch:
         mock_papers = [{"id": "test_paper"}]
 
         with patch(
-            "capabilities.date_search.execute_arxiv_query", new_callable=AsyncMock
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query",
+            new_callable=AsyncMock,
         ) as mock_query:
             mock_query.return_value = mock_papers
 

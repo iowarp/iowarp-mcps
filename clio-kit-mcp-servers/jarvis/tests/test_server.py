@@ -13,7 +13,9 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_create_pipeline_tool_success(self, mock_pipeline):
         """Test successful pipeline creation."""
-        with patch("src.capabilities.jarvis_handler.create_pipeline") as mock_create:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.create_pipeline"
+        ) as mock_create:
             mock_create.return_value = {
                 "pipeline_id": "test_pipeline",
                 "status": "created",
@@ -32,7 +34,9 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_create_pipeline_tool_failure(self):
         """Test pipeline creation failure."""
-        with patch("src.capabilities.jarvis_handler.create_pipeline") as mock_create:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.create_pipeline"
+        ) as mock_create:
             mock_create.side_effect = Exception("Creation failed")
 
             async def mock_create_pipeline_tool(pipeline_id: str):
@@ -44,7 +48,7 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_load_pipeline_tool_success(self):
         """Test successful pipeline loading."""
-        with patch("src.capabilities.jarvis_handler.load_pipeline") as mock_load:
+        with patch("jarvis_mcp.capabilities.jarvis_handler.load_pipeline") as mock_load:
             mock_load.return_value = {
                 "pipeline_id": "test_pipeline",
                 "status": "loaded",
@@ -62,7 +66,7 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_load_pipeline_tool_no_id(self):
         """Test pipeline loading without specific ID."""
-        with patch("src.capabilities.jarvis_handler.load_pipeline") as mock_load:
+        with patch("jarvis_mcp.capabilities.jarvis_handler.load_pipeline") as mock_load:
             mock_load.return_value = {"pipeline_id": None, "status": "loaded"}
 
             async def mock_load_pipeline_tool(pipeline_id: str = None):
@@ -76,7 +80,9 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_update_pipeline_tool_success(self):
         """Test successful pipeline update."""
-        with patch("src.capabilities.jarvis_handler.update_pipeline") as mock_update:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.update_pipeline"
+        ) as mock_update:
             mock_update.return_value = {
                 "pipeline_id": "test_pipeline",
                 "status": "updated",
@@ -94,7 +100,9 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_build_pipeline_env_tool_success(self):
         """Test successful pipeline environment building."""
-        with patch("src.capabilities.jarvis_handler.build_pipeline_env") as mock_build:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.build_pipeline_env"
+        ) as mock_build:
             mock_build.return_value = {
                 "pipeline_id": "test_pipeline",
                 "status": "environment_built",
@@ -118,7 +126,9 @@ class TestPipelineTools:
             "config": {"test_key": "test_value"},
         }
 
-        with patch("src.capabilities.jarvis_handler.get_pkg_config") as mock_get_config:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.get_pkg_config"
+        ) as mock_get_config:
             mock_get_config.return_value = expected_config
 
             async def mock_get_pkg_config_tool(pipeline_id: str, pkg_id: str):
@@ -132,7 +142,7 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_append_pkg_tool_success(self):
         """Test successful package appending."""
-        with patch("src.capabilities.jarvis_handler.append_pkg") as mock_append:
+        with patch("jarvis_mcp.capabilities.jarvis_handler.append_pkg") as mock_append:
             mock_append.return_value = {
                 "pipeline_id": "test_pipeline",
                 "appended": "data_loader",
@@ -157,7 +167,9 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_configure_pkg_tool_success(self):
         """Test successful package configuration."""
-        with patch("src.capabilities.jarvis_handler.configure_pkg") as mock_configure:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.configure_pkg"
+        ) as mock_configure:
             mock_configure.return_value = {
                 "pipeline_id": "test_pipeline",
                 "configured": "test_pkg",
@@ -176,7 +188,7 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_unlink_pkg_tool_success(self):
         """Test successful package unlinking."""
-        with patch("src.capabilities.jarvis_handler.unlink_pkg") as mock_unlink:
+        with patch("jarvis_mcp.capabilities.jarvis_handler.unlink_pkg") as mock_unlink:
             mock_unlink.return_value = {
                 "pipeline_id": "test_pipeline",
                 "unlinked": "test_pkg",
@@ -193,7 +205,7 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_remove_pkg_tool_success(self):
         """Test successful package removal."""
-        with patch("src.capabilities.jarvis_handler.remove_pkg") as mock_remove:
+        with patch("jarvis_mcp.capabilities.jarvis_handler.remove_pkg") as mock_remove:
             mock_remove.return_value = {
                 "pipeline_id": "test_pipeline",
                 "removed": "test_pkg",
@@ -210,7 +222,7 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_run_pipeline_tool_success(self):
         """Test successful pipeline execution."""
-        with patch("src.capabilities.jarvis_handler.run_pipeline") as mock_run:
+        with patch("jarvis_mcp.capabilities.jarvis_handler.run_pipeline") as mock_run:
             mock_run.return_value = {
                 "pipeline_id": "test_pipeline",
                 "status": "running",
@@ -227,7 +239,9 @@ class TestPipelineTools:
     @pytest.mark.asyncio
     async def test_destroy_pipeline_tool_success(self):
         """Test successful pipeline destruction."""
-        with patch("src.capabilities.jarvis_handler.destroy_pipeline") as mock_destroy:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.destroy_pipeline"
+        ) as mock_destroy:
             mock_destroy.return_value = {
                 "pipeline_id": "test_pipeline",
                 "status": "destroyed",
@@ -502,23 +516,25 @@ class TestMainFunction:
 
     def test_main_stdio_transport(self):
         """Test main function with stdio transport."""
-        with patch("src.server.mcp.run") as mock_run:
-            # Import and call main
-            from src.server import main
+        with (
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+            patch("sys.argv", ["jarvis-mcp"]),
+        ):
+            from jarvis_mcp.server import main
 
             main()
 
             # Verify run was called with stdio transport
-            mock_run.assert_called()
+            mock_run.assert_called_once_with(transport="stdio")
 
-    def test_main_sse_transport(self):
-        """Test main function with SSE transport."""
+    def test_main_http_transport(self):
+        """Test main function with HTTP transport."""
         with (
-            patch("src.server.mcp.run") as mock_run,
-            patch.dict(os.environ, {"MCP_TRANSPORT": "sse"}),
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+            patch.dict(os.environ, {"MCP_TRANSPORT": "http"}),
+            patch("sys.argv", ["jarvis-mcp"]),
         ):
-            # Import and call main
-            from src.server import main
+            from jarvis_mcp.server import main
 
             main()
 
@@ -527,14 +543,16 @@ class TestMainFunction:
 
     def test_main_default_transport(self):
         """Test main function with default transport."""
-        with patch("src.server.mcp.run") as mock_run:
-            # Import and call main
-            from src.server import main
+        with (
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+            patch("sys.argv", ["jarvis-mcp"]),
+        ):
+            from jarvis_mcp.server import main
 
             main()
 
-            # Verify run was called
-            mock_run.assert_called()
+            # Verify run was called with stdio transport (default)
+            mock_run.assert_called_once_with(transport="stdio")
 
 
 class TestErrorHandling:
@@ -566,7 +584,9 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_pipeline_tool_error_handling(self):
         """Test error handling in pipeline tools."""
-        with patch("src.capabilities.jarvis_handler.create_pipeline") as mock_create:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.create_pipeline"
+        ) as mock_create:
             mock_create.side_effect = Exception("Pipeline creation failed")
 
             async def mock_create_pipeline_tool(pipeline_id: str):
@@ -587,7 +607,9 @@ class TestIntegration:
     @pytest.fixture
     def mock_pipeline(self):
         """Mock pipeline for testing."""
-        with patch("src.capabilities.jarvis_handler.Pipeline") as mock_pipeline_class:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline"
+        ) as mock_pipeline_class:
             mock_instance = Mock()
             mock_pipeline_class.return_value = mock_instance
             yield mock_instance
@@ -604,10 +626,14 @@ class TestIntegration:
     async def test_pipeline_lifecycle(self, mock_pipeline):
         """Test complete pipeline lifecycle."""
         with (
-            patch("src.capabilities.jarvis_handler.create_pipeline") as mock_create,
-            patch("src.capabilities.jarvis_handler.append_pkg") as mock_append,
-            patch("src.capabilities.jarvis_handler.run_pipeline") as mock_run,
-            patch("src.capabilities.jarvis_handler.destroy_pipeline") as mock_destroy,
+            patch(
+                "jarvis_mcp.capabilities.jarvis_handler.create_pipeline"
+            ) as mock_create,
+            patch("jarvis_mcp.capabilities.jarvis_handler.append_pkg") as mock_append,
+            patch("jarvis_mcp.capabilities.jarvis_handler.run_pipeline") as mock_run,
+            patch(
+                "jarvis_mcp.capabilities.jarvis_handler.destroy_pipeline"
+            ) as mock_destroy,
         ):
             # Setup mock returns
             mock_create.return_value = {"pipeline_id": "test", "status": "created"}

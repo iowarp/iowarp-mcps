@@ -1,21 +1,27 @@
 """Integration tests for Chronolog MCP Server."""
 
 import pytest
-import sys
-import os
 import time
 import random
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+try:
+    from chronomcp.capabilities import (
+        record_handler,
+        retrieve_handler,
+        start_handler,
+        stop_handler,
+    )
 
-from chronomcp.capabilities import (
-    record_handler,
-    retrieve_handler,
-    start_handler,
-    stop_handler,
-)
+    HAS_DEPENDENCIES = True
+except ImportError:
+    HAS_DEPENDENCIES = False
+
 from .test_utils import are_chronolog_processes_running
+
+pytestmark = pytest.mark.skipif(
+    not HAS_DEPENDENCIES,
+    reason="ChronoLog system dependencies not available",
+)
 
 
 class TestIntegration:

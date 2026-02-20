@@ -1,0 +1,116 @@
+{
+  "mcpServers": {
+    "clio-adios": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "adios"
+      ]
+    },
+    "clio-arxiv": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "arxiv"
+      ]
+    },
+    "clio-chronolog": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "chronolog"
+      ]
+    },
+    "clio-compression": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "compression"
+      ]
+    },
+    "clio-darshan": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "darshan"
+      ]
+    },
+    "clio-hdf5": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "hdf5"
+      ]
+    },
+    "clio-jarvis": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "jarvis"
+      ]
+    },
+    "clio-lmod": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "lmod"
+      ]
+    },
+    "clio-ndp": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "ndp"
+      ]
+    },
+    "clio-node-hardware": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "node-hardware"
+      ]
+    },
+    "clio-pandas": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "pandas"
+      ]
+    },
+    "clio-parallel-sort": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "parallel-sort"
+      ]
+    },
+    "clio-paraview": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "paraview"
+      ]
+    },
+    "clio-parquet": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "parquet"
+      ]
+    },
+    "clio-plot": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "plot"
+      ]
+    },
+    "clio-slurm": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "slurm"
+      ]
+    }
+  }
+}

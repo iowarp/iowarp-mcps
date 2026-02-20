@@ -3,14 +3,9 @@ Integration tests for ArXiv MCP Server.
 """
 
 import pytest
-import sys
-import os
 import json
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import mcp_handlers
+from arxiv_mcp import mcp_handlers
 
 
 class TestIntegration:

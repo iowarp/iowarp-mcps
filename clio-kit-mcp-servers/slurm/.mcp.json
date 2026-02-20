@@ -1,0 +1,9 @@
+{
+  "clio-slurm": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "slurm"
+    ]
+  }
+}

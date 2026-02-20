@@ -7,12 +7,8 @@ import tempfile
 import shutil
 import pytest
 from unittest.mock import patch, MagicMock
-import sys
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.download_paper import (
+from arxiv_mcp.capabilities.download_paper import (
     download_paper_pdf,
     get_pdf_url,
     download_multiple_pdfs,
@@ -142,7 +138,9 @@ class TestPDFDownload:
         """Test successful multiple PDF downloads."""
         arxiv_ids = ["1706.03762", "2301.12345"]
 
-        with patch("capabilities.download_paper.download_paper_pdf") as mock_download:
+        with patch(
+            "arxiv_mcp.capabilities.download_paper.download_paper_pdf"
+        ) as mock_download:
             # Mock successful downloads
             mock_download.side_effect = [
                 {
@@ -172,7 +170,9 @@ class TestPDFDownload:
         """Test multiple PDF downloads with partial failures."""
         arxiv_ids = ["1706.03762", "invalid_id"]
 
-        with patch("capabilities.download_paper.download_paper_pdf") as mock_download:
+        with patch(
+            "arxiv_mcp.capabilities.download_paper.download_paper_pdf"
+        ) as mock_download:
             # Mock one success and one failure
             mock_download.side_effect = [
                 {

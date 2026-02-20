@@ -1,7 +1,7 @@
 import pytest
-import json
 from unittest.mock import patch
-from src.mcp_handlers import (
+from fastmcp.exceptions import ToolError
+from adios_mcp.mcp_handlers import (
     UnknownToolError,
     list_bp5_files,
     inspect_variables_handler,
@@ -30,7 +30,7 @@ class TestListBp5Files:
             {"name": "file2.bp5", "size": 2048},
         ]
 
-        with patch("src.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
+        with patch("adios_mcp.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
             mock_list_bp5.return_value = mock_files
 
             result = await list_bp5_files("/test/directory")
@@ -42,7 +42,7 @@ class TestListBp5Files:
     async def test_list_bp5_files_default_directory(self):
         mock_files = []
 
-        with patch("src.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
+        with patch("adios_mcp.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
             mock_list_bp5.return_value = mock_files
 
             result = await list_bp5_files()
@@ -52,22 +52,15 @@ class TestListBp5Files:
 
     @pytest.mark.asyncio
     async def test_list_bp5_files_exception(self):
-        with patch("src.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
+        with patch("adios_mcp.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
             mock_list_bp5.side_effect = FileNotFoundError("Directory not found")
 
-            result = await list_bp5_files("/nonexistent")
-
-            assert result["isError"] is True
-            assert (
-                "Directory not found"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["tool"] == "list_bp5"
-            assert result["_meta"]["error"] == "FileNotFoundError"
+            with pytest.raises(ToolError, match="Directory not found"):
+                await list_bp5_files("/nonexistent")
 
     @pytest.mark.asyncio
     async def test_list_bp5_files_empty_result(self):
-        with patch("src.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
+        with patch("adios_mcp.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
             mock_list_bp5.return_value = []
 
             result = await list_bp5_files("/empty/dir")
@@ -84,14 +77,11 @@ class TestListBp5Files:
         ]
 
         for exception_type, message in exception_types:
-            with patch("src.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
+            with patch("adios_mcp.mcp_handlers.bp5_list.list_bp5") as mock_list_bp5:
                 mock_list_bp5.side_effect = exception_type(message)
 
-                result = await list_bp5_files("/test")
-
-                assert result["isError"] is True
-                assert message in json.loads(result["content"][0]["text"])["error"]
-                assert result["_meta"]["error"] == exception_type.__name__
+                with pytest.raises(ToolError, match=message):
+                    await list_bp5_files("/test")
 
 
 class TestInspectVariablesHandler:
@@ -100,7 +90,7 @@ class TestInspectVariablesHandler:
         mock_result = {"variables": {"temp": {"type": "float64", "shape": [100, 50]}}}
 
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables.inspect_variables"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables.inspect_variables"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -114,7 +104,7 @@ class TestInspectVariablesHandler:
         mock_result = {"variable_data": {"name": "pressure", "values": [1, 2, 3]}}
 
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables.inspect_variables"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables.inspect_variables"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -126,42 +116,29 @@ class TestInspectVariablesHandler:
     @pytest.mark.asyncio
     async def test_inspect_variables_handler_exception(self):
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables.inspect_variables"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables.inspect_variables"
         ) as mock_inspect:
             mock_inspect.side_effect = Exception("ADIOS inspection failed")
 
-            result = await inspect_variables_handler("/test/file.bp")
-
-            assert result["isError"] is True
-            assert (
-                "ADIOS inspection failed"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["tool"] == "inspect_variables"
-            assert result["_meta"]["error"] == "Exception"
+            with pytest.raises(ToolError, match="ADIOS inspection failed"):
+                await inspect_variables_handler("/test/file.bp")
 
     @pytest.mark.asyncio
     async def test_inspect_variables_handler_file_not_found(self):
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables.inspect_variables"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables.inspect_variables"
         ) as mock_inspect:
             mock_inspect.side_effect = FileNotFoundError("BP5 file not found")
 
-            result = await inspect_variables_handler("/nonexistent/file.bp")
-
-            assert result["isError"] is True
-            assert (
-                "BP5 file not found"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["error"] == "FileNotFoundError"
+            with pytest.raises(ToolError, match="BP5 file not found"):
+                await inspect_variables_handler("/nonexistent/file.bp")
 
     @pytest.mark.asyncio
     async def test_inspect_variables_handler_empty_variable_name(self):
         mock_result = {"variables": {}}
 
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables.inspect_variables"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables.inspect_variables"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -183,7 +160,7 @@ class TestInspectVariablesAtStepHandler:
         }
 
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -197,45 +174,29 @@ class TestInspectVariablesAtStepHandler:
     @pytest.mark.asyncio
     async def test_inspect_variables_at_step_handler_exception(self):
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
         ) as mock_inspect:
             mock_inspect.side_effect = ValueError("Invalid step number")
 
-            result = await inspect_variables_at_step_handler(
-                "/test/file.bp", "temp", 10
-            )
-
-            assert result["isError"] is True
-            assert (
-                "Invalid step number"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["tool"] == "inspect_variables_at_step"
-            assert result["_meta"]["error"] == "ValueError"
+            with pytest.raises(ToolError, match="Invalid step number"):
+                await inspect_variables_at_step_handler("/test/file.bp", "temp", 10)
 
     @pytest.mark.asyncio
     async def test_inspect_variables_at_step_handler_negative_step(self):
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
         ) as mock_inspect:
             mock_inspect.side_effect = ValueError("Step must be non-negative")
 
-            result = await inspect_variables_at_step_handler(
-                "/test/file.bp", "temp", -1
-            )
-
-            assert result["isError"] is True
-            assert (
-                "Step must be non-negative"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
+            with pytest.raises(ToolError, match="Step must be non-negative"):
+                await inspect_variables_at_step_handler("/test/file.bp", "temp", -1)
 
     @pytest.mark.asyncio
     async def test_inspect_variables_at_step_handler_zero_step(self):
         mock_result = {"variable": "pressure", "step": 0, "min": 1.0, "max": 10.0}
 
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -251,7 +212,7 @@ class TestInspectVariablesAtStepHandler:
         mock_result = {"variable": "velocity", "step": 1000, "data_available": True}
 
         with patch(
-            "src.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
+            "adios_mcp.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -268,7 +229,7 @@ class TestInspectAttributesHandler:
         mock_result = {"global_attributes": {"title": "simulation", "version": "1.0"}}
 
         with patch(
-            "src.mcp_handlers.bp5_attributes.inspect_attributes"
+            "adios_mcp.mcp_handlers.bp5_attributes.inspect_attributes"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -284,7 +245,7 @@ class TestInspectAttributesHandler:
         }
 
         with patch(
-            "src.mcp_handlers.bp5_attributes.inspect_attributes"
+            "adios_mcp.mcp_handlers.bp5_attributes.inspect_attributes"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -296,26 +257,19 @@ class TestInspectAttributesHandler:
     @pytest.mark.asyncio
     async def test_inspect_attributes_handler_exception(self):
         with patch(
-            "src.mcp_handlers.bp5_attributes.inspect_attributes"
+            "adios_mcp.mcp_handlers.bp5_attributes.inspect_attributes"
         ) as mock_inspect:
             mock_inspect.side_effect = RuntimeError("Attribute access failed")
 
-            result = await inspect_attributes_handler("/test/file.bp")
-
-            assert result["isError"] is True
-            assert (
-                "Attribute access failed"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["tool"] == "inspect_attributes"
-            assert result["_meta"]["error"] == "RuntimeError"
+            with pytest.raises(ToolError, match="Attribute access failed"):
+                await inspect_attributes_handler("/test/file.bp")
 
     @pytest.mark.asyncio
     async def test_inspect_attributes_handler_empty_attributes(self):
         mock_result = {"attributes": {}}
 
         with patch(
-            "src.mcp_handlers.bp5_attributes.inspect_attributes"
+            "adios_mcp.mcp_handlers.bp5_attributes.inspect_attributes"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -336,7 +290,7 @@ class TestInspectAttributesHandler:
         }
 
         with patch(
-            "src.mcp_handlers.bp5_attributes.inspect_attributes"
+            "adios_mcp.mcp_handlers.bp5_attributes.inspect_attributes"
         ) as mock_inspect:
             mock_inspect.return_value = mock_result
 
@@ -351,7 +305,7 @@ class TestReadVariableAtStepHandler:
         mock_value = [1.0, 2.0, 3.0, 4.0, 5.0]
 
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.return_value = mock_value
 
@@ -365,7 +319,7 @@ class TestReadVariableAtStepHandler:
         mock_value = 42.5
 
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.return_value = mock_value
 
@@ -378,59 +332,44 @@ class TestReadVariableAtStepHandler:
     @pytest.mark.asyncio
     async def test_read_variable_at_step_handler_exception(self):
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.side_effect = Exception("Failed to read variable")
 
-            result = await read_variable_at_step_handler("/test/file.bp", "temp", 5)
-
-            assert result["isError"] is True
-            assert (
-                "Failed to read variable"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["tool"] == "read_variable_at_step"
-            assert result["_meta"]["error"] == "Exception"
+            with pytest.raises(ToolError, match="Failed to read variable"):
+                await read_variable_at_step_handler("/test/file.bp", "temp", 5)
 
     @pytest.mark.asyncio
     async def test_read_variable_at_step_handler_file_not_found(self):
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.side_effect = FileNotFoundError("BP5 file not found")
 
-            result = await read_variable_at_step_handler(
-                "/nonexistent/file.bp", "var", 0
-            )
-
-            assert result["isError"] is True
-            assert result["_meta"]["error"] == "FileNotFoundError"
+            with pytest.raises(ToolError, match="BP5 file not found"):
+                await read_variable_at_step_handler("/nonexistent/file.bp", "var", 0)
 
     @pytest.mark.asyncio
     async def test_read_variable_at_step_handler_variable_not_found(self):
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.side_effect = KeyError("Variable 'nonexistent_var' not found")
 
-            result = await read_variable_at_step_handler(
-                "/test/file.bp", "nonexistent_var", 0
-            )
-
-            assert result["isError"] is True
-            assert result["_meta"]["error"] == "KeyError"
+            with pytest.raises(ToolError):
+                await read_variable_at_step_handler(
+                    "/test/file.bp", "nonexistent_var", 0
+                )
 
     @pytest.mark.asyncio
     async def test_read_variable_at_step_handler_step_out_of_range(self):
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.side_effect = IndexError("Step 100 out of range")
 
-            result = await read_variable_at_step_handler("/test/file.bp", "temp", 100)
-
-            assert result["isError"] is True
-            assert result["_meta"]["error"] == "IndexError"
+            with pytest.raises(ToolError, match="Step 100 out of range"):
+                await read_variable_at_step_handler("/test/file.bp", "temp", 100)
 
     @pytest.mark.asyncio
     async def test_read_variable_at_step_handler_large_array(self):
@@ -438,7 +377,7 @@ class TestReadVariableAtStepHandler:
         mock_value = list(range(10000))
 
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.return_value = mock_value
 
@@ -454,7 +393,7 @@ class TestReadVariableAtStepHandler:
         mock_value = []
 
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.return_value = mock_value
 
@@ -469,7 +408,7 @@ class TestReadVariableAtStepHandler:
         mock_value = None
 
         with patch(
-            "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+            "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
         ) as mock_read:
             mock_read.return_value = mock_value
 
@@ -495,8 +434,8 @@ class TestHandlersIntegration:
             assert hasattr(handler, "__name__")
 
     @pytest.mark.asyncio
-    async def test_error_response_format_consistency(self):
-        """Test that all handlers return consistent error formats"""
+    async def test_error_response_raises_tool_error(self):
+        """Test that all handlers raise ToolError on failure"""
         handlers_and_args = [
             (list_bp5_files, ("/test",)),
             (inspect_variables_handler, ("/test", None)),
@@ -508,29 +447,22 @@ class TestHandlersIntegration:
         for handler, args in handlers_and_args:
             # Mock each handler's underlying implementation to raise an exception
             if "list_bp5_files" in handler.__name__:
-                patch_target = "src.mcp_handlers.bp5_list.list_bp5"
+                patch_target = "adios_mcp.mcp_handlers.bp5_list.list_bp5"
             elif "inspect_variables_at_step" in handler.__name__:
-                patch_target = "src.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
+                patch_target = "adios_mcp.mcp_handlers.bp5_inspect_variables_at_step.inspect_variables_at_step"
             elif "inspect_variables" in handler.__name__:
                 patch_target = (
-                    "src.mcp_handlers.bp5_inspect_variables.inspect_variables"
+                    "adios_mcp.mcp_handlers.bp5_inspect_variables.inspect_variables"
                 )
             elif "inspect_attributes" in handler.__name__:
-                patch_target = "src.mcp_handlers.bp5_attributes.inspect_attributes"
-            elif "read_variable_at_step" in handler.__name__:
                 patch_target = (
-                    "src.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
+                    "adios_mcp.mcp_handlers.bp5_attributes.inspect_attributes"
                 )
+            elif "read_variable_at_step" in handler.__name__:
+                patch_target = "adios_mcp.mcp_handlers.bp5_read_variable_at_step.read_variable_at_step"
 
             with patch(patch_target) as mock_impl:
                 mock_impl.side_effect = Exception("Test error")
 
-                result = await handler(*args)
-
-                if (
-                    "isError" in result
-                ):  # Only check error handlers that return error format
-                    assert result["isError"] is True
-                    assert "content" in result
-                    assert "_meta" in result
-                    assert "error" in result["_meta"]
+                with pytest.raises(ToolError, match="Test error"):
+                    await handler(*args)

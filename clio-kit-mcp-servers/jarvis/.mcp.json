@@ -1,0 +1,9 @@
+{
+  "clio-jarvis": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "jarvis"
+    ]
+  }
+}

@@ -2,25 +2,24 @@
 Comprehensive test coverage for hardware capabilities - CPU, memory, disk, network, system, processes, GPU, sensors.
 """
 
-import os
-import sys
 import pytest
 from unittest.mock import patch, Mock, mock_open
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.cpu_info import get_cpu_info
-from capabilities.memory_info import get_memory_info
-from capabilities.disk_info import get_disk_info
-from capabilities.network_info import get_network_info
-from capabilities.system_info import get_system_info
-from capabilities.process_info import get_process_info
-from capabilities.sensor_info import get_sensor_info
-from capabilities.performance_monitor import monitor_performance
-from capabilities.gpu_info import get_gpu_info
-from capabilities.hardware_summary import get_hardware_summary
-from capabilities.utils import run_command, check_command_available, get_os_info
+from node_hardware_mcp.capabilities.cpu_info import get_cpu_info
+from node_hardware_mcp.capabilities.memory_info import get_memory_info
+from node_hardware_mcp.capabilities.disk_info import get_disk_info
+from node_hardware_mcp.capabilities.network_info import get_network_info
+from node_hardware_mcp.capabilities.system_info import get_system_info
+from node_hardware_mcp.capabilities.process_info import get_process_info
+from node_hardware_mcp.capabilities.sensor_info import get_sensor_info
+from node_hardware_mcp.capabilities.performance_monitor import monitor_performance
+from node_hardware_mcp.capabilities.gpu_info import get_gpu_info
+from node_hardware_mcp.capabilities.hardware_summary import get_hardware_summary
+from node_hardware_mcp.capabilities.utils import (
+    run_command,
+    check_command_available,
+    get_os_info,
+)
 
 
 class TestCapabilities:
@@ -98,14 +97,16 @@ class TestCapabilities:
                 assert isinstance(result, dict)
 
             # Test load average scenarios
-            with patch("os.getloadavg", return_value=[1.5, 2.0, 2.5]):
+            with patch("os.getloadavg", create=True, return_value=[1.5, 2.0, 2.5]):
                 with patch("os.hasattr", return_value=True):
                     result = get_cpu_info()
                     assert isinstance(result, dict)
 
             # Test load average OSError
             with patch(
-                "os.getloadavg", side_effect=OSError("Load average unavailable")
+                "os.getloadavg",
+                create=True,
+                side_effect=OSError("Load average unavailable"),
             ):
                 result = get_cpu_info()
                 assert isinstance(result, dict)
@@ -339,11 +340,13 @@ model name : AMD Ryzen 7 3700X
         """Test sensor info with all scenarios."""
 
         with (
-            patch("psutil.sensors_temperatures") as mock_temp,
-            patch("psutil.sensors_fans") as mock_fans,
-            patch("psutil.sensors_battery") as mock_battery,
-            patch("capabilities.utils.check_command_available") as mock_check_cmd,
-            patch("capabilities.utils.run_command") as mock_run_cmd,
+            patch("psutil.sensors_temperatures", create=True) as mock_temp,
+            patch("psutil.sensors_fans", create=True) as mock_fans,
+            patch("psutil.sensors_battery", create=True) as mock_battery,
+            patch(
+                "node_hardware_mcp.capabilities.utils.check_command_available"
+            ) as mock_check_cmd,
+            patch("node_hardware_mcp.capabilities.utils.run_command") as mock_run_cmd,
             patch("glob.glob") as mock_glob,
             patch("builtins.open", mock_open(read_data="45000\n")),
         ):
@@ -421,11 +424,11 @@ model name : AMD Ryzen 7 3700X
 
             # Test main function exception
             with patch(
-                "capabilities.sensor_info.get_sensor_info",
+                "node_hardware_mcp.capabilities.sensor_info.get_sensor_info",
                 side_effect=Exception("Main error"),
             ):
                 try:
-                    from capabilities.sensor_info import (
+                    from node_hardware_mcp.capabilities.sensor_info import (
                         get_sensor_info as original_func,
                     )
 
@@ -479,8 +482,12 @@ model name : AMD Ryzen 7 3700X
 
         # Mock the utility functions
         with (
-            patch("capabilities.gpu_info.check_command_available") as mock_check,
-            patch("capabilities.gpu_info.run_command") as mock_run_cmd,
+            patch(
+                "node_hardware_mcp.capabilities.gpu_info.check_command_available"
+            ) as mock_check,
+            patch(
+                "node_hardware_mcp.capabilities.gpu_info.run_command"
+            ) as mock_run_cmd,
         ):
             # Test NVIDIA GPU available with full data
             mock_check.side_effect = lambda cmd: cmd == "nvidia-smi"
@@ -600,9 +607,15 @@ model name : AMD Ryzen 7 3700X
         """Test hardware summary with all scenarios."""
 
         with (
-            patch("capabilities.hardware_summary.get_cpu_info") as mock_cpu,
-            patch("capabilities.hardware_summary.get_memory_info") as mock_memory,
-            patch("capabilities.hardware_summary.get_disk_info") as mock_disk,
+            patch(
+                "node_hardware_mcp.capabilities.hardware_summary.get_cpu_info"
+            ) as mock_cpu,
+            patch(
+                "node_hardware_mcp.capabilities.hardware_summary.get_memory_info"
+            ) as mock_memory,
+            patch(
+                "node_hardware_mcp.capabilities.hardware_summary.get_disk_info"
+            ) as mock_disk,
         ):
             # Normal scenario
             mock_cpu.return_value = {
@@ -630,7 +643,7 @@ model name : AMD Ryzen 7 3700X
 
     def test_utils_comprehensive(self):
         """Test utils module functions."""
-        from capabilities.utils import (
+        from node_hardware_mcp.capabilities.utils import (
             format_bytes,
             format_percentage,
         )

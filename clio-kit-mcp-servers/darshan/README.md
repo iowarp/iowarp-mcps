@@ -142,89 +142,114 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\darshan run darshan-
 ## Capabilities
 
 ### `load_darshan_log`
-**Description**: Load and parse a Darshan log file to extract metadata and basic I/O information.
-
-**Parameters**:
-- `log_file_path` (str): Absolute path to the .darshan log file
-
-**Returns**: dict: Dictionary with job information, modules detected, and file count statistics.
+**Description**: Load and parse a Darshan log file to extract I/O performance metrics and metadata.
+**Hints**: read-only, idempotent
+**Tags**: darshan, io-analysis
 
 ### `get_job_summary`
-**Description**: Get comprehensive job-level summary including runtime statistics and I/O performance overview.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-
-**Returns**: dict: Dictionary with runtime metrics, process information, and I/O volume statistics.
+**Description**: Get job-level summary from a Darshan log including runtime, process count, and I/O volume.
+**Hints**: read-only, idempotent
+**Tags**: darshan, io-analysis
 
 ### `analyze_file_access_patterns`
-**Description**: Analyze file access patterns to understand application I/O behavior and optimization opportunities.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-- `file_pattern` (str, optional): Filter files by pattern (e.g., '*.dat', '/scratch/*')
-
-**Returns**: dict: Dictionary with access pattern analysis including sequential vs random access statistics.
+**Description**: Analyze file access patterns including read/write types and sequential vs random access.
+**Hints**: read-only, idempotent
+**Tags**: darshan, io-analysis
 
 ### `get_io_performance_metrics`
-**Description**: Extract detailed I/O performance metrics including bandwidth, IOPS, and request size analysis.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-
-**Returns**: dict: Dictionary with comprehensive performance metrics and throughput analysis.
+**Description**: Extract I/O performance metrics including bandwidth, IOPS, and request sizes.
+**Hints**: read-only, idempotent
+**Tags**: darshan, performance
 
 ### `analyze_posix_operations`
-**Description**: Analyze POSIX system call patterns including open, read, write, and seek operations.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-
-**Returns**: dict: Dictionary with POSIX operation statistics and system call analysis.
+**Description**: Analyze POSIX I/O operations including read/write system calls and their frequency.
+**Hints**: read-only, idempotent
+**Tags**: darshan, io-analysis
 
 ### `analyze_mpiio_operations`
-**Description**: Analyze MPI-IO operations including collective vs independent I/O patterns and performance.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-
-**Returns**: dict: Dictionary with MPI-IO operation analysis and collective I/O performance metrics.
+**Description**: Analyze MPI-IO operations including collective vs independent operations.
+**Hints**: read-only, idempotent
+**Tags**: darshan, io-analysis
 
 ### `identify_io_bottlenecks`
-**Description**: Automatically identify potential I/O performance bottlenecks and optimization opportunities.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-
-**Returns**: dict: Dictionary with identified performance issues and recommended optimizations.
+**Description**: Identify I/O performance bottlenecks by analyzing access patterns and operations.
+**Hints**: read-only, idempotent
+**Tags**: darshan, performance
 
 ### `get_timeline_analysis`
-**Description**: Generate temporal analysis of I/O activity to understand performance patterns over time.
-
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-- `time_resolution` (str): Time resolution for analysis (e.g., '1s', '100ms')
-
-**Returns**: dict: Dictionary with timeline analysis and temporal I/O patterns.
+**Description**: Generate timeline analysis showing I/O activity over time and temporal patterns.
+**Hints**: read-only, idempotent
+**Tags**: darshan, performance
 
 ### `compare_darshan_logs`
-**Description**: Compare two Darshan log files to identify performance differences and optimization results.
-
-**Parameters**:
-- `log_file_1` (str): Path to the first log file
-- `log_file_2` (str): Path to the second log file
-- `comparison_metrics` (list): List of metrics to compare ['bandwidth', 'iops', 'file_count']
-
-**Returns**: dict: Dictionary with comparative analysis and performance delta identification.
+**Description**: Compare two Darshan log files to identify performance differences between runs.
+**Hints**: read-only, idempotent
+**Tags**: darshan, performance
 
 ### `generate_io_summary_report`
-**Description**: Generate comprehensive I/O analysis report with detailed metrics and recommendations.
+**Description**: Generate a comprehensive I/O summary report with findings and recommendations.
+**Hints**: read-only, idempotent
+**Tags**: darshan, performance
 
-**Parameters**:
-- `log_file_path` (str): Path to the Darshan log file
-- `include_visualizations` (bool): Whether to include visualization data in the report
+### Resources
 
-**Returns**: dict: Dictionary with complete I/O analysis report and performance insights.
+- `darshan://capabilities` - Darshan I/O profiling analysis capabilities.
+
+### Prompts
+
+- **analyze_io_performance**: Guided workflow for analyzing I/O performance from a Darshan log.
+## Claude Code
+
+```bash
+claude mcp add clio-darshan -- uvx clio-kit darshan
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-darshan@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-darshan": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "darshan"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-darshan": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "darshan"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. HPC Application Performance Analysis

@@ -1,0 +1,9 @@
+{
+  "clio-hdf5": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "hdf5"
+    ]
+  }
+}

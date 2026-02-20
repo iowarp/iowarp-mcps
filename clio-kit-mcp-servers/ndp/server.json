@@ -1,0 +1,47 @@
+{
+  "name": "io.github.iowarp/ndp-mcp",
+  "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "ndp"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_organizations",
+      "description": "List organizations available in the National Data Platform."
+    },
+    {
+      "name": "search_datasets",
+      "description": "Search for datasets in the NDP using term-based or field-specific criteria."
+    },
+    {
+      "name": "get_dataset_details",
+      "description": "Retrieve detailed metadata for a specific dataset by ID or name."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "ndp://catalogs",
+      "name": "available_catalogs",
+      "description": "List of available NDP dataset catalogs."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "explore_datasets",
+      "description": "Guided workflow for discovering and exploring scientific datasets."
+    }
+  ],
+  "tags": [
+    "datasets",
+    "ckan",
+    "national-data-platform",
+    "data-discovery"
+  ]
+}

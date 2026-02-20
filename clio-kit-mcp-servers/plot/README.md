@@ -131,70 +131,94 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\plot run plot-mcp --
 ## Capabilities
 
 ### `line_plot`
-**Description**: Create a line plot from data file with comprehensive visualization options.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `x_column` (str): Parameter for x_column
-- `y_column` (str): Parameter for y_column
-- `title` (str, optional): Parameter for title (default: Line Plot)
-- `output_path` (str, optional): Parameter for output_path (default: line_plot.png)
-
-**Returns**: Dictionary containing: - plot_info: Details about the generated plot including dimensions and format - data_summary: Statistical summary of the plotted data - file_details: Information about the output file size and location - visualization_stats: Metrics about data points and trends
+**Description**: Create a line plot from CSV or Excel data with customizable styling.
+**Hints**: destructive, idempotent
+**Tags**: line-chart, plot, visualization
 
 ### `bar_plot`
-**Description**: Create a bar plot from data file with comprehensive customization options.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `x_column` (str): Parameter for x_column
-- `y_column` (str): Parameter for y_column
-- `title` (str, optional): Parameter for title (default: Bar Plot)
-- `output_path` (str, optional): Parameter for output_path (default: bar_plot.png)
-
-**Returns**: Dictionary containing: - plot_info: Details about the generated bar chart including bar count and styling - data_summary: Statistical summary of the categorical and numerical data - file_details: Information about the output file size and location - visualization_stats: Metrics about data distribution and categories
+**Description**: Create a bar chart from CSV or Excel data with categorical grouping.
+**Hints**: destructive, idempotent
+**Tags**: bar-chart, plot, visualization
 
 ### `scatter_plot`
-**Description**: Create a scatter plot from data file with advanced correlation analysis.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `x_column` (str): Parameter for x_column
-- `y_column` (str): Parameter for y_column
-- `title` (str, optional): Parameter for title (default: Scatter Plot)
-- `output_path` (str, optional): Parameter for output_path (default: scatter_plot.png)
-
-**Returns**: Dictionary containing: - plot_info: Details about the generated scatter plot including point count and styling - correlation_stats: Statistical correlation metrics and trend analysis - data_summary: Statistical summary of both x and y variables - file_details: Information about the output file size and location
+**Description**: Create a scatter plot from CSV or Excel data for correlation analysis.
+**Hints**: destructive, idempotent
+**Tags**: plot, scatter-plot, visualization
 
 ### `histogram_plot`
-**Description**: Create a histogram from data file with advanced statistical analysis.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `column` (str): Parameter for column
-- `bins` (int, optional): Parameter for bins (default: 30)
-- `title` (str, optional): Parameter for title (default: Histogram)
-- `output_path` (str, optional): Parameter for output_path (default: histogram.png)
-
-**Returns**: Dictionary containing: - plot_info: Details about the generated histogram including bin information - distribution_stats: Statistical metrics including mean, median, mode, and standard deviation - data_summary: Comprehensive summary of the data distribution - file_details: Information about the output file size and location
+**Description**: Create a histogram from CSV or Excel data showing value distribution.
+**Hints**: destructive, idempotent
+**Tags**: histogram, plot, visualization
 
 ### `heatmap_plot`
-**Description**: Create a heatmap from data file with advanced correlation visualization.
-
-**Parameters**:
-- `file_path` (str): Parameter for file_path
-- `title` (str, optional): Parameter for title (default: Heatmap)
-- `output_path` (str, optional): Parameter for output_path (default: heatmap.png)
-
-**Returns**: Dictionary containing: - plot_info: Details about the generated heatmap including matrix dimensions - correlation_matrix: Full correlation matrix with statistical significance - data_summary: Statistical summary of all numerical variables - file_details: Information about the output file size and location
+**Description**: Create a correlation heatmap from numeric columns in CSV or Excel data.
+**Hints**: destructive, idempotent
+**Tags**: heatmap, plot, visualization
 
 ### `data_info`
-**Description**: Get comprehensive data file information with detailed analysis.
+**Description**: Get schema, column types, and summary statistics for a CSV or Excel file.
+**Hints**: read-only, idempotent
+**Tags**: analysis, data, visualization
 
-**Parameters**:
-- `file_path` (str): Parameter for file_path
+### Resources
 
-**Returns**: Dictionary containing: - data_schema: Column names, data types, and null value analysis - data_quality: Missing values, duplicates, and data consistency metrics - statistical_summary: Basic statistics for numerical and categorical columns - visualization_recommendations: Suggested plot types based on data characteristics
+- `plot://styles` - Available matplotlib plot styles and color palettes.
+
+### Prompts
+
+- **create_visualization**: Guided workflow for creating a data visualization.
+## Claude Code
+
+```bash
+claude mcp add clio-plot -- uvx clio-kit plot
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-plot@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-plot": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "plot"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-plot": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "plot"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. Data Exploration and Analysis

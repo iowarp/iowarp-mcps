@@ -2,9 +2,9 @@ name: Quality Control
 
 on:
   push:
-    branches: [ main, dev, integration-cleanup, update-workflow-with-correct-code-security ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, dev, integration-cleanup, update-workflow-with-correct-code-security ]
+    branches: [ main, dev ]
 
 # Chronolog MCP tests are handled in dedicated workflow
 
@@ -16,7 +16,7 @@ jobs:
       mcps: ${{ steps.discover.outputs.mcps }}
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Discover MCP directories
       id: discover
       run: |
@@ -37,7 +37,6 @@ jobs:
     name: Ruff - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on linting errors
     strategy:
       fail-fast: false
       matrix:
@@ -48,21 +47,10 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
+    - uses: ./.github/actions/setup-mcp
       with:
-        version: "latest"
-
-    - name: Set up Python 3.12
-      run: uv python install 3.12
-
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev ruff
+        mcp: ${{ matrix.mcp }}
+        dev-packages: ruff
 
     - name: Run Ruff linter on ${{ matrix.mcp }}
       run: |
@@ -72,7 +60,7 @@ jobs:
     - name: Run Ruff formatter check on ${{ matrix.mcp }}
       run: |
         cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        uv run ruff format --check . 
+        uv run ruff format --check .
 
   mypy:
     name: MyPy - ${{ matrix.mcp }}
@@ -89,21 +77,10 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
+    - uses: ./.github/actions/setup-mcp
       with:
-        version: "latest"
-
-    - name: Set up Python 3.12
-      run: uv python install 3.12
-
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev mypy
+        mcp: ${{ matrix.mcp }}
+        dev-packages: mypy
 
     - name: Run MyPy on ${{ matrix.mcp }}
       run: |
@@ -115,48 +92,41 @@ jobs:
         fi
 
   test:
-    name: Test - ${{ matrix.mcp }}
+    name: Test - ${{ matrix.mcp }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on test failures
+    continue-on-error: ${{ matrix.python-version != '3.12' }}
     strategy:
       fail-fast: false
       matrix:
+        python-version: ["3.10", "3.11", "3.12"]
         mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
       max-parallel: 20
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Set up Python 3.12
-      run: uv python install 3.12
-    
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev pytest pytest-cov
 
-    - name: Run tests with coverage for ${{ matrix.mcp }}
+    - uses: ./.github/actions/setup-mcp
+      with:
+        python-version: ${{ matrix.python-version }}
+        mcp: ${{ matrix.mcp }}
+        dev-packages: "pytest pytest-cov"
+
+    - name: Run tests for ${{ matrix.mcp }}
       run: |
         cd clio-kit-mcp-servers/${{ matrix.mcp }}
         if [ -d tests ]; then
-          uv run pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-report=html --cov-report=term --junitxml=junit.xml -o junit_family=legacy
+          uv run pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml --cov-report=html --cov-report=term \
+            --junitxml=junit.xml -o junit_family=legacy
         else
           echo "No tests directory found for ${{ matrix.mcp }}"
         fi
 
     - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.12' && hashFiles('clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml') != ''
       uses: codecov/codecov-action@v4
-      if: hashFiles('clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml') != ''
       with:
         file: clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml
         flags: ${{ matrix.mcp }}
@@ -165,15 +135,15 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Upload test results to Codecov
-      if: ${{ !cancelled() }}
+      if: matrix.python-version == '3.12' && !cancelled()
       uses: codecov/test-results-action@v1
       with:
         file: clio-kit-mcp-servers/${{ matrix.mcp }}/junit.xml
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Upload coverage HTML report
+      if: matrix.python-version == '3.12' && hashFiles('clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/') != ''
       uses: actions/upload-artifact@v4
-      if: hashFiles('clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/') != ''
       with:
         name: coverage-html-${{ matrix.mcp }}
         path: clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/
@@ -182,7 +152,6 @@ jobs:
     name: Security Audit - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on security vulnerabilities
     strategy:
       fail-fast: false
       matrix:
@@ -192,114 +161,19 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
+
+    - uses: ./.github/actions/setup-mcp
       with:
-        version: "latest"
-    
-    - name: Set up Python 3.12
-      run: uv python install 3.12
-    
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev pip-audit
+        mcp: ${{ matrix.mcp }}
+        dev-packages: pip-audit
 
     - name: Run security audit for ${{ matrix.mcp }}
       run: |
         cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv run pip-audit
-        else
-          echo "No pyproject.toml found for ${{ matrix.mcp }}, skipping security audit"
-        fi
+        uv run pip-audit
 
-  python-3-10:
-    name: Python 3.10 - ${{ matrix.mcp }}
-    runs-on: ubuntu-latest
-    needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on Python 3.10 test failures
-    strategy:
-      fail-fast: false
-      matrix:
-        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
-      max-parallel: 20
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Set up Python 3.10
-      run: uv python install 3.10
-    
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev pytest
-
-    - name: Run tests for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -d tests ]; then
-          uv run pytest tests/ --tb=short -v
-        else
-          echo "No tests directory for ${{ matrix.mcp }}"
-        fi
-
-  python-3-11:
-    name: Python 3.11 - ${{ matrix.mcp }}
-    runs-on: ubuntu-latest
-    needs: discover-mcps
-    continue-on-error: true  # Don't fail workflow on Python 3.11 test failures
-    strategy:
-      fail-fast: false
-      matrix:
-        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
-      max-parallel: 20
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Set up Python 3.11
-      run: uv python install 3.11
-    
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev pytest
-
-    - name: Run tests for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -d tests ]; then
-          uv run pytest tests/ --tb=short -v
-        else
-          echo "No tests directory for ${{ matrix.mcp }}"
-        fi
-
-  python-3-12:
-    name: Python 3.12 - ${{ matrix.mcp }}
+  validate-fastmcp:
+    name: Validate FastMCP - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
     strategy:
@@ -311,28 +185,63 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Set up Python 3.12
-      run: uv python install 3.12
-    
-    - name: Install dependencies for ${{ matrix.mcp }}
-      run: |
-        cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -f pyproject.toml ]; then
-          uv sync --all-extras --dev
-        fi
-        uv add --dev pytest
 
-    - name: Run tests for ${{ matrix.mcp }}
+    - uses: ./.github/actions/setup-mcp
+      with:
+        mcp: ${{ matrix.mcp }}
+
+    - name: Validate FastMCP 3.0 compliance for ${{ matrix.mcp }}
       run: |
         cd clio-kit-mcp-servers/${{ matrix.mcp }}
-        if [ -d tests ]; then
-          uv run pytest tests/ --tb=short -v
-        else
-          echo "No tests directory for ${{ matrix.mcp }}"
+        uv run python ../../scripts/validate_fastmcp.py
+
+  validate-server-json:
+    name: Validate server.json - ${{ matrix.mcp }}
+    runs-on: ubuntu-latest
+    needs: discover-mcps
+    strategy:
+      fail-fast: false
+      matrix:
+        mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+      max-parallel: 20
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - uses: ./.github/actions/setup-mcp
+      with:
+        mcp: ${{ matrix.mcp }}
+
+    - name: Regenerate and diff server.json for ${{ matrix.mcp }}
+      run: |
+        cd clio-kit-mcp-servers/${{ matrix.mcp }}
+        # Extract live metadata
+        LIVE=$(uv run python ../../scripts/extract_mcp_metadata.py)
+
+        # Compare tool/resource/prompt counts from live metadata vs committed server.json
+        if [ ! -f server.json ]; then
+          echo "FAIL: server.json not found for ${{ matrix.mcp }}"
+          exit 1
         fi
+
+        # Validate JSON is well-formed
+        python3 -c "import json, sys; json.load(open('server.json'))" || {
+          echo "FAIL: server.json is not valid JSON"
+          exit 1
+        }
+
+        # Verify tool names match between live metadata and server.json
+        LIVE_TOOLS=$(echo "$LIVE" | python3 -c "import json,sys; d=json.load(sys.stdin); print('\n'.join(sorted(t['name'] for t in d.get('tools',[]))))")
+        JSON_TOOLS=$(python3 -c "import json; d=json.load(open('server.json')); print('\n'.join(sorted(t['name'] for t in d.get('tools',[]))))")
+
+        if [ "$LIVE_TOOLS" != "$JSON_TOOLS" ]; then
+          echo "FAIL: server.json tools out of sync with live metadata"
+          echo "--- Live tools ---"
+          echo "$LIVE_TOOLS"
+          echo "--- server.json tools ---"
+          echo "$JSON_TOOLS"
+          exit 1
+        fi
+
+        echo "PASS: server.json is in sync for ${{ matrix.mcp }}"

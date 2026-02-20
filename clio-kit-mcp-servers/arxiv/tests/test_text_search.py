@@ -3,13 +3,8 @@ Tests for ArXiv text-based search capabilities.
 """
 
 import pytest
-import sys
-import os
 
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.text_search import (
+from arxiv_mcp.capabilities.text_search import (
     search_by_title,
     search_by_abstract,
     search_papers_by_author,

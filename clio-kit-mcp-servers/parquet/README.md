@@ -284,3 +284,85 @@ MIT License - see LICENSE for details
 - **Zulip Invitation**: https://iowarp.zulipchat.com/join/e4wh24du356e4y2iw6x6jeay/
 - **GitHub Issues**: https://github.com/iowarp/clio-kit/issues
 - **Email**: grc@illinoistech.edu
+
+## Capabilities
+
+### `summarize_tool`
+**Description**: Return Parquet schema, row count, and file size.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, parquet
+
+### `read_slice_tool`
+**Description**: Read a row slice from a Parquet file with optional column projection and filtering.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, parquet
+
+### `get_column_preview_tool`
+**Description**: Preview values from a specific column with pagination.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, parquet
+
+### `aggregate_column_tool`
+**Description**: Compute aggregate statistics (min, max, mean, etc.) on a Parquet column.
+**Hints**: read-only, idempotent
+**Tags**: data-analysis, parquet, statistics
+
+### Resources
+
+- `parquet://formats` - Supported Parquet features and capabilities.
+
+### Prompts
+
+- **analyze_parquet**: Guided workflow for analyzing a Parquet file.
+## Claude Code
+
+```bash
+claude mcp add clio-parquet -- uvx clio-kit parquet
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-parquet@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-parquet": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "parquet"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-parquet": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "parquet"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```

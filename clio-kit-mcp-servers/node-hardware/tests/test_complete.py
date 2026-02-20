@@ -1,23 +1,18 @@
 """
 Complete comprehensive test suite covering 100% of Node Hardware MCP functionality.
 Focused on server.py, mcp_handlers.py, and utils/output_formatter.py for complete coverage.
+Updated for FastMCP v3 (no .fn attribute, direct function calls, ToolError for errors).
 """
 
-import os
-import sys
 import pytest
 from unittest.mock import patch
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-# Import all required modules
-import server
-import mcp_handlers
+from node_hardware_mcp import server
+from node_hardware_mcp import mcp_handlers
 
 
 class TestCompleteNodeHardwareMCP:
-    """Complete test coverage for Node Hardware MCP - Focus on 100% coverage for server, handlers, and utils"""
+    """Complete test coverage for Node Hardware MCP"""
 
     @pytest.mark.asyncio
     async def test_server_module_complete_coverage(self):
@@ -27,105 +22,117 @@ class TestCompleteNodeHardwareMCP:
         assert hasattr(server, "logger")
         assert hasattr(server, "FastMCP")
 
-        # Test all server tool functions
-
-        # Test each tool function by verifying they exist and are callable
-        with patch("mcp_handlers.cpu_info_handler") as mock_handler:
+        # Test all server tool functions exist and are callable (v3 returns original fn)
+        with patch("node_hardware_mcp.mcp_handlers.cpu_info_handler") as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "CPU info"}]
             }
-            # Test that the tool exists and is properly decorated
             assert hasattr(server, "get_cpu_info_tool")
             cpu_tool = getattr(server, "get_cpu_info_tool")
             assert cpu_tool is not None
+            assert callable(cpu_tool)
 
-        with patch("mcp_handlers.memory_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.memory_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "Memory info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_memory_info_tool")
             memory_tool = getattr(server, "get_memory_info_tool")
             assert memory_tool is not None
+            assert callable(memory_tool)
 
-        with patch("mcp_handlers.system_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.system_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "System info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_system_info_tool")
             system_tool = getattr(server, "get_system_info_tool")
             assert system_tool is not None
+            assert callable(system_tool)
 
-        with patch("mcp_handlers.disk_info_handler") as mock_handler:
+        with patch("node_hardware_mcp.mcp_handlers.disk_info_handler") as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "Disk info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_disk_info_tool")
             disk_tool = getattr(server, "get_disk_info_tool")
             assert disk_tool is not None
+            assert callable(disk_tool)
 
-        with patch("mcp_handlers.network_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.network_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "Network info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_network_info_tool")
             network_tool = getattr(server, "get_network_info_tool")
             assert network_tool is not None
+            assert callable(network_tool)
 
-        with patch("mcp_handlers.gpu_info_handler") as mock_handler:
+        with patch("node_hardware_mcp.mcp_handlers.gpu_info_handler") as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "GPU info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_gpu_info_tool")
             gpu_tool = getattr(server, "get_gpu_info_tool")
             assert gpu_tool is not None
+            assert callable(gpu_tool)
 
-        with patch("mcp_handlers.sensor_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.sensor_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "Sensor info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_sensor_info_tool")
             sensor_tool = getattr(server, "get_sensor_info_tool")
             assert sensor_tool is not None
+            assert callable(sensor_tool)
 
-        with patch("mcp_handlers.process_info_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.process_info_handler"
+        ) as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "Process info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_process_info_tool")
             process_tool = getattr(server, "get_process_info_tool")
             assert process_tool is not None
+            assert callable(process_tool)
 
-        with patch("mcp_handlers.performance_monitor_handler") as mock_handler:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.performance_monitor_handler"
+        ) as mock_handler:
             mock_handler.return_value = {
                 "content": [{"type": "text", "text": "Performance info"}]
             }
-            # Test that the tool exists
             assert hasattr(server, "get_performance_info_tool")
             performance_tool = getattr(server, "get_performance_info_tool")
             assert performance_tool is not None
+            assert callable(performance_tool)
 
         # Test remote node info tool exists
         assert hasattr(server, "get_remote_node_info_tool")
         remote_tool = getattr(server, "get_remote_node_info_tool")
         assert remote_tool is not None
+        assert callable(remote_tool)
 
         # Test health check tool exists
         assert hasattr(server, "health_check_tool")
         health_tool = getattr(server, "health_check_tool")
         assert health_tool is not None
+        assert callable(health_tool)
 
     @pytest.mark.asyncio
     async def test_mcp_handlers_complete_coverage(self):
         """Test complete mcp_handlers.py module for 100% coverage"""
         # Test all MCP handler functions
-        from mcp_handlers import (
+        from node_hardware_mcp.mcp_handlers import (
             cpu_info_handler,
             memory_info_handler,
             disk_info_handler,
@@ -140,7 +147,7 @@ class TestCompleteNodeHardwareMCP:
         )
 
         # Test CPU handler with comprehensive scenarios
-        with patch("mcp_handlers.get_cpu_info") as mock_cpu:
+        with patch("node_hardware_mcp.mcp_handlers.get_cpu_info") as mock_cpu:
             mock_cpu.return_value = {
                 "cpu_count": 8,
                 "cpu_model": "Intel Core i7",
@@ -152,14 +159,16 @@ class TestCompleteNodeHardwareMCP:
             mock_cpu.assert_called_once()
 
         # Test error handling in CPU
-        with patch("mcp_handlers.get_cpu_info", side_effect=Exception("CPU error")):
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_cpu_info",
+            side_effect=Exception("CPU error"),
+        ):
             result = cpu_info_handler()
             assert isinstance(result, dict)
             assert "content" in result
-            # Should contain error information
 
         # Test memory handler with comprehensive scenarios
-        with patch("mcp_handlers.get_memory_info") as mock_memory:
+        with patch("node_hardware_mcp.mcp_handlers.get_memory_info") as mock_memory:
             mock_memory.return_value = {
                 "total_memory": 16000000000,
                 "available_memory": 8000000000,
@@ -171,7 +180,7 @@ class TestCompleteNodeHardwareMCP:
             mock_memory.assert_called_once()
 
         # Test disk handler
-        with patch("mcp_handlers.get_disk_info") as mock_disk:
+        with patch("node_hardware_mcp.mcp_handlers.get_disk_info") as mock_disk:
             mock_disk.return_value = {
                 "partitions": [
                     {
@@ -188,7 +197,7 @@ class TestCompleteNodeHardwareMCP:
             mock_disk.assert_called_once()
 
         # Test network handler
-        with patch("mcp_handlers.get_network_info") as mock_network:
+        with patch("node_hardware_mcp.mcp_handlers.get_network_info") as mock_network:
             mock_network.return_value = {
                 "interfaces": {
                     "eth0": {"address": "192.168.1.100", "netmask": "255.255.255.0"}
@@ -200,7 +209,7 @@ class TestCompleteNodeHardwareMCP:
             mock_network.assert_called_once()
 
         # Test system handler
-        with patch("mcp_handlers.get_system_info") as mock_system:
+        with patch("node_hardware_mcp.mcp_handlers.get_system_info") as mock_system:
             mock_system.return_value = {
                 "system": "Linux",
                 "release": "5.15.0",
@@ -212,7 +221,7 @@ class TestCompleteNodeHardwareMCP:
             mock_system.assert_called_once()
 
         # Test process handler
-        with patch("mcp_handlers.get_process_info") as mock_process:
+        with patch("node_hardware_mcp.mcp_handlers.get_process_info") as mock_process:
             mock_process.return_value = {
                 "processes": [
                     {
@@ -229,7 +238,7 @@ class TestCompleteNodeHardwareMCP:
             mock_process.assert_called_once()
 
         # Test sensor handler
-        with patch("mcp_handlers.get_sensor_info") as mock_sensor:
+        with patch("node_hardware_mcp.mcp_handlers.get_sensor_info") as mock_sensor:
             mock_sensor.return_value = {
                 "temperatures": {"coretemp": [{"current": 45.0, "high": 85.0}]}
             }
@@ -239,7 +248,7 @@ class TestCompleteNodeHardwareMCP:
             mock_sensor.assert_called_once()
 
         # Test performance handler
-        with patch("mcp_handlers.monitor_performance") as mock_perf:
+        with patch("node_hardware_mcp.mcp_handlers.monitor_performance") as mock_perf:
             mock_perf.return_value = {
                 "cpu_usage": 25.5,
                 "memory_usage": 60.0,
@@ -251,7 +260,7 @@ class TestCompleteNodeHardwareMCP:
             mock_perf.assert_called_once()
 
         # Test GPU handler
-        with patch("mcp_handlers.get_gpu_info") as mock_gpu:
+        with patch("node_hardware_mcp.mcp_handlers.get_gpu_info") as mock_gpu:
             mock_gpu.return_value = {
                 "gpus": [
                     {
@@ -267,7 +276,9 @@ class TestCompleteNodeHardwareMCP:
             mock_gpu.assert_called_once()
 
         # Test hardware summary handler
-        with patch("mcp_handlers.get_hardware_summary") as mock_summary:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_hardware_summary"
+        ) as mock_summary:
             mock_summary.return_value = {
                 "system_type": "High-performance workstation",
                 "total_cores": 16,
@@ -279,7 +290,9 @@ class TestCompleteNodeHardwareMCP:
             mock_summary.assert_called_once()
 
         # Test remote node handler
-        with patch("mcp_handlers.get_remote_node_info") as mock_remote:
+        with patch(
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info"
+        ) as mock_remote:
             mock_remote.return_value = {
                 "hostname": "test.server.com",
                 "status": "connected",
@@ -296,7 +309,7 @@ class TestCompleteNodeHardwareMCP:
     async def test_output_formatter_complete_coverage(self):
         """Test complete utils/output_formatter.py module coverage"""
         # Test available output formatter functions
-        from utils.output_formatter import (
+        from node_hardware_mcp.utils.output_formatter import (
             NodeHardwareFormatter,
             create_beautiful_response,
         )
@@ -336,16 +349,18 @@ class TestCompleteNodeHardwareMCP:
         """Test comprehensive error handling across all modules"""
         # Test server module error handling with MCP handler failures
         with patch(
-            "mcp_handlers.cpu_info_handler", side_effect=Exception("Handler error")
+            "node_hardware_mcp.mcp_handlers.cpu_info_handler",
+            side_effect=Exception("Handler error"),
         ):
             # Test tools exist but don't try to call them directly since they're decorated
             assert hasattr(server, "get_cpu_info_tool")
             cpu_tool = getattr(server, "get_cpu_info_tool")
             assert cpu_tool is not None
+            assert callable(cpu_tool)
 
         # Test MCP handlers with capability module failures
         with patch(
-            "capabilities.memory_info.get_memory_info",
+            "node_hardware_mcp.capabilities.memory_info.get_memory_info",
             side_effect=MemoryError("Memory access error"),
         ):
             result = mcp_handlers.memory_info_handler()
@@ -353,7 +368,7 @@ class TestCompleteNodeHardwareMCP:
             assert "content" in result
 
         # Test output formatter with invalid data
-        from utils.output_formatter import create_beautiful_response
+        from node_hardware_mcp.utils.output_formatter import create_beautiful_response
 
         invalid_data = {"valid": "data"}  # Use valid data instead
         result = create_beautiful_response(
@@ -365,7 +380,7 @@ class TestCompleteNodeHardwareMCP:
     @pytest.mark.asyncio
     async def test_edge_cases_and_boundary_conditions(self):
         """Test edge cases and boundary conditions"""
-        from utils.output_formatter import (
+        from node_hardware_mcp.utils.output_formatter import (
             NodeHardwareFormatter,
             create_beautiful_response,
         )
@@ -398,7 +413,9 @@ class TestCompleteNodeHardwareMCP:
 
         # Test concurrent handler calls
         def run_handler():
-            with patch("capabilities.cpu_info.get_cpu_info") as mock_cpu:
+            with patch(
+                "node_hardware_mcp.capabilities.cpu_info.get_cpu_info"
+            ) as mock_cpu:
                 mock_cpu.return_value = {"cpu_count": 8}
                 return mcp_handlers.cpu_info_handler()
 

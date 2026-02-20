@@ -1,0 +1,78 @@
+{
+  "name": "io.github.iowarp/node-hardware-mcp",
+  "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "node-hardware"
+    ]
+  },
+  "tools": [
+    {
+      "name": "get_cpu_info",
+      "description": "Get CPU specifications, core counts, frequencies, and per-core usage."
+    },
+    {
+      "name": "get_memory_info",
+      "description": "Get RAM and swap capacity, usage percentages, and availability."
+    },
+    {
+      "name": "get_system_info",
+      "description": "Get OS details, hostname, uptime, and active users."
+    },
+    {
+      "name": "get_disk_info",
+      "description": "Get disk partitions, usage statistics, and I/O counters."
+    },
+    {
+      "name": "get_network_info",
+      "description": "Get network interfaces, IP addresses, and I/O statistics."
+    },
+    {
+      "name": "get_gpu_info",
+      "description": "Get GPU model, memory, temperature, and utilization via nvidia-smi/rocm-smi."
+    },
+    {
+      "name": "get_sensor_info",
+      "description": "Get temperature, fan speed, and battery sensor readings."
+    },
+    {
+      "name": "get_process_info",
+      "description": "Get running processes with CPU, memory, and status details."
+    },
+    {
+      "name": "get_performance_info",
+      "description": "Get real-time CPU, memory, disk, and network performance metrics."
+    },
+    {
+      "name": "get_remote_node_info",
+      "description": "Collect hardware info from a remote node via SSH. Supports component filtering."
+    },
+    {
+      "name": "health_check",
+      "description": "Verify server health and hardware monitoring capability status."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "node-hardware://system-info",
+      "name": "system_info",
+      "description": "Basic system identification info."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "system_health_check",
+      "description": "Guided workflow for a full system health check."
+    }
+  ],
+  "tags": [
+    "hardware-monitoring",
+    "system-info",
+    "performance"
+  ]
+}

@@ -6,13 +6,8 @@ Tests all handler functions and error handling scenarios.
 import pytest
 import asyncio
 from unittest.mock import patch, AsyncMock, Mock
-import sys
-import os
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import mcp_handlers
+from arxiv_mcp import mcp_handlers
 
 
 class TestMCPHandlers:
@@ -23,7 +18,9 @@ class TestMCPHandlers:
         """Test search_arxiv_handler with successful response."""
         expected_result = {"papers": [{"id": "test"}]}
 
-        with patch("mcp_handlers.search_arxiv", new_callable=AsyncMock) as mock_search:
+        with patch(
+            "arxiv_mcp.mcp_handlers.search_arxiv", new_callable=AsyncMock
+        ) as mock_search:
             mock_search.return_value = expected_result
 
             result = await mcp_handlers.search_arxiv_handler("cs.AI", 5)
@@ -34,7 +31,9 @@ class TestMCPHandlers:
     @pytest.mark.asyncio
     async def test_search_arxiv_handler_error(self):
         """Test search_arxiv_handler with error handling."""
-        with patch("mcp_handlers.search_arxiv", new_callable=AsyncMock) as mock_search:
+        with patch(
+            "arxiv_mcp.mcp_handlers.search_arxiv", new_callable=AsyncMock
+        ) as mock_search:
             mock_search.side_effect = ValueError("Test error")
 
             result = await mcp_handlers.search_arxiv_handler("cs.AI", 5)
@@ -50,7 +49,7 @@ class TestMCPHandlers:
         expected_result = {"papers": [{"id": "recent"}]}
 
         with patch(
-            "mcp_handlers.get_recent_papers", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.get_recent_papers", new_callable=AsyncMock
         ) as mock_recent:
             mock_recent.return_value = expected_result
 
@@ -63,7 +62,7 @@ class TestMCPHandlers:
     async def test_get_recent_papers_handler_error(self):
         """Test get_recent_papers_handler with error handling."""
         with patch(
-            "mcp_handlers.get_recent_papers", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.get_recent_papers", new_callable=AsyncMock
         ) as mock_recent:
             mock_recent.side_effect = ConnectionError("Network error")
 
@@ -80,7 +79,7 @@ class TestMCPHandlers:
         expected_result = {"papers": [{"author": "Test Author"}]}
 
         with patch(
-            "mcp_handlers.search_papers_by_author", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_papers_by_author", new_callable=AsyncMock
         ) as mock_author:
             mock_author.return_value = expected_result
 
@@ -95,7 +94,7 @@ class TestMCPHandlers:
     async def test_search_papers_by_author_handler_error(self):
         """Test search_papers_by_author_handler with error handling."""
         with patch(
-            "mcp_handlers.search_papers_by_author", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_papers_by_author", new_callable=AsyncMock
         ) as mock_author:
             mock_author.side_effect = RuntimeError("Runtime error")
 
@@ -114,7 +113,7 @@ class TestMCPHandlers:
         expected_result = {"papers": [{"title": "Test Title"}]}
 
         with patch(
-            "mcp_handlers.search_by_title", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_by_title", new_callable=AsyncMock
         ) as mock_title:
             mock_title.return_value = expected_result
 
@@ -127,7 +126,7 @@ class TestMCPHandlers:
     async def test_search_by_title_handler_error(self):
         """Test search_by_title_handler with error handling."""
         with patch(
-            "mcp_handlers.search_by_title", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_by_title", new_callable=AsyncMock
         ) as mock_title:
             mock_title.side_effect = Exception("Generic error")
 
@@ -144,7 +143,7 @@ class TestMCPHandlers:
         expected_result = {"papers": [{"abstract": "machine learning"}]}
 
         with patch(
-            "mcp_handlers.search_by_abstract", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_by_abstract", new_callable=AsyncMock
         ) as mock_abstract:
             mock_abstract.return_value = expected_result
 
@@ -159,7 +158,7 @@ class TestMCPHandlers:
     async def test_search_by_abstract_handler_error(self):
         """Test search_by_abstract_handler with error handling."""
         with patch(
-            "mcp_handlers.search_by_abstract", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_by_abstract", new_callable=AsyncMock
         ) as mock_abstract:
             mock_abstract.side_effect = KeyError("Key not found")
 
@@ -178,7 +177,7 @@ class TestMCPHandlers:
         expected_result = {"papers": [{"subject": "Computer Science"}]}
 
         with patch(
-            "mcp_handlers.search_by_subject", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_by_subject", new_callable=AsyncMock
         ) as mock_subject:
             mock_subject.return_value = expected_result
 
@@ -193,7 +192,7 @@ class TestMCPHandlers:
     async def test_search_by_subject_handler_error(self):
         """Test search_by_subject_handler with error handling."""
         with patch(
-            "mcp_handlers.search_by_subject", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_by_subject", new_callable=AsyncMock
         ) as mock_subject:
             mock_subject.side_effect = AttributeError("Attribute error")
 
@@ -212,7 +211,7 @@ class TestMCPHandlers:
         expected_result = {"papers": [{"date": "2023-06-15"}]}
 
         with patch(
-            "mcp_handlers.search_date_range", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_date_range", new_callable=AsyncMock
         ) as mock_date:
             mock_date.return_value = expected_result
 
@@ -227,7 +226,7 @@ class TestMCPHandlers:
     async def test_search_date_range_handler_error(self):
         """Test search_date_range_handler with error handling."""
         with patch(
-            "mcp_handlers.search_date_range", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.search_date_range", new_callable=AsyncMock
         ) as mock_date:
             mock_date.side_effect = TypeError("Type error")
 
@@ -246,7 +245,7 @@ class TestMCPHandlers:
         expected_result = {"paper": {"id": "2023.12345", "details": True}}
 
         with patch(
-            "mcp_handlers.get_paper_details", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.get_paper_details", new_callable=AsyncMock
         ) as mock_details:
             mock_details.return_value = expected_result
 
@@ -259,7 +258,7 @@ class TestMCPHandlers:
     async def test_get_paper_details_handler_error(self):
         """Test get_paper_details_handler with error handling."""
         with patch(
-            "mcp_handlers.get_paper_details", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.get_paper_details", new_callable=AsyncMock
         ) as mock_details:
             mock_details.side_effect = FileNotFoundError("Paper not found")
 
@@ -276,7 +275,7 @@ class TestMCPHandlers:
         expected_result = {"similar_papers": [{"id": "2023.67890"}]}
 
         with patch(
-            "mcp_handlers.find_similar_papers", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.find_similar_papers", new_callable=AsyncMock
         ) as mock_similar:
             mock_similar.return_value = expected_result
 
@@ -289,7 +288,7 @@ class TestMCPHandlers:
     async def test_find_similar_papers_handler_error(self):
         """Test find_similar_papers_handler with error handling."""
         with patch(
-            "mcp_handlers.find_similar_papers", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.find_similar_papers", new_callable=AsyncMock
         ) as mock_similar:
             mock_similar.side_effect = IndexError("Index error")
 
@@ -306,7 +305,7 @@ class TestMCPHandlers:
         expected_result = {"bibtex": "@article{test,title={Test}}"}
 
         with patch(
-            "mcp_handlers.export_to_bibtex", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.export_to_bibtex", new_callable=AsyncMock
         ) as mock_export:
             mock_export.return_value = expected_result
 
@@ -320,7 +319,7 @@ class TestMCPHandlers:
     async def test_export_to_bibtex_handler_error(self):
         """Test export_to_bibtex_handler with error handling."""
         with patch(
-            "mcp_handlers.export_to_bibtex", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.export_to_bibtex", new_callable=AsyncMock
         ) as mock_export:
             mock_export.side_effect = PermissionError("Permission denied")
 
@@ -337,7 +336,7 @@ class TestMCPHandlers:
         expected_result = {"status": "success", "file_path": "/tmp/paper.pdf"}
 
         with patch(
-            "mcp_handlers.download_paper_pdf", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.download_paper_pdf", new_callable=AsyncMock
         ) as mock_download:
             mock_download.return_value = expected_result
 
@@ -350,7 +349,7 @@ class TestMCPHandlers:
     async def test_download_paper_pdf_handler_error(self):
         """Test download_paper_pdf_handler with error handling."""
         with patch(
-            "mcp_handlers.download_paper_pdf", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.download_paper_pdf", new_callable=AsyncMock
         ) as mock_download:
             mock_download.side_effect = OSError("OS error")
 
@@ -366,7 +365,9 @@ class TestMCPHandlers:
         """Test get_pdf_url_handler with successful response."""
         expected_result = {"pdf_url": "https://arxiv.org/pdf/2023.12345.pdf"}
 
-        with patch("mcp_handlers.get_pdf_url", new_callable=AsyncMock) as mock_url:
+        with patch(
+            "arxiv_mcp.mcp_handlers.get_pdf_url", new_callable=AsyncMock
+        ) as mock_url:
             mock_url.return_value = expected_result
 
             result = await mcp_handlers.get_pdf_url_handler("2023.12345")
@@ -377,7 +378,9 @@ class TestMCPHandlers:
     @pytest.mark.asyncio
     async def test_get_pdf_url_handler_error(self):
         """Test get_pdf_url_handler with error handling."""
-        with patch("mcp_handlers.get_pdf_url", new_callable=AsyncMock) as mock_url:
+        with patch(
+            "arxiv_mcp.mcp_handlers.get_pdf_url", new_callable=AsyncMock
+        ) as mock_url:
             mock_url.side_effect = ImportError("Import error")
 
             result = await mcp_handlers.get_pdf_url_handler("2023.12345")
@@ -393,7 +396,7 @@ class TestMCPHandlers:
         expected_result = {"status": "success", "downloaded": 2}
 
         with patch(
-            "mcp_handlers.download_multiple_pdfs", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.download_multiple_pdfs", new_callable=AsyncMock
         ) as mock_multi:
             mock_multi.return_value = expected_result
 
@@ -409,7 +412,7 @@ class TestMCPHandlers:
     async def test_download_multiple_pdfs_handler_error(self):
         """Test download_multiple_pdfs_handler with error handling."""
         with patch(
-            "mcp_handlers.download_multiple_pdfs", new_callable=AsyncMock
+            "arxiv_mcp.mcp_handlers.download_multiple_pdfs", new_callable=AsyncMock
         ) as mock_multi:
             mock_multi.side_effect = NotImplementedError("Not implemented")
 
@@ -449,7 +452,7 @@ class TestMCPHandlers:
                 # Mock the underlying function to raise an exception
                 func_name = handler_name.replace("_handler", "")
                 with patch(
-                    f"mcp_handlers.{func_name}", new_callable=AsyncMock
+                    f"arxiv_mcp.mcp_handlers.{func_name}", new_callable=AsyncMock
                 ) as mock_func:
                     mock_func.side_effect = RuntimeError("Test error")
 
@@ -755,7 +758,7 @@ class TestMCPHandlers:
         for exception_type, message in exception_types:
             # Test with search_arxiv_handler as representative
             with patch(
-                "mcp_handlers.search_arxiv", new_callable=AsyncMock
+                "arxiv_mcp.mcp_handlers.search_arxiv", new_callable=AsyncMock
             ) as mock_search:
                 mock_search.side_effect = exception_type(message)
 
@@ -792,7 +795,7 @@ class TestMCPHandlers:
                 # Force an error to check metadata
                 func_name = handler_name.replace("_handler", "")
                 with patch(
-                    f"mcp_handlers.{func_name}", new_callable=AsyncMock
+                    f"arxiv_mcp.mcp_handlers.{func_name}", new_callable=AsyncMock
                 ) as mock_func:
                     mock_func.side_effect = ValueError("Test error")
 

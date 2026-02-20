@@ -139,133 +139,122 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\parallel-sort run pa
 ## Capabilities
 
 ### `sort_log_by_timestamp`
-**Description**: Sort log files by timestamp in chronological order with support for standard log formats.
-
-**Parameters**:
-- `log_file` (str): Path to input log file
-- `output_file` (str, optional): Path for sorted output file
-- `reverse` (bool, optional): Sort in descending order (default: False)
-
-**Returns**: dict: Dictionary with sorting results, processed line count, and execution time.
+**Description**: Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format.
+**Tags**: execution, sort
 
 ### `parallel_sort_large_file`
-**Description**: Sort large log files using parallel processing with chunked approach for memory efficiency.
-
-**Parameters**:
-- `log_file` (str): Path to large log file
-- `output_file` (str): Path for sorted output file
-- `chunk_size_mb` (int, optional): Chunk size in MB (default: 100)
-- `num_workers` (int, optional): Number of worker processes (default: CPU count)
-
-**Returns**: dict: Dictionary with sorting results, performance metrics, and memory usage.
+**Description**: Sort large log files using parallel processing with chunked approach.
+**Tags**: execution, sort
 
 ### `analyze_log_statistics`
-**Description**: Perform comprehensive statistical analysis of log files including temporal patterns and log levels.
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `include_patterns` (bool, optional): Include pattern analysis (default: True)
-
-**Returns**: dict: Dictionary with statistics, temporal analysis, log level distribution, and quality metrics.
+**Description**: Generate statistics for log files including temporal patterns and log levels.
+**Hints**: read-only, idempotent
+**Tags**: monitoring, sort
 
 ### `detect_log_patterns`
-**Description**: Detect patterns, anomalies, and trends in log files for proactive issue identification.
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `pattern_types` (list, optional): Types of patterns to detect
-- `sensitivity` (str, optional): Detection sensitivity ('low', 'medium', 'high')
-
-**Returns**: dict: Dictionary with detected patterns, anomalies, error clusters, and trend analysis.
+**Description**: Detect patterns in log files including anomalies and error clusters.
+**Hints**: read-only, idempotent
+**Tags**: monitoring, sort
 
 ### `filter_logs`
-**Description**: Apply multiple filter conditions to log files with complex logical operations.
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `filters` (list): List of filter conditions
-- `logical_operator` (str, optional): Logical operator between filters ('AND', 'OR')
-- `output_file` (str, optional): Path for filtered output
-
-**Returns**: dict: Dictionary with filtered results and applied filter summary.
+**Description**: Filter log entries based on multiple conditions with logical operations.
+**Tags**: execution, sort
 
 ### `filter_by_time_range`
-**Description**: Filter log entries within a specific time range.
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `start_time` (str): Start timestamp (YYYY-MM-DD HH:MM:SS)
-- `end_time` (str): End timestamp (YYYY-MM-DD HH:MM:SS)
-- `output_file` (str, optional): Path for filtered output
-
-**Returns**: dict: Dictionary with filtered entries and time range statistics.
+**Description**: Filter log entries by time range using start and end timestamps.
+**Tags**: execution, sort
 
 ### `filter_by_log_level`
 **Description**: Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `log_levels` (list): List of log levels to include
-- `output_file` (str, optional): Path for filtered output
-
-**Returns**: dict: Dictionary with filtered entries and log level distribution.
+**Tags**: execution, sort
 
 ### `filter_by_keyword`
-**Description**: Filter log entries containing specific keywords with advanced matching options.
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `keywords` (list): List of keywords to search for
-- `case_sensitive` (bool, optional): Case sensitive matching (default: False)
-- `logical_operator` (str, optional): Operator between keywords ('AND', 'OR')
-- `output_file` (str, optional): Path for filtered output
-
-**Returns**: dict: Dictionary with filtered entries and keyword match statistics.
+**Description**: Filter log entries by keywords with support for multiple keywords and logical operations.
+**Tags**: execution, sort
 
 ### `apply_filter_preset`
-**Description**: Apply predefined filter presets for common log analysis scenarios.
-
-**Parameters**:
-- `log_file` (str): Path to log file
-- `preset_name` (str): Preset name ('errors_only', 'warnings_and_errors', 'connection_issues', etc.)
-- `output_file` (str, optional): Path for filtered output
-
-**Returns**: dict: Dictionary with filtered results and preset configuration details.
+**Description**: Apply predefined filter presets like 'errors_only' or 'connection_issues'.
+**Tags**: execution, sort
 
 ### `export_to_json`
-**Description**: Export results to JSON format.
-
-**Parameters**:
-- `data` (dict): Parameter for data
-- `include_metadata` (bool, optional): Parameter for include_metadata (default: True)
-
-**Returns**: Dictionary with JSON export results
+**Description**: Export log processing results to JSON format.
+**Hints**: idempotent
+**Tags**: configuration, sort
 
 ### `export_to_csv`
-**Description**: Export results to CSV format.
-
-**Parameters**:
-- `data` (dict): Parameter for data
-- `include_headers` (bool, optional): Parameter for include_headers (default: True)
-
-**Returns**: Dictionary with CSV export results
+**Description**: Export log entries to CSV format with structured columns.
+**Hints**: idempotent
+**Tags**: configuration, sort
 
 ### `export_to_text`
-**Description**: Export results to text format.
-
-**Parameters**:
-- `data` (dict): Parameter for data
-- `include_summary` (bool, optional): Parameter for include_summary (default: True)
-
-**Returns**: Dictionary with text export results
+**Description**: Export log entries to plain text format.
+**Hints**: idempotent
+**Tags**: configuration, sort
 
 ### `generate_summary_report`
-**Description**: Generate a summary report.
+**Description**: Generate a summary report of log processing results with statistics.
+**Hints**: read-only, idempotent
+**Tags**: monitoring, sort
 
-**Parameters**:
-- `data` (dict): Parameter for data
+### Resources
 
-**Returns**: Dictionary with summary report
+- `parallel-sort://capabilities` - Parallel sort algorithms and configuration options.
+
+### Prompts
+
+- **sort_large_file**: Guided workflow for sorting a large file with optimal settings.
+## Claude Code
+
+```bash
+claude mcp add clio-parallel-sort -- uvx clio-kit parallel-sort
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-parallel-sort@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-parallel-sort": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "parallel-sort"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-parallel-sort": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "parallel-sort"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
  
 ### 1. Large Log File Sorting and Analysis

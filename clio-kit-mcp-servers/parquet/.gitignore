@@ -6,7 +6,7 @@ FILTER_TEST_SUMMARY.md
 TEST_SUITE_COMPLETE.md
 TEST_SUITE_STATUS.md
 workflow_log.json
-.mcp.json
+# .mcp.json is now used for Claude Code plugin integration
 
 # Standard Python ignores
 __pycache__/

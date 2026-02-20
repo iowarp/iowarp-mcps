@@ -156,3 +156,76 @@ jobs:
         '${{ github.ref_name }}'
         dist/**
         --repo '${{ github.repository }}'
+
+  publish-to-mcp-registry:
+    name: Publish to MCP Registry
+    needs:
+    - publish-to-pypi
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      id-token: write  # GitHub OIDC for registry authentication
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install mcp-publisher
+      run: |
+        brew install mcp-publisher || {
+          # Fallback: download binary from GitHub releases
+          curl -fsSL -o /tmp/mcp-publisher \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher-linux-amd64"
+          chmod +x /tmp/mcp-publisher
+          sudo mv /tmp/mcp-publisher /usr/local/bin/mcp-publisher
+        }
+        mcp-publisher --version
+
+    - name: Authenticate with GitHub OIDC
+      run: mcp-publisher login github
+
+    - name: Publish each server to MCP registry
+      run: |
+        for server_json in clio-kit-mcp-servers/*/server.json; do
+          server_name=$(basename "$(dirname "$server_json")")
+          echo "Publishing $server_name to MCP registry..."
+          mcp-publisher publish --manifest "$server_json" || {
+            echo "Warning: failed to publish $server_name"
+            continue
+          }
+          echo "Published $server_name"
+        done
+
+  publish-to-smithery:
+    name: Publish to Smithery
+    needs:
+    - publish-to-pypi
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Smithery CLI
+      run: npm install -g @smithery/cli
+
+    - name: Publish each server to Smithery
+      env:
+        SMITHERY_TOKEN: ${{ secrets.SMITHERY_TOKEN }}
+      run: |
+        for server_json in clio-kit-mcp-servers/*/server.json; do
+          server_dir=$(dirname "$server_json")
+          server_name=$(basename "$server_dir")
+          echo "Publishing $server_name to Smithery..."
+          smithery mcp publish "${{ github.repository }}" \
+            -n "iowarp/${server_name}-mcp" \
+            --config "$server_json" || {
+            echo "Warning: failed to publish $server_name to Smithery"
+            continue
+          }
+          echo "Published $server_name to Smithery"
+        done

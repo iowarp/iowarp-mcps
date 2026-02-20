@@ -1,0 +1,165 @@
+{
+  "name": "io.github.iowarp/hdf5-mcp",
+  "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "hdf5"
+    ]
+  },
+  "tools": [
+    {
+      "name": "open_file",
+      "description": "Open an HDF5 file for operations.\n\nArgs:\n    path: Path to HDF5 file\n    mode: File access mode ('r', 'r+', 'w', 'a')\n\nReturns:\n    Success message with file info"
+    },
+    {
+      "name": "close_file",
+      "description": "Close the current HDF5 file.\n\nReturns:\n    Status message"
+    },
+    {
+      "name": "get_filename",
+      "description": "Get the current file's path.\n\nReturns:\n    File path"
+    },
+    {
+      "name": "get_mode",
+      "description": "Get the current file's access mode.\n\nReturns:\n    File mode"
+    },
+    {
+      "name": "get_by_path",
+      "description": "Get a dataset or group by path.\n\nArgs:\n    path: Path to object within file\n\nReturns:\n    Object information"
+    },
+    {
+      "name": "list_keys",
+      "description": "List keys in a group.\n\nArgs:\n    path: Path to group (default: root)\n\nReturns:\n    JSON array of keys"
+    },
+    {
+      "name": "visit",
+      "description": "Visit all nodes recursively.\n\nArgs:\n    callback_fn: Callback function name (currently collects all paths)\n\nReturns:\n    JSON array of all paths and types"
+    },
+    {
+      "name": "read_full_dataset",
+      "description": "Read an entire dataset with efficient chunked reading for large datasets.\n\nArgs:\n    path: Path to dataset within file\n\nReturns:\n    Dataset description"
+    },
+    {
+      "name": "read_partial_dataset",
+      "description": "Read a portion of a dataset with slicing.\n\nArgs:\n    path: Path to dataset within file\n    start: Starting indices as comma-separated string (e.g., \"0,0,0\")\n    count: Number of elements as comma-separated string (e.g., \"10,10,10\")\n\nReturns:\n    Partial dataset description"
+    },
+    {
+      "name": "get_shape",
+      "description": "Get the shape of a dataset.\n\nArgs:\n    path: Path to dataset\n\nReturns:\n    Dataset shape"
+    },
+    {
+      "name": "get_dtype",
+      "description": "Get the data type of a dataset.\n\nArgs:\n    path: Path to dataset\n\nReturns:\n    Dataset dtype"
+    },
+    {
+      "name": "get_size",
+      "description": "Get the size of a dataset.\n\nArgs:\n    path: Path to dataset\n\nReturns:\n    Dataset size"
+    },
+    {
+      "name": "get_chunks",
+      "description": "Get chunk information for a dataset.\n\nArgs:\n    path: Path to dataset\n\nReturns:\n    Chunk configuration"
+    },
+    {
+      "name": "read_attribute",
+      "description": "Read an attribute from an object.\n\nArgs:\n    path: Path to object\n    name: Attribute name\n\nReturns:\n    Attribute value"
+    },
+    {
+      "name": "list_attributes",
+      "description": "List all attributes of an object.\n\nArgs:\n    path: Path to object\n\nReturns:\n    JSON dict of attributes"
+    },
+    {
+      "name": "hdf5_parallel_scan",
+      "description": "Fast multi-file scanning with parallel processing.\n\nArgs:\n    directory: Directory to scan\n    pattern: File pattern (default: *.h5)\n    ctx: Context for progress reporting\n\nReturns:\n    Scan summary with file metadata"
+    },
+    {
+      "name": "hdf5_batch_read",
+      "description": "Read multiple datasets in parallel.\n\nArgs:\n    paths: Comma-separated dataset paths or JSON array\n    slice_spec: Optional slice specification\n    ctx: Context for progress reporting\n\nReturns:\n    Batch read summary"
+    },
+    {
+      "name": "hdf5_stream_data",
+      "description": "Stream large datasets efficiently with memory management.\n\nArgs:\n    path: Path to dataset\n    chunk_size: Number of elements per chunk\n    max_chunks: Maximum number of chunks to process\n    ctx: Context for progress reporting\n\nReturns:\n    Stream processing summary with statistics"
+    },
+    {
+      "name": "hdf5_aggregate_stats",
+      "description": "Parallel statistics computation across multiple datasets.\n\nArgs:\n    paths: Comma-separated dataset paths or JSON array\n    stats: Comma-separated stats to compute (default: mean,std,min,max,sum,count)\n    ctx: Context for progress reporting\n\nReturns:\n    Aggregate statistics summary"
+    },
+    {
+      "name": "analyze_dataset_structure",
+      "description": "Analyze and understand file organization and data patterns with AI insights.\n\nArgs:\n    path: Path to analyze (default: root)\n    ctx: Context for LLM sampling\n\nReturns:\n    Structure analysis with AI insights"
+    },
+    {
+      "name": "find_similar_datasets",
+      "description": "Find datasets with similar characteristics to a reference dataset with AI analysis.\n\nArgs:\n    reference_path: Path to reference dataset\n    similarity_threshold: Similarity threshold (0.0 to 1.0)\n    ctx: Context for LLM sampling\n\nReturns:\n    List of similar datasets with similarity scores and AI insights"
+    },
+    {
+      "name": "suggest_next_exploration",
+      "description": "Suggest interesting data to explore next based on current location with AI recommendations.\n\nArgs:\n    current_path: Current path (default: root)\n    ctx: Context for LLM sampling\n\nReturns:\n    Exploration suggestions with interest scores and AI recommendations"
+    },
+    {
+      "name": "identify_io_bottlenecks",
+      "description": "Identify potential I/O bottlenecks and performance issues with AI recommendations.\n\nArgs:\n    analysis_paths: Optional list of paths to analyze (auto-discovers if None)\n    ctx: Context for LLM sampling\n\nReturns:\n    Bottleneck analysis report with AI recommendations"
+    },
+    {
+      "name": "optimize_access_pattern",
+      "description": "Suggest better approaches for data access based on usage patterns.\n\nArgs:\n    dataset_path: Path to dataset\n    access_pattern: Access pattern (sequential, random, batch)\n\nReturns:\n    Optimization recommendations"
+    },
+    {
+      "name": "refresh_hdf5_resources",
+      "description": "Re-scan client roots and update available HDF5 resources.\n\nFastMCP automatically sends notifications/resources/list_changed to clients.\n\nReturns:\n    Summary of refreshed resources"
+    },
+    {
+      "name": "list_available_hdf5_files",
+      "description": "List all registered HDF5 files with resource URIs for Claude Code @ mentions.\n\nReturns:\n    List of available files with resource URIs"
+    },
+    {
+      "name": "export_dataset",
+      "description": "Export dataset to various formats with user format selection.\n\nArgs:\n    path: Path to dataset within file\n    output_path: Optional output file path\n    ctx: Context for elicitation\n\nReturns:\n    Export summary"
+    }
+  ],
+  "resource_templates": [
+    {
+      "uri_template": "hdf5://{file_path}/metadata",
+      "name": "hdf5_file_metadata",
+      "description": "Expose HDF5 file metadata as resource.\n\nArgs:\n    file_path: Path to HDF5 file\n\nReturns:\n    JSON metadata"
+    },
+    {
+      "uri_template": "hdf5://{file_path}/datasets/{dataset_path*}",
+      "name": "hdf5_dataset_resource",
+      "description": "Expose HDF5 dataset as resource.\n\nArgs:\n    file_path: Path to HDF5 file\n    dataset_path: Path to dataset within file (supports nested paths)\n\nReturns:\n    Dataset data (preview for large datasets)"
+    },
+    {
+      "uri_template": "hdf5://{file_path}/structure",
+      "name": "hdf5_structure_resource",
+      "description": "Expose HDF5 file structure as resource.\n\nArgs:\n    file_path: Path to HDF5 file\n\nReturns:\n    Hierarchical structure"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "explore_hdf5_file",
+      "description": "Generate workflow for exploring an HDF5 file.\n\nArgs:\n    file_path: Path to HDF5 file\n\nReturns:\n    Exploration workflow prompt"
+    },
+    {
+      "name": "optimize_hdf5_access",
+      "description": "Generate optimization workflow for HDF5 I/O.\n\nArgs:\n    file_path: Path to HDF5 file\n    access_pattern: Access pattern (sequential, random, batch)\n\nReturns:\n    Optimization workflow prompt"
+    },
+    {
+      "name": "compare_hdf5_datasets",
+      "description": "Generate comparison workflow for two datasets.\n\nArgs:\n    file_path: Path to HDF5 file\n    dataset1: First dataset path\n    dataset2: Second dataset path\n\nReturns:\n    Comparison workflow prompt"
+    },
+    {
+      "name": "batch_process_hdf5",
+      "description": "Generate batch processing workflow for multiple HDF5 files.\n\nArgs:\n    directory: Directory containing HDF5 files\n    operation: Operation to perform (statistics, scan, export)\n\nReturns:\n    Batch processing workflow prompt"
+    }
+  ],
+  "tags": [
+    "scientific-computing",
+    "hdf5",
+    "data-analysis",
+    "hierarchical-data"
+  ]
+}

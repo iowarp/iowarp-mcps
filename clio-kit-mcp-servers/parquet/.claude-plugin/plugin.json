@@ -1,0 +1,5 @@
+{
+  "name": "clio-parquet",
+  "description": "MCP server for Apache Parquet files",
+  "version": "1.0.0"
+}

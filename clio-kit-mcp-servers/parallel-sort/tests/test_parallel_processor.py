@@ -6,7 +6,7 @@ import pytest
 import tempfile
 import os
 from unittest.mock import patch
-from implementation.parallel_processor import (
+from parallel_sort_mcp.implementation.parallel_processor import (
     parallel_sort_large_file,
     split_file_into_chunks,
     process_single_chunk,

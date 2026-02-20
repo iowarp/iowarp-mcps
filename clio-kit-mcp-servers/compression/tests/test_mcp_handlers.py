@@ -1,10 +1,9 @@
 import pytest
 import os
 import tempfile
-import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-from mcp_handlers import compress_file_handler
+from fastmcp.exceptions import ToolError
+from compression_mcp.mcp_handlers import compress_file_handler
 
 
 @pytest.fixture
@@ -18,22 +17,17 @@ def sample_file():
 
 @pytest.mark.asyncio
 async def test_compress_file_handler_success(sample_file):
-    """Test successful compression through MCP handler"""
+    """Test successful compression through MCP handler."""
     result = await compress_file_handler(sample_file)
     assert isinstance(result, dict)
-    assert not result["isError"]
-    assert result["_meta"]["tool"] == "compress_file"
-    assert "compressed successfully" in result["content"][0]["text"]
-    assert os.path.exists(result["_meta"]["compressed_file"])
-    os.unlink(result["_meta"]["compressed_file"])
+    assert result["original_file"] == sample_file
+    assert result["compressed_size"] > 0
+    assert os.path.exists(result["compressed_file"])
+    os.unlink(result["compressed_file"])
 
 
 @pytest.mark.asyncio
 async def test_compress_file_handler_error():
-    """Test error handling in MCP handler"""
-    result = await compress_file_handler("nonexistent_file.txt")
-    assert isinstance(result, dict)
-    assert result["isError"]
-    assert result["_meta"]["tool"] == "compress_file"
-    assert "error" in result["_meta"]
-    assert "File not found" in result["content"][0]["text"]
+    """Test error handling in MCP handler raises ToolError."""
+    with pytest.raises(ToolError, match="File not found"):
+        await compress_file_handler("nonexistent_file.txt")

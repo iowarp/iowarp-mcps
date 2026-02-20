@@ -5,17 +5,17 @@ Additional edge case tests to push coverage above 90%.
 import pytest
 import tempfile
 import os
-from implementation.export_handler import (
+from parallel_sort_mcp.implementation.export_handler import (
     export_to_json,
     export_to_csv,
     export_to_text,
     export_summary_report,
 )
-from implementation.filter_handler import filter_by_time_range
-from implementation.sort_handler import sort_log_by_timestamp
-from implementation.parallel_processor import parallel_sort_large_file
-from implementation.statistics_handler import analyze_log_statistics
-from implementation.pattern_detection import detect_patterns
+from parallel_sort_mcp.implementation.filter_handler import filter_by_time_range
+from parallel_sort_mcp.implementation.sort_handler import sort_log_by_timestamp
+from parallel_sort_mcp.implementation.parallel_processor import parallel_sort_large_file
+from parallel_sort_mcp.implementation.statistics_handler import analyze_log_statistics
+from parallel_sort_mcp.implementation.pattern_detection import detect_patterns
 
 
 class TestEdgeCases:
@@ -185,7 +185,7 @@ class TestEdgeCases:
 2024-01-01 09:00:00 INFO Üñíçödé characters
 2024-01-01 10:00:00 ERROR Normal message"""
 
-        from implementation.filter_handler import filter_by_keyword
+        from parallel_sort_mcp.implementation.filter_handler import filter_by_keyword
 
         with tempfile.NamedTemporaryFile(
             mode="w", delete=False, suffix=".log", encoding="utf-8"

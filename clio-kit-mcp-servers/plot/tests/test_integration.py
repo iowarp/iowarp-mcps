@@ -3,16 +3,12 @@ Integration tests - complete workflows, data formats, error scenarios, and perfo
 """
 
 import os
-import sys
 import tempfile
 import pandas as pd
 import pytest
 import time
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from implementation.plot_capabilities import (
+from plot_mcp.implementation.plot_capabilities import (
     load_data,
     create_line_plot,
     create_bar_plot,

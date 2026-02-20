@@ -6,17 +6,12 @@ import sys
 import os
 import threading
 import time
-from pathlib import Path
 from unittest.mock import patch, Mock, mock_open
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
 
 
 def test_implementation_init():
     """Test the implementation package __init__.py."""
-    import implementation
+    import slurm_mcp.implementation as implementation
 
     # Check that all modules are accessible
     assert hasattr(implementation, "job_submission")
@@ -35,7 +30,7 @@ def test_implementation_init():
 
 def test_utils_check_slurm_available():
     """Test the utils module check_slurm_available function."""
-    from implementation.utils import check_slurm_available
+    from slurm_mcp.implementation.utils import check_slurm_available
 
     # With our mocking, this should return True
     result = check_slurm_available()
@@ -44,7 +39,7 @@ def test_utils_check_slurm_available():
 
 def test_cluster_info_function():
     """Test cluster info functionality."""
-    from implementation.cluster_info import get_slurm_info
+    from slurm_mcp.implementation.cluster_info import get_slurm_info
 
     # This should work with our mocking
     result = get_slurm_info()
@@ -53,7 +48,7 @@ def test_cluster_info_function():
 
 def test_job_listing_function():
     """Test job listing functionality."""
-    from implementation.job_listing import list_slurm_jobs
+    from slurm_mcp.implementation.job_listing import list_slurm_jobs
 
     # This should work with our mocking
     result = list_slurm_jobs()
@@ -62,7 +57,7 @@ def test_job_listing_function():
 
 def test_queue_info_function():
     """Test queue info functionality."""
-    from implementation.queue_info import get_queue_info
+    from slurm_mcp.implementation.queue_info import get_queue_info
 
     # This should work with our mocking
     result = get_queue_info()
@@ -71,7 +66,7 @@ def test_queue_info_function():
 
 def test_node_info_function():
     """Test node info functionality."""
-    from implementation.node_info import get_node_info
+    from slurm_mcp.implementation.node_info import get_node_info
 
     # This should work with our mocking
     result = get_node_info()
@@ -80,7 +75,7 @@ def test_node_info_function():
 
 def test_server_main_function():
     """Test server main function without actually starting the server."""
-    import server
+    import slurm_mcp.server as server
 
     # Test that main function exists and is callable
     assert hasattr(server, "main")
@@ -89,7 +84,7 @@ def test_server_main_function():
 
 def test_server_imports():
     """Test server module imports work correctly."""
-    import server
+    import slurm_mcp.server as server
 
     # Check that FastMCP is imported and server is initialized
     assert hasattr(server, "mcp")
@@ -99,7 +94,7 @@ def test_server_imports():
 
 def test_server_tools_existence():
     """Test that all server tools are properly registered."""
-    import server
+    import slurm_mcp.server as server
 
     # The server should have tools registered
     mcp = server.mcp
@@ -108,7 +103,7 @@ def test_server_tools_existence():
 
 def test_server_main_with_args():
     """Test server main function with mocked arguments."""
-    import server
+    import slurm_mcp.server as server
 
     # Mock sys.argv and argparse to test argument parsing
     with (
@@ -126,7 +121,7 @@ def test_server_main_with_args():
 
 def test_server_error_handling():
     """Test server error handling with mocked exceptions."""
-    import server
+    import slurm_mcp.server as server
 
     # Test that SlurmMCPError can be raised and handled
     error = server.SlurmMCPError("Test error")
@@ -136,7 +131,7 @@ def test_server_error_handling():
 
 def test_slurm_not_available_handling():
     """Test that code handles Slurm not being available gracefully."""
-    from implementation.utils import check_slurm_available
+    from slurm_mcp.implementation.utils import check_slurm_available
 
     # Test with mocked Slurm unavailable
     with patch("shutil.which", return_value=None):
@@ -148,7 +143,7 @@ def test_slurm_not_available_handling():
 
 def test_job_submission_no_freeze():
     """Test that job submission doesn't freeze when Slurm is not available."""
-    from implementation.job_submission import submit_slurm_job
+    from slurm_mcp.implementation.job_submission import submit_slurm_job
 
     # This should complete quickly due to our mocking, not freeze
     start_time = time.time()
@@ -166,7 +161,7 @@ def test_job_submission_no_freeze():
 
 def test_job_status_no_freeze():
     """Test that job status check doesn't freeze when Slurm is not available."""
-    from implementation.job_status import get_job_status
+    from slurm_mcp.implementation.job_status import get_job_status
 
     start_time = time.time()
     try:
@@ -181,7 +176,7 @@ def test_job_status_no_freeze():
 
 def test_concurrent_operations_no_freeze():
     """Test that concurrent operations don't cause freezing."""
-    from implementation.job_listing import list_slurm_jobs
+    from slurm_mcp.implementation.job_listing import list_slurm_jobs
 
     results = []
     exceptions = []
@@ -218,7 +213,7 @@ def test_concurrent_operations_no_freeze():
 
 def test_server_integration():
     """Test server integration components."""
-    import server
+    import slurm_mcp.server as server
 
     # Test that server can be imported without errors
     assert hasattr(server, "FastMCP")
@@ -227,7 +222,7 @@ def test_server_integration():
     # Test logger configuration
     logger = server.logger
     assert logger is not None
-    assert logger.name == "server"
+    assert logger.name == "slurm_mcp.server"
 
 
 def test_script_entry_point():
@@ -235,7 +230,7 @@ def test_script_entry_point():
     # This tests the pyproject.toml [project.scripts] configuration
     # by checking if the server module can be imported and has main
     try:
-        import server
+        import slurm_mcp.server as server
 
         assert hasattr(server, "main")
         assert callable(server.main)
@@ -257,10 +252,12 @@ def test_environment_variables():
 
 def test_job_status_slurm_unavailable():
     """Test job status when Slurm is unavailable."""
-    from implementation.job_status import get_job_status
+    from slurm_mcp.implementation.job_status import get_job_status
 
     # Temporarily override the autouse fixture
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = get_job_status("12345")
         # Due to our mocking structure, this should still return a result
         assert isinstance(result, dict)
@@ -269,7 +266,7 @@ def test_job_status_slurm_unavailable():
 
 def test_job_status_error_cases():
     """Test job status error handling cases."""
-    from implementation.job_status import get_job_status
+    from slurm_mcp.implementation.job_status import get_job_status
 
     # Test when job not found (empty stdout)
     with patch("subprocess.run") as mock_run:
@@ -288,9 +285,11 @@ def test_job_status_error_cases():
 
 def test_job_cancellation_slurm_unavailable():
     """Test job cancellation when Slurm is unavailable."""
-    from implementation.job_cancellation import cancel_slurm_job
+    from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
 
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = cancel_slurm_job("12345")
         # Should handle gracefully and return a result
         assert isinstance(result, dict)
@@ -298,7 +297,7 @@ def test_job_cancellation_slurm_unavailable():
 
 def test_job_cancellation_error_cases():
     """Test job cancellation error handling."""
-    from implementation.job_cancellation import cancel_slurm_job
+    from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
 
     # Test when scancel fails
     with patch("subprocess.run") as mock_run:
@@ -316,10 +315,12 @@ def test_job_cancellation_error_cases():
 
 def test_cluster_info_error_cases():
     """Test cluster info error handling."""
-    from implementation.cluster_info import get_slurm_info
+    from slurm_mcp.implementation.cluster_info import get_slurm_info
 
     # Test when Slurm is unavailable
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = get_slurm_info()
         assert isinstance(result, dict)
 
@@ -338,10 +339,12 @@ def test_cluster_info_error_cases():
 
 def test_job_listing_error_cases():
     """Test job listing error handling."""
-    from implementation.job_listing import list_slurm_jobs
+    from slurm_mcp.implementation.job_listing import list_slurm_jobs
 
     # Test when Slurm is unavailable
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = list_slurm_jobs()
         assert isinstance(result, dict)
 
@@ -360,10 +363,12 @@ def test_job_listing_error_cases():
 
 def test_job_output_error_cases():
     """Test job output error handling."""
-    from implementation.job_output import get_job_output
+    from slurm_mcp.implementation.job_output import get_job_output
 
     # Test when Slurm is unavailable
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = get_job_output("12345")
         assert isinstance(result, dict)
 
@@ -383,10 +388,12 @@ def test_job_output_error_cases():
 
 def test_node_info_error_cases():
     """Test node info error handling."""
-    from implementation.node_info import get_node_info
+    from slurm_mcp.implementation.node_info import get_node_info
 
     # Test when Slurm is unavailable
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = get_node_info()
         assert isinstance(result, dict)
 
@@ -405,10 +412,12 @@ def test_node_info_error_cases():
 
 def test_queue_info_error_cases():
     """Test queue info error handling."""
-    from implementation.queue_info import get_queue_info
+    from slurm_mcp.implementation.queue_info import get_queue_info
 
     # Test when Slurm is unavailable
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = get_queue_info()
         assert isinstance(result, dict)
 
@@ -427,7 +436,7 @@ def test_queue_info_error_cases():
 
 def test_array_jobs_error_cases():
     """Test array jobs error handling."""
-    from implementation.array_jobs import submit_array_job
+    from slurm_mcp.implementation.array_jobs import submit_array_job
 
     # Test when script doesn't exist
     with patch("os.path.exists", return_value=False):
@@ -455,10 +464,12 @@ def test_array_jobs_error_cases():
 
 def test_job_details_error_cases():
     """Test job details error handling."""
-    from implementation.job_details import get_job_details
+    from slurm_mcp.implementation.job_details import get_job_details
 
     # Test when Slurm is unavailable
-    with patch("implementation.utils.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+    ):
         result = get_job_details("12345")
         assert isinstance(result, dict)
 
@@ -480,8 +491,10 @@ def test_direct_slurm_unavailable_paths():
     # We need to test the actual error paths without the autouse fixture
 
     # Test job_status RuntimeError path
-    with patch("implementation.job_status.check_slurm_available", return_value=False):
-        from implementation.job_status import get_job_status
+    with patch(
+        "slurm_mcp.implementation.job_status.check_slurm_available", return_value=False
+    ):
+        from slurm_mcp.implementation.job_status import get_job_status
 
         try:
             get_job_status("12345")
@@ -491,9 +504,10 @@ def test_direct_slurm_unavailable_paths():
 
     # Test job_cancellation RuntimeError path
     with patch(
-        "implementation.job_cancellation.check_slurm_available", return_value=False
+        "slurm_mcp.implementation.job_cancellation.check_slurm_available",
+        return_value=False,
     ):
-        from implementation.job_cancellation import cancel_slurm_job
+        from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
 
         try:
             cancel_slurm_job("12345")
@@ -502,8 +516,10 @@ def test_direct_slurm_unavailable_paths():
             assert "Slurm is not available" in str(e)
 
     # Test job_listing RuntimeError path
-    with patch("implementation.job_listing.check_slurm_available", return_value=False):
-        from implementation.job_listing import list_slurm_jobs
+    with patch(
+        "slurm_mcp.implementation.job_listing.check_slurm_available", return_value=False
+    ):
+        from slurm_mcp.implementation.job_listing import list_slurm_jobs
 
         try:
             list_slurm_jobs()
@@ -514,12 +530,15 @@ def test_direct_slurm_unavailable_paths():
 
 def test_job_submission_error_paths():
     """Test job submission error handling paths."""
-    from implementation.job_submission import submit_slurm_job
+    from slurm_mcp.implementation.job_submission import submit_slurm_job
 
     # Test when cores <= 0 (with file existence mocked)
     with (
         patch("os.path.isfile", return_value=True),
-        patch("implementation.job_submission.check_slurm_available", return_value=True),
+        patch(
+            "slurm_mcp.implementation.job_submission.check_slurm_available",
+            return_value=True,
+        ),
     ):
         try:
             submit_slurm_job("/test/script.sh", 0)
@@ -530,7 +549,10 @@ def test_job_submission_error_paths():
     # Test when cores > max allowed - need to mock the entire file operation chain
     with (
         patch("os.path.isfile", return_value=True),
-        patch("implementation.job_submission.check_slurm_available", return_value=True),
+        patch(
+            "slurm_mcp.implementation.job_submission.check_slurm_available",
+            return_value=True,
+        ),
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
         patch("tempfile.mkstemp", return_value=(1, "/tmp/test.sh")),
         patch("os.close"),
@@ -547,10 +569,12 @@ def test_job_submission_error_paths():
 
 def test_array_jobs_missing_lines():
     """Test array jobs missing coverage lines."""
-    from implementation.array_jobs import submit_array_job
+    from slurm_mcp.implementation.array_jobs import submit_array_job
 
     # Test the missing lines by triggering specific error conditions
-    with patch("implementation.array_jobs.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.array_jobs.check_slurm_available", return_value=False
+    ):
         try:
             submit_array_job("/test/script.sh", "1-10", 2)
             assert False, "Should have raised RuntimeError"
@@ -560,12 +584,15 @@ def test_array_jobs_missing_lines():
 
 def test_job_submission_specific_error_lines():
     """Test specific lines in job submission."""
-    from implementation.job_submission import submit_slurm_job
+    from slurm_mcp.implementation.job_submission import submit_slurm_job
 
     # Test subprocess failure that triggers line 94
     with (
         patch("os.path.isfile", return_value=True),
-        patch("implementation.job_submission.check_slurm_available", return_value=True),
+        patch(
+            "slurm_mcp.implementation.job_submission.check_slurm_available",
+            return_value=True,
+        ),
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
         patch("tempfile.mkstemp", return_value=(1, "/tmp/test.sh")),
         patch("os.close"),
@@ -584,7 +611,10 @@ def test_job_submission_specific_error_lines():
     # Test output parsing failure that triggers line 101
     with (
         patch("os.path.isfile", return_value=True),
-        patch("implementation.job_submission.check_slurm_available", return_value=True),
+        patch(
+            "slurm_mcp.implementation.job_submission.check_slurm_available",
+            return_value=True,
+        ),
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
         patch("tempfile.mkstemp", return_value=(1, "/tmp/test.sh")),
         patch("os.fdopen", mock_open()),
@@ -604,7 +634,7 @@ def test_job_submission_specific_error_lines():
 
 def test_job_listing_specific_line():
     """Test specific line in job listing."""
-    from implementation.job_listing import list_slurm_jobs
+    from slurm_mcp.implementation.job_listing import list_slurm_jobs
 
     # Test with malformed output that triggers line 44 (parts length check)
     with patch("subprocess.run") as mock_run:
@@ -619,10 +649,12 @@ def test_job_listing_specific_line():
 
 def test_job_details_comprehensive():
     """Test job details with comprehensive error scenarios."""
-    from implementation.job_details import get_job_details
+    from slurm_mcp.implementation.job_details import get_job_details
 
     # Test Slurm unavailable error (line 21)
-    with patch("implementation.job_details.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.job_details.check_slurm_available", return_value=False
+    ):
         try:
             get_job_details("12345")
             assert False, "Should have raised RuntimeError"
@@ -668,10 +700,12 @@ def test_job_details_comprehensive():
 
 def test_job_output_comprehensive():
     """Test job output with various scenarios."""
-    from implementation.job_output import get_job_output
+    from slurm_mcp.implementation.job_output import get_job_output
 
     # Test Slurm unavailable error (line 23)
-    with patch("implementation.job_output.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.job_output.check_slurm_available", return_value=False
+    ):
         try:
             get_job_output("12345")
             assert False, "Should have raised RuntimeError"
@@ -680,7 +714,7 @@ def test_job_output_comprehensive():
 
     # Test successful file reading by mocking job_details and file operations
     with (
-        patch("implementation.job_output.get_job_details") as mock_details,
+        patch("slurm_mcp.implementation.job_output.get_job_details") as mock_details,
         patch("os.path.exists") as mock_exists,
         patch("builtins.open", mock_open(read_data="Job output content")),
     ):
@@ -694,7 +728,7 @@ def test_job_output_comprehensive():
 
     # Test file read permission error
     with (
-        patch("implementation.job_output.get_job_details") as mock_details,
+        patch("slurm_mcp.implementation.job_output.get_job_details") as mock_details,
         patch("os.path.exists", return_value=True),
         patch("builtins.open", side_effect=PermissionError("Permission denied")),
     ):
@@ -706,10 +740,12 @@ def test_job_output_comprehensive():
 
 def test_queue_info_comprehensive():
     """Test queue info with comprehensive scenarios."""
-    from implementation.queue_info import get_queue_info
+    from slurm_mcp.implementation.queue_info import get_queue_info
 
     # Test Slurm unavailable error (line 22)
-    with patch("implementation.queue_info.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.queue_info.check_slurm_available", return_value=False
+    ):
         try:
             get_queue_info()
             assert False, "Should have raised RuntimeError"
@@ -744,10 +780,12 @@ def test_queue_info_comprehensive():
 
 def test_node_info_comprehensive():
     """Test node info with comprehensive scenarios."""
-    from implementation.node_info import get_node_info
+    from slurm_mcp.implementation.node_info import get_node_info
 
     # Test Slurm unavailable error (line 18)
-    with patch("implementation.node_info.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.node_info.check_slurm_available", return_value=False
+    ):
         try:
             get_node_info()
             assert False, "Should have raised RuntimeError"
@@ -772,10 +810,13 @@ node003,allocated,32,60000,cpu,gpu:4"""
 
 def test_cluster_info_comprehensive():
     """Test cluster info with comprehensive scenarios."""
-    from implementation.cluster_info import get_slurm_info
+    from slurm_mcp.implementation.cluster_info import get_slurm_info
 
     # Test Slurm unavailable error (line 18)
-    with patch("implementation.cluster_info.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.cluster_info.check_slurm_available",
+        return_value=False,
+    ):
         try:
             get_slurm_info()
             assert False, "Should have raised RuntimeError"
@@ -799,7 +840,7 @@ memory,2/0/0/2,1-00:00:00,2,mixed,node[011-012]"""
 
 def test_slurm_handler_comprehensive():
     """Test slurm_handler module comprehensively."""
-    import implementation.slurm_handler as slurm_handler
+    import slurm_mcp.implementation.slurm_handler as slurm_handler
 
     # Test that all functions are available
     assert hasattr(slurm_handler, "submit_slurm_job")
@@ -823,10 +864,12 @@ def test_slurm_handler_comprehensive():
 
 def test_array_jobs_comprehensive():
     """Test array_jobs module comprehensively."""
-    from implementation.array_jobs import submit_array_job
+    from slurm_mcp.implementation.array_jobs import submit_array_job
 
     # Test Slurm unavailable error
-    with patch("implementation.array_jobs.check_slurm_available", return_value=False):
+    with patch(
+        "slurm_mcp.implementation.array_jobs.check_slurm_available", return_value=False
+    ):
         try:
             submit_array_job("/test/script.sh", "1-10", 2)
             assert False, "Should have raised RuntimeError"
@@ -865,7 +908,7 @@ def test_array_jobs_comprehensive():
 
 def test_node_allocation_comprehensive():
     """Test node_allocation module comprehensively."""
-    from implementation.node_allocation import (
+    from slurm_mcp.implementation.node_allocation import (
         allocate_nodes,
         deallocate_nodes,
         get_allocation_status,
@@ -873,7 +916,8 @@ def test_node_allocation_comprehensive():
 
     # Test allocate_nodes with Slurm unavailable
     with patch(
-        "implementation.node_allocation.check_slurm_available", return_value=False
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=False,
     ):
         result = allocate_nodes(nodes=2, time_limit="1:00:00")
         assert result["status"] == "failed"
@@ -921,7 +965,7 @@ def test_additional_coverage_improvements():
     """Additional tests to improve coverage on remaining low-coverage modules."""
 
     # Test job_details sacct fallback path (lines 55-78)
-    from implementation.job_details import get_job_details
+    from slurm_mcp.implementation.job_details import get_job_details
 
     with patch("subprocess.run") as mock_run:
         # First scontrol call fails, then sacct succeeds
@@ -943,10 +987,10 @@ def test_additional_coverage_improvements():
         assert result["source"] == "accounting"
 
     # Test job_output stderr path and multiple file locations (lines 47-57)
-    from implementation.job_output import get_job_output
+    from slurm_mcp.implementation.job_output import get_job_output
 
     with (
-        patch("implementation.job_output.get_job_details") as mock_details,
+        patch("slurm_mcp.implementation.job_output.get_job_details") as mock_details,
         patch("os.path.exists") as mock_exists,
     ):
         # Test stderr output type
@@ -963,7 +1007,7 @@ def test_additional_coverage_improvements():
             assert result["content"] == "Error content"
 
     # Test job_listing with insufficient parts (line 44)
-    from implementation.job_listing import list_slurm_jobs
+    from slurm_mcp.implementation.job_listing import list_slurm_jobs
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
@@ -975,7 +1019,10 @@ def test_additional_coverage_improvements():
 
 def test_node_allocation_additional_coverage():
     """Test additional node allocation paths to improve coverage."""
-    from implementation.node_allocation import allocate_nodes, get_allocation_status
+    from slurm_mcp.implementation.node_allocation import (
+        allocate_nodes,
+        get_allocation_status,
+    )
 
     # Test allocation with various parameters to hit more code paths
     with patch("subprocess.run") as mock_run:
@@ -1008,7 +1055,10 @@ def test_node_allocation_additional_coverage():
 
 def test_node_allocation_missing_lines():
     """Test specific missing lines in node_allocation.py to improve coverage."""
-    from implementation.node_allocation import allocate_nodes, deallocate_nodes
+    from slurm_mcp.implementation.node_allocation import (
+        allocate_nodes,
+        deallocate_nodes,
+    )
 
     # Test immediate allocation path (lines 83-84)
     with patch("subprocess.run") as mock_run:
@@ -1047,7 +1097,7 @@ def test_node_allocation_missing_lines():
 
 def test_node_allocation_comprehensive_error_paths():
     """Test comprehensive error paths in node_allocation.py."""
-    from implementation.node_allocation import get_allocation_status
+    from slurm_mcp.implementation.node_allocation import get_allocation_status
 
     # Test get_allocation_status with no job info (lines 300-303)
     with patch("subprocess.run") as mock_run:
@@ -1067,7 +1117,7 @@ def test_node_allocation_comprehensive_error_paths():
 
 def test_server_missing_coverage():
     """Test server.py missing coverage lines."""
-    import server
+    import slurm_mcp.server as server
 
     # Test SlurmMCPError creation (lines 21-23)
     error = server.SlurmMCPError("Test error message")
@@ -1075,13 +1125,13 @@ def test_server_missing_coverage():
     assert isinstance(error, Exception)
 
     # Test logger configuration (lines 29-30)
-    assert server.logger.name == "server"
+    assert server.logger.name == "slurm_mcp.server"
     assert hasattr(server.logger, "info")
 
     # Test main function argument parsing (lines 913-920)
     with (
-        patch("sys.argv", ["slurm-mcp", "--transport", "sse", "--port", "9000"]),
-        patch("server.mcp.run"),
+        patch("sys.argv", ["slurm-mcp", "--transport", "http", "--port", "9000"]),
+        patch.object(server.mcp, "run"),
     ):
         try:
             server.main()
@@ -1093,7 +1143,7 @@ def test_server_missing_coverage():
 
 def test_mcp_handlers_missing_coverage():
     """Test mcp_handlers.py missing coverage lines."""
-    import mcp_handlers
+    import slurm_mcp.mcp_handlers as mcp_handlers
 
     # Test that the module loads properly - the missing lines are likely
     # error handling paths that are hard to trigger directly
@@ -1106,7 +1156,7 @@ def test_mcp_handlers_missing_coverage():
 
 def test_cluster_info_missing_lines():
     """Test cluster_info.py missing lines 57-58."""
-    from implementation.cluster_info import get_slurm_info
+    from slurm_mcp.implementation.cluster_info import get_slurm_info
 
     # Test subprocess exception handling (lines 57-58)
     with patch("subprocess.run", side_effect=Exception("Command execution failed")):
@@ -1117,7 +1167,7 @@ def test_cluster_info_missing_lines():
 
 def test_array_jobs_missing_lines_comprehensive():
     """Test array_jobs.py missing lines 66, 96."""
-    from implementation.array_jobs import submit_array_job
+    from slurm_mcp.implementation.array_jobs import submit_array_job
 
     # Test file reading exception (line 66)
     with patch("builtins.open", side_effect=Exception("File read error")):
@@ -1137,11 +1187,11 @@ def test_array_jobs_missing_lines_comprehensive():
 
 def test_job_output_missing_line():
     """Test job_output.py missing line 78."""
-    from implementation.job_output import get_job_output
+    from slurm_mcp.implementation.job_output import get_job_output
 
     # Test exception handling in file reading (line 78)
     with (
-        patch("implementation.job_output.get_job_details") as mock_details,
+        patch("slurm_mcp.implementation.job_output.get_job_details") as mock_details,
         patch("os.path.exists", return_value=True),
         patch("builtins.open", side_effect=Exception("File operation failed")),
     ):
@@ -1158,16 +1208,19 @@ def test_job_output_missing_line():
 
 def test_node_allocation_enhanced_coverage():
     """Enhanced tests for node_allocation.py missing lines to improve coverage."""
-    from implementation.node_allocation import allocate_nodes
+    from slurm_mcp.implementation.node_allocation import allocate_nodes
 
     # Test allocation with no immediate mode (line 132)
     with patch(
-        "implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
-        with patch("implementation.node_allocation.subprocess.run") as mock_run:
+        with patch(
+            "slurm_mcp.implementation.node_allocation.subprocess.run"
+        ) as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
             with patch(
-                "implementation.node_allocation._get_recent_allocation_id",
+                "slurm_mcp.implementation.node_allocation._get_recent_allocation_id",
                 return_value="12345",
             ):
                 result = allocate_nodes(nodes=1, cores=2, immediate=False)
@@ -1180,15 +1233,16 @@ def test_node_allocation_enhanced_coverage():
 
 def test_node_allocation_timeout_handling():
     """Test allocation timeout and subprocess error handling (lines 184-187)."""
-    from implementation.node_allocation import allocate_nodes
+    from slurm_mcp.implementation.node_allocation import allocate_nodes
     import subprocess
 
     with patch(
-        "implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         # Test timeout exception
         with patch(
-            "implementation.node_allocation.subprocess.run",
+            "slurm_mcp.implementation.node_allocation.subprocess.run",
             side_effect=subprocess.TimeoutExpired("salloc", 60),
         ):
             result = allocate_nodes(nodes=1, cores=2)
@@ -1197,7 +1251,7 @@ def test_node_allocation_timeout_handling():
 
         # Test other subprocess exceptions
         with patch(
-            "implementation.node_allocation.subprocess.run",
+            "slurm_mcp.implementation.node_allocation.subprocess.run",
             side_effect=subprocess.CalledProcessError(1, "salloc"),
         ):
             result = allocate_nodes(nodes=1, cores=2)
@@ -1206,10 +1260,13 @@ def test_node_allocation_timeout_handling():
 
 def test_node_allocation_recent_allocation_parsing():
     """Test _get_recent_allocation_id with various output formats (lines 228-239)."""
-    from implementation.node_allocation import _get_recent_allocation_id
+    from slurm_mcp.implementation.node_allocation import _get_recent_allocation_id
 
-    with patch("implementation.node_allocation.subprocess.run") as mock_run:
-        with patch("implementation.node_allocation.os.getenv", return_value="testuser"):
+    with patch("slurm_mcp.implementation.node_allocation.subprocess.run") as mock_run:
+        with patch(
+            "slurm_mcp.implementation.node_allocation.os.getenv",
+            return_value="testuser",
+        ):
             # Test successful parsing
             mock_run.return_value = Mock(
                 returncode=0,
@@ -1244,7 +1301,7 @@ def test_node_allocation_recent_allocation_parsing():
 
 def test_node_allocation_salloc_output_parsing():
     """Test _parse_salloc_output with different formats (lines 265-266, 271-274)."""
-    from implementation.node_allocation import _parse_salloc_output
+    from slurm_mcp.implementation.node_allocation import _parse_salloc_output
 
     # Test various salloc output formats
     test_outputs = [
@@ -1263,9 +1320,9 @@ def test_node_allocation_salloc_output_parsing():
 
 def test_node_allocation_get_allocation_nodes():
     """Test _get_allocation_nodes with various scenarios (lines 300-301)."""
-    from implementation.node_allocation import _get_allocation_nodes
+    from slurm_mcp.implementation.node_allocation import _get_allocation_nodes
 
-    with patch("implementation.node_allocation.subprocess.run") as mock_run:
+    with patch("slurm_mcp.implementation.node_allocation.subprocess.run") as mock_run:
         # Test successful node query
         mock_run.return_value = Mock(returncode=0, stdout="node01,node02", stderr="")
         result = _get_allocation_nodes("12345")
@@ -1284,14 +1341,15 @@ def test_node_allocation_get_allocation_nodes():
 
 def test_node_allocation_deallocate_error_handling():
     """Test deallocate error handling (line 369)."""
-    from implementation.node_allocation import deallocate_nodes
+    from slurm_mcp.implementation.node_allocation import deallocate_nodes
 
     with patch(
-        "implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         # Test subprocess error in deallocation
         with patch(
-            "implementation.node_allocation.subprocess.run",
+            "slurm_mcp.implementation.node_allocation.subprocess.run",
             side_effect=Exception("Deallocation failed"),
         ):
             result = deallocate_nodes("12345")
@@ -1301,14 +1359,15 @@ def test_node_allocation_deallocate_error_handling():
 
 def test_node_allocation_status_error_handling():
     """Test allocation status error handling (line 426)."""
-    from implementation.node_allocation import get_allocation_status
+    from slurm_mcp.implementation.node_allocation import get_allocation_status
 
     with patch(
-        "implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         # Test subprocess error in status check
         with patch(
-            "implementation.node_allocation.subprocess.run",
+            "slurm_mcp.implementation.node_allocation.subprocess.run",
             side_effect=Exception("Status check failed"),
         ):
             result = get_allocation_status("12345")
@@ -1318,7 +1377,7 @@ def test_node_allocation_status_error_handling():
 
 def test_node_allocation_expand_node_list_edge_cases():
     """Test _expand_node_list with complex scenarios (lines 436-438)."""
-    from implementation.node_allocation import _expand_node_list
+    from slurm_mcp.implementation.node_allocation import _expand_node_list
 
     # Test various node list formats
     test_cases = [
@@ -1339,11 +1398,11 @@ def test_node_allocation_expand_node_list_edge_cases():
 
 def test_node_allocation_edge_cases():
     """Test various edge cases in node allocation (lines 454-455, 490-491)."""
-    from implementation.node_allocation import _get_recent_allocation_id
+    from slurm_mcp.implementation.node_allocation import _get_recent_allocation_id
 
     # Test with missing environment variable
-    with patch("implementation.node_allocation.os.getenv", return_value=None):
-        with patch("implementation.node_allocation.subprocess.run"):
+    with patch("slurm_mcp.implementation.node_allocation.os.getenv", return_value=None):
+        with patch("slurm_mcp.implementation.node_allocation.subprocess.run"):
             result = _get_recent_allocation_id()
             # Should handle None user gracefully
             assert result is None or isinstance(result, str)
@@ -1352,7 +1411,7 @@ def test_node_allocation_edge_cases():
     import subprocess
 
     with patch(
-        "implementation.node_allocation.subprocess.run",
+        "slurm_mcp.implementation.node_allocation.subprocess.run",
         side_effect=subprocess.TimeoutExpired("squeue", 5),
     ):
         result = _get_recent_allocation_id()
@@ -1366,7 +1425,7 @@ def test_node_allocation_edge_cases():
 
 def test_server_enhanced_coverage():
     """Enhanced tests for server.py missing lines to improve coverage."""
-    import server
+    import slurm_mcp.server as server
 
     # Test argument parsing with custom host (line 881)
     with patch(
@@ -1374,40 +1433,39 @@ def test_server_enhanced_coverage():
         [
             "slurm-mcp",
             "--transport",
-            "sse",
+            "http",
             "--host",
             "custom.host.com",
             "--port",
             "9001",
         ],
     ):
-        with patch("server.mcp.run") as mock_run:
+        with patch.object(server.mcp, "run") as mock_run:
             with patch("builtins.print"):
                 try:
                     server.main()
                 except SystemExit:
                     pass
                 mock_run.assert_called_with(
-                    transport="sse", host="custom.host.com", port=9001
+                    transport="http", host="custom.host.com", port=9001
                 )
 
 
 def test_server_error_exception_handling():
-    """Test server exception handling in main (line 937)."""
-    import server
+    """Test server exception handling in main - exceptions propagate from main()."""
+    import pytest
+    import slurm_mcp.server as server
 
-    # Test main function with server run exception
-    with patch("sys.argv", ["slurm-mcp"]):
-        with patch("server.mcp.run", side_effect=KeyboardInterrupt("User interrupted")):
-            with patch("builtins.print") as mock_print:
-                with patch("sys.exit") as mock_exit:
-                    try:
-                        server.main()
-                    except (SystemExit, KeyboardInterrupt):
-                        pass
-
-                    # Verify error handling was triggered
-                    assert mock_print.called or mock_exit.called
+    # Test main function with server run exception - KeyboardInterrupt propagates
+    with (
+        patch("sys.argv", ["slurm-mcp"]),
+        patch(
+            "slurm_mcp.server.mcp.run",
+            side_effect=KeyboardInterrupt("User interrupted"),
+        ),
+    ):
+        with pytest.raises(KeyboardInterrupt):
+            server.main()
 
 
 def test_server_dotenv_import_failure():
@@ -1415,11 +1473,11 @@ def test_server_dotenv_import_failure():
     # Test the case where dotenv is not available
     with patch.dict("sys.modules", {"dotenv": None}):
         # Delete server from modules to force re-import
-        if "server" in sys.modules:
-            del sys.modules["server"]
+        if "slurm_mcp.server" in sys.modules:
+            del sys.modules["slurm_mcp.server"]
 
         # This should trigger the dotenv ImportError handling
-        import server
+        import slurm_mcp.server as server
 
         # Server should still work without dotenv
         assert hasattr(server, "mcp")
@@ -1428,7 +1486,7 @@ def test_server_dotenv_import_failure():
 
 def test_server_comprehensive_tool_coverage():
     """Test comprehensive tool coverage for server.py."""
-    import server
+    import slurm_mcp.server as server
 
     # Test that all async tool functions are properly wrapped
     async_tools = [
@@ -1459,7 +1517,7 @@ def test_server_fastmcp_import_failure():
     """Test server behavior when FastMCP import fails."""
     # This is harder to test since the server exits on import failure
     # But we can verify the import error handling exists
-    import server
+    import slurm_mcp.server as server
 
     # Just verify that FastMCP was imported successfully in our case
     assert hasattr(server, "FastMCP")

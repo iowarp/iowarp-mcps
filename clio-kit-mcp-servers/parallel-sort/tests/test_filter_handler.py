@@ -5,7 +5,7 @@ Tests for filter handler functionality.
 import pytest
 import tempfile
 import os
-from implementation.filter_handler import (
+from parallel_sort_mcp.implementation.filter_handler import (
     filter_logs,
     filter_by_time_range,
     filter_by_log_level,

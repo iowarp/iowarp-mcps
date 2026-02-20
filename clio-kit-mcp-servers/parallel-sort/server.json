@@ -1,0 +1,87 @@
+{
+  "name": "io.github.iowarp/parallel-sort-mcp",
+  "description": "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis",
+  "version": "1.0.0",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "package": {
+    "registry_name": "pypi",
+    "name": "clio-kit",
+    "command_arguments": [
+      "clio-kit",
+      "parallel-sort"
+    ]
+  },
+  "tools": [
+    {
+      "name": "sort_log_by_timestamp",
+      "description": "Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format."
+    },
+    {
+      "name": "parallel_sort_large_file",
+      "description": "Sort large log files using parallel processing with chunked approach."
+    },
+    {
+      "name": "analyze_log_statistics",
+      "description": "Generate statistics for log files including temporal patterns and log levels."
+    },
+    {
+      "name": "detect_log_patterns",
+      "description": "Detect patterns in log files including anomalies and error clusters."
+    },
+    {
+      "name": "filter_logs",
+      "description": "Filter log entries based on multiple conditions with logical operations."
+    },
+    {
+      "name": "filter_by_time_range",
+      "description": "Filter log entries by time range using start and end timestamps."
+    },
+    {
+      "name": "filter_by_log_level",
+      "description": "Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.)."
+    },
+    {
+      "name": "filter_by_keyword",
+      "description": "Filter log entries by keywords with support for multiple keywords and logical operations."
+    },
+    {
+      "name": "apply_filter_preset",
+      "description": "Apply predefined filter presets like 'errors_only' or 'connection_issues'."
+    },
+    {
+      "name": "export_to_json",
+      "description": "Export log processing results to JSON format."
+    },
+    {
+      "name": "export_to_csv",
+      "description": "Export log entries to CSV format with structured columns."
+    },
+    {
+      "name": "export_to_text",
+      "description": "Export log entries to plain text format."
+    },
+    {
+      "name": "generate_summary_report",
+      "description": "Generate a summary report of log processing results with statistics."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "parallel-sort://capabilities",
+      "name": "sort_capabilities",
+      "description": "Parallel sort algorithms and configuration options."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "sort_large_file",
+      "description": "Guided workflow for sorting a large file with optimal settings."
+    }
+  ],
+  "tags": [
+    "log-processing",
+    "sorting",
+    "large-files",
+    "hpc"
+  ]
+}

@@ -7,12 +7,8 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-import sys
 
-# Add the parent directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.memory_optimization import (
+from pandas_mcp.implementation.memory_optimization import (
     optimize_memory_usage,
     analyze_chunked_processing,
     get_memory_recommendations,

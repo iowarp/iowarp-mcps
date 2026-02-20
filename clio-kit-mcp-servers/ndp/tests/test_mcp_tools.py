@@ -1,13 +1,7 @@
 """Tests for MCP integration and basic functionality."""
 
-# Import the server module
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import server
-from server import Dataset
+from ndp_mcp import server
+from ndp_mcp.server import Dataset
 
 
 class TestServerBasics:
@@ -15,7 +9,7 @@ class TestServerBasics:
 
     def test_server_name(self):
         """Test that the server has the correct name."""
-        assert server.mcp.name == "NDPServer"
+        assert server.mcp.name == "ndp"
 
     def test_dataset_model_validation(self):
         """Test Dataset pydantic model validation."""

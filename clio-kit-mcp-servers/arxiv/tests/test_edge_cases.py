@@ -4,22 +4,17 @@ Consolidates error handling scenarios, exception paths, and edge cases.
 """
 
 import pytest
-import sys
-import os
 from unittest.mock import patch, AsyncMock, Mock
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import mcp_handlers
-from capabilities.date_search import search_date_range
-from capabilities.export_utils import format_paper_summary, export_to_bibtex
-from capabilities.download_paper import (
+from arxiv_mcp import mcp_handlers
+from arxiv_mcp.capabilities.date_search import search_date_range
+from arxiv_mcp.capabilities.export_utils import format_paper_summary, export_to_bibtex
+from arxiv_mcp.capabilities.download_paper import (
     download_paper_pdf,
     get_pdf_url,
     download_multiple_pdfs,
 )
-from capabilities.paper_details import get_paper_details, find_similar_papers
+from arxiv_mcp.capabilities.paper_details import get_paper_details, find_similar_papers
 
 
 class TestEdgeCases:
@@ -30,7 +25,9 @@ class TestEdgeCases:
         """Test all error handling paths in download_paper.py."""
 
         # Test different exception scenarios to hit error lines 32, 39, 84, 86-87, 107, 137, 165
-        with patch("capabilities.download_paper.httpx.AsyncClient") as mock_client:
+        with patch(
+            "arxiv_mcp.capabilities.download_paper.httpx.AsyncClient"
+        ) as mock_client:
             # Scenario 1: Connection error in download_paper_pdf
             mock_context = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_context
@@ -97,7 +94,9 @@ class TestEdgeCases:
     async def test_paper_details_error_handling(self):
         """Test paper_details.py error handling lines 42, 54, 61, 99."""
 
-        with patch("capabilities.paper_details.execute_arxiv_query") as mock_query:
+        with patch(
+            "arxiv_mcp.capabilities.paper_details.execute_arxiv_query"
+        ) as mock_query:
             # Test different exception types to hit all error handling branches (reduced for speed)
             error_scenarios = [
                 Exception("Base exception"),
@@ -167,7 +166,7 @@ class TestEdgeCases:
     async def test_export_bibtex_error_handling(self):
         """Test export_to_bibtex error handling."""
 
-        with patch("capabilities.export_utils.generate_bibtex") as mock_gen:
+        with patch("arxiv_mcp.capabilities.export_utils.generate_bibtex") as mock_gen:
             # Test with different error scenarios
             error_scenarios = [
                 Exception("BibTeX generation failed"),
@@ -221,7 +220,9 @@ class TestEdgeCases:
     async def test_date_search_edge_cases(self):
         """Test date_search.py edge cases and line 34 coverage."""
 
-        with patch("capabilities.date_search.execute_arxiv_query") as mock_query:
+        with patch(
+            "arxiv_mcp.capabilities.date_search.execute_arxiv_query"
+        ) as mock_query:
             mock_query.return_value = {"papers": [], "count": 0}
 
             # Test edge cases for date range search
@@ -266,7 +267,9 @@ class TestEdgeCases:
 
         for error_class, error_message in error_types:
             # Test download_paper module
-            with patch("capabilities.download_paper.httpx.AsyncClient") as mock_client:
+            with patch(
+                "arxiv_mcp.capabilities.download_paper.httpx.AsyncClient"
+            ) as mock_client:
                 mock_client.side_effect = error_class(error_message)
 
                 try:
@@ -280,7 +283,9 @@ class TestEdgeCases:
                     pass
 
             # Test paper_details module
-            with patch("capabilities.paper_details.execute_arxiv_query") as mock_query:
+            with patch(
+                "arxiv_mcp.capabilities.paper_details.execute_arxiv_query"
+            ) as mock_query:
                 mock_query.side_effect = error_class(error_message)
 
                 try:

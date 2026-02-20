@@ -1,0 +1,9 @@
+{
+  "clio-compression": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "compression"
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "clio-ndp",
+  "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances",
+  "version": "1.0.0"
+}
