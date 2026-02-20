@@ -291,7 +291,11 @@ async def test_module_spider_tool():
 @pytest.mark.asyncio
 async def test_module_spider_tool_error():
     """Test module_spider tool raises ToolError on failure."""
-    mock_result = {"success": False, "error": "Failed to run spider search", "modules": []}
+    mock_result = {
+        "success": False,
+        "error": "Failed to run spider search",
+        "modules": [],
+    }
 
     with patch(
         "lmod_mcp.server.lmod_handler.spider_search", new_callable=AsyncMock
@@ -425,9 +429,7 @@ def test_main_function():
     ):
         server.main()
 
-        mock_mcp_run.assert_called_once_with(
-            transport="stdio"
-        )
+        mock_mcp_run.assert_called_once_with(transport="stdio")
 
 
 def test_main_module_execution():

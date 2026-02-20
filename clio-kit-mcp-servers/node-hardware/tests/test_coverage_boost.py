@@ -4,7 +4,6 @@ Targets uncovered lines in server.py, mcp_handlers.py, and output_formatter.py
 Updated for FastMCP v3 (ToolError instead of error dicts, direct function calls).
 """
 
-import os
 import json
 import pytest
 from unittest.mock import patch
@@ -279,9 +278,7 @@ class TestServerMainFunction:
         """Test main function with HTTP transport and default values"""
         from node_hardware_mcp import server
 
-        with patch(
-            "sys.argv", ["node-hardware-mcp", "--transport", "http"]
-        ):
+        with patch("sys.argv", ["node-hardware-mcp", "--transport", "http"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(

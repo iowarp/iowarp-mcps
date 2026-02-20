@@ -7,7 +7,6 @@ import pytest
 import asyncio
 import os
 from unittest.mock import patch, AsyncMock, MagicMock
-import sys
 
 from fastmcp.exceptions import ToolError
 
@@ -44,7 +43,18 @@ class TestArxivMCPServer:
         """Test that main function runs the MCP server with HTTP transport."""
         mock_mcp.run = MagicMock()
 
-        with patch("sys.argv", ["arxiv-mcp", "--transport", "http", "--host", "localhost", "--port", "8080"]):
+        with patch(
+            "sys.argv",
+            [
+                "arxiv-mcp",
+                "--transport",
+                "http",
+                "--host",
+                "localhost",
+                "--port",
+                "8080",
+            ],
+        ):
             server.main()
 
         # Verify mcp.run was called with HTTP parameters
@@ -115,7 +125,18 @@ class TestArxivMCPServer:
         """Test that HTTP transport is selected correctly."""
         with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run = MagicMock()
-            with patch("sys.argv", ["arxiv-mcp", "--transport", "http", "--host", "test.host", "--port", "9999"]):
+            with patch(
+                "sys.argv",
+                [
+                    "arxiv-mcp",
+                    "--transport",
+                    "http",
+                    "--host",
+                    "test.host",
+                    "--port",
+                    "9999",
+                ],
+            ):
                 server.main()
             mock_mcp.run.assert_called_with(
                 transport="http", host="test.host", port=9999
@@ -227,9 +248,7 @@ class TestArxivMCPServer:
         assert result == {"papers": []}
         mock_handler.assert_called_once_with("Test Author", 10)
         # Verify logging was called
-        mock_logger.info.assert_called_with(
-            "Searching papers by author: Test Author"
-        )
+        mock_logger.info.assert_called_with("Searching papers by author: Test Author")
 
     @pytest.mark.asyncio
     @patch("arxiv_mcp.server.mcp_handlers.search_by_title_handler")
@@ -327,9 +346,7 @@ class TestArxivMCPServer:
         assert result == {"similar_papers": []}
         mock_handler.assert_called_once_with("2023.12345", 5)
         # Verify logging was called
-        mock_logger.info.assert_called_with(
-            "Finding papers similar to: 2023.12345"
-        )
+        mock_logger.info.assert_called_with("Finding papers similar to: 2023.12345")
 
     @pytest.mark.asyncio
     @patch("arxiv_mcp.server.mcp_handlers.export_to_bibtex_handler")
@@ -389,7 +406,9 @@ class TestArxivMCPServer:
         assert result == {"status": "success"}
         mock_handler.assert_called_once_with('["2023.12345"]', "/tmp", 3)
         # Verify logging was called
-        mock_logger.info.assert_called_with("Downloading multiple PDFs with max_concurrent: 3")
+        mock_logger.info.assert_called_with(
+            "Downloading multiple PDFs with max_concurrent: 3"
+        )
 
     @patch("arxiv_mcp.server.main")
     def test_main_name_block(self, mock_main):
@@ -785,7 +804,18 @@ if __name__ == "__main__":
         # Test port parsing via argparse
         with patch("arxiv_mcp.server.mcp") as mock_mcp:
             mock_mcp.run = MagicMock()
-            with patch("sys.argv", ["arxiv-mcp", "--transport", "http", "--host", "localhost", "--port", "8080"]):
+            with patch(
+                "sys.argv",
+                [
+                    "arxiv-mcp",
+                    "--transport",
+                    "http",
+                    "--host",
+                    "localhost",
+                    "--port",
+                    "8080",
+                ],
+            ):
                 server.main()
                 mock_mcp.run.assert_called_with(
                     transport="http", host="localhost", port=8080

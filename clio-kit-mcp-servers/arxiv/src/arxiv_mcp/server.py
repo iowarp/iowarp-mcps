@@ -111,7 +111,9 @@ async def search_by_abstract_tool(
     """Search ArXiv papers by abstract keywords."""
     logger.info(f"Searching papers by abstract: {abstract_keywords}")
     try:
-        return await mcp_handlers.search_by_abstract_handler(abstract_keywords, max_results)
+        return await mcp_handlers.search_by_abstract_handler(
+            abstract_keywords, max_results
+        )
     except Exception as e:
         raise ToolError(str(e)) from e
 
@@ -288,11 +290,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

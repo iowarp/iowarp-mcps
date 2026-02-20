@@ -7,7 +7,6 @@ Provides log file sorting capabilities by timestamp.
 import os
 from typing import Optional
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 from dotenv import load_dotenv
 import logging
@@ -58,7 +57,11 @@ def sort_large_file(file_path: str) -> list[Message]:
 @mcp.tool(
     name="sort_log_by_timestamp",
     description="Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def sort_log_tool(
@@ -81,7 +84,11 @@ async def sort_log_tool(
 @mcp.tool(
     name="parallel_sort_large_file",
     description="Sort large log files using parallel processing with chunked approach.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def parallel_sort_tool(
@@ -110,7 +117,11 @@ async def parallel_sort_tool(
 @mcp.tool(
     name="analyze_log_statistics",
     description="Generate statistics for log files including temporal patterns and log levels.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"sort", "monitoring"},
 )
 async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) -> dict:
@@ -130,7 +141,11 @@ async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) 
 @mcp.tool(
     name="detect_log_patterns",
     description="Detect patterns in log files including anomalies and error clusters.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"sort", "monitoring"},
 )
 async def detect_patterns_tool(
@@ -157,7 +172,11 @@ async def detect_patterns_tool(
 @mcp.tool(
     name="filter_logs",
     description="Filter log entries based on multiple conditions with logical operations.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def filter_logs_tool(
@@ -186,7 +205,11 @@ async def filter_logs_tool(
 @mcp.tool(
     name="filter_by_time_range",
     description="Filter log entries by time range using start and end timestamps.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def filter_time_range_tool(
@@ -212,7 +235,11 @@ async def filter_time_range_tool(
 @mcp.tool(
     name="filter_by_log_level",
     description="Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def filter_level_tool(
@@ -235,7 +262,11 @@ async def filter_level_tool(
 @mcp.tool(
     name="filter_by_keyword",
     description="Filter log entries by keywords with support for multiple keywords and logical operations.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def filter_keyword_tool(
@@ -266,7 +297,11 @@ async def filter_keyword_tool(
 @mcp.tool(
     name="apply_filter_preset",
     description="Apply predefined filter presets like 'errors_only' or 'connection_issues'.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"sort", "execution"},
 )
 async def filter_preset_tool(
@@ -289,7 +324,11 @@ async def filter_preset_tool(
 @mcp.tool(
     name="export_to_json",
     description="Export log processing results to JSON format.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"sort", "configuration"},
 )
 async def export_json_tool(data: dict, include_metadata: bool = True) -> dict:
@@ -309,7 +348,11 @@ async def export_json_tool(data: dict, include_metadata: bool = True) -> dict:
 @mcp.tool(
     name="export_to_csv",
     description="Export log entries to CSV format with structured columns.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"sort", "configuration"},
 )
 async def export_csv_tool(data: dict, include_headers: bool = True) -> dict:
@@ -329,7 +372,11 @@ async def export_csv_tool(data: dict, include_headers: bool = True) -> dict:
 @mcp.tool(
     name="export_to_text",
     description="Export log entries to plain text format.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"sort", "configuration"},
 )
 async def export_text_tool(data: dict, include_summary: bool = True) -> dict:
@@ -349,7 +396,11 @@ async def export_text_tool(data: dict, include_summary: bool = True) -> dict:
 @mcp.tool(
     name="generate_summary_report",
     description="Generate a summary report of log processing results with statistics.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"sort", "monitoring"},
 )
 async def summary_report_tool(data: dict) -> dict:
@@ -376,11 +427,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

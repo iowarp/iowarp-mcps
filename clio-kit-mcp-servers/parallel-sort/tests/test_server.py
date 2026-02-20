@@ -33,4 +33,6 @@ class TestServer:
     def test_server_has_instructions(self):
         """Test that the server has instructions configured."""
         assert mcp.instructions is not None
-        assert "parallel" in mcp.instructions.lower() or "sort" in mcp.instructions.lower()
+        assert (
+            "parallel" in mcp.instructions.lower() or "sort" in mcp.instructions.lower()
+        )

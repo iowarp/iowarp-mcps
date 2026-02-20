@@ -69,7 +69,11 @@ def create_pipeline_workflow(name: str) -> list[Message]:
 @mcp.tool(
     name="update_pipeline",
     description="Re-apply environment and configuration to every package in a pipeline.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def update_pipeline_tool(pipeline_id: str) -> dict:
@@ -80,7 +84,11 @@ async def update_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="build_pipeline_env",
     description="Rebuild a pipeline's env.yaml, capturing CMAKE_PREFIX_PATH and PATH.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def build_pipeline_env_tool(pipeline_id: str) -> dict:
@@ -91,7 +99,11 @@ async def build_pipeline_env_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="create_pipeline",
     description="Create a new Jarvis-CD pipeline environment.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def create_pipeline_tool(pipeline_id: str) -> dict:
@@ -102,7 +114,11 @@ async def create_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="load_pipeline",
     description="Load an existing Jarvis-CD pipeline environment.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
@@ -113,7 +129,11 @@ async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
 @mcp.tool(
     name="get_pkg_config",
     description="Retrieve the configuration of a specific package in a pipeline.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
@@ -124,7 +144,11 @@ async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
 @mcp.tool(
     name="append_pkg",
     description="Append a package to a Jarvis-CD pipeline.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def append_pkg_tool(
@@ -147,7 +171,11 @@ async def append_pkg_tool(
 @mcp.tool(
     name="configure_pkg",
     description="Configure a package in a Jarvis-CD pipeline.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def configure_pkg_tool(
@@ -160,7 +188,11 @@ async def configure_pkg_tool(
 @mcp.tool(
     name="unlink_pkg",
     description="Unlink a package from a pipeline (preserve files).",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
@@ -171,7 +203,11 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 @mcp.tool(
     name="remove_pkg",
     description="Remove a package entirely from a pipeline.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
@@ -182,7 +218,11 @@ async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 @mcp.tool(
     name="run_pipeline",
     description="Execute a Jarvis-CD pipeline end-to-end.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def run_pipeline_tool(pipeline_id: str) -> dict:
@@ -193,7 +233,11 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="destroy_pipeline",
     description="Destroy a pipeline environment and clean up files.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "pipeline"},
 )
 async def destroy_pipeline_tool(pipeline_id: str) -> dict:
@@ -204,7 +248,11 @@ async def destroy_pipeline_tool(pipeline_id: str) -> dict:
 @mcp.tool(
     name="jm_create_config",
     description="Initialize JarvisManager config directories.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "management"},
 )
 def jm_create_config(
@@ -222,7 +270,11 @@ def jm_create_config(
 @mcp.tool(
     name="jm_load_config",
     description="Load existing JarvisManager configuration.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_load_config() -> list:
@@ -237,7 +289,11 @@ def jm_load_config() -> list:
 @mcp.tool(
     name="jm_save_config",
     description="Save current JarvisManager configuration.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_save_config() -> list:
@@ -252,7 +308,11 @@ def jm_save_config() -> list:
 @mcp.tool(
     name="jm_set_hostfile",
     description="Set hostfile path for JarvisManager.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_set_hostfile(path: str) -> list:
@@ -268,7 +328,11 @@ def jm_set_hostfile(path: str) -> list:
 @mcp.tool(
     name="jm_bootstrap_from",
     description="Bootstrap Jarvis config from a machine template.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "management"},
 )
 def jm_bootstrap_from(machine: str) -> list:
@@ -283,7 +347,11 @@ def jm_bootstrap_from(machine: str) -> list:
 @mcp.tool(
     name="jm_bootstrap_list",
     description="List available bootstrap machine templates.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_bootstrap_list() -> list:
@@ -297,7 +365,11 @@ def jm_bootstrap_list() -> list:
 @mcp.tool(
     name="jm_reset",
     description="Reset JarvisManager (destroy all pipelines and data).",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_reset() -> list:
@@ -312,7 +384,11 @@ def jm_reset() -> list:
 @mcp.tool(
     name="jm_list_pipelines",
     description="List all existing Jarvis pipelines.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "monitoring"},
 )
 def jm_list_pipelines() -> list:
@@ -326,7 +402,11 @@ def jm_list_pipelines() -> list:
 @mcp.tool(
     name="jm_cd",
     description="Change current Jarvis pipeline context.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_cd(pipeline_id: str) -> list:
@@ -342,7 +422,11 @@ def jm_cd(pipeline_id: str) -> list:
 @mcp.tool(
     name="jm_list_repos",
     description="List all Jarvis repositories.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "monitoring"},
 )
 def jm_list_repos() -> list:
@@ -356,7 +440,11 @@ def jm_list_repos() -> list:
 @mcp.tool(
     name="jm_add_repo",
     description="Add a repository to JarvisManager.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "management"},
 )
 def jm_add_repo(path: str, force: bool = False) -> list:
@@ -372,7 +460,11 @@ def jm_add_repo(path: str, force: bool = False) -> list:
 @mcp.tool(
     name="jm_remove_repo",
     description="Remove a repository from JarvisManager.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_remove_repo(repo_name: str) -> list:
@@ -388,7 +480,11 @@ def jm_remove_repo(repo_name: str) -> list:
 @mcp.tool(
     name="jm_promote_repo",
     description="Promote a repository in JarvisManager.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "management"},
 )
 def jm_promote_repo(repo_name: str) -> list:
@@ -404,7 +500,11 @@ def jm_promote_repo(repo_name: str) -> list:
 @mcp.tool(
     name="jm_get_repo",
     description="Get repository info from JarvisManager.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "monitoring"},
 )
 def jm_get_repo(repo_name: str) -> list:
@@ -418,7 +518,11 @@ def jm_get_repo(repo_name: str) -> list:
 @mcp.tool(
     name="jm_construct_pkg",
     description="Construct a package skeleton in JarvisManager.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 def jm_construct_pkg(pkg_type: str) -> list:
@@ -433,7 +537,11 @@ def jm_construct_pkg(pkg_type: str) -> list:
 @mcp.tool(
     name="jm_graph_show",
     description="Print the current resource graph frames.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jarvis", "monitoring"},
 )
 def jm_graph_show() -> list:
@@ -448,7 +556,11 @@ def jm_graph_show() -> list:
 @mcp.tool(
     name="jm_graph_build",
     description="Build or rebuild the resource graph with a net sleep interval.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 def jm_graph_build(net_sleep: float) -> list:
@@ -463,7 +575,11 @@ def jm_graph_build(net_sleep: float) -> list:
 @mcp.tool(
     name="jm_graph_modify",
     description="Modify the resource graph using a net sleep interval.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jarvis", "pipeline"},
 )
 def jm_graph_modify(net_sleep: float) -> list:
@@ -478,6 +594,7 @@ def jm_graph_modify(net_sleep: float) -> list:
 def main() -> None:
     """Main entry point for the Jarvis MCP server."""
     import argparse
+
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http"], default=None)
     parser.add_argument("--host", default="0.0.0.0")
@@ -485,11 +602,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

@@ -84,9 +84,7 @@ class TestDirectModuleCoverage:
                 )
 
         # Test with HTTP transport and default host/port
-        with patch(
-            "sys.argv", ["node-hardware-mcp", "--transport", "http"]
-        ):
+        with patch("sys.argv", ["node-hardware-mcp", "--transport", "http"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
                 mock_run.assert_called_once_with(
@@ -255,7 +253,8 @@ class TestDirectModuleCoverage:
 
         # Test memory handler with exception
         with patch(
-            "node_hardware_mcp.mcp_handlers.get_memory_info", side_effect=MemoryError("Memory error")
+            "node_hardware_mcp.mcp_handlers.get_memory_info",
+            side_effect=MemoryError("Memory error"),
         ):
             result = mcp_handlers.memory_info_handler()
             assert isinstance(result, dict)
@@ -297,7 +296,8 @@ class TestDirectModuleCoverage:
 
         # Test get_node_info_handler with errors
         with patch(
-            "node_hardware_mcp.mcp_handlers.get_node_info", side_effect=Exception("Node info error")
+            "node_hardware_mcp.mcp_handlers.get_node_info",
+            side_effect=Exception("Node info error"),
         ):
             result = mcp_handlers.get_node_info_handler()
             assert isinstance(result, dict)
@@ -340,7 +340,8 @@ class TestDirectModuleCoverage:
 
         # Test get_remote_node_info_handler with timeout errors
         with patch(
-            "node_hardware_mcp.mcp_handlers.get_remote_node_info", side_effect=TimeoutError("SSH timeout")
+            "node_hardware_mcp.mcp_handlers.get_remote_node_info",
+            side_effect=TimeoutError("SSH timeout"),
         ):
             result = mcp_handlers.get_remote_node_info_handler(
                 hostname="slow-server.com", timeout=1
@@ -393,7 +394,8 @@ class TestDirectModuleCoverage:
 
         # Test with network connectivity issues
         with patch(
-            "node_hardware_mcp.mcp_handlers.get_network_info", side_effect=OSError("Network unreachable")
+            "node_hardware_mcp.mcp_handlers.get_network_info",
+            side_effect=OSError("Network unreachable"),
         ):
             result = mcp_handlers.network_info_handler()
             assert isinstance(result, dict)
@@ -791,7 +793,8 @@ class TestOutputFormatterExtensiveCoverage:
 
         # Test with network interface errors
         with patch(
-            "node_hardware_mcp.mcp_handlers.get_network_info", side_effect=OSError("Interface down")
+            "node_hardware_mcp.mcp_handlers.get_network_info",
+            side_effect=OSError("Interface down"),
         ):
             result = mcp_handlers.network_info_handler()
             assert isinstance(result, dict)

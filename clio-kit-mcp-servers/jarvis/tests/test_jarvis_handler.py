@@ -370,7 +370,9 @@ class TestErrorHandling:
         """Test that HTTPExceptions are preserved and re-raised."""
         original_exception = HTTPException(status_code=404, detail="Not found")
 
-        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline_class:
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline"
+        ) as mock_pipeline_class:
             mock_pipeline_instance = Mock()
             mock_pipeline_class.return_value = mock_pipeline_instance
             mock_pipeline_instance.load.side_effect = original_exception

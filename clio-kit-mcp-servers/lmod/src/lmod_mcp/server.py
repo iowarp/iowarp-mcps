@@ -36,7 +36,11 @@ mcp: FastMCP = FastMCP(
 @mcp.tool(
     name="module_list",
     description="List all currently loaded environment modules.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"modules", "query"},
 )
 async def module_list_tool() -> dict:
@@ -50,7 +54,11 @@ async def module_list_tool() -> dict:
 @mcp.tool(
     name="module_avail",
     description="Search for available modules, optionally filtered by name pattern.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"modules", "query"},
 )
 async def module_avail_tool(pattern: Optional[str] = None) -> dict:
@@ -64,7 +72,11 @@ async def module_avail_tool(pattern: Optional[str] = None) -> dict:
 @mcp.tool(
     name="module_show",
     description="Display detailed information about a specific module.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"modules", "query"},
 )
 async def module_show_tool(module_name: str) -> dict:
@@ -78,7 +90,11 @@ async def module_show_tool(module_name: str) -> dict:
 @mcp.tool(
     name="module_load",
     description="Load one or more environment modules into the current session.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"modules", "management"},
 )
 async def module_load_tool(modules: list[str]) -> dict:
@@ -94,7 +110,11 @@ async def module_load_tool(modules: list[str]) -> dict:
 @mcp.tool(
     name="module_unload",
     description="Unload one or more currently loaded modules from the environment.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"modules", "management"},
 )
 async def module_unload_tool(modules: list[str]) -> dict:
@@ -110,21 +130,31 @@ async def module_unload_tool(modules: list[str]) -> dict:
 @mcp.tool(
     name="module_swap",
     description="Swap one module for another atomically.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"modules", "management"},
 )
 async def module_swap_tool(old_module: str, new_module: str) -> dict:
     """Swap one module for another, useful for switching versions."""
     result = await lmod_handler.swap_modules(old_module, new_module)
     if not result.get("success"):
-        raise ToolError(result.get("error", f"Failed to swap {old_module} with {new_module}"))
+        raise ToolError(
+            result.get("error", f"Failed to swap {old_module} with {new_module}")
+        )
     return result
 
 
 @mcp.tool(
     name="module_spider",
     description="Search the entire module tree comprehensively for matching modules.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"modules", "query"},
 )
 async def module_spider_tool(pattern: Optional[str] = None) -> dict:
@@ -138,35 +168,51 @@ async def module_spider_tool(pattern: Optional[str] = None) -> dict:
 @mcp.tool(
     name="module_save",
     description="Save currently loaded modules as a named collection.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"modules", "management"},
 )
 async def module_save_tool(collection_name: str) -> dict:
     """Save the current module set as a named collection for later restoration."""
     result = await lmod_handler.save_module_collection(collection_name)
     if not result.get("success"):
-        raise ToolError(result.get("error", f"Failed to save collection {collection_name}"))
+        raise ToolError(
+            result.get("error", f"Failed to save collection {collection_name}")
+        )
     return result
 
 
 @mcp.tool(
     name="module_restore",
     description="Restore a previously saved module collection.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"modules", "management"},
 )
 async def module_restore_tool(collection_name: str) -> dict:
     """Restore a saved module collection, loading all its modules."""
     result = await lmod_handler.restore_module_collection(collection_name)
     if not result.get("success"):
-        raise ToolError(result.get("error", f"Failed to restore collection {collection_name}"))
+        raise ToolError(
+            result.get("error", f"Failed to restore collection {collection_name}")
+        )
     return result
 
 
 @mcp.tool(
     name="module_savelist",
     description="List all saved module collections.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"modules", "query"},
 )
 async def module_savelist_tool() -> dict:
@@ -183,7 +229,16 @@ def module_system_status() -> dict:
     return {
         "system": "lmod",
         "description": "Environment module system for HPC",
-        "operations": ["list", "avail", "load", "unload", "swap", "save", "restore", "spider"],
+        "operations": [
+            "list",
+            "avail",
+            "load",
+            "unload",
+            "swap",
+            "save",
+            "restore",
+            "spider",
+        ],
     }
 
 
@@ -210,11 +265,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

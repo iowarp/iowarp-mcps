@@ -23,6 +23,7 @@ def _check_error(result: str) -> str:
         pass
     return result
 
+
 mcp = FastMCP(
     "parquet",
     instructions=(
@@ -35,7 +36,11 @@ mcp = FastMCP(
 
 @mcp.tool(
     description="Return Parquet schema, row count, and file size.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"parquet", "data-analysis"},
 )
 async def summarize_tool(file_path: str) -> str:
@@ -52,7 +57,11 @@ async def summarize_tool(file_path: str) -> str:
 
 @mcp.tool(
     description="Read a row slice from a Parquet file with optional column projection and filtering.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"parquet", "data-analysis"},
 )
 async def read_slice_tool(
@@ -75,12 +84,18 @@ async def read_slice_tool(
     Returns:
         JSON string with status, schema, data, and shape information
     """
-    return _check_error(await read_slice(file_path, start_row, end_row, columns, filter_json))
+    return _check_error(
+        await read_slice(file_path, start_row, end_row, columns, filter_json)
+    )
 
 
 @mcp.tool(
     description="Preview values from a specific column with pagination.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"parquet", "data-analysis"},
 )
 async def get_column_preview_tool(
@@ -97,12 +112,18 @@ async def get_column_preview_tool(
     Returns:
         JSON string with column values, type info, and pagination metadata
     """
-    return _check_error(await get_column_preview(file_path, column_name, start_index, max_items))
+    return _check_error(
+        await get_column_preview(file_path, column_name, start_index, max_items)
+    )
 
 
 @mcp.tool(
     description="Compute aggregate statistics (min, max, mean, etc.) on a Parquet column.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"parquet", "data-analysis", "statistics"},
 )
 async def aggregate_column_tool(
@@ -168,11 +189,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

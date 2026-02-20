@@ -26,7 +26,9 @@ async def start_chronolog(
     if ret != 0:
         config.client.ReleaseStory(chronicle, story)
         config.client.Disconnect()
-        raise ToolError(f"Failed to acquire story '{story}' in chronicle '{chronicle}': {ret}")
+        raise ToolError(
+            f"Failed to acquire story '{story}' in chronicle '{chronicle}': {ret}"
+        )
 
     config._active_chronicle = chronicle
     config._active_story = story

@@ -34,7 +34,9 @@ mcp: FastMCP = FastMCP(
     tags={"compression", "file-io"},
 )
 async def compress_file_tool(
-    file_path: Annotated[str, Field(description="Absolute path to the file to compress")],
+    file_path: Annotated[
+        str, Field(description="Absolute path to the file to compress")
+    ],
 ) -> dict:
     """Compress a file using gzip. Returns original/compressed sizes and compression ratio."""
     logger.info(f"Compressing file: {file_path}")
@@ -50,7 +52,9 @@ async def compress_file_tool(
     tags={"decompression", "file-io"},
 )
 async def decompress_file_tool(
-    file_path: Annotated[str, Field(description="Absolute path to the .gz file to decompress")],
+    file_path: Annotated[
+        str, Field(description="Absolute path to the .gz file to decompress")
+    ],
 ) -> dict:
     """Decompress a gzip-compressed (.gz) file back to its original form."""
     logger.info(f"Decompressing file: {file_path}")

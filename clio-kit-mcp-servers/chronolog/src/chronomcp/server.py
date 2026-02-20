@@ -3,7 +3,6 @@ import os
 from typing import Optional
 
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 
 from chronomcp.utils import config
@@ -16,7 +15,11 @@ mcp: FastMCP = config.mcp
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"chronolog", "logging"},
 )
 async def start_chronolog(
@@ -27,7 +30,11 @@ async def start_chronolog(
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"chronolog", "logging"},
 )
 async def record_interaction(user_message: str, assistant_message: str) -> str:
@@ -36,7 +43,11 @@ async def record_interaction(user_message: str, assistant_message: str) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"chronolog", "logging"},
 )
 async def stop_chronolog() -> str:
@@ -45,7 +56,11 @@ async def stop_chronolog() -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"chronolog", "logging"},
 )
 async def retrieve_interaction(
@@ -90,11 +105,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

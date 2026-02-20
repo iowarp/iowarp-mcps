@@ -104,7 +104,9 @@ class TestCapabilities:
 
             # Test load average OSError
             with patch(
-                "os.getloadavg", create=True, side_effect=OSError("Load average unavailable")
+                "os.getloadavg",
+                create=True,
+                side_effect=OSError("Load average unavailable"),
             ):
                 result = get_cpu_info()
                 assert isinstance(result, dict)

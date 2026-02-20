@@ -53,7 +53,9 @@ class TestMCPHandlers:
     def test_check_status_handler_with_exception(self):
         """Test check status handler with exception."""
         # Create a scenario that might cause an exception by mocking
-        with patch("slurm_mcp.mcp_handlers.get_job_status", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_job_status", side_effect=Exception("Test error")
+        ):
             result = check_job_status_handler("12345")
 
             assert isinstance(result, dict)
@@ -66,7 +68,8 @@ class TestMCPHandlers:
     def test_cancel_job_handler_with_exception(self):
         """Test cancel job handler with exception."""
         with patch(
-            "slurm_mcp.mcp_handlers.cancel_slurm_job", side_effect=Exception("Test error")
+            "slurm_mcp.mcp_handlers.cancel_slurm_job",
+            side_effect=Exception("Test error"),
         ):
             result = cancel_slurm_job_handler("12345")
 
@@ -76,7 +79,10 @@ class TestMCPHandlers:
 
     def test_list_jobs_handler_with_exception(self):
         """Test list jobs handler with exception."""
-        with patch("slurm_mcp.mcp_handlers.list_slurm_jobs", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.list_slurm_jobs",
+            side_effect=Exception("Test error"),
+        ):
             result = list_slurm_jobs_handler()
 
             assert isinstance(result, dict)
@@ -85,7 +91,9 @@ class TestMCPHandlers:
 
     def test_get_slurm_info_handler_with_exception(self):
         """Test get Slurm info handler with exception."""
-        with patch("slurm_mcp.mcp_handlers.get_slurm_info", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_slurm_info", side_effect=Exception("Test error")
+        ):
             result = get_slurm_info_handler()
 
             assert isinstance(result, dict)
@@ -94,7 +102,10 @@ class TestMCPHandlers:
 
     def test_get_job_details_handler_with_exception(self):
         """Test get job details handler with exception."""
-        with patch("slurm_mcp.mcp_handlers.get_job_details", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_job_details",
+            side_effect=Exception("Test error"),
+        ):
             result = get_job_details_handler("12345")
 
             assert isinstance(result, dict)
@@ -103,7 +114,9 @@ class TestMCPHandlers:
 
     def test_get_job_output_handler_with_exception(self):
         """Test get job output handler with exception."""
-        with patch("slurm_mcp.mcp_handlers.get_job_output", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_job_output", side_effect=Exception("Test error")
+        ):
             result = get_job_output_handler("12345")
 
             assert isinstance(result, dict)
@@ -112,7 +125,9 @@ class TestMCPHandlers:
 
     def test_get_queue_info_handler_with_exception(self):
         """Test get queue info handler with exception."""
-        with patch("slurm_mcp.mcp_handlers.get_queue_info", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_queue_info", side_effect=Exception("Test error")
+        ):
             result = get_queue_info_handler()
 
             assert isinstance(result, dict)
@@ -122,7 +137,8 @@ class TestMCPHandlers:
     def test_submit_array_job_handler_with_exception(self, valid_cores):
         """Test submit array job handler with exception."""
         with patch(
-            "slurm_mcp.mcp_handlers.submit_array_job", side_effect=Exception("Test error")
+            "slurm_mcp.mcp_handlers.submit_array_job",
+            side_effect=Exception("Test error"),
         ):
             result = submit_array_job_handler(
                 "/non/existent/script.sh", "1-5", valid_cores
@@ -134,7 +150,9 @@ class TestMCPHandlers:
 
     def test_get_node_info_handler_with_exception(self):
         """Test get node info handler with exception."""
-        with patch("slurm_mcp.mcp_handlers.get_node_info", side_effect=Exception("Test error")):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_node_info", side_effect=Exception("Test error")
+        ):
             result = get_node_info_handler()
 
             assert isinstance(result, dict)
@@ -672,7 +690,9 @@ class TestMCPHandlersCoverage:
         from unittest.mock import patch
 
         # Test with string result
-        with patch("slurm_mcp.mcp_handlers.get_job_status", return_value="Invalid response"):
+        with patch(
+            "slurm_mcp.mcp_handlers.get_job_status", return_value="Invalid response"
+        ):
             result = check_job_status_handler("12345")
             assert result == "Invalid response"
 

@@ -5,7 +5,6 @@ Tests for MCP handlers.
 import pytest
 import tempfile
 import os
-from fastmcp.exceptions import ToolError
 from parallel_sort_mcp.mcp_handlers import (
     sort_log_handler,
     parallel_sort_handler,

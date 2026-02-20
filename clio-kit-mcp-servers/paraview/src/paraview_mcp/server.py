@@ -107,7 +107,11 @@ def get_pv_manager() -> "VisualizationEngine":
 @mcp.tool(
     name="load_scientific_data",
     description="Load scientific datasets (VTK, EXODUS, CSV, RAW, BP5) into ParaView with automatic format detection.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "visualization"},
 )
 async def read_datafile_tool(file_path: str) -> str:
@@ -125,7 +129,9 @@ async def read_datafile_tool(file_path: str) -> str:
     import os
 
     if not os.path.exists(file_path):
-        raise ToolError(f"File not found at path '{file_path}'. Please verify the file path is correct and the file exists.")
+        raise ToolError(
+            f"File not found at path '{file_path}'. Please verify the file path is correct and the file exists."
+        )
 
     # Get file size for logging and diagnostics
     try:
@@ -155,7 +161,11 @@ async def read_datafile_tool(file_path: str) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def save_contour_as_stl(stl_filename: str = "contour.stl") -> str:
@@ -175,7 +185,11 @@ def save_contour_as_stl(stl_filename: str = "contour.stl") -> str:
 
 @mcp.tool(
     name="create_geometric_shape",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def create_source(source_type: str) -> str:
@@ -196,7 +210,11 @@ def create_source(source_type: str) -> str:
 
 @mcp.tool(
     name="generate_isosurface",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def create_isosurface(value: float, field: Optional[str] = None) -> str:
@@ -220,7 +238,11 @@ def create_isosurface(value: float, field: Optional[str] = None) -> str:
 
 @mcp.tool(
     name="create_data_slice",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def create_slice(
@@ -252,7 +274,11 @@ def create_slice(
 
 @mcp.tool(
     name="configure_volume_display",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def toggle_volume_rendering(enable: bool = True) -> str:
@@ -272,7 +298,11 @@ def toggle_volume_rendering(enable: bool = True) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def toggle_visibility(enable: bool = True) -> str:
@@ -292,7 +322,11 @@ def toggle_visibility(enable: bool = True) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def set_active_source(name: str) -> str:
@@ -311,7 +345,11 @@ def set_active_source(name: str) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "pipeline"},
 )
 def get_active_source_names_by_type(source_type: Optional[str] = None) -> str:
@@ -358,7 +396,11 @@ def get_active_source_names_by_type(source_type: Optional[str] = None) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def edit_volume_opacity(field_name: str, opacity_points: list[dict[str, float]]) -> str:
@@ -401,7 +443,11 @@ def edit_volume_opacity(field_name: str, opacity_points: list[dict[str, float]])
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def set_color_map(field_name: str, color_points: list[dict]) -> str:
@@ -427,7 +473,11 @@ def set_color_map(field_name: str, color_points: list[dict]) -> str:
 
 @mcp.tool(
     name="apply_field_coloring",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def color_by(field: str, component: int = -1) -> str:
@@ -447,7 +497,11 @@ def color_by(field: str, component: int = -1) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "visualization"},
 )
 def compute_surface_area() -> str:
@@ -463,7 +517,11 @@ def compute_surface_area() -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def set_color_map_preset(preset_name: str = "Cool to Warm") -> str:
@@ -482,7 +540,11 @@ def set_color_map_preset(preset_name: str = "Cool to Warm") -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def set_representation_type(rep_type: str) -> str:
@@ -501,7 +563,11 @@ def set_representation_type(rep_type: str) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "pipeline"},
 )
 def get_pipeline() -> str:
@@ -517,7 +583,11 @@ def get_pipeline() -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "visualization"},
 )
 def get_available_arrays() -> str:
@@ -533,7 +603,11 @@ def get_available_arrays() -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "visualization"},
 )
 def get_histogram(
@@ -581,7 +655,11 @@ def get_histogram(
 
 @mcp.tool(
     name="generate_flow_streamlines",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def create_streamline(
@@ -624,7 +702,11 @@ def create_streamline(
 @mcp.tool(
     name="take_viewport_screenshot",
     description="Capture a screenshot of the current ParaView viewport and save it as a timestamped PNG.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "rendering"},
 )
 async def get_screenshot_tool() -> str:
@@ -655,7 +737,11 @@ async def get_screenshot_tool() -> str:
 @mcp.tool(
     name="show_screenshot_preview",
     description="Capture a screenshot with inline preview using temporary files.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "rendering"},
 )
 async def show_screenshot_preview() -> str:
@@ -702,7 +788,9 @@ async def show_screenshot_preview() -> str:
 
             threading.Thread(target=cleanup_preview, daemon=True).start()
 
-            result = f"Screenshot Preview\nSaved as: {filename}\nLocation: {current_dir}\n\n"
+            result = (
+                f"Screenshot Preview\nSaved as: {filename}\nLocation: {current_dir}\n\n"
+            )
             result += str(Image(path=temp_preview_path))
 
             return result
@@ -713,7 +801,11 @@ async def show_screenshot_preview() -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "rendering"},
 )
 def rotate_camera(azimuth: float = 30.0, elevation: float = 0.0) -> str:
@@ -733,7 +825,11 @@ def rotate_camera(azimuth: float = 30.0, elevation: float = 0.0) -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "rendering"},
 )
 def reset_camera() -> str:
@@ -766,7 +862,11 @@ def reset_camera() -> str:
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def plot_over_line(
@@ -793,7 +893,11 @@ def plot_over_line(
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"paraview", "pipeline"},
 )
 def warp_by_vector(
@@ -817,7 +921,11 @@ def warp_by_vector(
 
 
 @mcp.tool(
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"paraview", "visualization"},
 )
 def list_commands() -> str:
@@ -944,11 +1052,9 @@ def main():
 
         transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
         if transport == "http":
-
             mcp.run(transport=transport, host=args.host, port=args.port)
 
         else:
-
             mcp.run(transport=transport)
 
     except Exception as e:

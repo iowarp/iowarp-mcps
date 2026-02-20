@@ -53,9 +53,7 @@ class TestServerMain:
         with patch("sys.argv", ["parquet-mcp"]):
             with patch.object(server.mcp, "run") as mock_run:
                 server.main()
-                mock_run.assert_called_once_with(
-                    transport="stdio"
-                )
+                mock_run.assert_called_once_with(transport="stdio")
 
     def test_main_with_http_transport(self):
         """Test main with HTTP transport argument."""

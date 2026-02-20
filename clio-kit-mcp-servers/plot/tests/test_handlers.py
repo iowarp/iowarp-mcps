@@ -8,7 +8,6 @@ import pandas as pd
 import pytest
 import asyncio
 
-from fastmcp.exceptions import ToolError
 from plot_mcp import server
 from plot_mcp.implementation.plot_capabilities import (
     create_line_plot,

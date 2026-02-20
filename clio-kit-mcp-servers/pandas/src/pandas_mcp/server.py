@@ -70,16 +70,37 @@ class PandasMCPError(Exception):
 @mcp.tool(
     name="load_data",
     description="Load and parse data from CSV, Excel, JSON, Parquet, or HDF5 files with optional column selection and row limiting.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "io"},
 )
 async def load_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    file_format: Annotated[Optional[str], Field(description="File format (csv, excel, json, parquet, hdf5); auto-detected if omitted")] = None,
-    sheet_name: Annotated[Optional[str], Field(description="Excel sheet name or index")] = None,
-    encoding: Annotated[Optional[str], Field(description="Character encoding (e.g. utf-8, latin-1); auto-detected if omitted")] = None,
-    columns: Annotated[Optional[List[str]], Field(description="Specific columns to load; None loads all")] = None,
-    nrows: Annotated[Optional[int], Field(description="Maximum rows to load; None loads all")] = None,
+    file_format: Annotated[
+        Optional[str],
+        Field(
+            description="File format (csv, excel, json, parquet, hdf5); auto-detected if omitted"
+        ),
+    ] = None,
+    sheet_name: Annotated[
+        Optional[str], Field(description="Excel sheet name or index")
+    ] = None,
+    encoding: Annotated[
+        Optional[str],
+        Field(
+            description="Character encoding (e.g. utf-8, latin-1); auto-detected if omitted"
+        ),
+    ] = None,
+    columns: Annotated[
+        Optional[List[str]],
+        Field(description="Specific columns to load; None loads all"),
+    ] = None,
+    nrows: Annotated[
+        Optional[int], Field(description="Maximum rows to load; None loads all")
+    ] = None,
 ) -> dict:
     """Load data from various file formats with comprehensive parsing options."""
     try:
@@ -95,14 +116,29 @@ async def load_data_tool(
 @mcp.tool(
     name="save_data",
     description="Save data to CSV, Excel, JSON, Parquet, or HDF5 with auto-detected format and optional index inclusion.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "io"},
 )
 async def save_data_tool(
-    data: Annotated[dict, Field(description="Data dictionary to save (structured data format)")],
-    file_path: Annotated[str, Field(description="Absolute path where the file will be saved")],
-    file_format: Annotated[Optional[str], Field(description="Output format (csv, excel, json, parquet, hdf5); auto-detected if omitted")] = None,
-    index: Annotated[bool, Field(description="Whether to include row indices in output")] = True,
+    data: Annotated[
+        dict, Field(description="Data dictionary to save (structured data format)")
+    ],
+    file_path: Annotated[
+        str, Field(description="Absolute path where the file will be saved")
+    ],
+    file_format: Annotated[
+        Optional[str],
+        Field(
+            description="Output format (csv, excel, json, parquet, hdf5); auto-detected if omitted"
+        ),
+    ] = None,
+    index: Annotated[
+        bool, Field(description="Whether to include row indices in output")
+    ] = True,
 ) -> dict:
     """Save data to various file formats with comprehensive export options."""
     try:
@@ -121,13 +157,22 @@ async def save_data_tool(
 @mcp.tool(
     name="statistical_summary",
     description="Compute descriptive statistics, distribution analysis, and outlier detection for numerical and categorical columns.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "statistics"},
 )
 async def statistical_summary_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    columns: Annotated[Optional[List[str]], Field(description="Columns to analyze; None analyzes all numerical columns")] = None,
-    include_distributions: Annotated[bool, Field(description="Include distribution analysis and normality tests")] = False,
+    columns: Annotated[
+        Optional[List[str]],
+        Field(description="Columns to analyze; None analyzes all numerical columns"),
+    ] = None,
+    include_distributions: Annotated[
+        bool, Field(description="Include distribution analysis and normality tests")
+    ] = False,
 ) -> dict:
     """Generate comprehensive statistical summary with advanced analytics."""
     try:
@@ -141,13 +186,22 @@ async def statistical_summary_tool(
 @mcp.tool(
     name="correlation_analysis",
     description="Compute correlation matrices (Pearson, Spearman, or Kendall) with significance testing and strong-correlation detection.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "statistics"},
 )
 async def correlation_analysis_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    method: Annotated[str, Field(description="Correlation method: pearson, spearman, or kendall")] = "pearson",
-    columns: Annotated[Optional[List[str]], Field(description="Columns to analyze; None analyzes all numerical columns")] = None,
+    method: Annotated[
+        str, Field(description="Correlation method: pearson, spearman, or kendall")
+    ] = "pearson",
+    columns: Annotated[
+        Optional[List[str]],
+        Field(description="Columns to analyze; None analyzes all numerical columns"),
+    ] = None,
 ) -> dict:
     """Perform comprehensive correlation analysis with statistical significance testing."""
     try:
@@ -161,15 +215,31 @@ async def correlation_analysis_tool(
 @mcp.tool(
     name="hypothesis_testing",
     description="Run statistical hypothesis tests (t-test, chi-square, ANOVA, normality, Mann-Whitney) with p-values and effect sizes.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "statistics"},
 )
 async def hypothesis_testing_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    test_type: Annotated[str, Field(description="Test type: t_test, chi_square, anova, normality, mann_whitney, correlation")],
+    test_type: Annotated[
+        str,
+        Field(
+            description="Test type: t_test, chi_square, anova, normality, mann_whitney, correlation"
+        ),
+    ],
     column1: Annotated[str, Field(description="Primary column for testing")],
-    column2: Annotated[Optional[str], Field(description="Secondary column for two-sample tests; None for single-sample")] = None,
-    alpha: Annotated[float, Field(description="Significance level (e.g. 0.05, 0.01)")] = 0.05,
+    column2: Annotated[
+        Optional[str],
+        Field(
+            description="Secondary column for two-sample tests; None for single-sample"
+        ),
+    ] = None,
+    alpha: Annotated[
+        float, Field(description="Significance level (e.g. 0.05, 0.01)")
+    ] = 0.05,
 ) -> dict:
     """Perform statistical hypothesis testing with effect size and confidence intervals."""
     try:
@@ -188,14 +258,27 @@ async def hypothesis_testing_tool(
 @mcp.tool(
     name="handle_missing_data",
     description="Detect, impute, or remove missing values using strategies like mean/median/mode fill, forward/backward fill, or interpolation.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "cleaning"},
 )
 async def handle_missing_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    strategy: Annotated[str, Field(description="Strategy: detect, impute, remove, or analyze")] = "detect",
-    method: Annotated[Optional[str], Field(description="Imputation method: mean, median, mode, forward_fill, backward_fill, interpolate")] = None,
-    columns: Annotated[Optional[List[str]], Field(description="Columns to process; None processes all")] = None,
+    strategy: Annotated[
+        str, Field(description="Strategy: detect, impute, remove, or analyze")
+    ] = "detect",
+    method: Annotated[
+        Optional[str],
+        Field(
+            description="Imputation method: mean, median, mode, forward_fill, backward_fill, interpolate"
+        ),
+    ] = None,
+    columns: Annotated[
+        Optional[List[str]], Field(description="Columns to process; None processes all")
+    ] = None,
 ) -> dict:
     """Handle missing data with comprehensive strategies and statistical methods."""
     try:
@@ -209,14 +292,24 @@ async def handle_missing_data_tool(
 @mcp.tool(
     name="clean_data",
     description="Remove duplicates, detect outliers via IQR/Z-score, and optimize data types in a single pass.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "cleaning"},
 )
 async def clean_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    remove_duplicates: Annotated[bool, Field(description="Identify and remove duplicate records")] = False,
-    detect_outliers: Annotated[bool, Field(description="Detect outliers using IQR and Z-score")] = False,
-    convert_types: Annotated[bool, Field(description="Automatically optimize data types")] = False,
+    remove_duplicates: Annotated[
+        bool, Field(description="Identify and remove duplicate records")
+    ] = False,
+    detect_outliers: Annotated[
+        bool, Field(description="Detect outliers using IQR and Z-score")
+    ] = False,
+    convert_types: Annotated[
+        bool, Field(description="Automatically optimize data types")
+    ] = False,
 ) -> dict:
     """Perform comprehensive data cleaning with advanced quality improvement techniques."""
     try:
@@ -235,14 +328,26 @@ async def clean_data_tool(
 @mcp.tool(
     name="groupby_operations",
     description="Group data by columns and apply aggregations (sum, mean, count, min, max, std, median) with optional pre-filter.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "transformation"},
 )
 async def groupby_operations_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
     group_by: Annotated[List[str], Field(description="Columns to group by")],
-    operations: Annotated[Dict[str, str], Field(description="Column:operation pairs, e.g. {'salary': 'mean', 'age': 'sum'}")],
-    filter_condition: Annotated[Optional[str], Field(description="Optional pandas query string to filter before grouping")] = None,
+    operations: Annotated[
+        Dict[str, str],
+        Field(
+            description="Column:operation pairs, e.g. {'salary': 'mean', 'age': 'sum'}"
+        ),
+    ],
+    filter_condition: Annotated[
+        Optional[str],
+        Field(description="Optional pandas query string to filter before grouping"),
+    ] = None,
 ) -> dict:
     """Perform sophisticated groupby operations with comprehensive aggregation options."""
     try:
@@ -256,16 +361,28 @@ async def groupby_operations_tool(
 @mcp.tool(
     name="merge_datasets",
     description="Join two datasets using inner, outer, left, or right joins on specified key columns.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "transformation"},
 )
 async def merge_datasets_tool(
     left_file: Annotated[str, Field(description="Absolute path to the left dataset")],
     right_file: Annotated[str, Field(description="Absolute path to the right dataset")],
-    join_type: Annotated[str, Field(description="Join type: inner, outer, left, or right")] = "inner",
-    left_on: Annotated[Optional[str], Field(description="Join column in left dataset")] = None,
-    right_on: Annotated[Optional[str], Field(description="Join column in right dataset")] = None,
-    on: Annotated[Optional[str], Field(description="Common join column (if same name in both)")] = None,
+    join_type: Annotated[
+        str, Field(description="Join type: inner, outer, left, or right")
+    ] = "inner",
+    left_on: Annotated[
+        Optional[str], Field(description="Join column in left dataset")
+    ] = None,
+    right_on: Annotated[
+        Optional[str], Field(description="Join column in right dataset")
+    ] = None,
+    on: Annotated[
+        Optional[str], Field(description="Common join column (if same name in both)")
+    ] = None,
 ) -> dict:
     """Merge and join datasets with comprehensive integration capabilities."""
     try:
@@ -279,15 +396,27 @@ async def merge_datasets_tool(
 @mcp.tool(
     name="pivot_table",
     description="Create pivot tables with configurable row index, column headers, value columns, and aggregation function.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "transformation"},
 )
 async def pivot_table_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
     index: Annotated[List[str], Field(description="Columns to use as row index")],
-    columns: Annotated[Optional[List[str]], Field(description="Columns to use as column headers")] = None,
-    values: Annotated[Optional[List[str]], Field(description="Columns to aggregate; None uses all numerical")] = None,
-    aggfunc: Annotated[str, Field(description="Aggregation function: mean, sum, count, min, max, std, var")] = "mean",
+    columns: Annotated[
+        Optional[List[str]], Field(description="Columns to use as column headers")
+    ] = None,
+    values: Annotated[
+        Optional[List[str]],
+        Field(description="Columns to aggregate; None uses all numerical"),
+    ] = None,
+    aggfunc: Annotated[
+        str,
+        Field(description="Aggregation function: mean, sum, count, min, max, std, var"),
+    ] = "mean",
 ) -> dict:
     """Create sophisticated pivot tables with comprehensive aggregation options."""
     try:
@@ -306,15 +435,28 @@ async def pivot_table_tool(
 @mcp.tool(
     name="time_series_operations",
     description="Resample, compute rolling statistics, create lag features, or difference a time series.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "time-series"},
 )
 async def time_series_operations_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
     date_column: Annotated[str, Field(description="Column containing datetime values")],
-    operation: Annotated[str, Field(description="Operation: resample, rolling_mean, lag, trend, seasonality, rolling, diff")],
-    window_size: Annotated[Optional[int], Field(description="Window size for rolling/lag operations")] = None,
-    frequency: Annotated[Optional[str], Field(description="Resampling frequency: D, W, M, Q, Y")] = None,
+    operation: Annotated[
+        str,
+        Field(
+            description="Operation: resample, rolling_mean, lag, trend, seasonality, rolling, diff"
+        ),
+    ],
+    window_size: Annotated[
+        Optional[int], Field(description="Window size for rolling/lag operations")
+    ] = None,
+    frequency: Annotated[
+        Optional[str], Field(description="Resampling frequency: D, W, M, Q, Y")
+    ] = None,
 ) -> dict:
     """Perform comprehensive time series operations with advanced temporal analysis."""
     try:
@@ -335,12 +477,21 @@ async def time_series_operations_tool(
 @mcp.tool(
     name="validate_data",
     description="Validate columns against rules for min/max range, data type, nullability, uniqueness, and regex patterns.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "validation"},
 )
 async def validate_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    validation_rules: Annotated[Dict[str, Dict[str, Any]], Field(description="Validation rules: {column: {rule_type: value}}. Rules: min_value, max_value, dtype, allow_null, unique, pattern")],
+    validation_rules: Annotated[
+        Dict[str, Dict[str, Any]],
+        Field(
+            description="Validation rules: {column: {rule_type: value}}. Rules: min_value, max_value, dtype, allow_null, unique, pattern"
+        ),
+    ],
 ) -> dict:
     """Perform comprehensive data validation with advanced constraint checking."""
     try:
@@ -359,13 +510,25 @@ async def validate_data_tool(
 @mcp.tool(
     name="filter_data",
     description="Filter rows using comparison, membership, pattern-matching, and null-check operators across multiple columns.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "filtering"},
 )
 async def filter_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    filter_conditions: Annotated[Dict[str, Any], Field(description="Filter conditions: {column: {operator: value}}. Operators: eq, ne, gt, lt, ge, le, in, not_in, contains, regex")],
-    output_file: Annotated[Optional[str], Field(description="Path to save filtered data; None returns in memory")] = None,
+    filter_conditions: Annotated[
+        Dict[str, Any],
+        Field(
+            description="Filter conditions: {column: {operator: value}}. Operators: eq, ne, gt, lt, ge, le, in, not_in, contains, regex"
+        ),
+    ],
+    output_file: Annotated[
+        Optional[str],
+        Field(description="Path to save filtered data; None returns in memory"),
+    ] = None,
 ) -> dict:
     """Perform advanced data filtering with boolean indexing and conditional expressions."""
     try:
@@ -384,13 +547,23 @@ async def filter_data_tool(
 @mcp.tool(
     name="optimize_memory",
     description="Analyze and reduce DataFrame memory usage through automatic dtype optimization and chunked-processing recommendations.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "optimization"},
 )
 async def optimize_memory_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    optimize_dtypes: Annotated[bool, Field(description="Automatically optimize data types for memory efficiency")] = True,
-    chunk_size: Annotated[Optional[int], Field(description="Chunk size for processing large files; None for automatic")] = None,
+    optimize_dtypes: Annotated[
+        bool,
+        Field(description="Automatically optimize data types for memory efficiency"),
+    ] = True,
+    chunk_size: Annotated[
+        Optional[int],
+        Field(description="Chunk size for processing large files; None for automatic"),
+    ] = None,
 ) -> dict:
     """Perform advanced memory optimization for large datasets."""
     try:
@@ -409,13 +582,22 @@ async def optimize_memory_tool(
 @mcp.tool(
     name="profile_data",
     description="Generate a full dataset profile: shape, types, missing values, distributions, quality checks, and optional correlations.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data-analysis", "profiling"},
 )
 async def profile_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
-    include_correlations: Annotated[bool, Field(description="Include correlation analysis between variables")] = False,
-    sample_size: Annotated[Optional[int], Field(description="Rows to sample for large datasets; None uses full dataset")] = None,
+    include_correlations: Annotated[
+        bool, Field(description="Include correlation analysis between variables")
+    ] = False,
+    sample_size: Annotated[
+        Optional[int],
+        Field(description="Rows to sample for large datasets; None uses full dataset"),
+    ] = None,
 ) -> dict:
     """Perform comprehensive data profiling with statistical analysis and quality assessment."""
     try:
@@ -436,7 +618,13 @@ def pandas_capabilities() -> dict:
     """Supported pandas operations and file formats."""
     return {
         "file_formats": ["csv", "excel", "parquet", "json"],
-        "operations": ["statistics", "filtering", "groupby", "aggregation", "hypothesis testing"],
+        "operations": [
+            "statistics",
+            "filtering",
+            "groupby",
+            "aggregation",
+            "hypothesis testing",
+        ],
     }
 
 
@@ -468,11 +656,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

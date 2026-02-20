@@ -53,9 +53,7 @@ def test_main_function_execution_stdio():
                 )
                 server.main()
 
-                mock_mcp_instance.run.assert_called_with(
-                    transport="stdio"
-                )
+                mock_mcp_instance.run.assert_called_with(transport="stdio")
 
 
 def test_main_function_execution_http():
@@ -102,9 +100,7 @@ def test_environment_variable_handling():
                 )
                 server.main()
 
-                mock_mcp_instance.run.assert_called_with(
-                    transport="stdio"
-                )
+                mock_mcp_instance.run.assert_called_with(transport="stdio")
 
 
 def test_fastmcp_initialization():

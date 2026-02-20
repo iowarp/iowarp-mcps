@@ -70,7 +70,11 @@ class SlurmMCPError(Exception):
 @mcp.tool(
     name="submit_slurm_job",
     description="Submit a job script to the Slurm scheduler with resource requirements.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jobs", "submission"},
 )
 async def submit_slurm_job_tool(
@@ -108,7 +112,11 @@ async def submit_slurm_job_tool(
 @mcp.tool(
     name="check_job_status",
     description="Check the status of a Slurm job by its ID.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def check_job_status_tool(job_id: str) -> dict:
@@ -132,7 +140,11 @@ async def check_job_status_tool(job_id: str) -> dict:
 @mcp.tool(
     name="cancel_slurm_job",
     description="Cancel a running or pending Slurm job.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"jobs", "management"},
 )
 async def cancel_slurm_job_tool(job_id: str) -> dict:
@@ -155,7 +167,11 @@ async def cancel_slurm_job_tool(job_id: str) -> dict:
 @mcp.tool(
     name="list_slurm_jobs",
     description="List Slurm jobs with optional filtering by user and state.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def list_slurm_jobs_tool(
@@ -181,7 +197,11 @@ async def list_slurm_jobs_tool(
 @mcp.tool(
     name="get_slurm_info",
     description="Get Slurm cluster configuration, partitions, and resource availability.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def get_slurm_info_tool() -> dict:
@@ -201,7 +221,11 @@ async def get_slurm_info_tool() -> dict:
 @mcp.tool(
     name="get_job_details",
     description="Get detailed information about a specific Slurm job.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def get_job_details_tool(job_id: str) -> dict:
@@ -224,7 +248,11 @@ async def get_job_details_tool(job_id: str) -> dict:
 @mcp.tool(
     name="get_job_output",
     description="Retrieve stdout or stderr output from a Slurm job.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def get_job_output_tool(job_id: str, output_type: str = "stdout") -> dict:
@@ -248,7 +276,11 @@ async def get_job_output_tool(job_id: str, output_type: str = "stdout") -> dict:
 @mcp.tool(
     name="get_queue_info",
     description="Get Slurm queue status and partition information.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def get_queue_info_tool(partition: Optional[str] = None) -> dict:
@@ -271,7 +303,11 @@ async def get_queue_info_tool(partition: Optional[str] = None) -> dict:
 @mcp.tool(
     name="submit_array_job",
     description="Submit a Slurm array job for parallel task execution.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jobs", "submission"},
 )
 async def submit_array_job_tool(
@@ -312,7 +348,11 @@ async def submit_array_job_tool(
 @mcp.tool(
     name="get_node_info",
     description="Get information about Slurm cluster nodes and their resources.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def get_node_info_tool() -> dict:
@@ -332,7 +372,11 @@ async def get_node_info_tool() -> dict:
 @mcp.tool(
     name="allocate_slurm_nodes",
     description="Allocate Slurm nodes for an interactive session using salloc.",
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
     tags={"jobs", "submission"},
 )
 async def allocate_slurm_nodes_tool(
@@ -371,7 +415,11 @@ async def allocate_slurm_nodes_tool(
 @mcp.tool(
     name="deallocate_slurm_nodes",
     description="Release a Slurm node allocation by canceling it.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"jobs", "management"},
 )
 async def deallocate_slurm_nodes_tool(allocation_id: str) -> dict:
@@ -394,7 +442,11 @@ async def deallocate_slurm_nodes_tool(allocation_id: str) -> dict:
 @mcp.tool(
     name="get_allocation_status",
     description="Check the status of a Slurm node allocation.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"jobs", "monitoring"},
 )
 async def get_allocation_status_tool(allocation_id: str) -> dict:
@@ -457,11 +509,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

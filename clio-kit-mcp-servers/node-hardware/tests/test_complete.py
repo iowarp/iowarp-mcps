@@ -349,7 +349,8 @@ class TestCompleteNodeHardwareMCP:
         """Test comprehensive error handling across all modules"""
         # Test server module error handling with MCP handler failures
         with patch(
-            "node_hardware_mcp.mcp_handlers.cpu_info_handler", side_effect=Exception("Handler error")
+            "node_hardware_mcp.mcp_handlers.cpu_info_handler",
+            side_effect=Exception("Handler error"),
         ):
             # Test tools exist but don't try to call them directly since they're decorated
             assert hasattr(server, "get_cpu_info_tool")

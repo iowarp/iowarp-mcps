@@ -12,7 +12,6 @@ try:
         chronolog_status,
         logging_workflow,
     )
-    from fastmcp.exceptions import ToolError
     from fastmcp.prompts import Message
 
     HAS_DEPENDENCIES = True

@@ -6,7 +6,6 @@ Tests the actual MCP tool implementations and server functionality.
 import asyncio
 import pytest
 import sys
-import os
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch, Mock
 
@@ -962,82 +961,134 @@ def test_server_async_error_handling():
 
     # Mock underlying functions to raise exceptions and verify ToolError
     # Use patch.object to ensure correct module-level name replacement
-    with patch.object(server, "submit_slurm_job", side_effect=Exception("Job submission failed")):
+    with patch.object(
+        server, "submit_slurm_job", side_effect=Exception("Job submission failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.submit_slurm_job_tool(script_path="/test.sh", cores=1)
+
         asyncio.run(_test())
 
-    with patch.object(server, "get_job_status", side_effect=Exception("Status check failed")):
+    with patch.object(
+        server, "get_job_status", side_effect=Exception("Status check failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.check_job_status_tool(job_id="123")
+
         asyncio.run(_test())
 
-    with patch.object(server, "cancel_slurm_job", side_effect=Exception("Cancellation failed")):
+    with patch.object(
+        server, "cancel_slurm_job", side_effect=Exception("Cancellation failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.cancel_slurm_job_tool(job_id="123")
+
         asyncio.run(_test())
 
-    with patch.object(server, "list_slurm_jobs", side_effect=Exception("Listing failed")):
+    with patch.object(
+        server, "list_slurm_jobs", side_effect=Exception("Listing failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.list_slurm_jobs_tool()
+
         asyncio.run(_test())
 
-    with patch.object(server, "get_slurm_info", side_effect=Exception("Info retrieval failed")):
+    with patch.object(
+        server, "get_slurm_info", side_effect=Exception("Info retrieval failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.get_slurm_info_tool()
+
         asyncio.run(_test())
 
-    with patch.object(server, "get_job_details", side_effect=Exception("Details failed")):
+    with patch.object(
+        server, "get_job_details", side_effect=Exception("Details failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.get_job_details_tool(job_id="123")
+
         asyncio.run(_test())
 
     with patch.object(server, "get_job_output", side_effect=Exception("Output failed")):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.get_job_output_tool(job_id="123")
+
         asyncio.run(_test())
 
-    with patch.object(server, "get_queue_info", side_effect=Exception("Queue info failed")):
+    with patch.object(
+        server, "get_queue_info", side_effect=Exception("Queue info failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.get_queue_info_tool()
+
         asyncio.run(_test())
 
-    with patch.object(server, "submit_array_job", side_effect=Exception("Array job failed")):
+    with patch.object(
+        server, "submit_array_job", side_effect=Exception("Array job failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
-                await server.submit_array_job_tool(script_path="/test.sh", array_range="1-5")
+                await server.submit_array_job_tool(
+                    script_path="/test.sh", array_range="1-5"
+                )
+
         asyncio.run(_test())
 
-    with patch.object(server, "get_node_info", side_effect=Exception("Node info failed")):
+    with patch.object(
+        server, "get_node_info", side_effect=Exception("Node info failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.get_node_info_tool()
+
         asyncio.run(_test())
 
-    with patch.object(server, "allocate_nodes", side_effect=Exception("Allocation failed")):
+    with patch.object(
+        server, "allocate_nodes", side_effect=Exception("Allocation failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.allocate_slurm_nodes_tool()
+
         asyncio.run(_test())
 
-    with patch.object(server, "deallocate_nodes", side_effect=Exception("Deallocation failed")):
+    with patch.object(
+        server, "deallocate_nodes", side_effect=Exception("Deallocation failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.deallocate_slurm_nodes_tool(allocation_id="123")
+
         asyncio.run(_test())
 
-    with patch.object(server, "get_allocation_status", side_effect=Exception("Status failed")):
+    with patch.object(
+        server, "get_allocation_status", side_effect=Exception("Status failed")
+    ):
+
         async def _test():
             with pytest.raises(ToolError):
                 await server.get_allocation_status_tool(allocation_id="123")
+
         asyncio.run(_test())
 
 

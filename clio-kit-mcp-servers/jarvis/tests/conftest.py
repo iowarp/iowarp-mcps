@@ -52,7 +52,9 @@ def mock_jarvis_manager():
 @pytest.fixture
 def mock_pipeline():
     """Mock Pipeline instance."""
-    with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline_class:
+    with patch(
+        "jarvis_mcp.capabilities.jarvis_handler.Pipeline"
+    ) as mock_pipeline_class:
         mock_pipeline = Mock()
         mock_pipeline_class.return_value = mock_pipeline
 

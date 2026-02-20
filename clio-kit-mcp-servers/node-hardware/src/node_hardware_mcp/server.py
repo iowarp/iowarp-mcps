@@ -219,9 +219,7 @@ async def get_performance_info_tool() -> dict:
 )
 async def get_remote_node_info_tool(
     hostname: Annotated[str, Field(description="Target hostname or IP address.")],
-    username: Annotated[
-        Optional[str], Field(description="SSH username.")
-    ] = None,
+    username: Annotated[Optional[str], Field(description="SSH username.")] = None,
     port: Annotated[int, Field(description="SSH port number.")] = 22,
     ssh_key: Annotated[
         Optional[str], Field(description="Path to SSH private key file.")
@@ -261,9 +259,7 @@ async def get_remote_node_info_tool(
         )
     except Exception as e:
         logger.error(f"Remote hardware information collection error: {e}")
-        raise ToolError(
-            f"Remote hardware collection failed for {hostname}: {e}"
-        ) from e
+        raise ToolError(f"Remote hardware collection failed for {hostname}: {e}") from e
 
 
 # ===============================================================================
@@ -370,11 +366,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

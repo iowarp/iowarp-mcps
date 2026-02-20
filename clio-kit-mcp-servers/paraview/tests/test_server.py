@@ -53,9 +53,7 @@ def test_tools_registration():
         assert callable(getattr(mcp, "tool", None)), (
             "MCP server should have tool method"
         )
-        assert callable(getattr(mcp, "run", None)), (
-            "MCP server should have run method"
-        )
+        assert callable(getattr(mcp, "run", None)), "MCP server should have run method"
 
     except ImportError:
         pytest.skip("ParaView not available")

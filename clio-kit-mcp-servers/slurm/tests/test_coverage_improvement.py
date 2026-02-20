@@ -504,7 +504,8 @@ def test_direct_slurm_unavailable_paths():
 
     # Test job_cancellation RuntimeError path
     with patch(
-        "slurm_mcp.implementation.job_cancellation.check_slurm_available", return_value=False
+        "slurm_mcp.implementation.job_cancellation.check_slurm_available",
+        return_value=False,
     ):
         from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
 
@@ -915,7 +916,8 @@ def test_node_allocation_comprehensive():
 
     # Test allocate_nodes with Slurm unavailable
     with patch(
-        "slurm_mcp.implementation.node_allocation.check_slurm_available", return_value=False
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=False,
     ):
         result = allocate_nodes(nodes=2, time_limit="1:00:00")
         assert result["status"] == "failed"
@@ -1210,7 +1212,8 @@ def test_node_allocation_enhanced_coverage():
 
     # Test allocation with no immediate mode (line 132)
     with patch(
-        "slurm_mcp.implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         with patch(
             "slurm_mcp.implementation.node_allocation.subprocess.run"
@@ -1234,7 +1237,8 @@ def test_node_allocation_timeout_handling():
     import subprocess
 
     with patch(
-        "slurm_mcp.implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         # Test timeout exception
         with patch(
@@ -1340,7 +1344,8 @@ def test_node_allocation_deallocate_error_handling():
     from slurm_mcp.implementation.node_allocation import deallocate_nodes
 
     with patch(
-        "slurm_mcp.implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         # Test subprocess error in deallocation
         with patch(
@@ -1357,7 +1362,8 @@ def test_node_allocation_status_error_handling():
     from slurm_mcp.implementation.node_allocation import get_allocation_status
 
     with patch(
-        "slurm_mcp.implementation.node_allocation.check_slurm_available", return_value=True
+        "slurm_mcp.implementation.node_allocation.check_slurm_available",
+        return_value=True,
     ):
         # Test subprocess error in status check
         with patch(

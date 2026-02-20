@@ -43,7 +43,11 @@ mcp: FastMCP = FastMCP(
 @mcp.tool(
     name="line_plot",
     description="Create a line plot from CSV or Excel data with customizable styling.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"plot", "line-chart", "visualization"},
 )
 async def line_plot_tool(
@@ -80,7 +84,11 @@ async def line_plot_tool(
 @mcp.tool(
     name="bar_plot",
     description="Create a bar chart from CSV or Excel data with categorical grouping.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"plot", "bar-chart", "visualization"},
 )
 async def bar_plot_tool(
@@ -117,7 +125,11 @@ async def bar_plot_tool(
 @mcp.tool(
     name="scatter_plot",
     description="Create a scatter plot from CSV or Excel data for correlation analysis.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"plot", "scatter-plot", "visualization"},
 )
 async def scatter_plot_tool(
@@ -154,7 +166,11 @@ async def scatter_plot_tool(
 @mcp.tool(
     name="histogram_plot",
     description="Create a histogram from CSV or Excel data showing value distribution.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"plot", "histogram", "visualization"},
 )
 async def histogram_plot_tool(
@@ -191,7 +207,11 @@ async def histogram_plot_tool(
 @mcp.tool(
     name="heatmap_plot",
     description="Create a correlation heatmap from numeric columns in CSV or Excel data.",
-    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+    },
     tags={"plot", "heatmap", "visualization"},
 )
 async def heatmap_plot_tool(
@@ -222,7 +242,11 @@ async def heatmap_plot_tool(
 @mcp.tool(
     name="data_info",
     description="Get schema, column types, and summary statistics for a CSV or Excel file.",
-    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
     tags={"data", "analysis", "visualization"},
 )
 async def data_info_tool(file_path: str) -> dict:
@@ -281,11 +305,9 @@ def main() -> None:
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     if transport == "http":
-
         mcp.run(transport=transport, host=args.host, port=args.port)
 
     else:
-
         mcp.run(transport=transport)
 
 

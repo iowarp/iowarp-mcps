@@ -240,7 +240,9 @@ class TestFastMCPTools:
         """Test server.py main execution block simulation."""
 
         # Read server.py content to verify main execution block exists
-        server_file = os.path.join(os.path.dirname(__file__), "..", "src", "arxiv_mcp", "server.py")
+        server_file = os.path.join(
+            os.path.dirname(__file__), "..", "src", "arxiv_mcp", "server.py"
+        )
         with open(server_file, "r") as f:
             content = f.read()
 
