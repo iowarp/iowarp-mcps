@@ -171,24 +171,19 @@ jobs:
 
     - name: Install mcp-publisher
       run: |
-        brew install mcp-publisher || {
-          # Fallback: download binary from GitHub releases
-          curl -fsSL -o /tmp/mcp-publisher \
-            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher-linux-amd64"
-          chmod +x /tmp/mcp-publisher
-          sudo mv /tmp/mcp-publisher /usr/local/bin/mcp-publisher
-        }
-        mcp-publisher --version
+        curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+        ./mcp-publisher --version
 
     - name: Authenticate with GitHub OIDC
-      run: mcp-publisher login github
+      run: ./mcp-publisher login github-oidc
 
     - name: Publish each server to MCP registry
       run: |
-        for server_json in clio-kit-mcp-servers/*/server.json; do
-          server_name=$(basename "$(dirname "$server_json")")
+        for server_dir in clio-kit-mcp-servers/*/; do
+          if [ ! -f "$server_dir/server.json" ]; then continue; fi
+          server_name=$(basename "$server_dir")
           echo "Publishing $server_name to MCP registry..."
-          mcp-publisher publish --manifest "$server_json" || {
+          (cd "$server_dir" && ../../mcp-publisher publish) || {
             echo "Warning: failed to publish $server_name"
             continue
           }

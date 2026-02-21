@@ -1,16 +1,27 @@
 {
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/plot-mcp",
+  "title": "CLIO Plot",
   "description": "MCP server for advanced data visualization and plotting operations",
   "version": "1.0.0",
-  "repository": "https://github.com/iowarp/clio-kit",
-  "package": {
-    "registry_name": "pypi",
-    "name": "clio-kit",
-    "command_arguments": [
-      "clio-kit",
-      "plot"
-    ]
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
   },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "plot"
+      ]
+    }
+  ],
   "tools": [
     {
       "name": "line_plot",

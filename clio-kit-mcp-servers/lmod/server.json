@@ -1,16 +1,27 @@
 {
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/lmod-mcp",
+  "title": "CLIO Lmod",
   "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
   "version": "1.0.0",
-  "repository": "https://github.com/iowarp/clio-kit",
-  "package": {
-    "registry_name": "pypi",
-    "name": "clio-kit",
-    "command_arguments": [
-      "clio-kit",
-      "lmod"
-    ]
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
   },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "lmod"
+      ]
+    }
+  ],
   "tools": [
     {
       "name": "module_list",

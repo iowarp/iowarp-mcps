@@ -1,16 +1,27 @@
 {
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/paraview-mcp",
+  "title": "CLIO Paraview",
   "description": "MCP server for ParaView scientific visualization",
   "version": "1.0.0",
-  "repository": "https://github.com/iowarp/clio-kit",
-  "package": {
-    "registry_name": "pypi",
-    "name": "clio-kit",
-    "command_arguments": [
-      "clio-kit",
-      "paraview"
-    ]
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
   },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "paraview"
+      ]
+    }
+  ],
   "tools": [
     {
       "name": "load_scientific_data",

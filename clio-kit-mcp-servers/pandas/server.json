@@ -1,16 +1,27 @@
 {
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/pandas-mcp",
+  "title": "CLIO Pandas",
   "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
   "version": "1.0.0",
-  "repository": "https://github.com/iowarp/clio-kit",
-  "package": {
-    "registry_name": "pypi",
-    "name": "clio-kit",
-    "command_arguments": [
-      "clio-kit",
-      "pandas"
-    ]
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
   },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "pandas"
+      ]
+    }
+  ],
   "tools": [
     {
       "name": "load_data",

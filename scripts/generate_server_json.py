@@ -120,15 +120,21 @@ def build_server_json(
     ]
 
     server_json: dict[str, Any] = {
+        "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
         "name": f"io.github.iowarp/{server_name}-mcp",
+        "title": f"CLIO {server_name.replace('-', ' ').title()}",
         "description": description,
         "version": version,
-        "repository": REPO_URL,
-        "package": {
-            "registry_name": "pypi",
-            "name": "clio-kit",
-            "command_arguments": ["clio-kit", server_name],
-        },
+        "repository": {"url": REPO_URL, "source": "github"},
+        "packages": [
+            {
+                "registryType": "pypi",
+                "identifier": "clio-kit",
+                "version": version,
+                "transport": {"type": "stdio"},
+                "arguments": ["clio-kit", server_name],
+            }
+        ],
         "tools": tools,
     }
 
