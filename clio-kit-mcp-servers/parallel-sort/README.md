@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/parallel-sort-mcp.svg)](https://pypi.org/project/parallel-sort-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Parallel Sort MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to perform high-performance log file processing and analysis operations. This server provides advanced log sorting, filtering, analysis tools, and scalable data processing capabil...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server parallel-sort
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 

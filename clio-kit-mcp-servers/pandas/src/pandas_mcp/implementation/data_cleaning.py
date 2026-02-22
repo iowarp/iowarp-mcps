@@ -106,7 +106,7 @@ def handle_missing_data(
                         else:
                             fill_value = df_imputed[col].mean()
 
-                        df_imputed[col].fillna(fill_value, inplace=True)
+                        df_imputed[col] = df_imputed[col].fillna(fill_value)
                         imputation_info[col] = {
                             "method": method,
                             "fill_value": float(fill_value),
@@ -122,14 +122,14 @@ def handle_missing_data(
                                 else "Unknown"
                             )
                         elif method == "forward_fill":
-                            df_imputed[col].fillna(method="ffill", inplace=True)
+                            df_imputed[col] = df_imputed[col].ffill()
                             fill_value = "forward_fill"
                         elif method == "backward_fill":
-                            df_imputed[col].fillna(method="bfill", inplace=True)
+                            df_imputed[col] = df_imputed[col].bfill()
                             fill_value = "backward_fill"
                         else:
                             fill_value = "Unknown"
-                            df_imputed[col].fillna(fill_value, inplace=True)
+                            df_imputed[col] = df_imputed[col].fillna(fill_value)
 
                         imputation_info[col] = {
                             "method": method,

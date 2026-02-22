@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/hdf5-mcp.svg)](https://pypi.org/project/hdf5-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 **Part of the IoWarp MCP Server Collection** - Comprehensive HDF5 operations for AI agents working with scientific and engineering data.
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server hdf5
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 

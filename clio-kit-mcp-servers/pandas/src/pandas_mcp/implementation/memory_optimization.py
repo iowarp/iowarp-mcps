@@ -62,7 +62,8 @@ def optimize_memory_usage(
             for col in optimized_df.columns:
                 optimized_df[col].dtype
 
-                if optimized_df[col].dtype == "object":
+                if pd.api.types.is_string_dtype(optimized_df[col]):
+                    original_dtype = str(optimized_df[col].dtype)
                     # Try to convert to numeric
                     try:
                         numeric_series = pd.to_numeric(
@@ -70,7 +71,7 @@ def optimize_memory_usage(
                         )
                         if not numeric_series.isnull().all():
                             optimized_df[col] = numeric_series
-                            dtype_changes[col] = f"object -> {numeric_series.dtype}"
+                            dtype_changes[col] = f"{original_dtype} -> {numeric_series.dtype}"
                             continue
                     except (ValueError, TypeError):
                         pass
@@ -79,7 +80,7 @@ def optimize_memory_usage(
                     unique_ratio = optimized_df[col].nunique() / len(optimized_df[col])
                     if unique_ratio < 0.5:  # Less than 50% unique values
                         optimized_df[col] = optimized_df[col].astype("category")
-                        dtype_changes[col] = "object -> category"
+                        dtype_changes[col] = f"{original_dtype} -> category"
                         continue
 
                 elif optimized_df[col].dtype in ["int64", "float64"]:
@@ -285,7 +286,7 @@ def get_memory_recommendations(file_path: str) -> dict:
             col_type = df_sample[col].dtype
             col_memory = df_sample[col].memory_usage(deep=True)
 
-            if col_type == "object":
+            if pd.api.types.is_string_dtype(col_type):
                 # Check if it can be converted to category
                 unique_ratio = df_sample[col].nunique() / len(df_sample[col])
                 if unique_ratio < 0.5:

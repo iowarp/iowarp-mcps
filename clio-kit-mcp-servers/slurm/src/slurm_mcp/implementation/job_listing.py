@@ -8,13 +8,18 @@ from typing import Optional
 from .utils import check_slurm_available
 
 
-def list_slurm_jobs(user: Optional[str] = None, state: Optional[str] = None) -> dict:
+def list_slurm_jobs(
+    user: Optional[str] = None,
+    state: Optional[str] = None,
+    partition: Optional[str] = None,
+) -> dict:
     """
     List Slurm jobs with optional filtering.
 
     Args:
         user: Username to filter by (default: current user)
         state: Job state to filter by (PENDING, RUNNING, COMPLETED, etc.)
+        partition: Partition to filter by
 
     Returns:
         Dictionary with list of jobs
@@ -32,6 +37,8 @@ def list_slurm_jobs(user: Optional[str] = None, state: Optional[str] = None) -> 
             cmd.extend(["--user", user])
         if state:
             cmd.extend(["--states", state])
+        if partition:
+            cmd.extend(["--partition", partition])
 
         result = subprocess.run(cmd, capture_output=True, text=True)
 

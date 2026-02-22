@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/jarvis-mcp.svg)](https://pypi.org/project/jarvis-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Jarvis MCP is a Model Context Protocol server that enables LLMs to manage the full lifecycle of data-centric pipelines using the Jarvis framework, featuring pipeline creation, package management, configuration updates, environment building, and execution capabilities for high-performance computin...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server jarvis
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 

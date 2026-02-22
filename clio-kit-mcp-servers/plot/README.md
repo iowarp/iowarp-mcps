@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/plot-mcp.svg)](https://pypi.org/project/plot-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Plot MCP is a Model Context Protocol server that enables LLMs to create professional data visualizations from CSV and Excel files with intelligent data processing capabilities. The server automatically handles data cleaning, type inference, and missing value processing while supporting multiple v...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server plot
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 

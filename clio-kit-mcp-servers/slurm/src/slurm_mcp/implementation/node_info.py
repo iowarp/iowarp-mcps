@@ -4,12 +4,16 @@ Handles cluster node monitoring and information retrieval.
 """
 
 import subprocess
+from typing import Optional
 from .utils import check_slurm_available
 
 
-def get_node_info() -> dict:
+def get_node_info(node: Optional[str] = None) -> dict:
     """
     Get information about cluster nodes.
+
+    Args:
+        node: Specific node name to query (optional)
 
     Returns:
         Dictionary with node information
@@ -21,6 +25,8 @@ def get_node_info() -> dict:
 
     try:
         cmd = ["sinfo", "--Node", "--format=%N,%T,%C,%m,%f,%G", "--noheader"]
+        if node:
+            cmd.extend(["--nodes", node])
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode == 0:

@@ -12,7 +12,7 @@ authors = [
 keywords = ["jarvis", "pipeline-management", "high-performance-computing", "hpc", "workflow", "data-pipelines", "scientific-computing", "mcp", "package-management"]
 
 dependencies = [
-  "fastmcp>=3.0.0rc2",
+  "fastmcp>=3.0.1",
   "fastapi",
   "python-dotenv>=1.0.0",
   "jarvis-util @ git+https://github.com/grc-iit/jarvis-util.git@main#egg=jarvis-util",
@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]

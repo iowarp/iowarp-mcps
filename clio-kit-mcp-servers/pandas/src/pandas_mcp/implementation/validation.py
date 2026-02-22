@@ -89,12 +89,18 @@ def validate_data(
             # Data type validation
             if "dtype" in rules:
                 expected_dtype = rules["dtype"]
-                if str(col_data.dtype) != expected_dtype:
+                actual_dtype = str(col_data.dtype)
+                # Normalize: pandas 3.x uses "string" instead of "object" for text
+                string_types = {"object", "string", "str"}
+                dtypes_match = actual_dtype == expected_dtype or (
+                    actual_dtype in string_types and expected_dtype in string_types
+                )
+                if not dtypes_match:
                     column_results["violations"].append(
                         {
                             "rule": "dtype",
                             "expected": expected_dtype,
-                            "actual": str(col_data.dtype),
+                            "actual": actual_dtype,
                         }
                     )
                     column_results["valid"] = False

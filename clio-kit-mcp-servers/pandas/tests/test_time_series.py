@@ -160,15 +160,16 @@ class TestTimeSeriesOperations:
 
     def test_resample_multiple_frequencies(self, temp_ts_file):
         """Test resampling with different frequencies"""
-        frequencies = ["D", "W", "M"]
+        # pandas 3.x uses "ME" instead of deprecated "M" alias
+        frequencies = {"D": "D", "W": "W", "M": "ME"}
 
-        for freq in frequencies:
+        for freq, expected_freq in frequencies.items():
             result = time_series_operations(
                 temp_ts_file, date_column="date", operation="resample", frequency=freq
             )
 
             assert result["success"]
-            assert result["operation_info"]["frequency"] == freq
+            assert result["operation_info"]["frequency"] == expected_freq
             if os.path.exists(result["output_file"]):
                 os.unlink(result["output_file"])
 

@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/ndp-mcp.svg)](https://pypi.org/project/ndp-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 The National Data Platform (NDP) MCP server provides comprehensive access to search and discover datasets across multiple CKAN instances within the National Data Platform ecosystem. This server enables seamless interaction with the NDP API to find scientific datasets, explore organizations, and r...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server ndp
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 

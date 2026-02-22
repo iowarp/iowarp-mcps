@@ -12,7 +12,7 @@ authors = [
 keywords = ["hdf5", "scientific-data", "hierarchical-data", "data-analysis", "scientific-computing", "mcp", "llm-integration", "data-structures"]
 
 dependencies = [
-  "fastmcp>=3.0.0rc2",
+  "fastmcp>=3.0.1",
   "h5py>=3.15.0",
   "numpy>=2.0.0",
   "pydantic>=2.4.2,<3.0.0",
@@ -21,12 +21,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
+    "pip-audit>=2.10.0",
     "pytest>=8.4.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",

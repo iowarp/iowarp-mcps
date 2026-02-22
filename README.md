@@ -32,7 +32,7 @@
 
 **CLIO Kit** - Part of the IoWarp platform's tooling layer for AI agents. A comprehensive collection of tools, skills, plugins, and extensions. Currently featuring 15+ Model Context Protocol (MCP) servers for scientific computing, with plans to expand to additional agent capabilities. Enables AI agents to interact with HPC resources, scientific data formats, and research datasets.
 
-[**Website**](https://toolkit.iowarp.ai/) | [**IOWarp**](https://iowarp.ai)
+[**Website**](https://docs.iowarp.ai/) | [**IOWarp**](https://iowarp.ai)
 
 Chat with us on [**Zulip**](https://iowarp.zulipchat.com/#narrow/channel/543872-Agent-Toolkit) or [**join us**](https://iowarp.zulipchat.com/join/e4wh24du356e4y2iw6x6jeay/)
 
@@ -188,22 +188,22 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 
 | 📦 **Package** | 📌 **Ver** | 🔧 **System** | 📋 **Description** | ⚡ **Install Command** |
 |:---|:---:|:---:|:---|:---|
-| **`adios`** | 1.0 | Data I/O | Read data using ADIOS2 engine | `uvx clio-kit mcp-server adios` |
-| **`arxiv`** | 1.0 | Research | Fetch research papers from ArXiv | `uvx clio-kit mcp-server arxiv` |
-| **`chronolog`** | 1.0 | Logging | Log and retrieve data from ChronoLog | `uvx clio-kit mcp-server chronolog` |
-| **`compression`** | 1.0 | Utilities | File compression with gzip | `uvx clio-kit mcp-server compression` |
-| **`darshan`** | 1.0 | Performance | I/O performance trace analysis | `uvx clio-kit mcp-server darshan` |
-| **`hdf5`** | 2.1 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `uvx clio-kit mcp-server hdf5` |
-| **`jarvis`** | 1.0 | Workflow | Data pipeline lifecycle management | `uvx clio-kit mcp-server jarvis` |
-| **`lmod`** | 1.0 | Environment | Environment module management | `uvx clio-kit mcp-server lmod` |
-| **`ndp`** | 1.0 | Data Protocol | Search and discover datasets across CKAN instances | `uvx clio-kit mcp-server ndp` |
-| **`node-hardware`** | 1.0 | System | System hardware information | `uvx clio-kit mcp-server node-hardware` |
-| **`pandas`** | 1.0 | Data Analysis | CSV data loading and filtering | `uvx clio-kit mcp-server pandas` |
-| **`parallel-sort`** | 1.0 | Computing | Large file sorting | `uvx clio-kit mcp-server parallel-sort` |
-| **`paraview`** | 1.0 | Visualization | Scientific 3D visualization and analysis | `uvx clio-kit mcp-server paraview` |
-| **`parquet`** | 1.0 | Data I/O | Read Parquet file columns | `uvx clio-kit mcp-server parquet` |
-| **`plot`** | 1.0 | Visualization | Generate plots from CSV data | `uvx clio-kit mcp-server plot` |
-| **`slurm`** | 1.0 | HPC | Job submission and management | `uvx clio-kit mcp-server slurm` |
+| **`adios`** | 2.0.1 | Data I/O | Read data using ADIOS2 engine | `uvx clio-kit mcp-server adios` |
+| **`arxiv`** | 2.0.1 | Research | Fetch research papers from ArXiv | `uvx clio-kit mcp-server arxiv` |
+| **`chronolog`** | 2.0.1 | Logging | Log and retrieve data from ChronoLog | `uvx clio-kit mcp-server chronolog` |
+| **`compression`** | 2.0.1 | Utilities | File compression with gzip | `uvx clio-kit mcp-server compression` |
+| **`darshan`** | 2.0.1 | Performance | I/O performance trace analysis | `uvx clio-kit mcp-server darshan` |
+| **`hdf5`** | 2.0.1 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `uvx clio-kit mcp-server hdf5` |
+| **`jarvis`** | 2.0.1 | Workflow | Data pipeline lifecycle management | `uvx clio-kit mcp-server jarvis` |
+| **`lmod`** | 2.0.1 | Environment | Environment module management | `uvx clio-kit mcp-server lmod` |
+| **`ndp`** | 2.0.1 | Data Protocol | Search and discover datasets across CKAN instances | `uvx clio-kit mcp-server ndp` |
+| **`node-hardware`** | 2.0.1 | System | System hardware information | `uvx clio-kit mcp-server node-hardware` |
+| **`pandas`** | 2.0.1 | Data Analysis | CSV data loading and filtering | `uvx clio-kit mcp-server pandas` |
+| **`parallel-sort`** | 2.0.1 | Computing | Large file sorting | `uvx clio-kit mcp-server parallel-sort` |
+| **`paraview`** | 2.0.1 | Visualization | Scientific 3D visualization and analysis | `uvx clio-kit mcp-server paraview` |
+| **`parquet`** | 2.0.1 | Data I/O | Read Parquet file columns | `uvx clio-kit mcp-server parquet` |
+| **`plot`** | 2.0.1 | Visualization | Generate plots from CSV data | `uvx clio-kit mcp-server plot` |
+| **`slurm`** | 2.0.1 | HPC | Job submission and management | `uvx clio-kit mcp-server slurm` |
 
 </div>
 
@@ -330,7 +330,7 @@ pip install uv
 - **Join**: [Invitation Link](https://iowarp.zulipchat.com/join/e4wh24du356e4y2iw6x6jeay/)
 - **Issues**: [GitHub Issues](https://github.com/iowarp/clio-kit/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/iowarp/clio-kit/discussions)
-- **Website**: [https://toolkit.iowarp.ai/](https://toolkit.iowarp.ai/)
+- **Website**: [https://docs.iowarp.ai/](https://docs.iowarp.ai/)
 - **Project**: [IOWarp Project](https://iowarp.ai)
 
 ---

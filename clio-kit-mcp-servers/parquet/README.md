@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Model Context Protocol (MCP) server for Apache Parquet files. Provides metadata extraction, column-based operations, and data filtering for AI agents.
 
@@ -15,7 +15,7 @@ uvx clio-kit mcp-server parquet
 
 ## Key Features
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 - 16KB payload limit with error messages and suggested slice sizes
@@ -273,7 +273,7 @@ MIT License - see LICENSE for details
 
 ## Resources
 
-- **CLIO Kit Website**: https://toolkit.iowarp.ai/
+- **CLIO Kit Website**: https://docs.iowarp.ai/
 - **Model Context Protocol**: https://modelcontextprotocol.io/
 - **Apache Parquet**: https://parquet.apache.org/
 - **PyArrow Documentation**: https://arrow.apache.org/docs/python/

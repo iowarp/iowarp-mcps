@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/node-hardware-mcp",
   "title": "CLIO Node Hardware",
-  "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics",
+  "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with...",
   "version": "1.0.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "1.0.0",
+      "version": "2.0.2",
       "transport": {
         "type": "stdio"
       },

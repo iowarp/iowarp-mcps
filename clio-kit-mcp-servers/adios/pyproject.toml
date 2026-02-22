@@ -22,14 +22,14 @@ keywords = [
 ]
 
 dependencies = [
-    "fastmcp>=3.0.0rc2",
+    "fastmcp>=3.0.1",
     "numpy",
     "adios2",
     "h11>=0.16.0"
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]

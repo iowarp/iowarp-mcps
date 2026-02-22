@@ -12,14 +12,14 @@ authors = [
 keywords = ["parallel-sorting", "log-processing", "log-analysis", "high-performance", "timestamp-sorting", "pattern-detection", "log-filtering", "data-export"]
 
 dependencies = [
-  "fastmcp>=3.0.0rc2",
+  "fastmcp>=3.0.1",
   "python-dotenv>=1.0.0",
   "pandas>=1.5.0",
   "aiofiles>=23.0.0"
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]

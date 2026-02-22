@@ -12,13 +12,13 @@ authors = [
 keywords = ["MCP", "Slurm", "HPC", "job-management", "cluster-monitoring", "workload-management", "scientific-computing", "high-performance-computing"]
 
 dependencies = [
-    "fastmcp>=3.0.0rc2",
+    "fastmcp>=3.0.1",
     "psutil>=7.0.0",
     "python-dotenv>=1.0.0",
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [dependency-groups]

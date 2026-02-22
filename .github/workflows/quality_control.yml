@@ -125,7 +125,7 @@ jobs:
         fi
 
     - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.12' && hashFiles('clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml') != ''
+      if: matrix.python-version == '3.12'
       uses: codecov/codecov-action@v4
       with:
         file: clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml
@@ -142,11 +142,12 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Upload coverage HTML report
-      if: matrix.python-version == '3.12' && hashFiles('clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/') != ''
+      if: matrix.python-version == '3.12'
       uses: actions/upload-artifact@v4
       with:
         name: coverage-html-${{ matrix.mcp }}
         path: clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/
+        if-no-files-found: ignore
 
   security:
     name: Security Audit - ${{ matrix.mcp }}

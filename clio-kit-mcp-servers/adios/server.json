@@ -2,14 +2,14 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/adios-mcp",
   "title": "CLIO Adios",
-  "description": "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes.",
+  "description": "Fetch and analyze BP5 data files using ADIOS2 for scientific data and metadata access.",
   "version": "1.0.0",
   "repository": {"url": "https://github.com/iowarp/clio-kit", "source": "github"},
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "1.0.0",
+      "version": "2.0.2",
       "transport": {"type": "stdio"},
       "arguments": ["clio-kit", "adios"]
     }

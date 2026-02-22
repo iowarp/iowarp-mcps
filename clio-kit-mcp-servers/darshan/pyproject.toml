@@ -20,7 +20,7 @@ keywords = [
 ]
 
 dependencies = [
-  "fastmcp>=3.0.0rc2",
+  "fastmcp>=3.0.1",
   "python-dotenv>=1.0.0",
   "pydantic>=1.10.0",
   "numpy>=1.24.0",
@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.optional-dependencies]

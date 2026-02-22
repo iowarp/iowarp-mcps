@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/paraview-mcp.svg)](https://pypi.org/project/paraview-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 ParaView MCP is a Model Context Protocol server that enables LLMs to create scientific 3D visualizations using ParaView through natural language commands. Features autonomous visualization, native ADIOS2/BP5 support, visual feedback, and no programming required.
 
@@ -549,7 +549,7 @@ This project builds upon concepts from the original LLNL ParaView MCP work:
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 - **Detailed Setup**: See [USAGE_README.md](./USAGE_README.md) for complete ParaView installation and configuration

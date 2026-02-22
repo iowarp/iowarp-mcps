@@ -225,7 +225,7 @@ See [CONTRIBUTING.md](https://github.com/iowarp/clio-kit/blob/main/CONTRIBUTING.
 ## Support
 
 - **Platform Website:** [IoWarp.ai](https://iowarp.ai) - Full platform overview and resources
-- **Documentation:** [toolkit.iowarp.ai](https://toolkit.iowarp.ai/)
+- **Documentation:** [docs.iowarp.ai](https://docs.iowarp.ai/)
 - **Community Chat:** [Zulip](https://iowarp.zulipchat.com/#narrow/channel/543872-Agent-Toolkit)
 - **Join Community:** [Invitation Link](https://iowarp.zulipchat.com/join/e4wh24du356e4y2iw6x6jeay/)
 - **Issues:** [GitHub Issues](https://github.com/iowarp/clio-kit/issues)
@@ -263,7 +263,7 @@ If you use CLIO Kit in your research:
 CLIO Kit: Tools, Skills, Plugins, and Extensions for AI Agents
 Part of the IoWarp Platform
 Gnosis Research Center (GRC), Illinois Institute of Technology
-https://toolkit.iowarp.ai/
+https://docs.iowarp.ai/
 https://github.com/iowarp/clio-kit
 ```
 

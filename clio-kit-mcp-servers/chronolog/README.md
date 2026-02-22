@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/chronolog-mcp.svg)](https://pypi.org/project/chronolog-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 ChronoLog MCP is a comprehensive Model Context Protocol (MCP) server that integrates with ChronoLog, a scalable, high-performance distributed shared log store. This server enables Language Learning Models (LLMs) to capture, manage, and retrieve conversational interactions in a structured format w...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server chronolog
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 

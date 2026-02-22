@@ -95,7 +95,7 @@ def test_server_config_defaults():
     """Test ServerConfig default values."""
     cfg = config.ServerConfig()
     assert cfg.name == "HDF5 MCP Server"
-    assert cfg.version == "0.1.0"
+    assert cfg.version == "1.0.0"
     assert cfg.request_timeout == 30.0
 
 

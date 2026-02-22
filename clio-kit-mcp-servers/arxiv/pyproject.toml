@@ -12,12 +12,12 @@ authors = [
 keywords = ["data processing", "arxiv", "publications", "scientific data", "research", "papers", "iowarp", "grc"]
 
 dependencies = [
-    "fastmcp>=3.0.0rc2",
+    "fastmcp>=3.0.1",
     "httpx>=0.24.0",
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]
@@ -26,6 +26,7 @@ arxiv-mcp = "arxiv_mcp.server:main"
 [dependency-groups]
 dev = [
      "mypy>=1.17.0",
+     "pip-audit>=2.10.0",
      "pytest>=8.4.1",
      "pytest-asyncio>=1.0.0",
      "pytest-cov>=6.2.1",

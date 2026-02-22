@@ -212,13 +212,12 @@ jobs:
       env:
         SMITHERY_TOKEN: ${{ secrets.SMITHERY_TOKEN }}
       run: |
-        for server_json in clio-kit-mcp-servers/*/server.json; do
-          server_dir=$(dirname "$server_json")
+        for server_dir in clio-kit-mcp-servers/*/; do
+          if [ ! -f "$server_dir/server.json" ]; then continue; fi
           server_name=$(basename "$server_dir")
           echo "Publishing $server_name to Smithery..."
-          smithery mcp publish "${{ github.repository }}" \
-            -n "iowarp/${server_name}-mcp" \
-            --config "$server_json" || {
+          smithery mcp publish "https://github.com/${{ github.repository }}" \
+            -n "iowarp/${server_name}-mcp" || {
             echo "Warning: failed to publish $server_name to Smithery"
             continue
           }

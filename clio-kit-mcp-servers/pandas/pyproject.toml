@@ -11,7 +11,7 @@ authors = [
 keywords = ["pandas", "data-analysis", "statistical-analysis", "data-science", "data-manipulation", "time-series", "data-cleaning", "data-transformation", "mcp", "llm-integration"]
 
 dependencies = [
-  "fastmcp>=3.0.0rc2",
+  "fastmcp>=3.0.1",
   "python-dotenv>=1.0.0",
   "pandas>=2.2.0",
   "numpy<2",
@@ -25,7 +25,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]

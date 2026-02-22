@@ -8,6 +8,17 @@ import os
 from typing import Optional, Dict, Any
 import traceback
 
+# Map deprecated frequency aliases to pandas 3.x equivalents
+_FREQ_ALIASES: dict[str, str] = {
+    "M": "ME",
+    "Q": "QE",
+    "A": "YE",
+    "Y": "YE",
+    "H": "h",
+    "T": "min",
+    "S": "s",
+}
+
 
 def time_series_operations(
     file_path: str,
@@ -68,6 +79,7 @@ def time_series_operations(
         if operation == "resample":
             if not frequency:
                 frequency = "D"  # Default to daily
+            frequency = _FREQ_ALIASES.get(frequency, frequency)
 
             # Resample data
             numeric_cols = df.select_dtypes(include=[np.number]).columns

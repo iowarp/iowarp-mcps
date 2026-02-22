@@ -26,6 +26,7 @@ except ImportError:
     import tomli as tomllib  # type: ignore[no-redef]
 
 REPO_URL = "https://github.com/iowarp/clio-kit"
+MAX_DESCRIPTION_LENGTH = 100
 
 # Domain-specific tags for each server
 SERVER_TAGS: dict[str, list[str]] = {
@@ -46,6 +47,14 @@ SERVER_TAGS: dict[str, list[str]] = {
     "plot": ["data-visualization", "matplotlib", "plotting", "charts"],
     "slurm": ["hpc", "slurm", "job-scheduling", "cluster-management"],
 }
+
+
+def read_root_version(repo_root: Path) -> str:
+    """Read the root pyproject.toml version (the PyPI package version)."""
+    pyproject_path = repo_root / "pyproject.toml"
+    with open(pyproject_path, "rb") as f:
+        data = tomllib.load(f)
+    return data.get("project", {}).get("version", "1.0.0")
 
 
 def read_pyproject(server_dir: Path) -> dict[str, Any]:
@@ -93,10 +102,13 @@ def build_server_json(
     server_name: str,
     project: dict[str, Any],
     metadata: dict[str, Any],
+    pypi_version: str = "1.0.0",
 ) -> dict[str, Any]:
     """Build the server.json manifest for the official MCP registry."""
     version = project.get("version", "1.0.0")
     description = project.get("description", "")
+    if len(description) > MAX_DESCRIPTION_LENGTH:
+        description = description[: MAX_DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0] + "..."
 
     tools = [
         {"name": t["name"], "description": t["description"]}
@@ -130,7 +142,7 @@ def build_server_json(
             {
                 "registryType": "pypi",
                 "identifier": "clio-kit",
-                "version": version,
+                "version": pypi_version,
                 "transport": {"type": "stdio"},
                 "arguments": ["clio-kit", server_name],
             }
@@ -239,6 +251,8 @@ def generate_all(mcps_dir: str) -> None:
         sys.exit(1)
 
     repo_root = mcps_path.parent
+    pypi_version = read_root_version(repo_root)
+    print(f"Root PyPI version: {pypi_version}")
     generated: list[str] = []
     failed: list[str] = []
     marketplace_plugins: list[dict[str, Any]] = []
@@ -259,7 +273,9 @@ def generate_all(mcps_dir: str) -> None:
         # server.json: only update if metadata extraction succeeds
         metadata = extract_metadata(server_dir)
         if metadata is not None:
-            server_json = build_server_json(server_name, project, metadata)
+            server_json = build_server_json(
+                server_name, project, metadata, pypi_version=pypi_version
+            )
             _write_json(server_dir / "server.json", server_json)
             tool_count = len(server_json.get("tools", []))
             print(f"  Wrote server.json ({tool_count} tools)")
