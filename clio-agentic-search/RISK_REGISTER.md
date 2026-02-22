@@ -1,0 +1,11 @@
+# Risk Register — Scientific Retrieval (Phase 3)
+
+| # | Risk | Impact | Mitigation | Owner |
+|---|------|--------|------------|-------|
+| R1 | Hash embeddings lack semantic understanding — queries with synonyms or paraphrases miss relevant chunks | False negatives on non-keyword queries; precision degrades with natural-language variation | Quality gate monitors precision@k; Phase 4 plugs real embedding model via `embed_text()` swap | Retrieval team |
+| R2 | Unit canonicalization covers limited set (SI base + kPa/km/h/g) — exotic units silently dropped | Measurements in uncovered units (psi, lb, ft, etc.) not indexed; invisible data loss | `canonicalize_measurement()` raises `ValueError` on unknown units; extend `_UNIT_CANONICALIZATION` table; quality gate catches regressions | Indexing team |
+| R3 | Table parser assumes pipe-delimited Markdown — LaTeX, CSV, HTML tables not parsed | Scientific papers with non-Markdown tables produce zero table-cell chunks | Add format-specific parsers as needed; structure-aware chunking falls back to plain-text chunks | Indexing team |
+| R4 | Formula matching is exact normalized string match — semantically equivalent but syntactically different formulas miss | `PV = nRT` matches, but `nRT = PV` does not | Introduce canonical form normalization (sort commutative operands) or symbolic comparison in Phase 4 | Retrieval team |
+| R5 | DuckDB storage scans all chunks for scientific search — O(n) per query | Latency grows linearly with corpus size; unacceptable for large corpora | Add measurement/formula indexes in storage layer; Phase 4 adds materialized views or inverted indexes | Storage team |
+| R6 | No concurrency protection — multiple indexing processes on same DuckDB file may corrupt | Silent data corruption or crashes under parallel ingestion | Phase 4 adds job queue with single-writer guarantee; document single-writer constraint | Platform team |
+| R7 | Misleading numeric text (e.g., "350 kPa budget") matches measurement regex | False positives in numeric range queries from non-scientific text | Scientific filter requires both measurement presence AND operator match — reduces but doesn't eliminate; consider context-aware extraction | Indexing team |

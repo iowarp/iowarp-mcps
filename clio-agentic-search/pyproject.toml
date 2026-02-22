@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.26.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clio-agentic-search"
+version = "0.1.0"
+description = "Agentic search bootstrap for Clio."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "duckdb>=1.1.0,<2.0.0",
+  "fastapi>=0.115.0,<1.0.0",
+  "uvicorn>=0.30.0,<1.0.0",
+]
+
+[project.scripts]
+clio = "clio_agentic_search.cli.main:main"
+clio-lint = "clio_agentic_search.tasks:lint"
+clio-format-check = "clio_agentic_search.tasks:format_check"
+clio-typecheck = "clio_agentic_search.tasks:typecheck"
+clio-test = "clio_agentic_search.tasks:test"
+clio-build = "clio_agentic_search.tasks:build"
+clio-serve = "clio_agentic_search.tasks:serve"
+clio-sync = "clio_agentic_search.tasks:sync"
+
+[dependency-groups]
+dev = [
+  "build>=1.2.2,<2.0.0",
+  "mypy>=1.13.0,<2.0.0",
+  "pre-commit>=4.0.0,<5.0.0",
+  "pytest>=8.3.0,<9.0.0",
+  "pytest-asyncio>=0.24.0,<1.0.0",
+  "ruff>=0.8.0,<1.0.0",
+  "httpx>=0.28.0,<1.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clio_agentic_search"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = [".virtualenv-app-data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"
+packages = ["clio_agentic_search"]
+
+[[tool.mypy.overrides]]
+module = ["duckdb"]
+ignore_missing_imports = true
