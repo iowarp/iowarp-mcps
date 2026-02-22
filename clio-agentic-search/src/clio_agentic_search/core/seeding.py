@@ -10,7 +10,6 @@ from clio_agentic_search.connectors.graph_store import GraphEdge, GraphNode, Neo
 from clio_agentic_search.connectors.kv_log_store import RedisLogConnector
 from clio_agentic_search.connectors.object_store import S3ObjectStoreConnector
 from clio_agentic_search.connectors.vector_store import QdrantVectorConnector, VectorPoint
-from clio_agentic_search.indexing.text_features import embed_text
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,7 +84,7 @@ def _seed_vector_store(connector: QdrantVectorConnector) -> SeedReport:
                 document_id="seed-vector-doc-1",
                 uri="qdrant://seed/seed-vector-doc-1",
                 text=text,
-                vector=embed_text(text),
+                vector=connector.embedder.embed(text),
                 metadata={"seed": "true"},
             )
         ]

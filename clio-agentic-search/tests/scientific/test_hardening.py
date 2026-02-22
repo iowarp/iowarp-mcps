@@ -206,7 +206,7 @@ def test_formula_search_across_noisy_corpus(tmp_path: Path) -> None:
         for citation in result.citations:
             metadata = connector.storage.get_chunk_metadata("test_ns", citation.chunk_id)
             formulas = metadata.get("scientific.formulas", "")
-            assert "pv=nrt" in formulas, f"Citation {citation.uri} missing PV=nRT formula"
+            assert "nrt=pv" in formulas, f"Citation {citation.uri} missing PV=nRT formula"
     finally:
         connector.teardown()
 

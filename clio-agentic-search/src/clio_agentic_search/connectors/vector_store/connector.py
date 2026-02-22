@@ -11,7 +11,7 @@ from clio_agentic_search.core.connectors import (
     NamespaceAuthConfig,
     NamespaceRuntimeConfig,
 )
-from clio_agentic_search.indexing.text_features import embed_text, tokenize
+from clio_agentic_search.indexing.text_features import Embedder, HashEmbedder, tokenize
 from clio_agentic_search.models.contracts import CitationRecord, NamespaceDescriptor
 from clio_agentic_search.retrieval.capabilities import ScoredChunk
 
@@ -73,6 +73,7 @@ class QdrantVectorConnector:
     namespace: str
     collection: str
     client: QdrantLikeClient
+    embedder: Embedder = field(default_factory=HashEmbedder)
     _runtime_config: NamespaceRuntimeConfig = field(
         default_factory=lambda: NamespaceRuntimeConfig(options={})
     )
@@ -120,7 +121,7 @@ class QdrantVectorConnector:
 
     def search_vector(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
-        query_vector = embed_text(query)
+        query_vector = self.embedder.embed(query)
         points = self.client.search(self.collection, query_vector, top_k=top_k)
         self._points_by_chunk.update({point.chunk_id: point for point, _ in points})
         return [

@@ -24,6 +24,9 @@ clio-build = "clio_agentic_search.tasks:build"
 clio-serve = "clio_agentic_search.tasks:serve"
 clio-sync = "clio_agentic_search.tasks:sync"
 
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=2.2.0"]
+
 [dependency-groups]
 dev = [
   "build>=1.2.2,<2.0.0",
@@ -62,5 +65,5 @@ mypy_path = "src"
 packages = ["clio_agentic_search"]
 
 [[tool.mypy.overrides]]
-module = ["duckdb"]
+module = ["duckdb", "sentence_transformers"]
 ignore_missing_imports = true

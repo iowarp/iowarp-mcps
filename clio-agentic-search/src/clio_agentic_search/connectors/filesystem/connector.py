@@ -15,8 +15,15 @@ from clio_agentic_search.core.connectors import (
 from clio_agentic_search.indexing.scientific import (
     ScientificChunkPlan,
     build_structure_aware_chunk_plan,
+    canonicalize_measurement,
+    normalize_formula,
 )
-from clio_agentic_search.indexing.text_features import cosine_similarity, embed_text, tokenize
+from clio_agentic_search.indexing.text_features import (
+    Embedder,
+    HashEmbedder,
+    cosine_similarity,
+    tokenize,
+)
 from clio_agentic_search.models.contracts import (
     ChunkRecord,
     CitationRecord,
@@ -38,6 +45,7 @@ class FilesystemConnector:
     namespace: str
     root: Path
     storage: StorageAdapter
+    embedder: Embedder = field(default_factory=HashEmbedder)
     embedding_model: str = "hash16-v1"
     chunk_size: int = 400
     reindex_delay_seconds: float = 0.0
@@ -126,7 +134,7 @@ class FilesystemConnector:
                     namespace=self.namespace,
                     chunk_id=chunk.chunk_id,
                     model=self.embedding_model,
-                    vector=embed_text(chunk.text),
+                    vector=self.embedder.embed(chunk.text),
                 )
                 for chunk in chunks
             ]
@@ -192,7 +200,7 @@ class FilesystemConnector:
 
     def search_vector(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
-        query_vector = embed_text(query)
+        query_vector = self.embedder.embed(query)
         embeddings = self.storage.list_embeddings(self.namespace, self.embedding_model)
 
         chunk_cache = {chunk.chunk_id: chunk for chunk in self.storage.list_chunks(self.namespace)}
@@ -252,8 +260,42 @@ class FilesystemConnector:
         if not operators.is_active():
             return []
 
+        candidate_ids: set[str] | None = None
+
+        if operators.numeric_range is not None:
+            try:
+                canonical_min = None
+                canonical_max = None
+                canonical_unit = canonicalize_measurement(0.0, operators.numeric_range.unit)[1]
+                if operators.numeric_range.minimum is not None:
+                    canonical_min = canonicalize_measurement(
+                        operators.numeric_range.minimum, operators.numeric_range.unit
+                    )[0]
+                if operators.numeric_range.maximum is not None:
+                    canonical_max = canonicalize_measurement(
+                        operators.numeric_range.maximum, operators.numeric_range.unit
+                    )[0]
+            except ValueError:
+                return []
+            range_chunks = self.storage.query_chunks_by_measurement_range(
+                self.namespace, canonical_unit, canonical_min, canonical_max
+            )
+            range_ids = {c.chunk_id for c in range_chunks}
+            candidate_ids = range_ids if candidate_ids is None else candidate_ids & range_ids
+
+        if operators.formula:
+            sig = normalize_formula(operators.formula)
+            formula_chunks = self.storage.query_chunks_by_formula(self.namespace, sig)
+            formula_ids = {c.chunk_id for c in formula_chunks}
+            candidate_ids = formula_ids if candidate_ids is None else candidate_ids & formula_ids
+
+        if candidate_ids is not None:
+            chunks = [self.storage.get_chunk(self.namespace, cid) for cid in sorted(candidate_ids)]
+        else:
+            chunks = self.storage.list_chunks(self.namespace)
+
         scored: list[ScoredChunk] = []
-        for chunk in self.storage.list_chunks(self.namespace):
+        for chunk in chunks:
             metadata = self.storage.get_chunk_metadata(self.namespace, chunk.chunk_id)
             score = score_scientific_metadata(metadata, operators)
             if score <= 0.0:

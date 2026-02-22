@@ -14,6 +14,7 @@ _CAPTION_PATTERN = re.compile(r"(?mi)^(figure|fig\.?|table)\s*([0-9A-Za-z-]*)\s*
 _BLOCK_EQUATION_PATTERN = re.compile(r"\$\$(.+?)\$\$", flags=re.DOTALL)
 _INLINE_EQUATION_PATTERN = re.compile(r"(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)", flags=re.DOTALL)
 _TABLE_LINE_PATTERN = re.compile(r"^\s*\|.*\|\s*$")
+_FACTOR_PATTERN = re.compile(r"(\\[a-z]+|[a-z])(\^\d+)?")
 
 _MEASUREMENT_PATTERN = re.compile(
     r"(?P<value>[+-]?\d+(?:\.\d+)?)\s*(?P<unit>km/h|m/s|km|cm|mm|m|kg|mg|g|h|min|s|mpa|kpa|pa)\b",
@@ -73,7 +74,30 @@ def canonicalize_measurement(value: float, unit: str) -> tuple[float, str]:
 
 def normalize_formula(formula: str) -> str:
     stripped = formula.strip().lower()
-    return re.sub(r"\s+", "", stripped)
+    normalized = re.sub(r"\s+", "", stripped)
+    # Superscript normalization: ^{2} → ^2, **2 → ^2
+    normalized = re.sub(r"\^\{(\d+)\}", r"^\1", normalized)
+    normalized = re.sub(r"\*\*(\d+)", r"^\1", normalized)
+    # Split on = and normalize each side independently
+    sides = normalized.split("=")
+    sides = [_normalize_formula_side(side) for side in sides]
+    sides.sort()
+    return "=".join(sides)
+
+
+def _normalize_formula_side(side: str) -> str:
+    """Normalize one side of a formula equation for canonical comparison."""
+    if not side:
+        return side
+    if "/" in side or "+" in side or "-" in side:
+        return side
+    factors = [match.group(0) for match in _FACTOR_PATTERN.finditer(side)]
+    if not factors:
+        return side
+    if "".join(factors) != side:
+        return side
+    factors.sort()
+    return "".join(factors)
 
 
 def extract_measurements(text: str) -> list[Measurement]:

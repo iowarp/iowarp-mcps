@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+from typing import Any, Protocol
 
 TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9_]+")
 
@@ -30,3 +31,53 @@ def cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> floa
     if len(left) != len(right):
         return 0.0
     return sum(left[index] * right[index] for index in range(len(left)))
+
+
+class Embedder(Protocol):
+    @property
+    def model_name(self) -> str: ...
+
+    @property
+    def dimensions(self) -> int: ...
+
+    def embed(self, text: str) -> tuple[float, ...]: ...
+
+
+class HashEmbedder:
+    @property
+    def model_name(self) -> str:
+        return "hash16-v1"
+
+    @property
+    def dimensions(self) -> int:
+        return 16
+
+    def embed(self, text: str) -> tuple[float, ...]:
+        return embed_text(text, dimensions=self.dimensions)
+
+
+class SentenceTransformerEmbedder:
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
+        self._model_name = model_name
+        self._model: Any = None
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
+    def dimensions(self) -> int:
+        return 384
+
+    def embed(self, text: str) -> tuple[float, ...]:
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer  # noqa: I001
+            except ImportError as exc:
+                raise ImportError(
+                    "sentence-transformers is required for SentenceTransformerEmbedder. "
+                    "Install with: pip install 'clio-agentic-search[semantic]'"
+                ) from exc
+            self._model = SentenceTransformer(self._model_name)
+        vector = self._model.encode(text)
+        return tuple(float(v) for v in vector)

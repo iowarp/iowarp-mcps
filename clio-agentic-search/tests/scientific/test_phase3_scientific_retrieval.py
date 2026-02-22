@@ -89,7 +89,7 @@ def test_structure_aware_chunking_indexes_sections_tables_equations_and_captions
             for measurement in all_measurements
         )
         assert any(
-            metadata.get("scientific.formulas", "").find("e=mc^2") >= 0
+            metadata.get("scientific.formulas", "").find("c^2m=e") >= 0
             for metadata in metadata_by_chunk.values()
         )
     finally:
