@@ -15,12 +15,29 @@ from clio_agentic_search.retrieval.scientific import (
     UnitMatchOperator,
 )
 
+_EPILOG = """\
+Environment variables:
+  CLIO_LOCAL_ROOT      Root directory for local_fs namespace (default: .)
+  CLIO_STORAGE_PATH    DuckDB database path (default: .clio-agentic-search.duckdb)
+  CLIO_CORS_ORIGINS    Allowed CORS origins for API (default: *)
+"""
+
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="clio", description="Clio agentic search CLI.")
+    parser = argparse.ArgumentParser(
+        prog="clio",
+        description="Clio agentic search CLI.",
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    query_parser = subparsers.add_parser("query", help="Run a namespace query.")
+    query_parser = subparsers.add_parser(
+        "query",
+        help="Run a namespace query.",
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     query_parser.add_argument("text", nargs="?", help="Query text.")
     query_parser.add_argument("--q", dest="query_text", help="Query text.")
     query_parser.add_argument(
@@ -60,6 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Formula-targeted retrieval expression.",
     )
+
     seed_parser = subparsers.add_parser("seed", help="Seed explicit demo/test records.")
     seed_parser.add_argument(
         "--namespace",
@@ -73,6 +91,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--namespaces",
         default="",
         help="Comma-separated namespaces to seed.",
+    )
+
+    serve_parser = subparsers.add_parser("serve", help="Start the API server.")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1).")
+    serve_parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000).")
+    serve_parser.add_argument(
+        "--reload", action="store_true", help="Enable auto-reload on code changes."
+    )
+
+    index_parser = subparsers.add_parser("index", help="Index namespaces without querying.")
+    index_parser.add_argument(
+        "--namespace",
+        default="local_fs",
+        help="Namespace to index (default: local_fs).",
+    )
+    index_parser.add_argument(
+        "--namespaces",
+        default="",
+        help="Comma-separated namespaces to index.",
+    )
+    index_parser.add_argument(
+        "--full-reindex",
+        action="store_true",
+        help="Force a full reindex.",
     )
 
     return parser
@@ -118,6 +160,12 @@ def _run_query(
                 f"{target},indexed={index_report.indexed_files},"
                 f"skipped={index_report.skipped_files},removed={index_report.removed_files}"
             )
+            if index_report.indexed_files == 0 and index_report.skipped_files == 0:
+                print(
+                    f"Warning: no documents found in namespace '{target}'. "
+                    "Check CLIO_LOCAL_ROOT or directory contents.",
+                    file=sys.stderr,
+                )
 
         coordinator = RetrievalCoordinator()
         if len(connectors) == 1:
@@ -154,8 +202,42 @@ def _run_query(
                     f"snippet={citation.snippet}"
                 )
         else:
-            print("citation=<none>")
+            total_indexed = sum(int(s.split("indexed=")[1].split(",")[0]) for s in index_summaries)
+            print(
+                f"No results. {total_indexed} files indexed"
+                f" across {len(target_namespaces)} namespaces."
+            )
+            stage_counts: dict[str, int] = {}
+            for event in trace:
+                stage_counts[event.stage] = stage_counts.get(event.stage, 0) + 1
+            for stage, count in stage_counts.items():
+                print(f"  trace: {stage} ({count} events)")
         print(f"trace_events={len(trace)}")
+        return 0
+    finally:
+        registry.teardown()
+
+
+def _run_index(*, namespace: str, namespaces: str, full_reindex: bool) -> int:
+    registry = build_default_registry()
+    target_namespaces = _resolve_target_namespaces(namespace=namespace, namespaces=namespaces)
+    try:
+        for target in target_namespaces:
+            try:
+                connector = registry.get_connected(target)
+            except KeyError:
+                available = ", ".join(registry.list_namespaces())
+                print(
+                    f"Unknown namespace '{target}'. Available namespaces: {available}",
+                    file=sys.stderr,
+                )
+                return 2
+            report = connector.index(full_rebuild=full_reindex)
+            print(
+                f"namespace={target},indexed={report.indexed_files},"
+                f"skipped={report.skipped_files},removed={report.removed_files},"
+                f"elapsed={report.elapsed_seconds:.2f}s"
+            )
         return 0
     finally:
         registry.teardown()
@@ -288,6 +370,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
     if args.command == "seed":
         return _run_seed(namespace=args.namespace, namespaces=args.namespaces)
+    if args.command == "serve":
+        import uvicorn
+
+        uvicorn.run(
+            "clio_agentic_search.api.app:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+        )
+        return 0
+    if args.command == "index":
+        return _run_index(
+            namespace=args.namespace,
+            namespaces=args.namespaces,
+            full_reindex=args.full_reindex,
+        )
 
     parser.print_help()
     return 0

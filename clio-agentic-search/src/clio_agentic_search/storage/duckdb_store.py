@@ -48,7 +48,10 @@ class DuckDBStorage:
 
     def connect(self) -> None:
         self._database_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection = duckdb.connect(str(self._database_path))
+        try:
+            self._connection = duckdb.connect(str(self._database_path))
+        except Exception as exc:
+            raise RuntimeError(f"Cannot open database at {self._database_path}: {exc}") from exc
         connection = self._require_connection()
         connection.execute(
             """

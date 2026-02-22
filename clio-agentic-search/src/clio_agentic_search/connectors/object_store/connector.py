@@ -6,6 +6,7 @@ import hashlib
 import time
 from dataclasses import dataclass, field
 
+from clio_agentic_search.connectors.filesystem.connector import DEFAULT_EXCLUDE_SUFFIXES
 from clio_agentic_search.core.connectors import (
     IndexReport,
     NamespaceAuthConfig,
@@ -37,6 +38,14 @@ from clio_agentic_search.retrieval.scientific import (
     score_scientific_metadata,
 )
 from clio_agentic_search.storage import FileIndexState, StorageAdapter
+
+
+def _should_skip_key(key: str, exclude_suffixes: frozenset[str]) -> bool:
+    key_lower = key.lower()
+    for suffix in exclude_suffixes:
+        if key_lower.endswith(suffix):
+            return True
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +94,7 @@ class S3ObjectStoreConnector:
     client: S3CompatibleClient
     embedder: Embedder = field(default_factory=HashEmbedder)
     embedding_model: str = "hash16-v1"
+    exclude_suffixes: frozenset[str] = DEFAULT_EXCLUDE_SUFFIXES
     _runtime_config: NamespaceRuntimeConfig = field(
         default_factory=lambda: NamespaceRuntimeConfig(options={})
     )
@@ -130,6 +140,8 @@ class S3ObjectStoreConnector:
         existing_paths: set[str] = set()
 
         for object_record in self.client.list_objects(self.bucket, self.prefix):
+            if _should_skip_key(object_record.key, self.exclude_suffixes):
+                continue
             scanned_files += 1
             existing_paths.add(object_record.key)
             content_hash = hashlib.sha256(object_record.body).hexdigest()

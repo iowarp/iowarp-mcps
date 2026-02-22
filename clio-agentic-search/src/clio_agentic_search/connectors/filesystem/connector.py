@@ -39,6 +39,67 @@ from clio_agentic_search.retrieval.scientific import (
 )
 from clio_agentic_search.storage.contracts import FileIndexState, StorageAdapter
 
+DEFAULT_EXCLUDE_PATTERNS: frozenset[str] = frozenset(
+    {".git", "__pycache__", ".venv", "node_modules", ".uv-cache"}
+)
+
+DEFAULT_EXCLUDE_SUFFIXES: frozenset[str] = frozenset(
+    {
+        ".duckdb",
+        ".duckdb.wal",
+        ".lock",
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dylib",
+        ".exe",
+        ".dll",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".svg",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".mp3",
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".7z",
+        ".jar",
+        ".war",
+        ".class",
+    }
+)
+
+
+def _should_skip_path(
+    file_path: Path,
+    root: Path,
+    exclude_patterns: frozenset[str],
+    exclude_suffixes: frozenset[str],
+) -> bool:
+    name_lower = file_path.name.lower()
+    for suffix in exclude_suffixes:
+        if name_lower.endswith(suffix):
+            return True
+    try:
+        relative = file_path.relative_to(root)
+    except ValueError:
+        return True
+    for part in relative.parts:
+        if part in exclude_patterns:
+            return True
+    return False
+
 
 @dataclass(slots=True)
 class FilesystemConnector:
@@ -49,6 +110,8 @@ class FilesystemConnector:
     embedding_model: str = "hash16-v1"
     chunk_size: int = 400
     reindex_delay_seconds: float = 0.0
+    exclude_patterns: frozenset[str] = DEFAULT_EXCLUDE_PATTERNS
+    exclude_suffixes: frozenset[str] = DEFAULT_EXCLUDE_SUFFIXES
     _runtime_config: NamespaceRuntimeConfig = field(
         default_factory=lambda: NamespaceRuntimeConfig(options={})
     )
@@ -94,6 +157,11 @@ class FilesystemConnector:
         existing_paths: set[str] = set()
 
         for file_path in sorted(path for path in self.root.rglob("*") if path.is_file()):
+            if _should_skip_path(
+                file_path, self.root, self.exclude_patterns, self.exclude_suffixes
+            ):
+                continue
+
             relative_path = file_path.relative_to(self.root).as_posix()
             existing_paths.add(relative_path)
             scanned_files += 1
