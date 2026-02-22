@@ -8,14 +8,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from clio_agentic_search.connectors.filesystem import FilesystemConnector
-from clio_agentic_search.connectors.graph_store import (
-    InMemoryNeo4jClient,
-    Neo4jGraphConnector,
-)
-from clio_agentic_search.connectors.kv_log_store import (
-    InMemoryRedisStreamClient,
-    RedisLogConnector,
-)
 from clio_agentic_search.connectors.object_store import InMemoryS3Client, S3ObjectStoreConnector
 from clio_agentic_search.connectors.vector_store import (
     InMemoryQdrantClient,
@@ -28,6 +20,7 @@ from clio_agentic_search.core.connectors import (
     NamespaceRuntimeConfig,
 )
 from clio_agentic_search.core.namespace_config import load_default_namespace_bundles
+from clio_agentic_search.indexing.text_features import Embedder, HashEmbedder
 from clio_agentic_search.storage import DuckDBStorage
 
 
@@ -96,9 +89,21 @@ class NamespaceRegistry:
         return self.connect(name)
 
 
+def _default_embedder() -> Embedder:
+    try:
+        import sentence_transformers  # noqa: F401
+
+        from clio_agentic_search.indexing.text_features import SentenceTransformerEmbedder
+
+        return SentenceTransformerEmbedder()
+    except ImportError:
+        return HashEmbedder()
+
+
 def build_default_registry() -> NamespaceRegistry:
     bundles = load_default_namespace_bundles()
     storage_path = Path(os.environ.get("CLIO_STORAGE_PATH", ".clio-agentic-search.duckdb"))
+    embedder = _default_embedder()
 
     registry = NamespaceRegistry()
     local_bundle = bundles["local_fs"]
@@ -106,6 +111,8 @@ def build_default_registry() -> NamespaceRegistry:
         namespace="local_fs",
         root=Path(local_bundle.runtime.options["root"]),
         storage=DuckDBStorage(database_path=storage_path),
+        embedder=embedder,
+        embedding_model=embedder.model_name,
     )
     registry.register(
         "local_fs",
@@ -122,6 +129,8 @@ def build_default_registry() -> NamespaceRegistry:
         prefix=object_bundle.runtime.options["prefix"],
         storage=DuckDBStorage(database_path=_namespaced_storage_path(storage_path, "object_s3")),
         client=object_client,
+        embedder=embedder,
+        embedding_model=embedder.model_name,
     )
     _seed_object_store_from_root(
         client=object_client,
@@ -141,6 +150,7 @@ def build_default_registry() -> NamespaceRegistry:
         namespace="vector_qdrant",
         collection=vector_bundle.runtime.options["collection"],
         client=InMemoryQdrantClient(),
+        embedder=embedder,
     )
     registry.register(
         "vector_qdrant",
@@ -149,29 +159,6 @@ def build_default_registry() -> NamespaceRegistry:
         auth_config=vector_bundle.auth,
     )
 
-    graph_bundle = bundles["graph_neo4j"]
-    graph_connector = Neo4jGraphConnector(
-        namespace="graph_neo4j",
-        database=graph_bundle.runtime.options["database"],
-        client=InMemoryNeo4jClient(),
-    )
-    registry.register(
-        "graph_neo4j",
-        graph_connector,
-        runtime_config=graph_bundle.runtime,
-        auth_config=graph_bundle.auth,
-    )
-
-    kv_bundle = bundles["kv_redis"]
-    kv_client = InMemoryRedisStreamClient()
-    kv_stream = kv_bundle.runtime.options["stream"]
-    kv_connector = RedisLogConnector(namespace="kv_redis", stream=kv_stream, client=kv_client)
-    registry.register(
-        "kv_redis",
-        kv_connector,
-        runtime_config=kv_bundle.runtime,
-        auth_config=kv_bundle.auth,
-    )
     return registry
 
 

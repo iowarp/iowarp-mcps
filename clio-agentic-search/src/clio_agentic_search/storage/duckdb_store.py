@@ -21,6 +21,7 @@ from clio_agentic_search.indexing.scientific import decode_measurements
 from clio_agentic_search.models.contracts import (
     ChunkRecord,
     DocumentRecord,
+    DocumentSummary,
     EmbeddingRecord,
     MetadataRecord,
 )
@@ -486,6 +487,31 @@ class DuckDBStorage:
             [namespace, formula_signature],
         ).fetchall()
         return [self._row_to_chunk_record(row) for row in rows]
+
+    def list_documents(self, namespace: str) -> list[DocumentSummary]:
+        connection = self._require_connection()
+        rows = connection.execute(
+            """
+            SELECT d.namespace, d.document_id, d.uri, d.modified_at_ns,
+                   COUNT(c.chunk_id) AS chunk_count
+            FROM documents d
+            LEFT JOIN chunks c ON c.namespace = d.namespace AND c.document_id = d.document_id
+            WHERE d.namespace = ?
+            GROUP BY d.namespace, d.document_id, d.uri, d.modified_at_ns
+            ORDER BY d.uri
+            """,
+            [namespace],
+        ).fetchall()
+        return [
+            DocumentSummary(
+                namespace=str(row[0]),
+                document_id=str(row[1]),
+                uri=str(row[2]),
+                modified_at_ns=int(row[3]),
+                chunk_count=int(row[4]),
+            )
+            for row in rows
+        ]
 
     def _delete_document(self, namespace: str, document_id: str) -> None:
         connection = self._require_connection()

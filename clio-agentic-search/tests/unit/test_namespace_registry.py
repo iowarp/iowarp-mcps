@@ -26,8 +26,8 @@ def test_default_registry_registers_local_namespace(
     assert "local_fs" in registry
     assert "object_s3" in registry
     assert "vector_qdrant" in registry
-    assert "graph_neo4j" in registry
-    assert "kv_redis" in registry
+    assert "graph_neo4j" not in registry
+    assert "kv_redis" not in registry
     connector = registry.connect("local_fs")
     assert connector.descriptor().connector_type == "filesystem"
     assert registry.is_connected("local_fs")

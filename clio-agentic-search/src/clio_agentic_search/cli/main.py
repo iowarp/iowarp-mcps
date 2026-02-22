@@ -117,6 +117,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Force a full reindex.",
     )
 
+    list_parser = subparsers.add_parser("list", help="List indexed documents.")
+    list_parser.add_argument(
+        "--namespace",
+        default="local_fs",
+        help="Namespace to list documents from (default: local_fs).",
+    )
+
     return parser
 
 
@@ -238,6 +245,37 @@ def _run_index(*, namespace: str, namespaces: str, full_reindex: bool) -> int:
                 f"skipped={report.skipped_files},removed={report.removed_files},"
                 f"elapsed={report.elapsed_seconds:.2f}s"
             )
+        return 0
+    finally:
+        registry.teardown()
+
+
+def _run_list(*, namespace: str) -> int:
+    registry = build_default_registry()
+    try:
+        try:
+            connector = registry.get_connected(namespace)
+        except KeyError:
+            available = ", ".join(registry.list_namespaces())
+            print(
+                f"Unknown namespace '{namespace}'. Available namespaces: {available}",
+                file=sys.stderr,
+            )
+            return 2
+        storage = getattr(connector, "storage", None)
+        if storage is None or not hasattr(storage, "list_documents"):
+            print(f"Namespace '{namespace}' does not support document listing.", file=sys.stderr)
+            return 2
+        documents = storage.list_documents(namespace)
+        if not documents:
+            print(f"No documents indexed in namespace '{namespace}'.")
+            return 0
+        print(f"{'URI':<60} {'Chunks':>6}")
+        print("-" * 67)
+        for doc in documents:
+            print(f"{doc.uri:<60} {doc.chunk_count:>6}")
+        total_chunks = sum(d.chunk_count for d in documents)
+        print(f"\nTotal: {len(documents)} documents, {total_chunks} chunks")
         return 0
     finally:
         registry.teardown()
@@ -386,6 +424,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             namespaces=args.namespaces,
             full_reindex=args.full_reindex,
         )
+    if args.command == "list":
+        return _run_list(namespace=args.namespace)
 
     parser.print_help()
     return 0

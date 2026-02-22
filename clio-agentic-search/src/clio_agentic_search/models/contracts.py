@@ -65,3 +65,12 @@ class TraceEvent:
     message: str
     timestamp_ns: int
     attributes: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentSummary:
+    namespace: str
+    document_id: str
+    uri: str
+    chunk_count: int
+    modified_at_ns: int

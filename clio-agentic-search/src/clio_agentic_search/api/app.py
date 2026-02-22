@@ -69,6 +69,8 @@ class QueryRequest(BaseModel):
     namespaces: list[str] = Field(default_factory=list)
     query: str
     top_k: int = 5
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=20, ge=1, le=100)
     metadata_filters: dict[str, str] = Field(default_factory=dict)
     scientific_operators: ScientificOperatorsRequest = Field(
         default_factory=ScientificOperatorsRequest
@@ -99,6 +101,9 @@ class QueryResponse(BaseModel):
     skipped_files: dict[str, int]
     removed_files: dict[str, int]
     citations: list[CitationResponse]
+    total_count: int
+    offset: int
+    limit: int
     trace: list[TraceResponse]
 
 
@@ -145,6 +150,52 @@ def health() -> dict[str, str]:
 @app.get("/version")
 def version() -> dict[str, str]:
     return {"version": __version__}
+
+
+class DocumentResponse(BaseModel):
+    namespace: str
+    document_id: str
+    uri: str
+    chunk_count: int
+
+
+class DocumentListResponse(BaseModel):
+    namespace: str
+    documents: list[DocumentResponse]
+    total_documents: int
+    total_chunks: int
+
+
+@app.get("/documents", response_model=DocumentListResponse)
+def list_documents(namespace: str = "local_fs") -> DocumentListResponse:
+    registry = _registry()
+    try:
+        connector = registry.get_connected(namespace)
+    except KeyError as error:
+        available = ", ".join(registry.list_namespaces())
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown namespace '{namespace}'. Available: {available}",
+        ) from error
+    storage = getattr(connector, "storage", None)
+    if storage is None or not hasattr(storage, "list_documents"):
+        raise HTTPException(status_code=400, detail="Namespace does not support document listing")
+    summaries = storage.list_documents(namespace)
+    docs = [
+        DocumentResponse(
+            namespace=s.namespace,
+            document_id=s.document_id,
+            uri=s.uri,
+            chunk_count=s.chunk_count,
+        )
+        for s in summaries
+    ]
+    return DocumentListResponse(
+        namespace=namespace,
+        documents=docs,
+        total_documents=len(docs),
+        total_chunks=sum(d.chunk_count for d in docs),
+    )
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -196,13 +247,20 @@ def query(request: QueryRequest) -> QueryResponse:
         citations = multi_result.citations
         trace = multi_result.trace
 
+    all_citations = [CitationResponse(**asdict(c)) for c in citations]
+    total_count = len(all_citations)
+    paginated = all_citations[request.offset : request.offset + request.limit]
+
     return QueryResponse(
         namespaces=namespaces,
         query=request.query,
         indexed_files=indexed_files,
         skipped_files=skipped_files,
         removed_files=removed_files,
-        citations=[CitationResponse(**asdict(citation)) for citation in citations],
+        citations=paginated,
+        total_count=total_count,
+        offset=request.offset,
+        limit=request.limit,
         trace=[TraceResponse(**asdict(event)) for event in trace],
     )
 

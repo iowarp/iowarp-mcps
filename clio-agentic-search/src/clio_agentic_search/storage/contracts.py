@@ -8,6 +8,7 @@ from typing import Protocol
 from clio_agentic_search.models.contracts import (
     ChunkRecord,
     DocumentRecord,
+    DocumentSummary,
     EmbeddingRecord,
     MetadataRecord,
 )
@@ -74,3 +75,6 @@ class StorageAdapter(Protocol):
 
     def query_chunks_by_formula(self, namespace: str, formula_signature: str) -> list[ChunkRecord]:
         """Query chunks by normalized formula signature."""
+
+    def list_documents(self, namespace: str) -> list[DocumentSummary]:
+        """List documents with chunk counts for a namespace."""
