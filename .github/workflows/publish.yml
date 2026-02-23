@@ -206,52 +206,8 @@ jobs:
           exit 1
         fi
 
-  publish-to-smithery:
-    name: Publish to Smithery
-    needs:
-    - publish-to-pypi
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
-    - name: Install Smithery CLI
-      run: npm install -g @smithery/cli
-
-    - name: Verify Smithery token is set
-      run: |
-        if [ -z "${{ secrets.SMITHERY_TOKEN }}" ]; then
-          echo "::error::SMITHERY_TOKEN secret is not set. Add it at https://github.com/iowarp/clio-kit/settings/secrets/actions"
-          exit 1
-        fi
-
-    - name: Publish each server to Smithery
-      # Smithery scans servers via HTTP after upload, which fails for stdio/PyPI
-      # servers. The server entries are still created. Non-fatal until Smithery
-      # adds native stdio server support.
-      continue-on-error: true
-      env:
-        SMITHERY_API_KEY: ${{ secrets.SMITHERY_TOKEN }}
-      run: |
-        FAILURES=0
-        PUBLISHED=0
-        for server_dir in clio-kit-mcp-servers/*/; do
-          if [ ! -f "$server_dir/smithery.yaml" ]; then continue; fi
-          server_name=$(basename "$server_dir")
-          echo "Publishing $server_name to Smithery..."
-          if smithery mcp publish "https://github.com/${{ github.repository }}" \
-            -n "iowarp/${server_name}-mcp"; then
-            echo "Published $server_name to Smithery"
-            PUBLISHED=$((PUBLISHED + 1))
-          else
-            echo "::warning::Smithery scan failed for $server_name (expected for stdio servers)"
-            FAILURES=$((FAILURES + 1))
-          fi
-        done
-        echo "Smithery: $PUBLISHED published, $FAILURES scan failures (expected for stdio)"
+  # NOTE: Smithery deprecated stdio transport (Sep 2025) and now only supports
+  # hosted HTTP servers. All clio-kit servers require local access (file system,
+  # HPC scheduler, hardware) so Smithery hosting is not viable. Servers are
+  # discoverable via MCP Registry (modelcontextprotocol.io) and PyPI instead.
+  # Re-enable this job if Smithery adds stdio support or if we add HTTP hosting.
