@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from clio_agentic_search.core.connectors import NamespaceConnector
 from clio_agentic_search.models.contracts import CitationRecord, TraceEvent
@@ -18,6 +18,7 @@ from clio_agentic_search.retrieval.capabilities import (
 )
 from clio_agentic_search.retrieval.rerank import DefaultHeuristicReranker, Reranker
 from clio_agentic_search.retrieval.scientific import ScientificQueryOperators
+from clio_agentic_search.telemetry import Tracer, get_tracer
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,7 @@ class MultiNamespaceQueryResult:
 @dataclass(slots=True)
 class RetrievalCoordinator:
     reranker: Reranker = DefaultHeuristicReranker()
+    tracer: Tracer = field(default_factory=get_tracer)
 
     def query(
         self,
@@ -76,12 +78,11 @@ class RetrievalCoordinator:
         all_citations: list[CitationRecord] = []
         namespaces: list[str] = []
 
-        trace.append(
-            _make_trace(
-                "multi_query_started",
-                "multi-namespace query started",
-                {"query": query, "namespace_count": str(len(connectors))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="multi_query_started",
+            message="multi-namespace query started",
+            attributes={"query": query, "namespace_count": str(len(connectors))},
         )
         for connector in connectors:
             namespace = connector.descriptor().name
@@ -105,12 +106,11 @@ class RetrievalCoordinator:
             )
         )
         selected = all_citations[:top_k]
-        trace.append(
-            _make_trace(
-                "multi_query_completed",
-                "multi-namespace query completed",
-                {"citations": str(len(selected))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="multi_query_completed",
+            message="multi-namespace query completed",
+            attributes={"citations": str(len(selected))},
         )
         return MultiNamespaceQueryResult(
             namespaces=tuple(namespaces),
@@ -130,39 +130,41 @@ class RetrievalCoordinator:
         trace: list[TraceEvent],
     ) -> list[CitationRecord]:
         namespace = connector.descriptor().name
-        trace.append(_make_trace("query_started", f"namespace={namespace}", {"query": query}))
+        self._append_trace(
+            trace=trace,
+            stage="query_started",
+            message=f"namespace={namespace}",
+            attributes={"query": query},
+        )
 
         lexical: list[ScoredChunk] = []
         if isinstance(connector, LexicalSearchCapable):
             lexical = connector.search_lexical(query, top_k=top_k * 4)
-        trace.append(
-            _make_trace(
-                "lexical_completed",
-                "lexical branch finished",
-                {"namespace": namespace, "candidates": str(len(lexical))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="lexical_completed",
+            message="lexical branch finished",
+            attributes={"namespace": namespace, "candidates": str(len(lexical))},
         )
 
         vector: list[ScoredChunk] = []
         if isinstance(connector, VectorSearchCapable):
             vector = connector.search_vector(query, top_k=top_k * 4)
-        trace.append(
-            _make_trace(
-                "vector_completed",
-                "vector branch finished",
-                {"namespace": namespace, "candidates": str(len(vector))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="vector_completed",
+            message="vector branch finished",
+            attributes={"namespace": namespace, "candidates": str(len(vector))},
         )
 
         graph: list[ScoredChunk] = []
         if isinstance(connector, GraphSearchCapable):
             graph = connector.search_graph(query, top_k=top_k * 2)
-        trace.append(
-            _make_trace(
-                "graph_completed",
-                "graph branch finished",
-                {"namespace": namespace, "candidates": str(len(graph))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="graph_completed",
+            message="graph branch finished",
+            attributes={"namespace": namespace, "candidates": str(len(graph))},
         )
 
         scientific: list[ScoredChunk] = []
@@ -172,12 +174,11 @@ class RetrievalCoordinator:
                 top_k=top_k * 4,
                 operators=scientific_operators,
             )
-            trace.append(
-                _make_trace(
-                    "scientific_completed",
-                    "scientific branch finished",
-                    {"namespace": namespace, "candidates": str(len(scientific))},
-                )
+            self._append_trace(
+                trace=trace,
+                stage="scientific_completed",
+                message="scientific branch finished",
+                attributes={"namespace": namespace, "candidates": str(len(scientific))},
             )
 
         merged = self._merge_candidates(
@@ -191,65 +192,76 @@ class RetrievalCoordinator:
             merged = [
                 candidate for candidate in merged if candidate.chunk_id in matched_scientific_ids
             ]
-            trace.append(
-                _make_trace(
-                    "scientific_filter_completed",
-                    "scientific operator filtering finished",
-                    {"namespace": namespace, "candidates": str(len(merged))},
-                )
+            self._append_trace(
+                trace=trace,
+                stage="scientific_filter_completed",
+                message="scientific operator filtering finished",
+                attributes={"namespace": namespace, "candidates": str(len(merged))},
             )
-        trace.append(
-            _make_trace(
-                "merge_completed",
-                "hybrid merge finished",
-                {"namespace": namespace, "candidates": str(len(merged))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="merge_completed",
+            message="hybrid merge finished",
+            attributes={"namespace": namespace, "candidates": str(len(merged))},
         )
 
         filtered = merged
         if isinstance(connector, MetadataFilterCapable):
             filtered = connector.filter_metadata(merged, required=metadata_filters)
-        trace.append(
-            _make_trace(
-                "metadata_completed",
-                "metadata filtering finished",
-                {
-                    "namespace": namespace,
-                    "candidates": str(len(filtered)),
-                    "filters": str(len(metadata_filters)),
-                },
-            )
+        self._append_trace(
+            trace=trace,
+            stage="metadata_completed",
+            message="metadata filtering finished",
+            attributes={
+                "namespace": namespace,
+                "candidates": str(len(filtered)),
+                "filters": str(len(metadata_filters)),
+            },
         )
 
         if isinstance(connector, StreamingLogCapable):
             log_messages = connector.stream_logs(namespace=namespace, limit=10)
-            trace.append(
-                _make_trace(
-                    "log_stream_completed",
-                    "log stream consumed",
-                    {"namespace": namespace, "messages": str(len(log_messages))},
-                )
+            self._append_trace(
+                trace=trace,
+                stage="log_stream_completed",
+                message="log stream consumed",
+                attributes={"namespace": namespace, "messages": str(len(log_messages))},
             )
 
         reranked = self.reranker.rerank(query=query, candidates=filtered)
-        trace.append(
-            _make_trace(
-                "rerank_completed",
-                "reranking finished",
-                {"namespace": namespace, "candidates": str(len(reranked))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="rerank_completed",
+            message="reranking finished",
+            attributes={"namespace": namespace, "candidates": str(len(reranked))},
         )
 
         selected = reranked[:top_k]
         citations = [connector.build_citation(chunk) for chunk in selected]
-        trace.append(
-            _make_trace(
-                "query_completed",
-                "query finished",
-                {"namespace": namespace, "citations": str(len(citations))},
-            )
+        self._append_trace(
+            trace=trace,
+            stage="query_completed",
+            message="query finished",
+            attributes={"namespace": namespace, "citations": str(len(citations))},
         )
         return citations
+
+    def _append_trace(
+        self,
+        *,
+        trace: list[TraceEvent],
+        stage: str,
+        message: str,
+        attributes: dict[str, str],
+    ) -> None:
+        event = _make_trace(stage, message, attributes)
+        trace.append(event)
+        with self.tracer.start_span(f"retrieval.{stage}") as span:
+            span.set_attribute("retrieval.stage", stage)
+            span.set_attribute("retrieval.message", message)
+            span.set_attribute("retrieval.timestamp_ns", event.timestamp_ns)
+            for key, value in attributes.items():
+                span.set_attribute(f"retrieval.attr.{key}", value)
 
     @staticmethod
     def _merge_candidates(

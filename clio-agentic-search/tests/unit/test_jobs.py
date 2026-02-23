@@ -81,6 +81,23 @@ class TestJobQueue:
         queue.submit("ns2")
         assert len(queue.list_jobs()) == 2
 
+    def test_mark_completed_does_not_override_cancelled(self) -> None:
+        queue = JobQueue()
+        job = queue.submit("local_fs")
+        queue.cancel(job.job_id)
+        queue.mark_completed(job.job_id, {"indexed_files": 1})
+        assert job.status == JobStatus.CANCELLED
+        assert job.result is None
+
+    @pytest.mark.asyncio
+    async def test_namespace_lock_reused_per_namespace(self) -> None:
+        queue = JobQueue()
+        lock_a = queue.namespace_lock("local_fs")
+        lock_b = queue.namespace_lock("local_fs")
+        assert lock_a is lock_b
+        async with lock_a:
+            assert lock_b.locked()
+
     @pytest.mark.asyncio
     async def test_start_runs_coroutine(self) -> None:
         queue = JobQueue()

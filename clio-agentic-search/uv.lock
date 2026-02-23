@@ -94,6 +94,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+ann = [
+    { name = "hnswlib" },
+    { name = "numpy" },
+]
 semantic = [
     { name = "sentence-transformers" },
 ]
@@ -120,6 +124,8 @@ dev = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0,<2.0.0" },
     { name = "fastapi", specifier = ">=0.115.0,<1.0.0" },
+    { name = "hnswlib", marker = "extra == 'ann'", specifier = ">=0.8.0" },
+    { name = "numpy", marker = "extra == 'ann'", specifier = ">=1.26.0" },
     { name = "opentelemetry-api", marker = "extra == 'telemetry'", specifier = ">=1.20.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'telemetry'", specifier = ">=1.20.0" },
     { name = "opentelemetry-sdk", marker = "extra == 'telemetry'", specifier = ">=1.20.0" },
@@ -128,7 +134,7 @@ requires-dist = [
     { name = "tenacity", specifier = ">=8.2.0,<10.0.0" },
     { name = "uvicorn", specifier = ">=0.30.0,<1.0.0" },
 ]
-provides-extras = ["semantic", "telemetry"]
+provides-extras = ["semantic", "ann", "telemetry"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -354,6 +360,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/92/68/89ac4e5b12a9ff6286a12174c8538a5930e2ed662091dd2572bbe0a18c8a/hf_xet-1.2.0-cp37-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:a55558084c16b09b5ed32ab9ed38421e2d87cf3f1f89815764d1177081b99865", size = 3508920, upload-time = "2025-10-24T19:04:26.927Z" },
     { url = "https://files.pythonhosted.org/packages/cb/44/870d44b30e1dcfb6a65932e3e1506c103a8a5aea9103c337e7a53180322c/hf_xet-1.2.0-cp37-abi3-win_amd64.whl", hash = "sha256:e6584a52253f72c9f52f9e549d5895ca7a471608495c4ecaa6cc73dba2b24d69", size = 2905735, upload-time = "2025-10-24T19:04:35.928Z" },
 ]
+
+[[package]]
+name = "hnswlib"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cf/7a/1a9b1405f2eb59515f06c3074750b03e0e96edf7fee0f6dd6df81d9c21d7/hnswlib-0.8.0.tar.gz", hash = "sha256:cb6d037eedebb34a7134e7dc78966441dfd04c9cf5ee93911be911ced951c44c", size = 36206, upload-time = "2023-12-03T04:16:17.55Z" }
 
 [[package]]
 name = "httpcore"

@@ -27,6 +27,10 @@ clio-sync = "clio_agentic_search.tasks:sync"
 
 [project.optional-dependencies]
 semantic = ["sentence-transformers>=2.2.0"]
+ann = [
+  "numpy>=1.26.0",
+  "hnswlib>=0.8.0",
+]
 telemetry = [
   "opentelemetry-api>=1.20.0",
   "opentelemetry-sdk>=1.20.0",

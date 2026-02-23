@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import threading
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -11,6 +14,11 @@ from clio_agentic_search.core.connectors import (
     IndexReport,
     NamespaceAuthConfig,
     NamespaceRuntimeConfig,
+)
+from clio_agentic_search.indexing.lexical import (
+    DEFAULT_STOPWORDS,
+    LexicalIngestionConfig,
+    LexicalPostingsIngestor,
 )
 from clio_agentic_search.indexing.scientific import (
     ScientificChunkPlan,
@@ -21,7 +29,6 @@ from clio_agentic_search.indexing.scientific import (
 from clio_agentic_search.indexing.text_features import (
     Embedder,
     HashEmbedder,
-    cosine_similarity,
     tokenize,
 )
 from clio_agentic_search.models.contracts import (
@@ -32,12 +39,13 @@ from clio_agentic_search.models.contracts import (
     MetadataRecord,
     NamespaceDescriptor,
 )
+from clio_agentic_search.retrieval.ann import ANNAdapter, AnnResult, build_ann_adapter
 from clio_agentic_search.retrieval.capabilities import ScoredChunk
 from clio_agentic_search.retrieval.scientific import (
     ScientificQueryOperators,
     score_scientific_metadata,
 )
-from clio_agentic_search.storage.contracts import FileIndexState, StorageAdapter
+from clio_agentic_search.storage.contracts import DocumentBundle, FileIndexState, StorageAdapter
 
 DEFAULT_EXCLUDE_PATTERNS: frozenset[str] = frozenset(
     {".git", "__pycache__", ".venv", "node_modules", ".uv-cache"}
@@ -116,7 +124,22 @@ class FilesystemConnector:
         default_factory=lambda: NamespaceRuntimeConfig(options={})
     )
     _auth_config: NamespaceAuthConfig | None = None
+    ann_backend: str = "exact"
+    cache_shards: int = 16
+    warmup_async: bool = True
+    document_batch_size: int = 32
+    lexical_batch_size: int = 50_000
+    lexical_df_prune_threshold: float = 0.98
+    lexical_df_prune_min_chunks: int = 200
+    lexical_max_tokens_per_chunk: int = 96
+    lexical_prune_stopwords: bool = True
+    stopwords: frozenset[str] = DEFAULT_STOPWORDS
+    lexical_postings_compression: str = "none"
     _connected: bool = False
+    _ann_index: ANNAdapter | None = field(default=None, init=False, repr=False)
+    _warmup_executor: ThreadPoolExecutor | None = field(default=None, init=False, repr=False)
+    _warmup_future: Future[None] | None = field(default=None, init=False, repr=False)
+    _runtime_lock: threading.RLock = field(default_factory=threading.RLock, init=False, repr=False)
 
     def configure(
         self,
@@ -128,6 +151,49 @@ class FilesystemConnector:
         self._auth_config = auth_config
         if "root" in runtime_config.options:
             self.root = Path(runtime_config.options["root"])
+        ann_backend = runtime_config.options.get("ann_backend")
+        if ann_backend:
+            self.ann_backend = ann_backend
+        cache_shards = runtime_config.options.get("cache_shards")
+        if cache_shards:
+            self.cache_shards = max(1, int(cache_shards))
+        warmup_async = runtime_config.options.get("warmup_async")
+        if warmup_async:
+            self.warmup_async = _parse_bool(warmup_async)
+        document_batch_size = runtime_config.options.get("document_batch_size")
+        if document_batch_size:
+            self.document_batch_size = max(1, int(document_batch_size))
+        if os.environ.get("CLIO_ANN_BACKEND"):
+            self.ann_backend = os.environ["CLIO_ANN_BACKEND"]
+        if os.environ.get("CLIO_CACHE_SHARDS"):
+            self.cache_shards = max(1, int(os.environ["CLIO_CACHE_SHARDS"]))
+        if os.environ.get("CLIO_VECTOR_WARMUP_ASYNC"):
+            self.warmup_async = _parse_bool(os.environ["CLIO_VECTOR_WARMUP_ASYNC"])
+        if os.environ.get("CLIO_INDEX_DOCUMENT_BATCH_SIZE"):
+            self.document_batch_size = max(1, int(os.environ["CLIO_INDEX_DOCUMENT_BATCH_SIZE"]))
+        if os.environ.get("CLIO_LEXICAL_BATCH_SIZE"):
+            self.lexical_batch_size = max(1, int(os.environ["CLIO_LEXICAL_BATCH_SIZE"]))
+        if os.environ.get("CLIO_LEXICAL_DF_PRUNE_THRESHOLD"):
+            self.lexical_df_prune_threshold = float(os.environ["CLIO_LEXICAL_DF_PRUNE_THRESHOLD"])
+        if os.environ.get("CLIO_LEXICAL_DF_PRUNE_MIN_CHUNKS"):
+            self.lexical_df_prune_min_chunks = max(
+                1,
+                int(os.environ["CLIO_LEXICAL_DF_PRUNE_MIN_CHUNKS"]),
+            )
+        if os.environ.get("CLIO_LEXICAL_MAX_TOKENS_PER_CHUNK"):
+            self.lexical_max_tokens_per_chunk = max(
+                0,
+                int(os.environ["CLIO_LEXICAL_MAX_TOKENS_PER_CHUNK"]),
+            )
+        if os.environ.get("CLIO_LEXICAL_PRUNE_STOPWORDS"):
+            self.lexical_prune_stopwords = _parse_bool(os.environ["CLIO_LEXICAL_PRUNE_STOPWORDS"])
+        postings_compression = runtime_config.options.get("lexical_postings_compression")
+        if postings_compression:
+            self.lexical_postings_compression = _parse_postings_compression(postings_compression)
+        if os.environ.get("CLIO_LEXICAL_POSTINGS_COMPRESSION"):
+            self.lexical_postings_compression = _parse_postings_compression(
+                os.environ["CLIO_LEXICAL_POSTINGS_COMPRESSION"]
+            )
 
     def descriptor(self) -> NamespaceDescriptor:
         return NamespaceDescriptor(
@@ -139,10 +205,14 @@ class FilesystemConnector:
     def connect(self) -> None:
         self.storage.connect()
         self._connected = True
+        self._schedule_warmup()
 
     def teardown(self) -> None:
-        self.storage.teardown()
         self._connected = False
+        self._stop_warmup_worker()
+        self.storage.teardown()
+        with self._runtime_lock:
+            self._ann_index = None
 
     def index(self, *, full_rebuild: bool = False) -> IndexReport:
         self._ensure_connected()
@@ -155,81 +225,121 @@ class FilesystemConnector:
         indexed_files = 0
         skipped_files = 0
         existing_paths: set[str] = set()
-
-        for file_path in sorted(path for path in self.root.rglob("*") if path.is_file()):
-            if _should_skip_path(
-                file_path, self.root, self.exclude_patterns, self.exclude_suffixes
-            ):
-                continue
-
-            relative_path = file_path.relative_to(self.root).as_posix()
-            existing_paths.add(relative_path)
-            scanned_files += 1
-
-            content_bytes = file_path.read_bytes()
-            if b"\x00" in content_bytes:
-                skipped_files += 1
-                continue
-
-            mtime_ns = file_path.stat().st_mtime_ns
-            content_hash = hashlib.sha256(content_bytes).hexdigest()
-            previous = self.storage.get_file_state(self.namespace, relative_path)
-            if (
-                not full_rebuild
-                and previous is not None
-                and previous.mtime_ns == mtime_ns
-                and previous.content_hash == content_hash
-            ):
-                skipped_files += 1
-                continue
-
-            if self.reindex_delay_seconds > 0:
-                time.sleep(self.reindex_delay_seconds)
-
-            document_id = hashlib.sha1(f"{self.namespace}:{relative_path}".encode()).hexdigest()
-            text = content_bytes.decode("utf-8", errors="ignore")
-            document = DocumentRecord(
-                namespace=self.namespace,
-                document_id=document_id,
-                uri=relative_path,
-                checksum=content_hash,
-                modified_at_ns=mtime_ns,
+        pending_bundles: list[DocumentBundle] = []
+        lexical_ingestor = LexicalPostingsIngestor(
+            LexicalIngestionConfig(
+                batch_size=self.lexical_batch_size,
+                df_prune_threshold=self.lexical_df_prune_threshold,
+                df_prune_min_chunks=self.lexical_df_prune_min_chunks,
+                max_tokens_per_chunk=self.lexical_max_tokens_per_chunk,
+                prune_stopwords=self.lexical_prune_stopwords,
+                stopwords=self.stopwords,
+                postings_compression=self.lexical_postings_compression,
             )
-            chunk_plan = self._build_chunks(document_id=document_id, text=text)
-            chunks = chunk_plan.chunks
-            embeddings = [
-                EmbeddingRecord(
+        )
+
+        try:
+            for file_path in sorted(path for path in self.root.rglob("*") if path.is_file()):
+                if _should_skip_path(
+                    file_path, self.root, self.exclude_patterns, self.exclude_suffixes
+                ):
+                    continue
+
+                relative_path = file_path.relative_to(self.root).as_posix()
+                existing_paths.add(relative_path)
+                scanned_files += 1
+
+                content_bytes = file_path.read_bytes()
+                if b"\x00" in content_bytes:
+                    skipped_files += 1
+                    continue
+
+                mtime_ns = file_path.stat().st_mtime_ns
+                content_hash = hashlib.sha256(content_bytes).hexdigest()
+                if not full_rebuild:
+                    previous = self.storage.get_file_state(self.namespace, relative_path)
+                    if (
+                        previous is not None
+                        and previous.mtime_ns == mtime_ns
+                        and previous.content_hash == content_hash
+                    ):
+                        skipped_files += 1
+                        continue
+
+                if self.reindex_delay_seconds > 0:
+                    time.sleep(self.reindex_delay_seconds)
+
+                document_id = hashlib.sha1(f"{self.namespace}:{relative_path}".encode()).hexdigest()
+                text = content_bytes.decode("utf-8", errors="ignore")
+                document = DocumentRecord(
                     namespace=self.namespace,
-                    chunk_id=chunk.chunk_id,
-                    model=self.embedding_model,
-                    vector=self.embedder.embed(chunk.text),
+                    document_id=document_id,
+                    uri=relative_path,
+                    checksum=content_hash,
+                    modified_at_ns=mtime_ns,
                 )
-                for chunk in chunks
-            ]
-            metadata = self._build_metadata(
-                relative_path=relative_path,
-                document_id=document_id,
-                chunks=chunks,
-                chunk_metadata=chunk_plan.metadata_by_chunk_id,
-            )
-            file_state = FileIndexState(
-                namespace=self.namespace,
-                path=relative_path,
-                document_id=document_id,
-                mtime_ns=mtime_ns,
-                content_hash=content_hash,
-            )
+                chunk_plan = self._build_chunks(document_id=document_id, text=text)
+                chunks = chunk_plan.chunks
+                embeddings = [
+                    EmbeddingRecord(
+                        namespace=self.namespace,
+                        chunk_id=chunk.chunk_id,
+                        model=self.embedding_model,
+                        vector=self.embedder.embed(chunk.text),
+                    )
+                    for chunk in chunks
+                ]
+                metadata = self._build_metadata(
+                    relative_path=relative_path,
+                    document_id=document_id,
+                    chunks=chunks,
+                    chunk_metadata=chunk_plan.metadata_by_chunk_id,
+                )
+                file_state = FileIndexState(
+                    namespace=self.namespace,
+                    path=relative_path,
+                    document_id=document_id,
+                    mtime_ns=mtime_ns,
+                    content_hash=content_hash,
+                )
 
-            self.storage.upsert_document_bundle(
-                document=document,
-                chunks=chunks,
-                embeddings=embeddings,
-                metadata=metadata,
-                file_state=file_state,
-            )
-            indexed_files += 1
+                pending_bundles.append(
+                    DocumentBundle(
+                        document=document,
+                        chunks=chunks,
+                        embeddings=embeddings,
+                        metadata=metadata,
+                        file_state=file_state,
+                    )
+                )
+                if len(pending_bundles) >= self.document_batch_size:
+                    self.storage.upsert_document_bundles(
+                        pending_bundles,
+                        include_lexical_postings=False,
+                        skip_prior_delete=full_rebuild,
+                    )
+                    pending_bundles = []
+                lexical_ingestor.add_chunks(chunks)
+                indexed_files += 1
 
-        removed_files = self.storage.remove_missing_paths(self.namespace, existing_paths)
+            if pending_bundles:
+                self.storage.upsert_document_bundles(
+                    pending_bundles,
+                    include_lexical_postings=False,
+                    skip_prior_delete=full_rebuild,
+                )
+            removed_files = (
+                0
+                if full_rebuild
+                else self.storage.remove_missing_paths(self.namespace, existing_paths)
+            )
+            lexical_ingestor.flush(namespace=self.namespace, storage=self.storage)
+        finally:
+            lexical_ingestor.close()
+        if full_rebuild or indexed_files > 0 or removed_files > 0:
+            self._refresh_vector_index()
+        elif self._ann_index is None:
+            self._schedule_warmup()
         elapsed_seconds = time.perf_counter() - start
         return IndexReport(
             scanned_files=scanned_files,
@@ -241,56 +351,69 @@ class FilesystemConnector:
 
     def search_lexical(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
-        query_tokens = set(tokenize(query))
+        query_tokens = tuple(sorted(set(tokenize(query))))
         if not query_tokens:
             return []
 
-        scored: list[ScoredChunk] = []
-        for chunk in self.storage.list_chunks(self.namespace):
-            chunk_tokens = set(tokenize(chunk.text))
-            if not chunk_tokens:
-                continue
-            overlap = len(query_tokens.intersection(chunk_tokens))
-            if overlap == 0:
-                continue
-            score = overlap / len(query_tokens)
-            scored.append(
-                ScoredChunk(
-                    chunk_id=chunk.chunk_id,
-                    document_id=chunk.document_id,
-                    text=chunk.text,
-                    lexical_score=score,
-                )
+        matches = self.storage.query_chunks_lexical(
+            namespace=self.namespace,
+            query_tokens=query_tokens,
+            limit=top_k,
+        )
+        return [
+            ScoredChunk(
+                chunk_id=match.chunk.chunk_id,
+                document_id=match.chunk.document_id,
+                text=match.chunk.text,
+                lexical_score=match.overlap_count / len(query_tokens),
             )
-
-        scored.sort(key=lambda candidate: (-candidate.lexical_score, candidate.chunk_id))
-        return scored[:top_k]
+            for match in matches
+        ]
 
     def search_vector(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
+        self._ensure_vector_index_ready()
+        with self._runtime_lock:
+            ann_index = self._ann_index
+        if ann_index is None:
+            return []
         query_vector = self.embedder.embed(query)
-        embeddings = self.storage.list_embeddings(self.namespace, self.embedding_model)
 
-        chunk_cache = {chunk.chunk_id: chunk for chunk in self.storage.list_chunks(self.namespace)}
+        candidate_ids: set[str] | None = None
+        if isinstance(self.embedder, HashEmbedder):
+            query_tokens = tuple(sorted(set(tokenize(query))))
+            if query_tokens:
+                prefilter_limit = max(top_k * 40, 512)
+                candidate_ids = {
+                    match.chunk.chunk_id
+                    for match in self.storage.query_chunks_lexical(
+                        namespace=self.namespace,
+                        query_tokens=query_tokens,
+                        limit=prefilter_limit,
+                    )
+                }
+                if not candidate_ids:
+                    candidate_ids = None
+        neighbors = ann_index.query(
+            query_vector=query_vector,
+            top_k=top_k,
+            candidate_ids=candidate_ids,
+        )
+        return self._neighbors_to_scored_chunks(neighbors)
+
+    def _neighbors_to_scored_chunks(self, neighbors: list[AnnResult]) -> list[ScoredChunk]:
         scored: list[ScoredChunk] = []
-        for chunk_id, vector in embeddings.items():
-            similarity = cosine_similarity(query_vector, vector)
-            if similarity <= 0:
-                continue
-            chunk = chunk_cache.get(chunk_id)
-            if chunk is None:
-                continue
+        for neighbor in neighbors:
+            chunk = self.storage.get_chunk(self.namespace, neighbor.chunk_id)
             scored.append(
                 ScoredChunk(
-                    chunk_id=chunk.chunk_id,
+                    chunk_id=neighbor.chunk_id,
                     document_id=chunk.document_id,
                     text=chunk.text,
-                    vector_score=similarity,
+                    vector_score=neighbor.score,
                 )
             )
-
-        scored.sort(key=lambda candidate: (-candidate.vector_score, candidate.chunk_id))
-        return scored[:top_k]
+        return scored
 
     def filter_metadata(
         self,
@@ -465,3 +588,66 @@ class FilesystemConnector:
     def _ensure_connected(self) -> None:
         if not self._connected:
             raise RuntimeError("Connector is not connected")
+
+    def _refresh_vector_index(self) -> None:
+        if not self._connected:
+            return
+        embeddings = self.storage.list_embeddings(self.namespace, self.embedding_model)
+        ann_index = build_ann_adapter(
+            backend=self.ann_backend,
+            dimensions=self.embedder.dimensions,
+            shard_count=max(1, self.cache_shards),
+        )
+        ann_index.build(embeddings)
+        with self._runtime_lock:
+            if not self._connected:
+                return
+            self._ann_index = ann_index
+
+    def _schedule_warmup(self) -> None:
+        if not self.warmup_async:
+            self._refresh_vector_index()
+            return
+        with self._runtime_lock:
+            if self._warmup_future is not None and not self._warmup_future.done():
+                return
+            if self._warmup_executor is None:
+                self._warmup_executor = ThreadPoolExecutor(
+                    max_workers=1,
+                    thread_name_prefix=f"clio-warmup-{self.namespace}",
+                )
+            self._warmup_future = self._warmup_executor.submit(self._refresh_vector_index)
+
+    def _ensure_vector_index_ready(self) -> None:
+        with self._runtime_lock:
+            ann_index = self._ann_index
+            warmup_future = self._warmup_future
+        if ann_index is not None:
+            return
+        if warmup_future is not None:
+            warmup_future.result()
+            with self._runtime_lock:
+                if self._ann_index is not None:
+                    return
+        self._refresh_vector_index()
+
+    def _stop_warmup_worker(self) -> None:
+        with self._runtime_lock:
+            executor = self._warmup_executor
+            self._warmup_executor = None
+            self._warmup_future = None
+        if executor is not None:
+            executor.shutdown(wait=True, cancel_futures=True)
+
+
+def _parse_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_postings_compression(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized in {"", "none"}:
+        return "none"
+    if normalized in {"gzip", "gz"}:
+        return "gzip"
+    raise ValueError("Unsupported lexical postings compression; expected one of: none, gzip")

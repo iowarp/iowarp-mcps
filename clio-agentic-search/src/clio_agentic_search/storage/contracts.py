@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -23,6 +24,21 @@ class FileIndexState:
     content_hash: str
 
 
+@dataclass(frozen=True, slots=True)
+class LexicalChunkMatch:
+    chunk: ChunkRecord
+    overlap_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentBundle:
+    document: DocumentRecord
+    chunks: list[ChunkRecord]
+    embeddings: list[EmbeddingRecord]
+    metadata: list[MetadataRecord]
+    file_state: FileIndexState
+
+
 class StorageAdapter(Protocol):
     def connect(self) -> None:
         """Initialize storage resources."""
@@ -40,8 +56,35 @@ class StorageAdapter(Protocol):
         embeddings: list[EmbeddingRecord],
         metadata: list[MetadataRecord],
         file_state: FileIndexState,
+        *,
+        include_lexical_postings: bool = True,
     ) -> None:
         """Store a full document with associated chunk, embedding, and metadata records."""
+
+    def upsert_document_bundles(
+        self,
+        bundles: list[DocumentBundle],
+        *,
+        include_lexical_postings: bool = True,
+        skip_prior_delete: bool = False,
+    ) -> None:
+        """Store many document bundles in one write session."""
+
+    def upsert_lexical_postings_batch(
+        self,
+        namespace: str,
+        postings: list[tuple[str, str, int]],
+    ) -> None:
+        """Store lexical postings in batch as (chunk_id, token, term_freq) rows."""
+
+    def upsert_lexical_postings_stream(
+        self,
+        namespace: str,
+        postings: Iterable[tuple[str, str, int]],
+        *,
+        batch_size: int = 50_000,
+    ) -> None:
+        """Store lexical postings from an iterator using bounded batched writes."""
 
     def get_file_state(self, namespace: str, path: str) -> FileIndexState | None:
         """Fetch existing file indexing state."""
@@ -78,3 +121,11 @@ class StorageAdapter(Protocol):
 
     def list_documents(self, namespace: str) -> list[DocumentSummary]:
         """List documents with chunk counts for a namespace."""
+
+    def query_chunks_lexical(
+        self,
+        namespace: str,
+        query_tokens: tuple[str, ...],
+        limit: int,
+    ) -> list[LexicalChunkMatch]:
+        """Query top lexical chunk matches from persisted token postings."""

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -42,3 +45,37 @@ async def test_metrics_endpoint() -> None:
         assert "query_count" in text
         assert "query_latency_seconds" in text
         assert "index_duration_seconds" in text
+
+
+@pytest.mark.asyncio
+async def test_submit_index_job_completes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "alpha.txt").write_text("background job indexing test", encoding="utf-8")
+    monkeypatch.setenv("CLIO_LOCAL_ROOT", str(docs_dir))
+    monkeypatch.setenv("CLIO_STORAGE_PATH", str(tmp_path / "jobs.duckdb"))
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        submit = await client.post("/jobs/index", json={"namespace": "local_fs"})
+        assert submit.status_code == 200
+        job_id = submit.json()["job_id"]
+        assert job_id
+
+        status_payload: dict[str, object] = {}
+        deadline = asyncio.get_running_loop().time() + 5.0
+        while asyncio.get_running_loop().time() < deadline:
+            status = await client.get(f"/jobs/{job_id}")
+            assert status.status_code == 200
+            status_payload = status.json()
+            if status_payload["status"] in {"completed", "failed", "cancelled"}:
+                break
+            await asyncio.sleep(0.02)
+
+        assert status_payload["status"] == "completed"
+        result = status_payload.get("result")
+        assert isinstance(result, dict)
+        assert result["indexed_files"] == 1
+        assert result["skipped_files"] == 0
+        assert result["removed_files"] == 0
+        assert isinstance(result["elapsed_seconds"], float)

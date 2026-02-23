@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from clio_agentic_search import __version__
 from clio_agentic_search.core.namespace_registry import NamespaceRegistry, build_default_registry
-from clio_agentic_search.jobs import JobCancelledError, JobStatus, get_job_queue
+from clio_agentic_search.jobs import JobCancelledError, get_job_queue, reset_job_queue
 from clio_agentic_search.retrieval.coordinator import RetrievalCoordinator
 from clio_agentic_search.retrieval.scientific import (
     NumericRangeOperator,
@@ -25,7 +25,7 @@ from clio_agentic_search.retrieval.scientific import (
     UnitMatchOperator,
 )
 from clio_agentic_search.retry import index_with_retry
-from clio_agentic_search.telemetry import get_metrics, get_tracer
+from clio_agentic_search.telemetry import get_metrics, get_tracer, reset_telemetry
 
 
 class NumericRangeRequest(BaseModel):
@@ -140,7 +140,7 @@ def _registry() -> NamespaceRegistry:
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     del app
     yield
-    _registry().teardown()
+    reset_app_state()
 
 
 app = FastAPI(title="clio-agentic-search", version=__version__, lifespan=_lifespan)
@@ -328,31 +328,34 @@ async def submit_index_job(request: IndexJobRequest) -> JobResponse:
         tracer = get_tracer()
         with tracer.start_span("index.background") as span:
             span.set_attribute("index.namespace", job.namespace)
-            job.status = JobStatus.RUNNING
-            job.started_at = time.time()
+            queue.mark_running(job.job_id)
             start = time.perf_counter()
             try:
-                connector = registry.get_connected(job.namespace)
-                report = await asyncio.to_thread(
-                    index_with_retry,
-                    connector,
-                    full_rebuild=job.full_rebuild,
-                    cancellation_token=job.cancellation_token,
+                async with queue.namespace_lock(job.namespace):
+                    connector = registry.get_connected(job.namespace)
+                    report = await asyncio.to_thread(
+                        index_with_retry,
+                        connector,
+                        full_rebuild=job.full_rebuild,
+                        cancellation_token=job.cancellation_token,
+                    )
+                queue.mark_completed(
+                    job.job_id,
+                    {
+                        "indexed_files": report.indexed_files,
+                        "skipped_files": report.skipped_files,
+                        "removed_files": report.removed_files,
+                        "elapsed_seconds": round(report.elapsed_seconds, 3),
+                    },
                 )
-                job.status = JobStatus.COMPLETED
-                job.result = {
-                    "indexed_files": report.indexed_files,
-                    "skipped_files": report.skipped_files,
-                    "removed_files": report.removed_files,
-                    "elapsed_seconds": round(report.elapsed_seconds, 3),
-                }
             except JobCancelledError:
-                job.status = JobStatus.CANCELLED
+                queue.mark_cancelled(job.job_id)
+            except asyncio.CancelledError:
+                queue.mark_cancelled(job.job_id)
+                raise
             except Exception as exc:
-                job.status = JobStatus.FAILED
-                job.error = str(exc)
+                queue.mark_failed(job.job_id, str(exc))
             finally:
-                job.completed_at = time.time()
                 elapsed = time.perf_counter() - start
                 metrics.observe_index_duration(elapsed)
 
@@ -400,6 +403,14 @@ def _job_to_response(job: object) -> JobResponse:
 @app.get("/metrics")
 def metrics_endpoint() -> PlainTextResponse:
     return PlainTextResponse(get_metrics().export(), media_type="text/plain; charset=utf-8")
+
+
+def reset_app_state() -> None:
+    if _registry.cache_info().currsize > 0:
+        _registry().teardown()
+    _registry.cache_clear()
+    reset_job_queue()
+    reset_telemetry()
 
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
