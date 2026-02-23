@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -10,17 +12,20 @@ from functools import lru_cache
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from clio_agentic_search import __version__
 from clio_agentic_search.core.namespace_registry import NamespaceRegistry, build_default_registry
+from clio_agentic_search.jobs import JobCancelledError, JobStatus, get_job_queue
 from clio_agentic_search.retrieval.coordinator import RetrievalCoordinator
 from clio_agentic_search.retrieval.scientific import (
     NumericRangeOperator,
     ScientificQueryOperators,
     UnitMatchOperator,
 )
+from clio_agentic_search.retry import index_with_retry
+from clio_agentic_search.telemetry import get_metrics, get_tracer
 
 
 class NumericRangeRequest(BaseModel):
@@ -105,6 +110,25 @@ class QueryResponse(BaseModel):
     offset: int
     limit: int
     trace: list[TraceResponse]
+
+
+# --- Job API models ---
+
+
+class IndexJobRequest(BaseModel):
+    namespace: str = "local_fs"
+    full_rebuild: bool = False
+
+
+class JobResponse(BaseModel):
+    job_id: str
+    namespace: str
+    status: str
+    created_at: float
+    started_at: float | None = None
+    completed_at: float | None = None
+    result: dict[str, object] | None = None
+    error: str | None = None
 
 
 @lru_cache(maxsize=1)
@@ -200,6 +224,22 @@ def list_documents(namespace: str = "local_fs") -> DocumentListResponse:
 
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
+    metrics = get_metrics()
+    tracer = get_tracer()
+    with tracer.start_span("query") as span:
+        span.set_attribute("query.text", request.query)
+        start = time.perf_counter()
+        try:
+            result = _execute_query(request)
+            return result
+        finally:
+            elapsed = time.perf_counter() - start
+            metrics.observe_query_latency(elapsed)
+            metrics.inc_query_count()
+            span.set_attribute("query.latency_s", elapsed)
+
+
+def _execute_query(request: QueryRequest) -> QueryResponse:
     registry = _registry()
     target_namespaces = _dedupe_preserve_order(request.namespaces or [request.namespace])
     connectors = []
@@ -222,27 +262,30 @@ def query(request: QueryRequest) -> QueryResponse:
         skipped_files[namespace] = report.skipped_files
         removed_files[namespace] = report.removed_files
 
+    tracer = get_tracer()
     coordinator = RetrievalCoordinator()
     scientific_operators = request.scientific_operators.to_domain()
     if len(connectors) == 1:
-        single_result = coordinator.query(
-            connector=connectors[0],
-            query=request.query,
-            top_k=request.top_k,
-            metadata_filters=request.metadata_filters,
-            scientific_operators=scientific_operators,
-        )
+        with tracer.start_span("retrieval.single_namespace"):
+            single_result = coordinator.query(
+                connector=connectors[0],
+                query=request.query,
+                top_k=request.top_k,
+                metadata_filters=request.metadata_filters,
+                scientific_operators=scientific_operators,
+            )
         namespaces = [single_result.namespace]
         citations = single_result.citations
         trace = single_result.trace
     else:
-        multi_result = coordinator.query_namespaces(
-            connectors=connectors,
-            query=request.query,
-            top_k=request.top_k,
-            metadata_filters=request.metadata_filters,
-            scientific_operators=scientific_operators,
-        )
+        with tracer.start_span("retrieval.multi_namespace"):
+            multi_result = coordinator.query_namespaces(
+                connectors=connectors,
+                query=request.query,
+                top_k=request.top_k,
+                metadata_filters=request.metadata_filters,
+                scientific_operators=scientific_operators,
+            )
         namespaces = list(multi_result.namespaces)
         citations = multi_result.citations
         trace = multi_result.trace
@@ -263,6 +306,100 @@ def query(request: QueryRequest) -> QueryResponse:
         limit=request.limit,
         trace=[TraceResponse(**asdict(event)) for event in trace],
     )
+
+
+# --- Async job endpoints ---
+
+
+@app.post("/jobs/index", response_model=JobResponse)
+async def submit_index_job(request: IndexJobRequest) -> JobResponse:
+    registry = _registry()
+    if request.namespace not in registry:
+        available = ", ".join(registry.list_namespaces())
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown namespace '{request.namespace}'. Available: {available}",
+        )
+    queue = get_job_queue()
+    job = queue.submit(namespace=request.namespace, full_rebuild=request.full_rebuild)
+
+    async def _run_index() -> None:
+        metrics = get_metrics()
+        tracer = get_tracer()
+        with tracer.start_span("index.background") as span:
+            span.set_attribute("index.namespace", job.namespace)
+            job.status = JobStatus.RUNNING
+            job.started_at = time.time()
+            start = time.perf_counter()
+            try:
+                connector = registry.get_connected(job.namespace)
+                report = await asyncio.to_thread(
+                    index_with_retry,
+                    connector,
+                    full_rebuild=job.full_rebuild,
+                    cancellation_token=job.cancellation_token,
+                )
+                job.status = JobStatus.COMPLETED
+                job.result = {
+                    "indexed_files": report.indexed_files,
+                    "skipped_files": report.skipped_files,
+                    "removed_files": report.removed_files,
+                    "elapsed_seconds": round(report.elapsed_seconds, 3),
+                }
+            except JobCancelledError:
+                job.status = JobStatus.CANCELLED
+            except Exception as exc:
+                job.status = JobStatus.FAILED
+                job.error = str(exc)
+            finally:
+                job.completed_at = time.time()
+                elapsed = time.perf_counter() - start
+                metrics.observe_index_duration(elapsed)
+
+    queue.start(job.job_id, _run_index())
+    return _job_to_response(job)
+
+
+@app.get("/jobs/{job_id}", response_model=JobResponse)
+async def get_job(job_id: str) -> JobResponse:
+    job = get_job_queue().get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+    return _job_to_response(job)
+
+
+@app.delete("/jobs/{job_id}", response_model=JobResponse)
+async def cancel_job(job_id: str) -> JobResponse:
+    queue = get_job_queue()
+    job = queue.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+    queue.cancel(job_id)
+    return _job_to_response(job)
+
+
+def _job_to_response(job: object) -> JobResponse:
+    from clio_agentic_search.jobs import JobRecord
+
+    assert isinstance(job, JobRecord)
+    return JobResponse(
+        job_id=job.job_id,
+        namespace=job.namespace,
+        status=job.status.value,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        result=job.result,
+        error=job.error,
+    )
+
+
+# --- Metrics endpoint ---
+
+
+@app.get("/metrics")
+def metrics_endpoint() -> PlainTextResponse:
+    return PlainTextResponse(get_metrics().export(), media_type="text/plain; charset=utf-8")
 
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:

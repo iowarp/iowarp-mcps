@@ -12,6 +12,7 @@ dependencies = [
   "duckdb>=1.1.0,<2.0.0",
   "fastapi>=0.115.0,<1.0.0",
   "uvicorn>=0.30.0,<1.0.0",
+  "tenacity>=8.2.0,<10.0.0",
 ]
 
 [project.scripts]
@@ -26,6 +27,12 @@ clio-sync = "clio_agentic_search.tasks:sync"
 
 [project.optional-dependencies]
 semantic = ["sentence-transformers>=2.2.0"]
+telemetry = [
+  "opentelemetry-api>=1.20.0",
+  "opentelemetry-sdk>=1.20.0",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",
+  "prometheus-client>=0.20.0",
+]
 
 [dependency-groups]
 dev = [
@@ -36,6 +43,7 @@ dev = [
   "pytest-asyncio>=0.24.0,<1.0.0",
   "ruff>=0.8.0,<1.0.0",
   "httpx>=0.28.0,<1.0.0",
+  "pytest-benchmark>=5.0.0,<6.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -65,5 +73,10 @@ mypy_path = "src"
 packages = ["clio_agentic_search"]
 
 [[tool.mypy.overrides]]
-module = ["duckdb", "sentence_transformers"]
+module = [
+  "duckdb",
+  "sentence_transformers",
+  "opentelemetry.*",
+  "prometheus_client",
+]
 ignore_missing_imports = true
