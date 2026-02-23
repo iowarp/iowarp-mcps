@@ -1,92 +1,99 @@
 # clio-agentic-search
 
-`clio-agentic-search` is a hybrid retrieval engine for scientific computing corpora. It indexes
-documents into namespace-specific backends and supports lexical, vector, graph, metadata, and
-scientific-operator retrieval in one pipeline.
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![PyPI version](https://img.shields.io/pypi/v/clio-kit.svg)](https://pypi.org/project/clio-kit/)
+[![CI](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml/badge.svg)](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-## Current scope
+> **Status: Experimental** — API surface and storage format may change between minor releases. Suitable for research and evaluation; not yet recommended for production workloads.
 
-- Multi-namespace registry with runtime/auth config bundles.
-- Connectors:
-  - `local_fs` (filesystem + DuckDB persistence)
-  - `object_s3` (in-memory S3-compatible object store + DuckDB)
-  - `vector_qdrant` (in-memory vector store)
-  - `graph_neo4j` (in-memory graph traversal)
-  - `kv_redis` (in-memory log stream retrieval)
-- Scientific retrieval operators:
-  - numeric range (`unit`, `min`, `max`)
-  - unit matching (`unit`, optional `value`)
-  - formula targeting (normalized signatures)
-- Background indexing job API with cancellation tokens and per-namespace serialized execution.
-- Retry wrappers for connect/index operations with exponential backoff.
-- Telemetry:
-  - tracing (`NoopTracer` by default, OpenTelemetry when enabled)
-  - Prometheus-style metrics export at `/metrics`
+Part of [**CLIO Kit**](https://github.com/iowarp/clio-kit) — the IoWarp platform's tooling layer for AI agents.
+
+---
+
+Hybrid retrieval engine for scientific computing corpora. Indexes documents into namespace-specific backends and supports lexical (BM25), vector, graph, metadata, and scientific-operator retrieval in one pipeline. DuckDB storage, FastAPI server, async job queue, OpenTelemetry tracing, Prometheus metrics.
 
 ## Quick start
 
 ```bash
-UV_CACHE_DIR=.uv-cache uv sync --all-groups
-UV_CACHE_DIR=.uv-cache uv run clio --help
-UV_CACHE_DIR=.uv-cache uv run clio index --namespace local_fs
-UV_CACHE_DIR=.uv-cache uv run clio query --namespace local_fs --q "pressure between 190 and 360 kPa"
-UV_CACHE_DIR=.uv-cache uv run uvicorn clio_agentic_search.api.app:app --reload
+# Via the CLIO Kit launcher (recommended)
+uvx clio-kit search serve                    # Start the API server
+uvx clio-kit search query --namespace local_fs --q "pressure between 190 and 360 kPa"
+uvx clio-kit search index --namespace local_fs
+uvx clio-kit search list --namespace local_fs
 ```
 
-## API
+### Development mode
 
-- `GET /health`: liveness probe.
-- `GET /version`: package version.
-- `GET /documents?namespace=<ns>`: list indexed documents and chunk counts.
-- `POST /query`: run retrieval and return citations + trace events.
-- `POST /jobs/index`: submit async index job (`namespace`, `full_rebuild`).
-- `GET /jobs/{job_id}`: fetch job status/result.
-- `DELETE /jobs/{job_id}`: request cancellation.
-- `GET /metrics`: Prometheus text exposition format.
+```bash
+cd clio-agentic-search
+uv sync --all-extras --dev
+uv run clio serve                            # Start dev server with hot reload
+uv run clio query --namespace local_fs --q "pressure > 200 kPa"
+uv run clio index --namespace local_fs
+```
+
+## Features
+
+- **Multi-namespace registry** with runtime/auth config bundles
+- **Connectors**: filesystem + DuckDB (`local_fs`), S3 object store, Qdrant vector store, Neo4j graph, Redis KV log
+- **Scientific retrieval operators**: numeric range (`unit`, `min`, `max`), unit matching, formula targeting (normalized signatures)
+- **Background indexing** job API with cancellation tokens and per-namespace serialized execution
+- **Retry/backoff** wrappers for connect/index operations
+- **Telemetry**: OpenTelemetry tracing (opt-in), Prometheus metrics at `/metrics`
+
+## API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Liveness probe |
+| `GET` | `/version` | Package version |
+| `GET` | `/documents?namespace=<ns>` | List indexed documents and chunk counts |
+| `POST` | `/query` | Run retrieval, return citations + trace events |
+| `POST` | `/jobs/index` | Submit async index job |
+| `GET` | `/jobs/{job_id}` | Fetch job status/result |
+| `DELETE` | `/jobs/{job_id}` | Request cancellation |
+| `GET` | `/metrics` | Prometheus text exposition format |
 
 ## CLI commands
 
-- `clio query`
-- `clio index`
-- `clio list`
-- `clio seed`
-- `clio serve`
+| Command | Description |
+|---------|-------------|
+| `clio query` | Run retrieval queries against a namespace |
+| `clio index` | Index documents into a namespace |
+| `clio list` | List indexed documents |
+| `clio seed` | Seed sample data for testing |
+| `clio serve` | Start the FastAPI server |
 
 ## Environment variables
 
-- `CLIO_LOCAL_ROOT` (default `.`)
-- `CLIO_STORAGE_PATH` (default `.clio-agentic-search.duckdb`)
-- `CLIO_CORS_ORIGINS` (default `*`)
-- `CLIO_OTEL_ENABLED` (`1`/`true`/`yes` to enable OTel tracer)
-- `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://localhost:4317`)
-- `CLIO_ANN_BACKEND` (`exact` default, `hnsw` when `clio-agentic-search[ann]` installed)
-- `CLIO_CACHE_SHARDS` (default `16`, vector index shard count)
-- `CLIO_VECTOR_WARMUP_ASYNC` (default `1`, background vector index warmup on connect)
-- `CLIO_INDEX_DOCUMENT_BATCH_SIZE` (default `32`, batched document bundle writes per index pass)
-- `CLIO_LEXICAL_BATCH_SIZE` (default `50000`, lexical posting write batch size)
-- `CLIO_LEXICAL_DF_PRUNE_THRESHOLD` (default `0.98`, prune tokens above this chunk-frequency ratio)
-- `CLIO_LEXICAL_DF_PRUNE_MIN_CHUNKS` (default `200`, minimum indexed chunks before DF pruning applies)
-- `CLIO_LEXICAL_MAX_TOKENS_PER_CHUNK` (default `96`, keep top-frequency tokens per chunk)
-- `CLIO_LEXICAL_PRUNE_STOPWORDS` (default `1`, remove built-in stopwords from lexical postings)
-- `CLIO_LEXICAL_POSTINGS_COMPRESSION` (`none` default, `gzip` for compressed staging during indexing)
-- `CLIO_OBJECT_*`, `CLIO_VECTOR_*`/`CLIO_QDRANT_*`, `CLIO_GRAPH_*`/`CLIO_NEO4J_*`,
-  `CLIO_KV_*`/`CLIO_REDIS_*` for namespace-specific connector config
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLIO_LOCAL_ROOT` | `.` | Root directory for local filesystem connector |
+| `CLIO_STORAGE_PATH` | `.clio-agentic-search.duckdb` | DuckDB database path |
+| `CLIO_CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `CLIO_OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing (`1`/`true`/`yes`) |
+| `CLIO_ANN_BACKEND` | `exact` | ANN backend (`hnsw` when `[ann]` extra installed) |
+| `CLIO_CACHE_SHARDS` | `16` | Vector index shard count |
+| `CLIO_INDEX_DOCUMENT_BATCH_SIZE` | `32` | Documents per index batch |
+| `CLIO_LEXICAL_BATCH_SIZE` | `50000` | Lexical posting write batch size |
+
+See source for additional `CLIO_LEXICAL_*`, `CLIO_OBJECT_*`, `CLIO_VECTOR_*`, `CLIO_GRAPH_*`, `CLIO_KV_*` variables.
 
 ## Quality checks
 
 ```bash
-UV_CACHE_DIR=.uv-cache uv run ruff check .
-UV_CACHE_DIR=.uv-cache uv run ruff format --check .
-UV_CACHE_DIR=.uv-cache uv run mypy src/
-UV_CACHE_DIR=.uv-cache uv run pytest --ignore=tests/benchmarks
-UV_CACHE_DIR=.uv-cache uv run python -m clio_agentic_search.evals.quality_gate
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src/
+uv run pytest --ignore=tests/benchmarks -v
+uv run python -m clio_agentic_search.evals.quality_gate
 ```
 
-## Benchmark note
+## Benchmarks
 
-`tests/benchmarks/test_throughput.py` enforces p95 latency for smaller corpora by default.  
-For the 10k-chunk p95 assertion, enable hardware-specific enforcement with:
+`tests/benchmarks/test_throughput.py` enforces p95 latency for smaller corpora by default. For 10k-chunk SLO enforcement:
 
 ```bash
-CLIO_ENFORCE_LARGE_SLO=1 UV_CACHE_DIR=.uv-cache uv run pytest tests/benchmarks/ -v --benchmark-disable -k "10000_chunks"
+CLIO_ENFORCE_LARGE_SLO=1 uv run pytest tests/benchmarks/ -v --benchmark-disable -k "10000_chunks"
 ```

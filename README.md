@@ -20,7 +20,7 @@
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyPI version](https://img.shields.io/pypi/v/clio-kit.svg)](https://pypi.org/project/clio-kit/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![FastMCP](https://img.shields.io/badge/FastMCP-2.13%2B-purple)](https://github.com/jlowin/fastmcp)
+[![FastMCP](https://img.shields.io/badge/FastMCP-3.0%2B-purple)](https://github.com/jlowin/fastmcp)
 [![CI](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml/badge.svg)](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml)
 [![Coverage](https://codecov.io/gh/iowarp/clio-kit/branch/main/graph/badge.svg)](https://codecov.io/gh/iowarp/clio-kit)
 
