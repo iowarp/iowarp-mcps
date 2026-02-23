@@ -223,7 +223,7 @@ jobs:
 
     - name: Publish each server to Smithery
       env:
-        SMITHERY_TOKEN: ${{ secrets.SMITHERY_TOKEN }}
+        SMITHERY_API_KEY: ${{ secrets.SMITHERY_TOKEN }}
       run: |
         FAILURES=0
         for server_dir in clio-kit-mcp-servers/*/; do
