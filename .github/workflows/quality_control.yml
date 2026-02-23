@@ -14,29 +14,77 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mcps: ${{ steps.discover.outputs.mcps }}
+      any_mcp_changed: ${{ steps.discover.outputs.any_mcp_changed }}
+      search_changed: ${{ steps.discover.outputs.search_changed }}
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for diff
 
-    - name: Discover MCP directories
+    - name: Discover changed MCPs
       id: discover
       run: |
-        # Find all directories in clio-kit-mcp-servers/ that have a pyproject.toml file
-        # Exclude Chronolog (has dedicated test-chronomcp.yml workflow)
+        # ── Build list of all MCP directories (excluding Chronolog) ──
         blacklisted_mcps="chronolog|Chronolog"
+        all_mcps=$(find clio-kit-mcp-servers -maxdepth 1 -type d -exec test -f {}/pyproject.toml \; -print \
+          | sed 's|clio-kit-mcp-servers/||' | grep -v -E "^($blacklisted_mcps)$" | sort)
 
-        mcps_list=$(find clio-kit-mcp-servers -maxdepth 1 -type d -exec test -f {}/pyproject.toml \; -print | sed 's|clio-kit-mcp-servers/||' | sort)
+        # ── Detect changed files ──
+        RUN_ALL=false
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+        elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+        else
+          # workflow_dispatch, initial branch push, or no valid base — test everything
+          RUN_ALL=true
+          CHANGED=""
+        fi
 
-        # Filter out blacklisted MCPs
-        mcps_list=$(echo "$mcps_list" | grep -v -E "^($blacklisted_mcps)$")
+        echo "Changed files:"
+        echo "$CHANGED"
 
-        mcps=$(echo "$mcps_list" | jq -R -s -c 'split("\n")[:-1]')
-        echo "mcps=$mcps" >> $GITHUB_OUTPUT
-        echo "Found MCPs: $mcps"
+        # ── Check for infrastructure changes (triggers full run) ──
+        if [ "$RUN_ALL" = "false" ] && echo "$CHANGED" | grep -qE '^(scripts/|\.github/|pyproject\.toml$)'; then
+          RUN_ALL=true
+        fi
+        echo "Run all: $RUN_ALL"
+
+        # ── Determine which MCPs to test ──
+        if [ "$RUN_ALL" = "true" ]; then
+          mcps_list="$all_mcps"
+        else
+          mcps_list=""
+          for mcp in $all_mcps; do
+            if echo "$CHANGED" | grep -q "^clio-kit-mcp-servers/$mcp/"; then
+              mcps_list="${mcps_list:+$mcps_list$'\n'}$mcp"
+            fi
+          done
+        fi
+
+        # ── Output MCPs as JSON array ──
+        if [ -z "$mcps_list" ]; then
+          echo "mcps=[]" >> $GITHUB_OUTPUT
+          echo "any_mcp_changed=false" >> $GITHUB_OUTPUT
+        else
+          mcps=$(echo "$mcps_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "mcps=$mcps" >> $GITHUB_OUTPUT
+          echo "any_mcp_changed=true" >> $GITHUB_OUTPUT
+        fi
+        echo "MCPs to test: $(cat $GITHUB_OUTPUT | grep mcps=)"
+
+        # ── Determine if agentic-search needs testing ──
+        if [ "$RUN_ALL" = "true" ] || echo "$CHANGED" | grep -q "^clio-agentic-search/"; then
+          echo "search_changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "search_changed=false" >> $GITHUB_OUTPUT
+        fi
 
   ruff:
     name: Ruff - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
+    if: needs.discover-mcps.outputs.any_mcp_changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +114,7 @@ jobs:
     name: MyPy - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
+    if: needs.discover-mcps.outputs.any_mcp_changed == 'true'
     continue-on-error: true  # Don't fail workflow on type errors
     strategy:
       fail-fast: false
@@ -95,6 +144,7 @@ jobs:
     name: Test - ${{ matrix.mcp }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     needs: discover-mcps
+    if: needs.discover-mcps.outputs.any_mcp_changed == 'true'
     continue-on-error: ${{ matrix.python-version != '3.12' }}
     strategy:
       fail-fast: false
@@ -153,6 +203,7 @@ jobs:
     name: Security Audit - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
+    if: needs.discover-mcps.outputs.any_mcp_changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -177,6 +228,7 @@ jobs:
     name: Validate FastMCP - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
+    if: needs.discover-mcps.outputs.any_mcp_changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -200,6 +252,7 @@ jobs:
     name: Validate server.json - ${{ matrix.mcp }}
     runs-on: ubuntu-latest
     needs: discover-mcps
+    if: needs.discover-mcps.outputs.any_mcp_changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -252,6 +305,8 @@ jobs:
   agentic-search-ruff:
     name: Ruff - clio-agentic-search
     runs-on: ubuntu-latest
+    needs: discover-mcps
+    if: needs.discover-mcps.outputs.search_changed == 'true'
     steps:
     - uses: actions/checkout@v4
     - uses: astral-sh/setup-uv@v3
@@ -274,6 +329,8 @@ jobs:
   agentic-search-mypy:
     name: MyPy - clio-agentic-search
     runs-on: ubuntu-latest
+    needs: discover-mcps
+    if: needs.discover-mcps.outputs.search_changed == 'true'
     continue-on-error: true
     steps:
     - uses: actions/checkout@v4
@@ -293,6 +350,8 @@ jobs:
   agentic-search-test:
     name: Test - clio-agentic-search (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    needs: discover-mcps
+    if: needs.discover-mcps.outputs.search_changed == 'true'
     continue-on-error: ${{ matrix.python-version != '3.12' }}
     strategy:
       fail-fast: false
