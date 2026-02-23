@@ -81,6 +81,9 @@ coverage.xml
 # =============================================================================
 # NOTE: Keep uv.lock in repo for reproducible builds
 # .uv.lock  <-- DO NOT IGNORE, needed for CI/CD
+.uv-cache/
+.virtualenv-app-data/
+.benchmarks/
 
 # =============================================================================
 # Node.js & NPM (for Docusaurus website)

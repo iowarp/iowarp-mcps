@@ -94,6 +94,37 @@ def get_prompts_path():
     # Last resort: return the dev path
     return dev_path
 
+def get_search_path():
+    """Get the path to the clio-agentic-search directory (dev or installed)"""
+    dev_path = MODULE_DIR.parent.parent / "clio-agentic-search"
+    if dev_path.exists():
+        return dev_path
+
+    possible_paths = [
+        MODULE_DIR.parent / "clio-agentic-search",
+        MODULE_DIR / "clio-agentic-search",
+        Path(sys.prefix) / "share" / "clio-kit" / "clio-agentic-search",
+        Path.home() / ".local" / "share" / "clio-kit" / "clio-agentic-search",
+    ]
+
+    for path in possible_paths:
+        if path.exists() and path.is_dir():
+            return path
+
+    python_path = Path(sys.executable)
+    isolated_paths = [
+        python_path.parent.parent / "clio-agentic-search",
+        python_path.parent.parent / "share" / "clio-agentic-search",
+        python_path.parent.parent / "purelib" / "clio-agentic-search",
+        python_path.parent.parent / "data" / "clio-agentic-search",
+    ]
+
+    for path in isolated_paths:
+        if path.exists() and path.is_dir():
+            return path
+
+    return dev_path
+
 def auto_discover_mcps():
     """Auto-discover MCP servers from the clio-kit-mcp-servers directory"""
     servers_path = get_servers_path()
@@ -185,14 +216,16 @@ def list_available_prompts():
 def main(ctx):
     """clio-kit: Unified launcher for MCP servers and AI prompts"""
     if ctx.invoked_subcommand is None:
-        click.echo("clio-kit: Unified launcher for MCP servers and AI prompts")
+        click.echo("clio-kit: Unified launcher for MCP servers, AI prompts, and services")
         click.echo("\nAvailable commands:")
         click.echo("  mcp-server   Run an MCP server")
         click.echo("  mcp-servers  List all available MCP servers")
+        click.echo("  search       Run agentic search (query, index, serve, list, seed)")
         click.echo("  prompt       Print a prompt to stdout")
         click.echo("  prompts      List all available prompts")
         click.echo("\nUsage:")
         click.echo("  uvx clio-kit mcp-server <server-name>")
+        click.echo("  uvx clio-kit search <subcommand>")
         click.echo("  uvx clio-kit prompt <prompt-name>")
         click.echo("\nFor more help: uvx clio-kit <command> --help")
 
@@ -325,6 +358,46 @@ def list_prompts_cmd():
             click.echo(f"  - {p}")
     else:
         click.echo("No prompts found.")
+
+@main.command("search", context_settings=dict(
+    ignore_unknown_options=True,
+    allow_extra_args=True,
+))
+@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+def search(args):
+    """Run agentic search commands (query, index, serve, list, seed)."""
+
+    if not args:
+        click.echo("clio-kit search: Hybrid retrieval engine for scientific corpora")
+        click.echo("\nSubcommands:")
+        click.echo("  query   Run retrieval queries")
+        click.echo("  index   Index documents into a namespace")
+        click.echo("  serve   Start the FastAPI server")
+        click.echo("  list    List indexed documents")
+        click.echo("  seed    Seed sample data")
+        click.echo("\nUsage: uvx clio-kit search <subcommand> [options]")
+        click.echo("\nExamples:")
+        click.echo('  uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"')
+        click.echo("  uvx clio-kit search index --namespace local_fs")
+        click.echo("  uvx clio-kit search serve --port 8080")
+        return
+
+    search_path = get_search_path()
+    if not search_path.exists():
+        click.echo(f"Error: clio-agentic-search not found at {search_path}")
+        click.echo("Install from: https://github.com/iowarp/clio-kit")
+        sys.exit(1)
+
+    cmd = ["uvx", "--from", str(search_path), "clio"]
+    cmd.extend(args)
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        click.echo("Error: uvx not found. Please install uv: https://github.com/astral-sh/uv")
+        sys.exit(1)
 
 def cli():
     """Entry point for the CLI"""

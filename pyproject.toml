@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clio-kit"
-version = "2.0.1"
+version = "2.1.0"
 description = "CLIO Kit - MCP Servers, Clients, and Tools for AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -45,19 +45,36 @@ clio-kit = "clio_kit:cli"
 
 [tool.hatch.build]
 sources = ["src"]
+# Shared-data copies from filesystem, not git — exclude non-runtime artifacts
+exclude = [
+    "**/.venv",
+    "**/.virtualenv-app-data",
+    "**/.uv-cache",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/.benchmarks",
+    "**/.github",
+    "**/dist",
+    "**/tests",
+    "**/.pre-commit-config.yaml",
+    "**/.gitignore",
+]
 
 # Include all server directories in the wheel for uvx execution
 [tool.hatch.build.targets.wheel]
-packages = ["clio_kit"]
+packages = ["src/clio_kit"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "clio-kit-mcp-servers" = "clio-kit-mcp-servers"
+"clio-agentic-search" = "clio-agentic-search"
 "prompts" = "prompts"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "src/",
     "clio-kit-mcp-servers/",
+    "clio-agentic-search/",
     "prompts/",
     "README.md",
     "pyproject.toml"

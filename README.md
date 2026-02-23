@@ -59,8 +59,9 @@ AI agents handle scientific computing tasks through natural language:
 - ✅ **"Find papers on neural networks from ArXiv"** - ArXiv MCP searches
 - ✅ **"Plot the results from this CSV file"** - Plot MCP visualizes
 - ✅ **"Optimize memory usage for this pandas DataFrame"** - Pandas MCP optimizes
+- ✅ **"Find all documents where pressure exceeds 200 kPa"** - Agentic Search retrieves
 
-**One unified interface. 16 MCP servers. 150+ specialized tools. Built for research.**
+**One unified interface. 16 MCP servers. Hybrid search engine. 150+ specialized tools. Built for research.**
 
 CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI agents. It brings AI assistance to your scientific computing workflow—whether you're analyzing terabytes of HDF5 data, managing Slurm jobs across clusters, or exploring research papers. Built by researchers, for researchers, at Illinois Institute of Technology with NSF support.
 
@@ -80,6 +81,10 @@ uvx clio-kit mcp-servers
 uvx clio-kit mcp-server hdf5
 uvx clio-kit mcp-server pandas
 uvx clio-kit mcp-server slurm
+
+# Agentic search — hybrid retrieval for scientific corpora
+uvx clio-kit search serve               # Start search API server
+uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"
 
 # AI prompts also available
 uvx clio-kit prompts                    # List all prompts
@@ -207,11 +212,25 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 
 </div>
 
-### Standalone Services
+### Agentic Search
 
-| **Service** | **Description** |
-|:---|:---|
-| **[`clio-agentic-search`](clio-agentic-search/)** | Hybrid retrieval engine with lexical, vector, and scientific search over namespaced document corpora |
+Hybrid retrieval engine for scientific corpora — combines lexical (BM25), vector, graph, and scientific search (numeric range, unit matching, formula targeting) over namespaced document collections. DuckDB storage, FastAPI, async job queue, OpenTelemetry tracing, Prometheus metrics.
+
+```bash
+# Start the search API server
+uvx clio-kit search serve
+
+# Index documents from a namespace
+uvx clio-kit search index --namespace local_fs
+
+# Query with scientific operators
+uvx clio-kit search query --namespace local_fs --q "pressure between 190 and 360 kPa"
+
+# List indexed documents
+uvx clio-kit search list --namespace local_fs
+```
+
+**API endpoints**: `/query`, `/jobs/index`, `/documents`, `/health`, `/metrics` — [full docs](clio-agentic-search/README.md)
 
 ---
 
@@ -256,6 +275,14 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 ```
 
 **Tools used:** `line_plot`, `data_info`
+
+### Agentic Search: Scientific Retrieval
+
+```
+"Find all chunks mentioning pressure above 200 kPa in the local_fs namespace."
+```
+
+**CLI:** `uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"`
 
 ---
 
