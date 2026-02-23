@@ -9,7 +9,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.0.2",
+      "version": "2.0.1",
       "transport": {"type": "stdio"},
       "arguments": ["clio-kit", "chronolog"]
     }

@@ -179,16 +179,22 @@ jobs:
 
     - name: Publish each server to MCP registry
       run: |
+        FAILURES=0
         for server_dir in clio-kit-mcp-servers/*/; do
           if [ ! -f "$server_dir/server.json" ]; then continue; fi
           server_name=$(basename "$server_dir")
           echo "Publishing $server_name to MCP registry..."
-          (cd "$server_dir" && ../../mcp-publisher publish) || {
-            echo "Warning: failed to publish $server_name"
-            continue
-          }
-          echo "Published $server_name"
+          if (cd "$server_dir" && ../../mcp-publisher publish); then
+            echo "Published $server_name"
+          else
+            echo "::error::Failed to publish $server_name to MCP registry"
+            FAILURES=$((FAILURES + 1))
+          fi
         done
+        if [ $FAILURES -gt 0 ]; then
+          echo "::error::$FAILURES server(s) failed to publish to MCP registry"
+          exit 1
+        fi
 
   publish-to-smithery:
     name: Publish to Smithery
@@ -208,18 +214,31 @@ jobs:
     - name: Install Smithery CLI
       run: npm install -g @smithery/cli
 
+    - name: Verify Smithery token is set
+      run: |
+        if [ -z "${{ secrets.SMITHERY_TOKEN }}" ]; then
+          echo "::error::SMITHERY_TOKEN secret is not set. Add it at https://github.com/iowarp/clio-kit/settings/secrets/actions"
+          exit 1
+        fi
+
     - name: Publish each server to Smithery
       env:
         SMITHERY_TOKEN: ${{ secrets.SMITHERY_TOKEN }}
       run: |
+        FAILURES=0
         for server_dir in clio-kit-mcp-servers/*/; do
           if [ ! -f "$server_dir/server.json" ]; then continue; fi
           server_name=$(basename "$server_dir")
           echo "Publishing $server_name to Smithery..."
-          smithery mcp publish "https://github.com/${{ github.repository }}" \
-            -n "iowarp/${server_name}-mcp" || {
-            echo "Warning: failed to publish $server_name to Smithery"
-            continue
-          }
-          echo "Published $server_name to Smithery"
+          if smithery mcp publish "https://github.com/${{ github.repository }}" \
+            -n "iowarp/${server_name}-mcp"; then
+            echo "Published $server_name to Smithery"
+          else
+            echo "::error::Failed to publish $server_name to Smithery"
+            FAILURES=$((FAILURES + 1))
+          fi
         done
+        if [ $FAILURES -gt 0 ]; then
+          echo "::error::$FAILURES server(s) failed to publish to Smithery"
+          exit 1
+        fi
