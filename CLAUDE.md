@@ -35,6 +35,7 @@ clio-kit/                           # Monorepo root
 │   ├── plot/                          # Data visualization
 │   ├── adios/                         # ADIOS2 data I/O
 │   └── [each has its own pyproject.toml, dependencies, tests]
+├── clio-agentic-search/             # Standalone hybrid retrieval engine (not an MCP server)
 ├── clio-kit-website/                # Docusaurus documentation site
 ├── scripts/                           # Utility scripts (generate_docs.py, etc)
 ├── .github/workflows/                 # CI/CD automation
@@ -128,6 +129,32 @@ uv run ruff check --fix .
 # Verify types after changes
 uv run mypy src/
 ```
+
+### clio-agentic-search (Standalone Service)
+
+```bash
+# Setup
+cd clio-agentic-search
+uv sync --all-extras --dev
+
+# Quality checks
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src/
+uv run pytest --ignore=tests/benchmarks -v
+
+# Full quality gate (6 checks)
+uv run python -m clio_agentic_search.evals.quality_gate
+
+# Run API server
+uv run uvicorn clio_agentic_search.api.app:app --reload
+
+# CLI
+uv run clio query --namespace local_fs --q "pressure between 190 and 360 kPa"
+uv run clio index --namespace local_fs
+```
+
+**Note**: clio-agentic-search is NOT an MCP server. It's a standalone FastAPI service with its own CI jobs in `quality_control.yml`. The launcher does not discover it.
 
 ## Architecture Patterns
 

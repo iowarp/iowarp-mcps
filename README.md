@@ -207,6 +207,12 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 
 </div>
 
+### Standalone Services
+
+| **Service** | **Description** |
+|:---|:---|
+| **[`clio-agentic-search`](clio-agentic-search/)** | Hybrid retrieval engine with lexical, vector, and scientific search over namespaced document corpora |
+
 ---
 
 ## 📖 Usage Examples

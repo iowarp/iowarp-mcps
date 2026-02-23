@@ -246,3 +246,69 @@ jobs:
         fi
 
         echo "PASS: server.json is in sync for ${{ matrix.mcp }}"
+
+  # ── clio-agentic-search (standalone service, not an MCP server) ──
+
+  agentic-search-ruff:
+    name: Ruff - clio-agentic-search
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    - run: uv python install 3.12
+    - name: Install dependencies
+      run: |
+        cd clio-agentic-search
+        uv sync --all-extras --dev
+    - name: Ruff lint
+      run: |
+        cd clio-agentic-search
+        uv run ruff check --output-format=github .
+    - name: Ruff format check
+      run: |
+        cd clio-agentic-search
+        uv run ruff format --check .
+
+  agentic-search-mypy:
+    name: MyPy - clio-agentic-search
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    - run: uv python install 3.12
+    - name: Install dependencies
+      run: |
+        cd clio-agentic-search
+        uv sync --all-extras --dev
+    - name: Run MyPy
+      run: |
+        cd clio-agentic-search
+        uv run mypy src/ --ignore-missing-imports --show-error-codes --no-error-summary
+
+  agentic-search-test:
+    name: Test - clio-agentic-search (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.python-version != '3.12' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    - run: uv python install ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        cd clio-agentic-search
+        uv sync --all-extras --dev
+    - name: Run tests
+      run: |
+        cd clio-agentic-search
+        uv run pytest --ignore=tests/benchmarks -v --tb=short

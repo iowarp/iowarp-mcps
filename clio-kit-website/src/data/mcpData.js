@@ -1,5 +1,31 @@
 // MCP data structure for tile-based showcase
 export const mcpData = {
+  "agentic_search": {
+    "name": "Agentic Search",
+    "category": "Search & Retrieval",
+    "description": "Hybrid retrieval engine. Lexical, vector, graph, and scientific search over namespaced document corpora. DuckDB storage. FastAPI service with async job queue.",
+    "icon": "\ud83d\udd0d",
+    "actions": [
+      "query",
+      "index",
+      "list_documents",
+      "submit_index_job",
+      "get_job_status",
+      "cancel_job",
+      "health",
+      "metrics"
+    ],
+    "stats": {
+      "version": "1.0.0",
+      "updated": "2026-02-23"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "agentic_search"
+  },
   "adios": {
     "name": "Adios",
     "category": "Data Processing",
@@ -473,8 +499,13 @@ export const mcpData = {
 // Categories with counts and colors
 export const categories = {
   "All": {
-    "count": 16,
+    "count": 17,
     "color": "#6b7280",
+    "icon": "\ud83d\udd0d"
+  },
+  "Search & Retrieval": {
+    "count": 1,
+    "color": "#6366f1",
     "icon": "\ud83d\udd0d"
   },
   "Data Processing": {
@@ -513,6 +544,7 @@ export const popularMcps = [
 export const categoryTypes = {
   "Data Processing": "data",
   "Analysis & Visualization": "analysis",
+  "Search & Retrieval": "search",
   "System Management": "system",
   "Utilities": "util"
 };
