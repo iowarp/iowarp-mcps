@@ -1,0 +1,9 @@
+{
+  "clio-lmod": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "lmod"
+    ]
+  }
+}

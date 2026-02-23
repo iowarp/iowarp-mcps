@@ -1,4 +1,4 @@
-# Codecov configuration for Agent Toolkit monorepo
+# Codecov configuration for CLIO Kit monorepo
 # Handles coverage from multiple independent MCP server packages
 
 coverage:
@@ -11,6 +11,7 @@ coverage:
         flags:
           - adios
           - arxiv
+          - chronolog
           - compression
           - darshan
           - hdf5
@@ -20,6 +21,7 @@ coverage:
           - node-hardware
           - pandas
           - parallel-sort
+          - paraview
           - parquet
           - plot
           - slurm
@@ -32,46 +34,52 @@ coverage:
 flags:
   adios:
     paths:
-      - agent-toolkit-mcp-servers/adios/
+      - clio-kit-mcp-servers/adios/
   arxiv:
     paths:
-      - agent-toolkit-mcp-servers/arxiv/
+      - clio-kit-mcp-servers/arxiv/
+  chronolog:
+    paths:
+      - clio-kit-mcp-servers/chronolog/
   compression:
     paths:
-      - agent-toolkit-mcp-servers/compression/
+      - clio-kit-mcp-servers/compression/
   darshan:
     paths:
-      - agent-toolkit-mcp-servers/darshan/
+      - clio-kit-mcp-servers/darshan/
   hdf5:
     paths:
-      - agent-toolkit-mcp-servers/hdf5/
+      - clio-kit-mcp-servers/hdf5/
   jarvis:
     paths:
-      - agent-toolkit-mcp-servers/jarvis/
+      - clio-kit-mcp-servers/jarvis/
   lmod:
     paths:
-      - agent-toolkit-mcp-servers/lmod/
+      - clio-kit-mcp-servers/lmod/
   ndp:
     paths:
-      - agent-toolkit-mcp-servers/ndp/
+      - clio-kit-mcp-servers/ndp/
   node-hardware:
     paths:
-      - agent-toolkit-mcp-servers/node-hardware/
+      - clio-kit-mcp-servers/node-hardware/
   pandas:
     paths:
-      - agent-toolkit-mcp-servers/pandas/
+      - clio-kit-mcp-servers/pandas/
   parallel-sort:
     paths:
-      - agent-toolkit-mcp-servers/parallel-sort/
+      - clio-kit-mcp-servers/parallel-sort/
+  paraview:
+    paths:
+      - clio-kit-mcp-servers/paraview/
   parquet:
     paths:
-      - agent-toolkit-mcp-servers/parquet/
+      - clio-kit-mcp-servers/parquet/
   plot:
     paths:
-      - agent-toolkit-mcp-servers/plot/
+      - clio-kit-mcp-servers/plot/
   slurm:
     paths:
-      - agent-toolkit-mcp-servers/slurm/
+      - clio-kit-mcp-servers/slurm/
 
 # Comment configuration
 comment:
@@ -87,4 +95,4 @@ ignore:
   - "**/tests/"
   - "**/.venv"
   - "**/htmlcov"
-  - "agent-toolkit-website/"
+  - "clio-kit-website/"

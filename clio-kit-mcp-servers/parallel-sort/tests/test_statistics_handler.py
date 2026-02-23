@@ -5,7 +5,10 @@ Tests for the statistics handler capability.
 import pytest
 import tempfile
 import os
-from implementation.statistics_handler import analyze_log_statistics, parse_log_entry
+from parallel_sort_mcp.implementation.statistics_handler import (
+    analyze_log_statistics,
+    parse_log_entry,
+)
 
 
 class TestStatisticsHandler:

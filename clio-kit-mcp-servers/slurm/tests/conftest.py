@@ -5,20 +5,16 @@ Test configuration and fixtures for Slurm MCP tests.
 import pytest
 import tempfile
 import os
-import sys
-from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
 
 
 @pytest.fixture(autouse=True)
 def mock_slurm_environment():
     """Mock the entire Slurm environment for testing."""
     with (
-        patch("implementation.utils.check_slurm_available", return_value=True),
+        patch(
+            "slurm_mcp.implementation.utils.check_slurm_available", return_value=True
+        ),
         patch("subprocess.run") as mock_run,
         patch("subprocess.check_output") as mock_check_output,
         patch("subprocess.Popen") as mock_popen,
@@ -169,7 +165,9 @@ def mock_slurm_responses():
 def mock_slurm_unavailable():
     """Mock Slurm as unavailable for testing graceful degradation."""
     with (
-        patch("implementation.utils.check_slurm_available", return_value=False),
+        patch(
+            "slurm_mcp.implementation.utils.check_slurm_available", return_value=False
+        ),
         patch("shutil.which", return_value=None),
         patch("subprocess.run") as mock_run,
         patch("subprocess.check_output") as mock_check_output,
@@ -416,9 +414,13 @@ def mock_filesystem():
 def mock_validation():
     """Mock validation functions for testing."""
     with (
-        patch("implementation.utils.validate_job_script") as mock_validate_script,
-        patch("implementation.utils.validate_partition") as mock_validate_partition,
-        patch("implementation.utils.validate_job_id") as mock_validate_id,
+        patch(
+            "slurm_mcp.implementation.utils.validate_job_script"
+        ) as mock_validate_script,
+        patch(
+            "slurm_mcp.implementation.utils.validate_partition"
+        ) as mock_validate_partition,
+        patch("slurm_mcp.implementation.utils.validate_job_id") as mock_validate_id,
     ):
         mock_validate_script.return_value = True
         mock_validate_partition.return_value = True

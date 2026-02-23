@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/lmod-mcp.svg)](https://pypi.org/project/lmod-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Lmod MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to manage environment modules using the Lmod system. This server provides advanced module management capabilities, environment configuration tools, and HPC workflow support with seamless i...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server lmod
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 
@@ -141,79 +141,109 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\lmod run lmod-mcp --
 ## Capabilities
 
 ### `module_list`
-**Description**: List all currently loaded environment modules with their versions and status information.
-
-**Returns**: dict: Dictionary with list of loaded modules, count, and module status information.
+**Description**: List all currently loaded environment modules.
+**Hints**: read-only, idempotent
+**Tags**: modules, query
 
 ### `module_avail`
-**Description**: Search for available modules that can be loaded with optional pattern matching and filtering.
-
-**Parameters**:
-- `pattern` (str, optional): Search pattern with wildcards (e.g., 'python*', 'gcc/*')
-
-**Returns**: dict: Dictionary with available modules matching the search criteria and their descriptions.
+**Description**: Search for available modules, optionally filtered by name pattern.
+**Hints**: read-only, idempotent
+**Tags**: modules, query
 
 ### `module_show`
-**Description**: Display comprehensive information about a specific module including dependencies and environment changes.
-
-**Parameters**:
-- `module_name` (str): Name of the module (e.g., 'python/3.9.0')
-
-**Returns**: dict: Dictionary with detailed module information, dependencies, and environment modifications.
+**Description**: Display detailed information about a specific module.
+**Hints**: read-only, idempotent
+**Tags**: modules, query
 
 ### `module_load`
-**Description**: Load one or more environment modules with automatic dependency resolution and conflict detection.
-
-**Parameters**:
-- `modules` (list): List of module names to load
-
-**Returns**: dict: Dictionary with loading status, any conflicts detected, and environment changes applied.
+**Description**: Load one or more environment modules into the current session.
+**Tags**: management, modules
 
 ### `module_unload`
-**Description**: Unload one or more currently loaded modules with dependency checking and cleanup.
-
-**Parameters**:
-- `modules` (list): List of module names to unload
-
-**Returns**: dict: Dictionary with unloading status and environment restoration information.
+**Description**: Unload one or more currently loaded modules from the environment.
+**Tags**: management, modules
 
 ### `module_swap`
-**Description**: Atomically swap one module for another, handling dependencies and version conflicts automatically.
-
-**Parameters**:
-- `old_module` (str): Module to unload
-- `new_module` (str): Module to load in its place
-
-**Returns**: dict: Dictionary with swap operation status and any dependency adjustments made.
+**Description**: Swap one module for another atomically.
+**Tags**: management, modules
 
 ### `module_spider`
-**Description**: Search the entire module tree comprehensively with deep hierarchy exploration and metadata extraction.
-
-**Parameters**:
-- `pattern` (str, optional): Search pattern for comprehensive module discovery
-
-**Returns**: dict: Dictionary with comprehensive search results including hidden modules and dependency information.
+**Description**: Search the entire module tree comprehensively for matching modules.
+**Hints**: read-only, idempotent
+**Tags**: modules, query
 
 ### `module_save`
-**Description**: Save the current set of loaded modules as a named collection for reproducible environments.
-
-**Parameters**:
-- `collection_name` (str): Name for the saved collection
-
-**Returns**: dict: Dictionary with collection save status and included modules list.
+**Description**: Save currently loaded modules as a named collection.
+**Tags**: management, modules
 
 ### `module_restore`
-**Description**: Restore a previously saved module collection with automatic environment configuration.
-
-**Parameters**:
-- `collection_name` (str): Name of the collection to restore
-
-**Returns**: dict: Dictionary with restoration status and any conflicts or missing modules.
+**Description**: Restore a previously saved module collection.
+**Tags**: management, modules
 
 ### `module_savelist`
-**Description**: List all saved module collections with creation dates and module counts.
+**Description**: List all saved module collections.
+**Hints**: read-only, idempotent
+**Tags**: modules, query
 
-**Returns**: dict: Dictionary with list of saved collections and their metadata information.
+### Resources
+
+- `lmod://status` - Current Lmod module system status.
+
+### Prompts
+
+- **setup_environment**: Guided workflow for setting up an HPC software environment.
+## Claude Code
+
+```bash
+claude mcp add clio-lmod -- uvx clio-kit lmod
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-lmod@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-lmod": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "lmod"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-lmod": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "lmod"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. HPC Development Environment Setup

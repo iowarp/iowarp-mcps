@@ -1,0 +1,150 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/paraview-mcp",
+  "title": "CLIO Paraview",
+  "description": "MCP server for ParaView scientific visualization",
+  "version": "2.0.1",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "paraview"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "load_scientific_data",
+      "description": "Load scientific datasets (VTK, EXODUS, CSV, RAW, BP5) into ParaView with automatic format detection."
+    },
+    {
+      "name": "save_contour_as_stl",
+      "description": "Save the active contour or surface as an STL file in the data directory.\n\nArgs:\n    stl_filename: The STL file name to use, defaults to 'contour.stl'.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "create_geometric_shape",
+      "description": "Create a geometric source (Sphere, Cone, Cylinder, Plane, or Box).\n\nArgs:\n    source_type: Type of source to create.\n\nReturns:\n    Status message with source name."
+    },
+    {
+      "name": "generate_isosurface",
+      "description": "Create an isosurface visualization of the active source at the given isovalue.\n\nArgs:\n    value: Isovalue.\n    field: Optional field name to contour by.\n\nReturns:\n    Status message with filter name."
+    },
+    {
+      "name": "create_data_slice",
+      "description": "Create a slice plane through the loaded volume data.\n\nArgs:\n    origin_x, origin_y, origin_z: Slice origin coordinates (defaults to data center).\n    normal_x, normal_y, normal_z: Normal vector for the slice plane (default [0, 0, 1]).\n\nReturns:\n    Status message with pipeline name."
+    },
+    {
+      "name": "configure_volume_display",
+      "description": "Toggle volume rendering visibility for the active source.\n\nArgs:\n    enable: Whether to show (True) or hide (False) volume rendering.\n\nReturns:\n    Status message with source name."
+    },
+    {
+      "name": "toggle_visibility",
+      "description": "Toggle visibility for the active source.\n\nArgs:\n    enable: Whether to show (True) or hide (False) the active source.\n\nReturns:\n    Status message with source name."
+    },
+    {
+      "name": "set_active_source",
+      "description": "Set the active pipeline object by its registered name.\n\nArgs:\n    name: The pipeline source name (e.g., 'Contour1').\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "get_active_source_names_by_type",
+      "description": "List pipeline source names, optionally filtered by type.\n\nArgs:\n    source_type: Filter by type (e.g., 'Sphere', 'Contour'). None returns all.\n\nReturns:\n    Formatted list of source names."
+    },
+    {
+      "name": "edit_volume_opacity",
+      "description": "Edit the opacity transfer function for a scalar field.\n\nArgs:\n    field_name: The scalar field to modify.\n    opacity_points: List of dicts like [{\"value\": 0.0, \"alpha\": 0.0}, ...].\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "set_color_map",
+      "description": "Set a custom color transfer function for volume rendering.\n\nArgs:\n    field_name: The field/array name in ParaView.\n    color_points: List of dicts: {\"value\": float, \"rgb\": [r, g, b]}.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "apply_field_coloring",
+      "description": "Color the active visualization by a specific data field.\n\nArgs:\n    field: Field name to color by.\n    component: Component index (-1 for magnitude).\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "compute_surface_area",
+      "description": "Compute the surface area of the active dataset (must be a surface mesh).\n\nReturns:\n    Status message with area value."
+    },
+    {
+      "name": "set_color_map_preset",
+      "description": "Apply a predefined color map preset (e.g., Viridis, Plasma, Cool to Warm).\n\nArgs:\n    preset_name: Name of the color map preset.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "set_representation_type",
+      "description": "Set the representation type for the active source (Surface, Wireframe, Points, etc.).\n\nArgs:\n    rep_type: Representation type.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "get_pipeline",
+      "description": "Get the current visualization pipeline structure.\n\nReturns:\n    Description of the current pipeline."
+    },
+    {
+      "name": "get_available_arrays",
+      "description": "List available data arrays in the active source.\n\nReturns:\n    List of available arrays."
+    },
+    {
+      "name": "get_histogram",
+      "description": "Compute histogram data for a field in the active source.\n\nArgs:\n    field: Field name (auto-selected if only one exists).\n    num_bins: Number of bins (default: 256).\n    data_location: 'POINTS' or 'CELLS'.\n\nReturns:\n    Formatted histogram data."
+    },
+    {
+      "name": "generate_flow_streamlines",
+      "description": "Create streamlines from a vector volume using the StreamTracer filter.\n\nArgs:\n    seed_point_number: Number of seed points to generate.\n    vector_field: Vector field name (auto-detected if None).\n    integration_direction: 'FORWARD', 'BACKWARD', or 'BOTH'.\n    max_steps: Maximum integration steps.\n    initial_step: Initial step length.\n    maximum_step: Maximum streamline length.\n\nReturns:\n    Status message with tube name."
+    },
+    {
+      "name": "take_viewport_screenshot",
+      "description": "Capture a screenshot of the current ParaView viewport and save it as a timestamped PNG."
+    },
+    {
+      "name": "show_screenshot_preview",
+      "description": "Capture a screenshot with inline preview using temporary files."
+    },
+    {
+      "name": "rotate_camera",
+      "description": "Rotate the camera by azimuth and elevation angles in degrees.\n\nArgs:\n    azimuth: Rotation around vertical axis.\n    elevation: Rotation around horizontal axis.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "reset_camera",
+      "description": "Reset the camera to show all data in the viewport.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "plot_over_line",
+      "description": "Create a 'Plot Over Line' filter to sample data between two points.\n\nArgs:\n    point1: Start [x, y, z] coordinates (defaults to data bounds).\n    point2: End [x, y, z] coordinates (defaults to data bounds).\n    resolution: Number of sample points (default: 100).\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "warp_by_vector",
+      "description": "Apply a 'Warp By Vector' filter to the active source.\n\nArgs:\n    vector_field: Vector field name (auto-detected if None).\n    scale_factor: Scale factor for the warp.\n\nReturns:\n    Status message."
+    },
+    {
+      "name": "list_commands",
+      "description": "List all available commands in this ParaView MCP server.\n\nReturns:\n    List of available commands."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "paraview://capabilities",
+      "name": "paraview_capabilities",
+      "description": "ParaView visualization capabilities and supported formats."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "visualize_data",
+      "description": "Guided workflow for creating a ParaView visualization."
+    }
+  ],
+  "tags": [
+    "scientific-visualization",
+    "paraview",
+    "3d-rendering",
+    "hpc"
+  ]
+}

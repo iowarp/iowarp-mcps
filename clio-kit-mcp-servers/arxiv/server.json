@@ -1,0 +1,98 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/arxiv-mcp",
+  "title": "CLIO Arxiv",
+  "description": "ArXiv MCP server implementation using Model Context Protocol",
+  "version": "2.0.1",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "arxiv"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "search_arxiv",
+      "description": "Search ArXiv for papers by category or topic."
+    },
+    {
+      "name": "get_recent_papers",
+      "description": "Get recent papers from a specific ArXiv category."
+    },
+    {
+      "name": "search_papers_by_author",
+      "description": "Search ArXiv papers by author name."
+    },
+    {
+      "name": "search_by_title",
+      "description": "Search ArXiv papers by title keywords."
+    },
+    {
+      "name": "search_by_abstract",
+      "description": "Search ArXiv papers by abstract keywords."
+    },
+    {
+      "name": "search_by_subject",
+      "description": "Search ArXiv papers by subject classification."
+    },
+    {
+      "name": "search_date_range",
+      "description": "Search ArXiv papers within a specific date range."
+    },
+    {
+      "name": "get_paper_details",
+      "description": "Get detailed information about a specific ArXiv paper by ID."
+    },
+    {
+      "name": "export_to_bibtex",
+      "description": "Export search results to BibTeX format for citation management."
+    },
+    {
+      "name": "find_similar_papers",
+      "description": "Find papers similar to a reference paper based on categories and keywords."
+    },
+    {
+      "name": "download_paper_pdf",
+      "description": "Download the PDF of a paper from ArXiv."
+    },
+    {
+      "name": "get_pdf_url",
+      "description": "Get the direct PDF URL for a paper without downloading."
+    },
+    {
+      "name": "download_multiple_pdfs",
+      "description": "Download multiple PDFs concurrently with rate limiting."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "arxiv://categories",
+      "name": "arxiv_categories",
+      "description": "Common arXiv subject categories and their descriptions."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "literature_search",
+      "description": "Guided workflow for conducting an arXiv literature search."
+    }
+  ],
+  "tags": [
+    "research",
+    "arxiv",
+    "papers",
+    "literature-search"
+  ]
+}

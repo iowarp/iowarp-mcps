@@ -1,0 +1,86 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/lmod-mcp",
+  "title": "CLIO Lmod",
+  "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
+  "version": "2.0.1",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "lmod"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "module_list",
+      "description": "List all currently loaded environment modules."
+    },
+    {
+      "name": "module_avail",
+      "description": "Search for available modules, optionally filtered by name pattern."
+    },
+    {
+      "name": "module_show",
+      "description": "Display detailed information about a specific module."
+    },
+    {
+      "name": "module_load",
+      "description": "Load one or more environment modules into the current session."
+    },
+    {
+      "name": "module_unload",
+      "description": "Unload one or more currently loaded modules from the environment."
+    },
+    {
+      "name": "module_swap",
+      "description": "Swap one module for another atomically."
+    },
+    {
+      "name": "module_spider",
+      "description": "Search the entire module tree comprehensively for matching modules."
+    },
+    {
+      "name": "module_save",
+      "description": "Save currently loaded modules as a named collection."
+    },
+    {
+      "name": "module_restore",
+      "description": "Restore a previously saved module collection."
+    },
+    {
+      "name": "module_savelist",
+      "description": "List all saved module collections."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "lmod://status",
+      "name": "module_system_status",
+      "description": "Current Lmod module system status."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "setup_environment",
+      "description": "Guided workflow for setting up an HPC software environment."
+    }
+  ],
+  "tags": [
+    "environment-modules",
+    "hpc",
+    "lmod",
+    "system-administration"
+  ]
+}

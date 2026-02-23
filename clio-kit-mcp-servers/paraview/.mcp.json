@@ -1,0 +1,9 @@
+{
+  "clio-paraview": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "paraview"
+    ]
+  }
+}

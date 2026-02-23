@@ -1,0 +1,161 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/jarvis-mcp",
+  "title": "CLIO Jarvis",
+  "description": "Jarvis-CD MCP - Pipeline Management for High-Performance Computing with comprehensive workflow...",
+  "version": "2.0.1",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "jarvis"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "update_pipeline",
+      "description": "Re-apply environment and configuration to every package in a pipeline."
+    },
+    {
+      "name": "build_pipeline_env",
+      "description": "Rebuild a pipeline's env.yaml, capturing CMAKE_PREFIX_PATH and PATH."
+    },
+    {
+      "name": "create_pipeline",
+      "description": "Create a new Jarvis-CD pipeline environment."
+    },
+    {
+      "name": "load_pipeline",
+      "description": "Load an existing Jarvis-CD pipeline environment."
+    },
+    {
+      "name": "get_pkg_config",
+      "description": "Retrieve the configuration of a specific package in a pipeline."
+    },
+    {
+      "name": "append_pkg",
+      "description": "Append a package to a Jarvis-CD pipeline."
+    },
+    {
+      "name": "configure_pkg",
+      "description": "Configure a package in a Jarvis-CD pipeline."
+    },
+    {
+      "name": "unlink_pkg",
+      "description": "Unlink a package from a pipeline (preserve files)."
+    },
+    {
+      "name": "remove_pkg",
+      "description": "Remove a package entirely from a pipeline."
+    },
+    {
+      "name": "run_pipeline",
+      "description": "Execute a Jarvis-CD pipeline end-to-end."
+    },
+    {
+      "name": "destroy_pipeline",
+      "description": "Destroy a pipeline environment and clean up files."
+    },
+    {
+      "name": "jm_create_config",
+      "description": "Initialize JarvisManager config directories."
+    },
+    {
+      "name": "jm_load_config",
+      "description": "Load existing JarvisManager configuration."
+    },
+    {
+      "name": "jm_save_config",
+      "description": "Save current JarvisManager configuration."
+    },
+    {
+      "name": "jm_set_hostfile",
+      "description": "Set hostfile path for JarvisManager."
+    },
+    {
+      "name": "jm_bootstrap_from",
+      "description": "Bootstrap Jarvis config from a machine template."
+    },
+    {
+      "name": "jm_bootstrap_list",
+      "description": "List available bootstrap machine templates."
+    },
+    {
+      "name": "jm_reset",
+      "description": "Reset JarvisManager (destroy all pipelines and data)."
+    },
+    {
+      "name": "jm_list_pipelines",
+      "description": "List all existing Jarvis pipelines."
+    },
+    {
+      "name": "jm_cd",
+      "description": "Change current Jarvis pipeline context."
+    },
+    {
+      "name": "jm_list_repos",
+      "description": "List all Jarvis repositories."
+    },
+    {
+      "name": "jm_add_repo",
+      "description": "Add a repository to JarvisManager."
+    },
+    {
+      "name": "jm_remove_repo",
+      "description": "Remove a repository from JarvisManager."
+    },
+    {
+      "name": "jm_promote_repo",
+      "description": "Promote a repository in JarvisManager."
+    },
+    {
+      "name": "jm_get_repo",
+      "description": "Get repository info from JarvisManager."
+    },
+    {
+      "name": "jm_construct_pkg",
+      "description": "Construct a package skeleton in JarvisManager."
+    },
+    {
+      "name": "jm_graph_show",
+      "description": "Print the current resource graph frames."
+    },
+    {
+      "name": "jm_graph_build",
+      "description": "Build or rebuild the resource graph with a net sleep interval."
+    },
+    {
+      "name": "jm_graph_modify",
+      "description": "Modify the resource graph using a net sleep interval."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "jarvis://capabilities",
+      "name": "jarvis_capabilities",
+      "description": "JARVIS data pipeline capabilities."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "create_pipeline_workflow",
+      "description": "Guided workflow for creating and deploying a JARVIS pipeline."
+    }
+  ],
+  "tags": [
+    "pipeline-management",
+    "hpc",
+    "workflow-automation"
+  ]
+}

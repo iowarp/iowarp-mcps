@@ -76,8 +76,8 @@ class TestJarvisBasics:
         # Check for expected directories and files
         expected_paths = [
             os.path.join(project_root, "src"),
-            os.path.join(project_root, "src", "server.py"),
-            os.path.join(project_root, "src", "capabilities"),
+            os.path.join(project_root, "src", "jarvis_mcp", "server.py"),
+            os.path.join(project_root, "src", "jarvis_mcp", "capabilities"),
             os.path.join(project_root, "pyproject.toml"),
             os.path.join(project_root, "README.md"),
         ]

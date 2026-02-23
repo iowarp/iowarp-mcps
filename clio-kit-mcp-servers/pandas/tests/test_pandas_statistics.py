@@ -7,12 +7,8 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-import sys
 
-# Add the parent directory to Python path so we can import src
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.pandas_statistics import (
+from pandas_mcp.implementation.pandas_statistics import (
     get_statistical_summary,
     get_correlation_analysis,
 )

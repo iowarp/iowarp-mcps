@@ -12,13 +12,13 @@ authors = [
 keywords = ["parquet", "columnar-data", "data-analysis", "scientific-computing", "mcp", "llm-integration", "apache-arrow"]
 
 dependencies = [
-    "fastmcp>=2.13.0.1",
+    "fastmcp>=3.0.1",
     "pyarrow>=22.0.0",
     "pydantic>=2.12.3",
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [dependency-groups]

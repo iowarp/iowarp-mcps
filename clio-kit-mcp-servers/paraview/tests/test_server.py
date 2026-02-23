@@ -12,19 +12,23 @@ def test_server_import():
         from paraview_mcp.server import mcp
 
         assert mcp is not None
-        assert mcp.name == "ParaView"
+        assert mcp.name == "paraview"
     except ImportError as e:
         pytest.skip(f"ParaView not available: {e}")
 
 
 def test_fastmcp_initialization():
-    """Test FastMCP server initialization"""
+    """Test FastMCP server initialization with instructions"""
     try:
         from paraview_mcp.server import mcp
 
         # Check that the server is properly initialized
         assert hasattr(mcp, "name")
-        assert mcp.name == "ParaView"
+        assert mcp.name == "paraview"
+
+        # Verify instructions are set
+        assert mcp.instructions is not None
+        assert "ParaView" in mcp.instructions
     except ImportError:
         pytest.skip("ParaView not available")
 
@@ -45,16 +49,64 @@ def test_tools_registration():
     try:
         from paraview_mcp.server import mcp
 
-        # Check that MCP server has tools registered
-        # FastMCP 2.0 stores tools differently - check for tool registry
-        assert hasattr(mcp, "_tool_registry") or hasattr(mcp, "tool"), (
-            "MCP server should have tools registered"
+        # FastMCP 3.0 uses tool decorator - check the server has methods
+        assert callable(getattr(mcp, "tool", None)), (
+            "MCP server should have tool method"
         )
-
-        # Since the actual tool registration happens at import time,
-        # we can check that the server has the expected functionality
         assert callable(getattr(mcp, "run", None)), "MCP server should have run method"
 
+    except ImportError:
+        pytest.skip("ParaView not available")
+
+
+def test_tool_functions_are_callable():
+    """Test that tool-decorated functions are callable (v3 returns original functions)"""
+    try:
+        from paraview_mcp.server import (
+            create_source,
+            create_isosurface,
+            get_pipeline,
+            list_commands,
+            reset_camera,
+        )
+
+        # In FastMCP 3.0, decorated functions are the original functions
+        assert callable(create_source)
+        assert callable(create_isosurface)
+        assert callable(get_pipeline)
+        assert callable(list_commands)
+        assert callable(reset_camera)
+    except ImportError:
+        pytest.skip("ParaView not available")
+
+
+def test_resource_registration():
+    """Test that the paraview capabilities resource is registered"""
+    try:
+        from paraview_mcp.server import paraview_capabilities
+
+        # In FastMCP 3.0, resource decorator returns the original function
+        assert callable(paraview_capabilities)
+        result = paraview_capabilities()
+        assert isinstance(result, dict)
+        assert "supported_formats" in result
+        assert "operations" in result
+        assert "VTK" in result["supported_formats"]
+    except ImportError:
+        pytest.skip("ParaView not available")
+
+
+def test_prompt_registration():
+    """Test that the visualize_data prompt is registered"""
+    try:
+        from paraview_mcp.server import visualize_data
+
+        # In FastMCP 3.0, prompt decorator returns the original function
+        assert callable(visualize_data)
+        result = visualize_data("/test/file.vtk")
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert "/test/file.vtk" in str(result[0])
     except ImportError:
         pytest.skip("ParaView not available")
 
@@ -84,6 +136,39 @@ def test_mock_paraview_manager():
 
         except ImportError:
             pytest.skip("ParaView not available")
+
+
+def test_tool_error_import():
+    """Test that ToolError is properly imported from fastmcp"""
+    try:
+        from paraview_mcp.server import ToolError  # noqa: F401
+        from fastmcp.exceptions import ToolError as FastMCPToolError
+
+        assert ToolError is FastMCPToolError
+    except ImportError:
+        pytest.skip("fastmcp not available")
+
+
+def test_message_import():
+    """Test that Message is properly imported from fastmcp.prompts"""
+    try:
+        from paraview_mcp.server import Message  # noqa: F401
+        from fastmcp.prompts import Message as FastMCPMessage
+
+        assert Message is FastMCPMessage
+    except ImportError:
+        pytest.skip("fastmcp not available")
+
+
+def test_transport_stdio_default():
+    """Test that the default transport is stdio"""
+    try:
+        from paraview_mcp.server import main
+
+        # The main function supports transport="stdio" by default
+        assert callable(main)
+    except ImportError:
+        pytest.skip("ParaView not available")
 
 
 if __name__ == "__main__":

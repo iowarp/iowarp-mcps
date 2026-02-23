@@ -1,22 +1,15 @@
 """
-Comprehensive test coverage for handler f        result = get_data_info(sample_csv_file)
-        assert result["status"] == "success"
-        assert result["shape"][0] == 5  # rows
-        assert len(result["columns"]) == 3ions and MCP tool handlers.
+Comprehensive test coverage for handler functions and MCP tool handlers.
 """
 
 import os
-import sys
 import tempfile
 import pandas as pd
 import pytest
 import asyncio
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import server  # noqa: E402
-from implementation.plot_capabilities import (
+from plot_mcp import server
+from plot_mcp.implementation.plot_capabilities import (
     create_line_plot,
     create_bar_plot,
     create_scatter_plot,
@@ -187,13 +180,13 @@ class TestHandlers:
     async def test_mcp_tool_handlers_direct(self, sample_csv_file):
         """Test MCP tool handlers directly"""
         # Test data_info_tool
-        result = await server.data_info_tool.fn(file_path=sample_csv_file)
+        result = await server.data_info_tool(file_path=sample_csv_file)
         assert isinstance(result, dict)
         assert "status" in result
 
         # Test line_plot_tool
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.line_plot_tool.fn(
+            result = await server.line_plot_tool(
                 file_path=sample_csv_file,
                 x_column="x",
                 y_column="y",
@@ -205,7 +198,7 @@ class TestHandlers:
 
         # Test bar_plot_tool
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.bar_plot_tool.fn(
+            result = await server.bar_plot_tool(
                 file_path=sample_csv_file,
                 x_column="category",
                 y_column="value",
@@ -217,7 +210,7 @@ class TestHandlers:
 
         # Test scatter_plot_tool
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.scatter_plot_tool.fn(
+            result = await server.scatter_plot_tool(
                 file_path=sample_csv_file,
                 x_column="x",
                 y_column="y",
@@ -229,7 +222,7 @@ class TestHandlers:
 
         # Test histogram_plot_tool
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.histogram_plot_tool.fn(
+            result = await server.histogram_plot_tool(
                 file_path=sample_csv_file,
                 column="value",
                 bins=10,
@@ -241,7 +234,7 @@ class TestHandlers:
 
         # Test heatmap_plot_tool
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.heatmap_plot_tool.fn(
+            result = await server.heatmap_plot_tool(
                 file_path=sample_csv_file, title="MCP Heatmap", output_path=f.name
             )
             assert isinstance(result, dict)
@@ -376,7 +369,7 @@ class TestHandlers:
         """Test comprehensive async handler functionality"""
         # Test all async handlers in sequence
         async_tests = [
-            server.data_info_tool.fn(file_path=sample_csv_file),
+            server.data_info_tool(file_path=sample_csv_file),
         ]
 
         # Add plot tests with temporary files
@@ -389,35 +382,35 @@ class TestHandlers:
         ):
             async_tests.extend(
                 [
-                    server.line_plot_tool.fn(
+                    server.line_plot_tool(
                         file_path=sample_csv_file,
                         x_column="x",
                         y_column="y",
                         title="Async Line",
                         output_path=f1.name,
                     ),
-                    server.bar_plot_tool.fn(
+                    server.bar_plot_tool(
                         file_path=sample_csv_file,
                         x_column="category",
                         y_column="value",
                         title="Async Bar",
                         output_path=f2.name,
                     ),
-                    server.scatter_plot_tool.fn(
+                    server.scatter_plot_tool(
                         file_path=sample_csv_file,
                         x_column="x",
                         y_column="y",
                         title="Async Scatter",
                         output_path=f3.name,
                     ),
-                    server.histogram_plot_tool.fn(
+                    server.histogram_plot_tool(
                         file_path=sample_csv_file,
                         column="value",
                         bins=10,
                         title="Async Histogram",
                         output_path=f4.name,
                     ),
-                    server.heatmap_plot_tool.fn(
+                    server.heatmap_plot_tool(
                         file_path=sample_csv_file,
                         title="Async Heatmap",
                         output_path=f5.name,

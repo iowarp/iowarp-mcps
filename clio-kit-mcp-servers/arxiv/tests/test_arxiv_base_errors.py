@@ -6,13 +6,8 @@ import pytest
 import httpx
 from unittest.mock import patch, Mock, AsyncMock
 import xml.etree.ElementTree as ET
-import sys
-import os
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from capabilities.arxiv_base import (
+from arxiv_mcp.capabilities.arxiv_base import (
     execute_arxiv_query,
     generate_bibtex,
     parse_arxiv_entry,
@@ -23,7 +18,7 @@ class TestArxivBaseErrors:
     """Test error handling in arxiv_base module."""
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_timeout_exception(self, mock_client):
         """Test TimeoutException handling."""
         mock_response = Mock()
@@ -39,7 +34,7 @@ class TestArxivBaseErrors:
         assert "ArXiv API request timed out" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_http_status_error(self, mock_client):
         """Test HTTPStatusError handling."""
         # Create mock response that raises HTTPStatusError
@@ -65,7 +60,7 @@ class TestArxivBaseErrors:
         assert "ArXiv API error: 503" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_parse_error(self, mock_client):
         """Test XML ParseError handling."""
         mock_response = Mock()
@@ -80,7 +75,7 @@ class TestArxivBaseErrors:
 
         # Mock ET.fromstring to raise ParseError
         with patch(
-            "capabilities.arxiv_base.ET.fromstring",
+            "arxiv_mcp.capabilities.arxiv_base.ET.fromstring",
             side_effect=ET.ParseError("Invalid XML"),
         ):
             with pytest.raises(Exception) as exc_info:
@@ -91,7 +86,7 @@ class TestArxivBaseErrors:
             assert "Failed to parse ArXiv response" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_unexpected_error(self, mock_client):
         """Test unexpected error handling."""
         mock_client_instance = Mock()
@@ -295,7 +290,7 @@ class TestArxivBaseErrors:
         assert result["summary"] == ""
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_network_connectivity_errors(self, mock_client):
         """Test various network connectivity errors."""
 
@@ -312,7 +307,7 @@ class TestArxivBaseErrors:
         ) or "ArXiv query failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_malformed_response_handling(self, mock_client):
         """Test handling of malformed API responses."""
 
@@ -331,7 +326,7 @@ class TestArxivBaseErrors:
         assert "ArXiv query failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_partial_xml_response(self, mock_client):
         """Test handling of partial/truncated XML responses."""
 
@@ -358,7 +353,7 @@ class TestArxivBaseErrors:
         assert "ArXiv query failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_empty_response_handling(self, mock_client):
         """Test handling of empty API responses."""
 
@@ -377,7 +372,7 @@ class TestArxivBaseErrors:
         assert "ArXiv query failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("capabilities.arxiv_base.httpx.AsyncClient")
+    @patch("arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient")
     async def test_api_parameter_validation(self, mock_client):
         """Test API parameter validation and edge cases."""
 
@@ -462,7 +457,9 @@ class TestArxivBaseErrors:
     async def test_query_parameter_encoding(self):
         """Test that query parameters are properly encoded."""
 
-        with patch("capabilities.arxiv_base.httpx.AsyncClient") as mock_client:
+        with patch(
+            "arxiv_mcp.capabilities.arxiv_base.httpx.AsyncClient"
+        ) as mock_client:
             mock_response = AsyncMock()
             mock_response.content = b'<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'
             mock_response.raise_for_status = Mock()

@@ -10,15 +10,15 @@ The repository uses a **unified launcher with auto-discovery** pattern: each MCP
 
 **Platform Context**: CLIO Kit is the tooling layer of the IoWarp platform, providing comprehensive agent capabilities beyond just MCP servers.
 
-**Key Technologies**: FastMCP, Python 3.10+, UV package manager, Pydantic, pytest, Ruff
+**Key Technologies**: FastMCP 3.0, Python 3.10+, UV package manager, Pydantic, pytest, Ruff
 
 ## Project Structure
 
 ```
 clio-kit/                           # Monorepo root
 ├── src/clio_kit/                   # Unified launcher CLI
-├── clio-kit-mcp-servers/                # 15 independent MCP servers
-│   ├── hdf5/ ⭐                       # Flagship server (v2.0, 25+ tools)
+├── clio-kit-mcp-servers/                # 16 independent MCP servers
+│   ├── hdf5/ ⭐                       # Flagship server (v2.0, 28 tools)
 │   ├── pandas/                        # Data analysis operations
 │   ├── slurm/                         # HPC job management
 │   ├── arxiv/                         # Research paper fetching
@@ -30,6 +30,7 @@ clio-kit/                           # Monorepo root
 │   ├── ndp/                           # Dataset discovery
 │   ├── node-hardware/                 # System hardware info
 │   ├── parallel-sort/                 # Large file sorting
+│   ├── paraview/                      # Scientific visualization
 │   ├── parquet/                       # Parquet file handling
 │   ├── plot/                          # Data visualization
 │   ├── adios/                         # ADIOS2 data I/O
@@ -79,6 +80,9 @@ uv run pytest -v --cov=src/
 
 # pip-audit: Security vulnerabilities
 uv run pip-audit
+
+# FastMCP 3.0 validation (instructions, annotations, tags, resources, prompts)
+uv run python ../../scripts/validate_fastmcp.py
 ```
 
 #### Quick test runs:
@@ -148,30 +152,73 @@ ServerName/
 └── uv.lock                            # Dependency lock
 ```
 
-### FastMCP Decorators Pattern
+### FastMCP 3.0 Server Pattern
+
+All servers use FastMCP 3.0 and must include: instructions, tool annotations, tool tags, at least 1 resource, and at least 1 prompt.
 
 ```python
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
 
-mcp = FastMCP("server-name")
+mcp = FastMCP(
+    "server-name",
+    instructions="Brief description of what this server does and when to use each tool.",
+    list_page_size=10,  # Required for servers with 10+ tools
+)
 
-# Expose Python function as MCP tool
-@mcp.tool(description="What this tool does")
-def my_tool(param1: str, param2: int) -> str:
-    return result
+# Tools: always include annotations and tags
+@mcp.tool(
+    description="1-2 sentence description of what this tool does.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"category", "subcategory"},
+)
+async def my_tool(param1: str, param2: int) -> str:
+    try:
+        return do_work(param1, param2)
+    except Exception as e:
+        raise ToolError(f"Operation failed: {e}") from e
 
-# Expose resources (URI scheme: scheme://path)
-@mcp.resource(uri_template="scheme://{path}")
-def get_resource(path: str) -> str:
-    return content
+# Resources: at least 1 per server
+@mcp.resource("server-name://capabilities")
+def capabilities() -> dict:
+    """What this server can do."""
+    return {"features": [...]}
 
-# Multi-step workflows with prompts
+# Resource templates (parameterized)
+@mcp.resource("server-name://{file_path}/metadata")
+def file_metadata(file_path: str) -> dict:
+    return get_metadata(file_path)
+
+# Prompts: at least 1 per server
 @mcp.prompt()
-def workflow() -> list[Message]:
-    return [Message(...), Message(...)]
+def guided_workflow(input_path: str) -> list[Message]:
+    """Guided workflow for common operations."""
+    return [
+        Message(f"Analyze the data at {input_path}. First summarize, then process."),
+    ]
 
-async def main():
-    await mcp.run()
+def main() -> None:
+    import os, argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args()
+    transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    mcp.run(transport=transport, host=args.host, port=args.port)
+```
+
+### Key FastMCP 3.0 Imports
+
+```python
+from fastmcp import FastMCP, Context
+from fastmcp.exceptions import ToolError, ResourceError
+from fastmcp.prompts import Message
 ```
 
 ### Configuration with Pydantic
@@ -224,30 +271,48 @@ The HDF5 server (v2.0) implements patterns useful for all MCPs:
 ## Adding a New MCP Server
 
 1. Create directory: `clio-kit-mcp-servers/my-server/` (use kebab-case)
-2. Create `pyproject.toml` with:
+2. Create `pyproject.toml` with hatchling build backend:
    ```toml
+   [build-system]
+   requires = ["hatchling"]
+   build-backend = "hatchling.build"
+
    [project]
    name = "my-server-mcp"
    version = "1.0.0"
+   dependencies = ["fastmcp>=3.0.0rc2"]
 
    [project.scripts]
    my-server-mcp = "my_server_mcp.server:main"
    ```
-3. Implement `src/my_server_mcp/server.py` using FastMCP decorators
+3. Implement `src/my_server_mcp/server.py` following the FastMCP 3.0 pattern above. **Required**:
+   - `instructions=` on `FastMCP()` constructor
+   - `annotations=` and `tags=` on every `@mcp.tool()`
+   - `ToolError` for all error paths (not error dicts)
+   - At least 1 `@mcp.resource()`
+   - At least 1 `@mcp.prompt()` returning `list[Message]`
+   - `list_page_size=10` if server has 10+ tools
 4. Add tests in `tests/` directory
-5. Launcher auto-discovers it on next run
+5. Validate: `uv run python ../../scripts/validate_fastmcp.py`
+6. Launcher auto-discovers it on next run
 
 ## CI/CD Pipeline
 
 **Quality Control** (`.github/workflows/quality_control.yml`):
 - Auto-discovers all MCPs with `pyproject.toml`
-- Runs 4 checks in parallel per MCP:
+- Uses reusable composite action (`.github/actions/setup-mcp/action.yml`) for setup
+- Runs 5 checks in parallel per MCP:
   - Ruff linting + formatting
-  - MyPy type checking
-  - pytest with coverage
+  - MyPy type checking (advisory, non-blocking)
+  - pytest with coverage (matrix: Python 3.10, 3.11, 3.12)
   - pip-audit security scan
-- Tests Python 3.10, 3.11, 3.12
-- Coverage uploaded to Codecov
+  - FastMCP 3.0 validation (`scripts/validate_fastmcp.py`)
+- Coverage uploaded to Codecov (Python 3.12 only)
+
+**Docs & Website** (`.github/workflows/docs-and-website.yml`):
+- Generates Docusaurus docs via `scripts/generate_docs.py`
+- Updates README files via `scripts/readme_filler.py`
+- Both use `scripts/extract_mcp_metadata.py` (FastMCP async API, not AST parsing)
 
 **Key Note**: Chronolog MCP has dedicated workflow (requires system dependencies)
 
@@ -256,15 +321,20 @@ The HDF5 server (v2.0) implements patterns useful for all MCPs:
 - **Minimum Python**: 3.10 (enforced in root `pyproject.toml`)
 - **Package Manager**: UV (not pip/conda)
 - **Build System**: Hatchling
-- **Key Frameworks**: FastMCP 0.2.0+, Pydantic 2.4.2+
+- **Key Frameworks**: FastMCP 3.0.0rc2+, Pydantic 2.4.2+
 
 ## Important Files Reference
 
 | Purpose | Path |
 |---------|------|
 | Main Launcher | `src/clio_kit/__init__.py` |
-| HDF5 Server Example | `clio-kit-mcp-servers/hdf5/src/hdf5_mcp/server.py` |
+| HDF5 Server (reference) | `clio-kit-mcp-servers/hdf5/src/hdf5_mcp/server.py` |
 | Quality Control CI | `.github/workflows/quality_control.yml` |
+| Composite Action | `.github/actions/setup-mcp/action.yml` |
+| FastMCP Validator | `scripts/validate_fastmcp.py` |
+| Metadata Extractor | `scripts/extract_mcp_metadata.py` |
+| Doc Generator | `scripts/generate_docs.py` |
+| README Updater | `scripts/readme_filler.py` |
 | Main Configuration | `pyproject.toml` |
 | Main Docs Site | `clio-kit-website/` |
 
@@ -273,7 +343,7 @@ The HDF5 server (v2.0) implements patterns useful for all MCPs:
 ### Server Won't Start
 
 1. Check if `pyproject.toml` has correct entry point: `name-mcp = "module:server:main"`
-2. Verify server file has `async def main()` and proper MCP initialization
+2. Verify server file has `def main()` with argparse and `mcp.run()` call
 3. Test directly: `cd clio-kit-mcp-servers/hdf5 && uv run hdf5-mcp`
 
 ### Tests Failing

@@ -1,0 +1,9 @@
+{
+  "clio-adios": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "adios"
+    ]
+  }
+}

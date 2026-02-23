@@ -22,7 +22,7 @@ const config = {
   trailingSlash: false,
 
   // Set the production url of your site here
-  url: 'https://toolkit.iowarp.ai',
+  url: 'https://docs.iowarp.ai',
   // Set the /<baseUrl>/ pathname under which your site is served
   baseUrl: '/',
 

@@ -7,25 +7,21 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-import sys
 
-# Add the parent directory to Python path so we can import src
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.data_io import load_data_file, save_data_file
-from src.implementation.pandas_statistics import (
+from pandas_mcp.implementation.data_io import load_data_file, save_data_file
+from pandas_mcp.implementation.pandas_statistics import (
     get_statistical_summary,
     get_correlation_analysis,
 )
-from src.implementation.data_cleaning import handle_missing_data, clean_data
-from src.implementation.data_profiling import profile_data
-from src.implementation.transformations import (
+from pandas_mcp.implementation.data_cleaning import handle_missing_data, clean_data
+from pandas_mcp.implementation.data_profiling import profile_data
+from pandas_mcp.implementation.transformations import (
     groupby_operations,
     merge_datasets,
     create_pivot_table,
 )
-from src.implementation.filtering import filter_data
-from src.implementation.memory_optimization import optimize_memory_usage
+from pandas_mcp.implementation.filtering import filter_data
+from pandas_mcp.implementation.memory_optimization import optimize_memory_usage
 
 
 class TestPandasMCPCapabilities:

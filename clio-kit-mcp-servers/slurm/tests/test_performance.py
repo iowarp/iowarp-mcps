@@ -12,22 +12,16 @@ import time
 import statistics
 import tempfile
 import os
-import sys
 import concurrent.futures
-from pathlib import Path
-from implementation.job_submission import submit_slurm_job
-from implementation.job_status import get_job_status
-from implementation.job_cancellation import cancel_slurm_job
-from implementation.job_listing import list_slurm_jobs
-from implementation.cluster_info import get_slurm_info
-from implementation.job_details import get_job_details
-from implementation.queue_info import get_queue_info
-from implementation.array_jobs import submit_array_job
-from implementation.node_info import get_node_info
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
+from slurm_mcp.implementation.job_submission import submit_slurm_job
+from slurm_mcp.implementation.job_status import get_job_status
+from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
+from slurm_mcp.implementation.job_listing import list_slurm_jobs
+from slurm_mcp.implementation.cluster_info import get_slurm_info
+from slurm_mcp.implementation.job_details import get_job_details
+from slurm_mcp.implementation.queue_info import get_queue_info
+from slurm_mcp.implementation.array_jobs import submit_array_job
+from slurm_mcp.implementation.node_info import get_node_info
 
 
 class TestSlurmMCPPerformance:
@@ -167,7 +161,10 @@ echo "Done: $(date)"
             print("\n=== Job Status Query Metrics ===")
             print(f"Average query latency: {avg_latency:.3f}s")
             print(f"Max query latency: {max_latency:.3f}s")
-            print(f"Queries per second: {1 / avg_latency:.1f}")
+            if avg_latency > 0:
+                print(f"Queries per second: {1 / avg_latency:.1f}")
+            else:
+                print("Queries per second: N/A (latency too small to measure)")
 
             # Performance requirements
             assert avg_latency < 1.0, (
@@ -253,7 +250,10 @@ echo "Done: $(date)"
         print("\n=== Cluster Info Query Metrics ===")
         print(f"Average latency: {avg_latency:.3f}s")
         print(f"Max latency: {max_latency:.3f}s")
-        print(f"Queries per second: {1 / avg_latency:.1f}")
+        if avg_latency > 0:
+            print(f"Queries per second: {1 / avg_latency:.1f}")
+        else:
+            print("Queries per second: N/A (latency too small to measure)")
 
         # Performance requirements
         assert avg_latency < 2.0, f"Cluster info query too slow: {avg_latency:.3f}s"
@@ -284,7 +284,10 @@ echo "Done: $(date)"
 
             print("\n=== Job Listing Metrics ===")
             print(f"Average listing latency: {avg_latency:.3f}s")
-            print(f"Listings per second: {1 / avg_latency:.1f}")
+            if avg_latency > 0:
+                print(f"Listings per second: {1 / avg_latency:.1f}")
+            else:
+                print("Listings per second: N/A (latency too small to measure)")
 
             # Performance requirements
             assert avg_latency < 3.0, f"Job listing too slow: {avg_latency:.3f}s"
@@ -315,7 +318,10 @@ echo "Done: $(date)"
 
         print("\n=== Node Info Query Metrics ===")
         print(f"Average latency: {avg_latency:.3f}s")
-        print(f"Queries per second: {1 / avg_latency:.1f}")
+        if avg_latency > 0:
+            print(f"Queries per second: {1 / avg_latency:.1f}")
+        else:
+            print("Queries per second: N/A (latency too small to measure)")
 
         # Performance requirements
         assert avg_latency < 2.5, f"Node info query too slow: {avg_latency:.3f}s"
@@ -338,7 +344,10 @@ echo "Done: $(date)"
 
         print("\n=== Queue Info Query Metrics ===")
         print(f"Average latency: {avg_latency:.3f}s")
-        print(f"Queries per second: {1 / avg_latency:.1f}")
+        if avg_latency > 0:
+            print(f"Queries per second: {1 / avg_latency:.1f}")
+        else:
+            print("Queries per second: N/A (latency too small to measure)")
 
         # Performance requirements
         assert avg_latency < 2.0, f"Queue info query too slow: {avg_latency:.3f}s"

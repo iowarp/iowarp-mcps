@@ -20,7 +20,7 @@ keywords = [
 ]
 
 dependencies = [
-  "mcp[cli]>=0.1.0",
+  "fastmcp>=3.0.1",
   "python-dotenv>=1.0.0",
   "pydantic>=1.10.0",
   "numpy>=1.24.0",
@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.optional-dependencies]
@@ -40,12 +40,6 @@ test = ["pytest>=7.0.0", "pytest-asyncio>=0.21.0"]
 
 [project.scripts]
 darshan-mcp = "darshan_mcp.server:main"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-dir]
-"" = "src"
 
 [tool.uv]
 dev-dependencies = [
@@ -56,5 +50,13 @@ dev-dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=64.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/darshan_mcp"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

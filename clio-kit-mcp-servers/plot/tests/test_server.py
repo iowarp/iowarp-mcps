@@ -3,17 +3,12 @@ Comprehensive test coverage for server.py - MCP server, tools, main function, an
 """
 
 import os
-import sys
-import subprocess
 import tempfile
 import pandas as pd
 import pytest
-import asyncio
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import server  # noqa: E402
+from fastmcp.exceptions import ToolError
+from plot_mcp import server
 
 
 class TestServer:
@@ -39,11 +34,13 @@ class TestServer:
         """Test that MCP server is properly initialized"""
         assert hasattr(server, "mcp")
         assert server.mcp is not None
-        assert server.mcp.name == "PlotServer"
+        assert server.mcp.name == "plot"
 
     def test_server_module_imports(self):
         """Test that server module imports work correctly"""
         assert hasattr(server, "FastMCP")
+        assert hasattr(server, "ToolError")
+        assert hasattr(server, "Message")
         assert hasattr(server, "create_histogram")
         assert hasattr(server, "create_heatmap")
         assert hasattr(server, "create_line_plot")
@@ -66,21 +63,21 @@ class TestServer:
             assert hasattr(server, tool_name), f"Missing tool function: {tool_name}"
             tool = getattr(server, tool_name)
             assert tool is not None
-            assert hasattr(tool, "name")
+            assert callable(tool)
 
     def test_main_function_exists(self):
         """Test that main function exists and is callable"""
         assert hasattr(server, "main")
         assert callable(server.main)
 
-    def test_argument_parsing_sse_transport(self):
-        """Test argument parsing for SSE transport"""
+    def test_argument_parsing_http_transport(self):
+        """Test argument parsing for HTTP transport"""
         import argparse
 
         test_args = [
             "server.py",
             "--transport",
-            "sse",
+            "http",
             "--host",
             "localhost",
             "--port",
@@ -88,12 +85,12 @@ class TestServer:
         ]
 
         parser = argparse.ArgumentParser(description="Plot MCP Server")
-        parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio")
-        parser.add_argument("--host", default="localhost")
-        parser.add_argument("--port", type=int, default=8080)
+        parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+        parser.add_argument("--host", default="0.0.0.0")
+        parser.add_argument("--port", type=int, default=8000)
 
         args = parser.parse_args(test_args[1:])
-        assert args.transport == "sse"
+        assert args.transport == "http"
         assert args.host == "localhost"
         assert args.port == 8080
 
@@ -104,128 +101,19 @@ class TestServer:
         test_args = ["server.py"]
 
         parser = argparse.ArgumentParser(description="Plot MCP Server")
-        parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio")
-        parser.add_argument("--host", default="localhost")
-        parser.add_argument("--port", type=int, default=8080)
+        parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+        parser.add_argument("--host", default="0.0.0.0")
+        parser.add_argument("--port", type=int, default=8000)
 
         args = parser.parse_args(test_args[1:])
-        assert args.transport == "stdio"
-        assert args.host == "localhost"
-        assert args.port == 8080
-
-    def test_server_help_output(self):
-        """Test that server provides help output"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        result = subprocess.run(
-            [sys.executable, script_path, "--help"],
-            capture_output=True,
-            text=True,
-            timeout=5,  # Reduced timeout for GitHub Actions
-        )
-
-        assert result.returncode == 0
-        assert "--transport" in result.stdout
-        assert "--host" in result.stdout
-        assert "--port" in result.stdout
-
-    def test_main_function_comprehensive_scenarios(self):
-        """Test main function with various argument scenarios"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        # Test "help" command conversion to "--help"
-        result = subprocess.run(
-            [sys.executable, script_path, "help"],
-            capture_output=True,
-            text=True,
-            timeout=5,  # Reduced timeout for GitHub Actions
-        )
-        assert result.returncode == 0
-        assert "--transport" in result.stdout
-
-        # Test --version flag
-        result = subprocess.run(
-            [sys.executable, script_path, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5,  # Reduced timeout for GitHub Actions
-        )
-        assert result.returncode == 0
-        assert "Plot MCP Server v1.0.0" in result.stdout
-
-    def test_main_function_sse_transport_execution(self):
-        """Test main function SSE transport path"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        try:
-            subprocess.run(
-                [
-                    sys.executable,
-                    script_path,
-                    "--transport",
-                    "sse",
-                    "--host",
-                    "127.0.0.1",
-                    "--port",
-                    "9998",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=2,  # Reduced timeout for GitHub Actions
-            )
-        except subprocess.TimeoutExpired:
-            pass  # Expected - server would start and run
-
-    def test_main_function_environment_variables(self):
-        """Test main function with environment variables"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        env = os.environ.copy()
-        env["MCP_TRANSPORT"] = "stdio"
-        env["MCP_SSE_HOST"] = "localhost"
-        env["MCP_SSE_PORT"] = "8002"
-
-        try:
-            subprocess.run(
-                [sys.executable, script_path],
-                capture_output=True,
-                text=True,
-                timeout=2,
-                env=env,
-            )
-        except subprocess.TimeoutExpired:
-            pass  # Expected for stdio transport
-
-    def test_main_function_error_scenarios(self):
-        """Test main function error handling paths"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        try:
-            result = subprocess.run(
-                [sys.executable, script_path, "--invalid-argument"],
-                capture_output=True,
-                text=True,
-                timeout=5,  # Increased timeout for GitHub Actions
-            )
-
-            # Should exit with error code
-            assert result.returncode != 0
-            assert (
-                "unrecognized arguments" in result.stderr.lower()
-                or "error" in result.stderr.lower()
-                or "invalid" in result.stderr.lower()
-            )
-        except subprocess.TimeoutExpired:
-            # If it times out, that means argument parsing might not be reached
-            # This is acceptable as the server is designed for long-running processes
-            pytest.skip(
-                "Server hangs with invalid arguments - expected behavior for MCP servers"
-            )
+        assert args.transport is None
+        assert args.host == "0.0.0.0"
+        assert args.port == 8000
 
     @pytest.mark.asyncio
     async def test_data_info_tool_execution(self, sample_csv_file):
         """Test data_info_tool execution"""
-        result = await server.data_info_tool.fn(file_path=sample_csv_file)
+        result = await server.data_info_tool(file_path=sample_csv_file)
         assert isinstance(result, dict)
         assert "status" in result
 
@@ -233,7 +121,7 @@ class TestServer:
     async def test_line_plot_tool_execution(self, sample_csv_file):
         """Test line_plot_tool execution"""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.line_plot_tool.fn(
+            result = await server.line_plot_tool(
                 file_path=sample_csv_file,
                 x_column="x",
                 y_column="y",
@@ -248,7 +136,7 @@ class TestServer:
     async def test_bar_plot_tool_execution(self, sample_csv_file):
         """Test bar_plot_tool execution"""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.bar_plot_tool.fn(
+            result = await server.bar_plot_tool(
                 file_path=sample_csv_file,
                 x_column="category",
                 y_column="value",
@@ -263,7 +151,7 @@ class TestServer:
     async def test_scatter_plot_tool_execution(self, sample_csv_file):
         """Test scatter_plot_tool execution"""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.scatter_plot_tool.fn(
+            result = await server.scatter_plot_tool(
                 file_path=sample_csv_file,
                 x_column="x",
                 y_column="y",
@@ -278,7 +166,7 @@ class TestServer:
     async def test_histogram_plot_tool_execution(self, sample_csv_file):
         """Test histogram_plot_tool execution"""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.histogram_plot_tool.fn(
+            result = await server.histogram_plot_tool(
                 file_path=sample_csv_file,
                 column="value",
                 bins=10,
@@ -293,133 +181,43 @@ class TestServer:
     async def test_heatmap_plot_tool_execution(self, sample_csv_file):
         """Test heatmap_plot_tool execution"""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            result = await server.heatmap_plot_tool.fn(
+            result = await server.heatmap_plot_tool(
                 file_path=sample_csv_file, title="Test Heatmap", output_path=f.name
             )
             assert isinstance(result, dict)
             assert "status" in result
         os.unlink(f.name)
 
-    def test_server_script_execution_stdio(self):
-        """Test server script execution with stdio transport"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        process = subprocess.Popen(
-            [sys.executable, script_path, "--transport", "stdio"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-
-        try:
-            stdout, stderr = process.communicate(timeout=2)
-            assert process.returncode is not None
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            assert True  # Expected - stdio transport started
-
-    def test_server_script_execution_sse(self):
-        """Test server script execution with SSE transport"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        process = subprocess.Popen(
-            [
-                sys.executable,
-                script_path,
-                "--transport",
-                "sse",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "9999",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-
-        try:
-            stdout, stderr = process.communicate(timeout=2)  # Reduced timeout
-            assert process.returncode is not None
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            assert True  # Expected - SSE server started
-
-    def test_environment_variable_handling(self):
-        """Test environment variable handling"""
-        script_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
-
-        env = os.environ.copy()
-        env["MCP_TRANSPORT"] = "stdio"
-
-        process = subprocess.Popen(
-            [sys.executable, script_path],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=env,
-        )
-
-        try:
-            stdout, stderr = process.communicate(timeout=2)
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            # This is success - environment variables were used
-
-    def test_tool_error_handling(self, sample_csv_file):
+    @pytest.mark.asyncio
+    async def test_tool_error_handling(self, sample_csv_file):
         """Test tool error handling scenarios"""
-
         # Test with invalid file path
-        async def test_invalid_file():
-            result = await server.data_info_tool.fn(file_path="/nonexistent/file.csv")
-            assert result["status"] == "error"
-
-        asyncio.run(test_invalid_file())
+        with pytest.raises(ToolError):
+            await server.data_info_tool(file_path="/nonexistent/file.csv")
 
         # Test with invalid column
-        async def test_invalid_column():
-            result = await server.line_plot_tool.fn(
+        with pytest.raises(ToolError):
+            await server.line_plot_tool(
                 file_path=sample_csv_file,
                 x_column="invalid_column",
                 y_column="y",
                 title="Test",
                 output_path="output.png",
             )
-            assert result["status"] == "error"
-
-        asyncio.run(test_invalid_column())
 
     def test_server_module_structure(self):
         """Test server module has expected structure"""
         assert hasattr(server, "FastMCP")
         assert hasattr(server, "mcp")
 
-        # Check that plot_capabilities is imported
-        import importlib.util
+        # Check that plot_capabilities is importable through the package
+        from plot_mcp.implementation import plot_capabilities
 
-        spec = importlib.util.find_spec("implementation.plot_capabilities")
-        assert spec is not None
+        assert plot_capabilities is not None
 
     def test_comprehensive_server_functionality(self, sample_csv_file):
         """Test comprehensive server functionality"""
-        # Test that all tools exist and have proper attributes
+        # Test that all tools exist and are callable
         tools = [
             "line_plot_tool",
             "bar_plot_tool",
@@ -433,8 +231,7 @@ class TestServer:
             assert hasattr(server, tool_name)
             tool = getattr(server, tool_name)
             assert tool is not None
-            assert hasattr(tool, "name")
-            assert hasattr(tool, "fn")
+            assert callable(tool)
 
     def test_logger_configuration(self):
         """Test logger configuration"""
@@ -445,19 +242,20 @@ class TestServer:
         """Test imports and dependencies"""
         # Test that all required modules are imported
         assert hasattr(server, "os")
-        assert hasattr(server, "sys")
-        assert hasattr(server, "json")
-        assert hasattr(server, "argparse")
         assert hasattr(server, "FastMCP")
         assert hasattr(server, "logging")
 
-    def test_package_init_import(self):
-        """Test that package __init__.py can be imported and has expected attributes"""
-        # Import the package to get coverage on __init__.py
-        import src
+    def test_resource_registered(self):
+        """Test that the plot styles resource is registered"""
+        assert hasattr(server, "available_styles")
+        assert callable(server.available_styles)
 
-        # Check that the package has expected attributes
-        assert hasattr(src, "__version__")
-        assert hasattr(src, "__author__")
-        assert src.__version__ == "0.1.0"
-        assert src.__author__ == "IoWarp Scientific MCPs"
+    def test_prompt_registered(self):
+        """Test that the create_visualization prompt is registered"""
+        assert hasattr(server, "create_visualization")
+        assert callable(server.create_visualization)
+
+    def test_server_has_instructions(self):
+        """Test that the MCP server has instructions set"""
+        assert server.mcp.instructions is not None
+        assert "matplotlib" in server.mcp.instructions

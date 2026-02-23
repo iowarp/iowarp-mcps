@@ -158,6 +158,9 @@ Thumbs.db
 *.xlsx
 *.xls
 *.json
+!server.json
+!.mcp.json
+!.claude-plugin/plugin.json
 *.parquet
 *.h5
 *.hdf5

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/slurm-mcp",
+  "title": "CLIO Slurm",
+  "description": "MCP server for Slurm workload management and HPC job scheduling",
+  "version": "2.0.1",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "slurm"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "submit_slurm_job",
+      "description": "Submit a job script to the Slurm scheduler with resource requirements."
+    },
+    {
+      "name": "check_job_status",
+      "description": "Check the status of a Slurm job by its ID."
+    },
+    {
+      "name": "cancel_slurm_job",
+      "description": "Cancel a running or pending Slurm job."
+    },
+    {
+      "name": "list_slurm_jobs",
+      "description": "List Slurm jobs with optional filtering by user and state."
+    },
+    {
+      "name": "get_slurm_info",
+      "description": "Get Slurm cluster configuration, partitions, and resource availability."
+    },
+    {
+      "name": "get_job_details",
+      "description": "Get detailed information about a specific Slurm job."
+    },
+    {
+      "name": "get_job_output",
+      "description": "Retrieve stdout or stderr output from a Slurm job."
+    },
+    {
+      "name": "get_queue_info",
+      "description": "Get Slurm queue status and partition information."
+    },
+    {
+      "name": "submit_array_job",
+      "description": "Submit a Slurm array job for parallel task execution."
+    },
+    {
+      "name": "get_node_info",
+      "description": "Get information about Slurm cluster nodes and their resources."
+    },
+    {
+      "name": "allocate_slurm_nodes",
+      "description": "Allocate Slurm nodes for an interactive session using salloc."
+    },
+    {
+      "name": "deallocate_slurm_nodes",
+      "description": "Release a Slurm node allocation by canceling it."
+    },
+    {
+      "name": "get_allocation_status",
+      "description": "Check the status of a Slurm node allocation."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "slurm://cluster-info",
+      "name": "cluster_info",
+      "description": "Basic Slurm cluster configuration."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "submit_job_workflow",
+      "description": "Guided workflow for submitting and monitoring a Slurm job."
+    }
+  ],
+  "tags": [
+    "hpc",
+    "slurm",
+    "job-scheduling",
+    "cluster-management"
+  ]
+}

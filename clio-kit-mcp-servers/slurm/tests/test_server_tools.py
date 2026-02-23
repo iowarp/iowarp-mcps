@@ -6,24 +6,21 @@ Tests the actual MCP tool implementations and server functionality.
 import asyncio
 import pytest
 import sys
-import os
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch, Mock
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from fastmcp.exceptions import ToolError
 
-# Import implementation modules directly
-from implementation.job_submission import submit_slurm_job
-from implementation.job_status import get_job_status
-from implementation.job_cancellation import cancel_slurm_job
-from implementation.job_listing import list_slurm_jobs
-from implementation.cluster_info import get_slurm_info
-from implementation.job_details import get_job_details
-from implementation.job_output import get_job_output
-from implementation.queue_info import get_queue_info
-from implementation.array_jobs import submit_array_job
-from implementation.node_info import get_node_info
+from slurm_mcp.implementation.job_submission import submit_slurm_job
+from slurm_mcp.implementation.job_status import get_job_status
+from slurm_mcp.implementation.job_cancellation import cancel_slurm_job
+from slurm_mcp.implementation.job_listing import list_slurm_jobs
+from slurm_mcp.implementation.cluster_info import get_slurm_info
+from slurm_mcp.implementation.job_details import get_job_details
+from slurm_mcp.implementation.job_output import get_job_output
+from slurm_mcp.implementation.queue_info import get_queue_info
+from slurm_mcp.implementation.array_jobs import submit_array_job
+from slurm_mcp.implementation.node_info import get_node_info
 
 
 class TestServerTools:
@@ -405,7 +402,7 @@ class TestServerTools:
 
 def test_server_import_structure():
     """Test that all required imports work."""
-    import server
+    from slurm_mcp import server
 
     # Test that all implementation functions are imported
     required_functions = [
@@ -432,11 +429,11 @@ def test_server_import_structure():
 
 def test_server_logger_and_mcp():
     """Test server logger and MCP instance."""
-    import server
+    from slurm_mcp import server
 
     # Test logger exists and is configured
     assert hasattr(server, "logger")
-    assert server.logger.name == "server"
+    assert server.logger.name == "slurm_mcp.server"
 
     # Test MCP instance exists
     assert hasattr(server, "mcp")
@@ -450,26 +447,26 @@ def test_server_logger_and_mcp():
 
 
 def test_server_main_function():
-    """Test main function and argument parsing (lines 881, 937)."""
-    import server
+    """Test main function and argument parsing."""
+    from slurm_mcp import server
 
-    # Test main function with SSE transport
+    # Test main function with http transport
     with (
-        patch("sys.argv", ["slurm-mcp", "--transport", "sse", "--port", "9000"]),
-        patch("server.mcp.run") as mock_run,
+        patch("sys.argv", ["slurm-mcp", "--transport", "http", "--port", "9000"]),
+        patch.object(server.mcp, "run") as mock_run,
         patch("builtins.print"),
     ):
         try:
             server.main()
             # The host defaults to 0.0.0.0, not localhost
-            mock_run.assert_called_with(transport="sse", host="0.0.0.0", port=9000)
+            mock_run.assert_called_with(transport="http", host="0.0.0.0", port=9000)
         except SystemExit:
             pass  # May exit normally
 
     # Test main function with stdio transport (default)
     with (
         patch("sys.argv", ["slurm-mcp"]),
-        patch("server.mcp.run") as mock_run,
+        patch.object(server.mcp, "run") as mock_run,
         patch("builtins.print"),
     ):
         try:
@@ -478,27 +475,21 @@ def test_server_main_function():
         except SystemExit:
             pass  # May exit normally
 
-    # Test main function error handling (line 937)
+    # Test main function error handling - exceptions propagate from main()
     with (
         patch("sys.argv", ["slurm-mcp"]),
-        patch("server.mcp.run", side_effect=Exception("Server error")),
+        patch.object(server.mcp, "run", side_effect=Exception("Server error")),
         patch("builtins.print"),
-        patch("sys.exit") as mock_exit,
     ):
-        try:
+        with pytest.raises(Exception, match="Server error"):
             server.main()
-        except SystemExit:
-            pass  # Expected
-
-        # Verify error handling
-        mock_exit.assert_called_with(1)
 
 
 def test_server_tool_functions_exist():
     """Test that tool functions are properly defined."""
-    import server
+    from slurm_mcp import server
 
-    # Test that all tool functions exist as attributes
+    # In FastMCP v3, @mcp.tool() returns the original function
     tool_functions = [
         "submit_slurm_job_tool",
         "check_job_status_tool",
@@ -517,34 +508,34 @@ def test_server_tool_functions_exist():
 
     for func_name in tool_functions:
         assert hasattr(server, func_name), f"Function {func_name} not found"
-        # These are FunctionTool objects, not directly callable functions
         tool_obj = getattr(server, func_name)
-        assert hasattr(tool_obj, "name"), f"Tool {func_name} missing name attribute"
+        # In v3, decorated functions are the original async functions
+        assert callable(tool_obj), f"Tool {func_name} should be callable"
 
 
 def test_server_mcp_registration():
     """Test MCP tool registration."""
-    import server
+    from slurm_mcp import server
 
     # Test that MCP instance exists and has tools
     assert server.mcp is not None
     assert hasattr(server.mcp, "name")
-    assert server.mcp.name == "Slurm-MCP-JobManagement"
+    assert server.mcp.name == "slurm"
 
 
 def test_server_logging_configuration():
-    """Test logging configuration (lines 56-57)."""
-    import server
+    """Test logging configuration."""
+    from slurm_mcp import server
     import logging
 
     # Test logger is properly configured
     assert isinstance(server.logger, logging.Logger)
-    assert server.logger.name == "server"
+    assert server.logger.name == "slurm_mcp.server"
 
 
 def test_server_tool_error_simulation():
     """Test error paths by simulating tool execution errors."""
-    import server
+    from slurm_mcp import server
 
     # Test that we can access implementation functions that would be called
     # This tests the import paths and function availability
@@ -564,28 +555,25 @@ def test_server_tool_error_simulation():
 
 
 def test_server_path_manipulation():
-    """Test sys.path manipulation (line 37)."""
-    import server
+    """Test that server module is importable (no sys.path manipulation needed)."""
+    from slurm_mcp import server
 
-    # Verify that the current directory was added to sys.path
-    current_dir = os.path.dirname(server.__file__)
-    assert current_dir in sys.path
+    # Verify the server module is importable and has expected attributes
+    assert hasattr(server, "__file__")
+    assert server.__file__ is not None
 
 
 def test_server_comprehensive_coverage():
     """Comprehensive test to trigger more code paths."""
-    import server
+    from slurm_mcp import server
 
     # Test module-level attributes
     assert hasattr(server, "os")
     assert hasattr(server, "sys")
     assert hasattr(server, "logging")
 
-    # Test that load_dotenv was attempted
-    # This would cover the dotenv import block
-
     # Test FastMCP initialization
-    assert server.mcp.name == "Slurm-MCP-JobManagement"
+    assert server.mcp.name == "slurm"
 
     # Test all implementation imports are successful
     implementation_modules = [
@@ -615,92 +603,51 @@ def test_server_comprehensive_coverage():
 
 
 def test_submit_slurm_job_error_handling():
-    """Test submit_slurm_job_tool error handling (lines 138-148)."""
-    import server
+    """Test submit_slurm_job_tool error handling -- raises ToolError in v3."""
+    from slurm_mcp import server
 
     # Mock the underlying function to raise an exception
-    with patch(
-        "server.submit_slurm_job", side_effect=Exception("Mock submission error")
+    with patch.object(
+        server, "submit_slurm_job", side_effect=Exception("Mock submission error")
     ):
-        # Get the tool function - it's wrapped by FastMCP
-        tool_func = server.submit_slurm_job_tool
-
-        # The tool function should have a __wrapped__ attribute or similar
-        # Let's try to access the original function
-        if hasattr(tool_func, "func"):
-            original_func = tool_func.func
-        elif hasattr(tool_func, "__wrapped__"):
-            original_func = tool_func.__wrapped__
-        else:
-            # If we can't access the wrapped function, test the import at least
-            assert tool_func is not None
-            return
-
-        # Now try to call the original async function
+        # In v3 the decorator returns the original function, so we can call it directly
         async def test_error():
-            result = await original_func(
-                script_path="/test/script.sh",
-                cores=4,
-                memory="8G",
-                time_limit="1:00:00",
-                job_name="test_job",
-                partition="compute",
-            )
+            with pytest.raises(ToolError):
+                await server.submit_slurm_job_tool(
+                    script_path="/test/script.sh",
+                    cores=4,
+                    memory="8G",
+                    time_limit="1:00:00",
+                    job_name="test_job",
+                    partition="compute",
+                )
 
-            # Check that error handling was triggered
-            assert "error" in result
-            assert result["isError"] is True
-            assert "JobSubmissionError" in str(result)
-
-        # Run the test
-        try:
-            asyncio.run(test_error())
-        except AttributeError:
-            # If we can't access the function directly, just verify it exists
-            assert tool_func is not None
+        asyncio.run(test_error())
 
 
 def test_check_job_status_error_handling():
-    """Test check_job_status_tool error handling (lines 215-223)."""
-    import server
+    """Test check_job_status_tool error handling -- raises ToolError in v3."""
+    from slurm_mcp import server
 
-    with patch("server.get_job_status", side_effect=Exception("Mock status error")):
-        tool_func = server.check_job_status_tool
-
-        if hasattr(tool_func, "func"):
-            original_func = tool_func.func
-        elif hasattr(tool_func, "__wrapped__"):
-            original_func = tool_func.__wrapped__
-        else:
-            assert tool_func is not None
-            return
+    with patch.object(
+        server, "get_job_status", side_effect=Exception("Mock status error")
+    ):
 
         async def test_error():
-            result = await original_func(job_id="12345")
-            assert "error" in result
-            assert result["isError"] is True
-            assert "JobStatusError" in str(result)
+            with pytest.raises(ToolError):
+                await server.check_job_status_tool(job_id="12345")
 
-        try:
-            asyncio.run(test_error())
-        except AttributeError:
-            assert tool_func is not None
+        asyncio.run(test_error())
 
 
 def test_server_tool_inspection():
     """Inspect the structure of server tools to understand how to test them."""
-    import server
+    from slurm_mcp import server
 
-    # Let's examine the structure of one tool function
+    # In v3, tools are plain async functions
     tool = server.submit_slurm_job_tool
-
-    # Check if we can find the original function
     assert tool is not None
-
-    # Test that the tool has expected attributes
-    # FastMCP tools should have name, description, etc.
-    if hasattr(tool, "name"):
-        assert tool.name is not None
+    assert callable(tool)
 
     # At minimum, verify all tools exist
     tools = [
@@ -722,13 +669,14 @@ def test_server_tool_inspection():
     for tool_name in tools:
         tool = getattr(server, tool_name)
         assert tool is not None
+        assert callable(tool)
 
 
 def test_exception_handling_coverage():
     """Test that imports and exception class work properly."""
-    import server
+    from slurm_mcp import server
 
-    # Test SlurmMCPError exception (lines 21-23)
+    # Test SlurmMCPError exception
     error = server.SlurmMCPError("Test error")
     assert str(error) == "Test error"
     assert isinstance(error, Exception)
@@ -744,7 +692,7 @@ def test_exception_handling_coverage():
 
 def test_server_basic_structure():
     """Basic test to ensure server structure is correct."""
-    import server
+    from slurm_mcp import server
 
     # Test that all required components exist
     assert hasattr(server, "mcp")
@@ -753,10 +701,10 @@ def test_server_basic_structure():
     assert hasattr(server, "SlurmMCPError")
 
     # Test logger configuration
-    assert server.logger.name == "server"
+    assert server.logger.name == "slurm_mcp.server"
 
     # Test MCP instance
-    assert server.mcp.name == "Slurm-MCP-JobManagement"
+    assert server.mcp.name == "slurm"
 
 
 # ============================================================================
@@ -768,13 +716,12 @@ def test_server_error_handling_paths():
     """Test error handling paths that are currently missing from coverage."""
 
     # Import server to trigger initialization
-    import server
+    from slurm_mcp import server
 
     # Create mock responses that will trigger error paths
     Mock(side_effect=Exception("Test error"))
 
     # Test that we can access the async function objects
-    # These are wrapped by FastMCP but we can still inspect them
     assert hasattr(server, "submit_slurm_job_tool")
     assert hasattr(server, "check_job_status_tool")
     assert hasattr(server, "cancel_slurm_job_tool")
@@ -791,17 +738,17 @@ def test_server_error_handling_paths():
 
 
 def test_server_dotenv_import():
-    """Test dotenv import path (lines 29-30)."""
+    """Test dotenv import path."""
     # This will trigger the try/except block for dotenv import
     # by importing server again but mocking the dotenv import to fail
 
     with patch.dict("sys.modules", {"dotenv": None}):
         # Force re-import to trigger the except block
-        if "server" in sys.modules:
-            del sys.modules["server"]
+        if "slurm_mcp.server" in sys.modules:
+            del sys.modules["slurm_mcp.server"]
 
         # Import server which will trigger the dotenv import failure
-        import server
+        from slurm_mcp import server
 
         # Verify server still works without dotenv
         assert hasattr(server, "mcp")
@@ -810,7 +757,7 @@ def test_server_dotenv_import():
 
 def test_server_main_with_different_args():
     """Test main function with different argument combinations."""
-    import server
+    from slurm_mcp import server
 
     # Test with --host argument
     with (
@@ -819,36 +766,36 @@ def test_server_main_with_different_args():
             [
                 "slurm-mcp",
                 "--transport",
-                "sse",
+                "http",
                 "--host",
                 "127.0.0.1",
                 "--port",
                 "8080",
             ],
         ),
-        patch("server.mcp.run") as mock_run,
+        patch.object(server.mcp, "run") as mock_run,
     ):
         try:
             server.main()
         except SystemExit:
             pass
-        mock_run.assert_called_with(transport="sse", host="127.0.0.1", port=8080)
+        mock_run.assert_called_with(transport="http", host="127.0.0.1", port=8080)
 
     # Test with just --host
     with (
-        patch("sys.argv", ["slurm-mcp", "--transport", "sse", "--host", "localhost"]),
-        patch("server.mcp.run") as mock_run,
+        patch("sys.argv", ["slurm-mcp", "--transport", "http", "--host", "localhost"]),
+        patch.object(server.mcp, "run") as mock_run,
     ):
         try:
             server.main()
         except SystemExit:
             pass
-        mock_run.assert_called_with(transport="sse", host="localhost", port=8000)
+        mock_run.assert_called_with(transport="http", host="localhost", port=8000)
 
 
 def test_server_exception_class():
-    """Test SlurmMCPError exception class (lines 21-23)."""
-    import server
+    """Test SlurmMCPError exception class."""
+    from slurm_mcp import server
 
     # Test exception creation and string representation
     error = server.SlurmMCPError("Test error message")
@@ -866,12 +813,12 @@ def test_server_exception_class():
 
 def test_server_logging_setup():
     """Test logging setup and configuration."""
-    import server
+    from slurm_mcp import server
     import logging
 
     # Verify logger configuration
     assert isinstance(server.logger, logging.Logger)
-    assert server.logger.name == "server"
+    assert server.logger.name == "slurm_mcp.server"
 
     # Test that we can log messages (this exercises logging setup)
     server.logger.info("Test log message")
@@ -880,17 +827,17 @@ def test_server_logging_setup():
 
 
 def test_server_sys_path_modification():
-    """Test sys.path modification (line 37)."""
-    import server
+    """Test server module is properly importable (no sys.path manipulation)."""
+    from slurm_mcp import server
 
-    # The import of server should have added the current directory to sys.path
-    server_dir = os.path.dirname(server.__file__)
-    assert server_dir in sys.path
+    # The server module should be importable without sys.path manipulation
+    assert hasattr(server, "__file__")
+    assert server.__file__ is not None
 
 
 def test_server_implementation_imports():
     """Test that all implementation imports work correctly."""
-    import server
+    from slurm_mcp import server
 
     # Test that all implementation functions are accessible
     implementation_functions = [
@@ -917,12 +864,12 @@ def test_server_implementation_imports():
 
 def test_server_fastmcp_initialization():
     """Test FastMCP initialization and tool registration."""
-    import server
+    from slurm_mcp import server
 
     # Test FastMCP instance
     assert server.mcp is not None
     assert hasattr(server.mcp, "name")
-    assert server.mcp.name == "Slurm-MCP-JobManagement"
+    assert server.mcp.name == "slurm"
 
     # Test that mcp has expected methods
     assert hasattr(server.mcp, "run")
@@ -931,7 +878,7 @@ def test_server_fastmcp_initialization():
 
 def test_server_module_level_variables():
     """Test module-level variables and imports."""
-    import server
+    from slurm_mcp import server
 
     # Test required imports are available
     assert hasattr(server, "os")
@@ -941,56 +888,51 @@ def test_server_module_level_variables():
     # Test FastMCP-related imports
     assert hasattr(server, "FastMCP")
 
+    # Test ToolError import
+    assert hasattr(server, "ToolError")
+
+    # Test Message import
+    assert hasattr(server, "Message")
+
     # Test that server has the expected structure
     assert hasattr(server, "main")
     assert callable(server.main)
 
 
-# ============================================================================
-# ADDITIONAL SERVER COVERAGE TESTS TO IMPROVE MISSING LINES
-# ============================================================================
-
-
 def test_server_missing_lines_coverage():
     """Test server.py missing lines to improve coverage."""
-    import server
+    from slurm_mcp import server
 
-    # Test main function with detailed argument handling (lines 881, 937)
-    # Test SSE transport with custom host and port
+    # Test main function with detailed argument handling
+    # Test HTTP transport with custom host and port
     with patch(
         "sys.argv",
-        ["slurm-mcp", "--transport", "sse", "--host", "0.0.0.0", "--port", "9000"],
+        ["slurm-mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "9000"],
     ):
-        with patch("server.mcp.run") as mock_run:
+        with patch.object(server.mcp, "run") as mock_run:
             with patch("builtins.print"):
                 try:
                     server.main()
                 except SystemExit:
                     pass
                 # Should be called with specific host and port
-                mock_run.assert_called_with(transport="sse", host="0.0.0.0", port=9000)
+                mock_run.assert_called_with(transport="http", host="0.0.0.0", port=9000)
 
-    # Test main function exception handling (line 937)
-    with patch("sys.argv", ["slurm-mcp"]):
-        with patch("server.mcp.run", side_effect=Exception("Server startup failed")):
-            with patch("builtins.print"):
-                with patch("sys.exit") as mock_exit:
-                    try:
-                        server.main()
-                    except SystemExit:
-                        pass
-                    except Exception:
-                        pass
-
-                    # Verify error handling was triggered
-                    mock_exit.assert_called_with(1)
+    # Test main function exception handling - exceptions propagate from main()
+    with (
+        patch("sys.argv", ["slurm-mcp"]),
+        patch.object(server.mcp, "run", side_effect=Exception("Server startup failed")),
+        patch("builtins.print"),
+    ):
+        with pytest.raises(Exception, match="Server startup failed"):
+            server.main()
 
 
 def test_server_tool_error_paths():
     """Test error handling paths in server tool functions."""
-    import server
+    from slurm_mcp import server
 
-    # Test all tool functions exist and are callable
+    # In v3, tool functions are the original async functions
     tool_functions = [
         "submit_slurm_job_tool",
         "check_job_status_tool",
@@ -1010,81 +952,152 @@ def test_server_tool_error_paths():
     for tool_name in tool_functions:
         tool = getattr(server, tool_name)
         assert tool is not None
-
-        # Test that the tool has expected FastMCP attributes
-        if hasattr(tool, "name"):
-            assert isinstance(tool.name, str)
-        if hasattr(tool, "description"):
-            assert isinstance(tool.description, str)
+        assert callable(tool)
 
 
 def test_server_async_error_handling():
-    """Test async function error handling paths in server tools."""
-    import server
+    """Test async function error handling paths in server tools -- ToolError in v3."""
+    from slurm_mcp import server
 
-    # Mock underlying functions to raise exceptions
-    with patch(
-        "server.submit_slurm_job", side_effect=Exception("Job submission failed")
+    # Mock underlying functions to raise exceptions and verify ToolError
+    # Use patch.object to ensure correct module-level name replacement
+    with patch.object(
+        server, "submit_slurm_job", side_effect=Exception("Job submission failed")
     ):
-        # Test that we can access the tool (though we can't easily call the async function)
-        tool = server.submit_slurm_job_tool
-        assert tool is not None
 
-    with patch("server.get_job_status", side_effect=Exception("Status check failed")):
-        tool = server.check_job_status_tool
-        assert tool is not None
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.submit_slurm_job_tool(script_path="/test.sh", cores=1)
 
-    with patch("server.cancel_slurm_job", side_effect=Exception("Cancellation failed")):
-        tool = server.cancel_slurm_job_tool
-        assert tool is not None
+        asyncio.run(_test())
 
-    with patch("server.list_slurm_jobs", side_effect=Exception("Listing failed")):
-        tool = server.list_slurm_jobs_tool
-        assert tool is not None
+    with patch.object(
+        server, "get_job_status", side_effect=Exception("Status check failed")
+    ):
 
-    with patch("server.get_slurm_info", side_effect=Exception("Info retrieval failed")):
-        tool = server.get_slurm_info_tool
-        assert tool is not None
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.check_job_status_tool(job_id="123")
 
-    with patch("server.get_job_details", side_effect=Exception("Details failed")):
-        tool = server.get_job_details_tool
-        assert tool is not None
+        asyncio.run(_test())
 
-    with patch("server.get_job_output", side_effect=Exception("Output failed")):
-        tool = server.get_job_output_tool
-        assert tool is not None
+    with patch.object(
+        server, "cancel_slurm_job", side_effect=Exception("Cancellation failed")
+    ):
 
-    with patch("server.get_queue_info", side_effect=Exception("Queue info failed")):
-        tool = server.get_queue_info_tool
-        assert tool is not None
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.cancel_slurm_job_tool(job_id="123")
 
-    with patch("server.submit_array_job", side_effect=Exception("Array job failed")):
-        tool = server.submit_array_job_tool
-        assert tool is not None
+        asyncio.run(_test())
 
-    with patch("server.get_node_info", side_effect=Exception("Node info failed")):
-        tool = server.get_node_info_tool
-        assert tool is not None
+    with patch.object(
+        server, "list_slurm_jobs", side_effect=Exception("Listing failed")
+    ):
 
-    with patch("server.allocate_nodes", side_effect=Exception("Allocation failed")):
-        tool = server.allocate_slurm_nodes_tool
-        assert tool is not None
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.list_slurm_jobs_tool()
 
-    with patch("server.deallocate_nodes", side_effect=Exception("Deallocation failed")):
-        tool = server.deallocate_slurm_nodes_tool
-        assert tool is not None
+        asyncio.run(_test())
 
-    with patch("server.get_allocation_status", side_effect=Exception("Status failed")):
-        tool = server.get_allocation_status_tool
-        assert tool is not None
+    with patch.object(
+        server, "get_slurm_info", side_effect=Exception("Info retrieval failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.get_slurm_info_tool()
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "get_job_details", side_effect=Exception("Details failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.get_job_details_tool(job_id="123")
+
+        asyncio.run(_test())
+
+    with patch.object(server, "get_job_output", side_effect=Exception("Output failed")):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.get_job_output_tool(job_id="123")
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "get_queue_info", side_effect=Exception("Queue info failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.get_queue_info_tool()
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "submit_array_job", side_effect=Exception("Array job failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.submit_array_job_tool(
+                    script_path="/test.sh", array_range="1-5"
+                )
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "get_node_info", side_effect=Exception("Node info failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.get_node_info_tool()
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "allocate_nodes", side_effect=Exception("Allocation failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.allocate_slurm_nodes_tool()
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "deallocate_nodes", side_effect=Exception("Deallocation failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.deallocate_slurm_nodes_tool(allocation_id="123")
+
+        asyncio.run(_test())
+
+    with patch.object(
+        server, "get_allocation_status", side_effect=Exception("Status failed")
+    ):
+
+        async def _test():
+            with pytest.raises(ToolError):
+                await server.get_allocation_status_tool(allocation_id="123")
+
+        asyncio.run(_test())
 
 
 def test_server_edge_cases():
     """Test edge cases and additional server functionality."""
-    import server
+    from slurm_mcp import server
 
     # Test logger configuration (already done in other tests but verify again)
-    assert server.logger.name == "server"
+    assert server.logger.name == "slurm_mcp.server"
 
     # Test that all implementation functions are imported correctly
     impl_functions = [
@@ -1115,53 +1128,55 @@ def test_server_edge_cases():
 
 def test_server_main_with_stdio_transport():
     """Test main function with default stdio transport."""
-    import server
+    from slurm_mcp import server
 
     # Test stdio transport (default)
-    with patch("sys.argv", ["slurm-mcp"]):
-        with patch("server.mcp.run") as mock_run:
-            with patch("builtins.print"):
-                try:
-                    server.main()
-                except SystemExit:
-                    pass
-                mock_run.assert_called_with(transport="stdio")
+    with (
+        patch("sys.argv", ["slurm-mcp"]),
+        patch.object(server.mcp, "run") as mock_run,
+        patch("builtins.print"),
+    ):
+        try:
+            server.main()
+        except SystemExit:
+            pass
+        mock_run.assert_called_with(transport="stdio")
 
 
 def test_server_main_with_sse_host_variations():
-    """Test main function with SSE transport and different host configurations."""
-    import server
+    """Test main function with HTTP transport and different host configurations."""
+    from slurm_mcp import server
 
-    # Test SSE with default host (0.0.0.0) and custom port
-    with patch("sys.argv", ["slurm-mcp", "--transport", "sse", "--port", "8080"]):
-        with patch("server.mcp.run") as mock_run:
+    # Test HTTP with default host (0.0.0.0) and custom port
+    with patch("sys.argv", ["slurm-mcp", "--transport", "http", "--port", "8080"]):
+        with patch.object(server.mcp, "run") as mock_run:
             with patch("builtins.print"):
                 try:
                     server.main()
                 except SystemExit:
                     pass
-                mock_run.assert_called_with(transport="sse", host="0.0.0.0", port=8080)
+                mock_run.assert_called_with(transport="http", host="0.0.0.0", port=8080)
 
-    # Test SSE with custom host and default port
-    with patch("sys.argv", ["slurm-mcp", "--transport", "sse", "--host", "localhost"]):
-        with patch("server.mcp.run") as mock_run:
+    # Test HTTP with custom host and default port
+    with patch("sys.argv", ["slurm-mcp", "--transport", "http", "--host", "localhost"]):
+        with patch.object(server.mcp, "run") as mock_run:
             with patch("builtins.print"):
                 try:
                     server.main()
                 except SystemExit:
                     pass
                 mock_run.assert_called_with(
-                    transport="sse", host="localhost", port=8000
+                    transport="http", host="localhost", port=8000
                 )
 
 
 def test_server_imports_and_path_setup():
-    """Test server imports and sys.path setup."""
-    import server
+    """Test server imports and module setup."""
+    from slurm_mcp import server
 
-    # Test that server directory is in sys.path (line 37)
-    server_dir = os.path.dirname(server.__file__)
-    assert server_dir in sys.path
+    # Test that server module is properly importable
+    assert hasattr(server, "__file__")
+    assert server.__file__ is not None
 
     # Test FastMCP import success
     assert hasattr(server, "FastMCP")
@@ -1171,19 +1186,15 @@ def test_server_imports_and_path_setup():
     assert hasattr(server, "sys")
     assert hasattr(server, "logging")
 
-    # Test optional dotenv import (doesn't raise if missing)
-    # This is hard to test since dotenv is imported at module level
-
 
 def test_server_mcp_configuration():
     """Test MCP instance configuration and tool registration."""
-    import server
+    from slurm_mcp import server
 
     # Test MCP instance configuration
-    assert server.mcp.name == "Slurm-MCP-JobManagement"
+    assert server.mcp.name == "slurm"
 
-    # Test that all tools are registered (we can't easily access them directly)
-    # but we can verify the tool objects exist
+    # In v3, tool functions are just async callables
     expected_tools = [
         "submit_slurm_job_tool",
         "check_job_status_tool",
@@ -1204,3 +1215,22 @@ def test_server_mcp_configuration():
         assert hasattr(server, tool_name)
         tool = getattr(server, tool_name)
         assert tool is not None
+        assert callable(tool)
+
+
+def test_server_resource_and_prompt():
+    """Test that the resource and prompt are registered."""
+    from slurm_mcp import server
+
+    # Test cluster_info resource function
+    assert hasattr(server, "cluster_info")
+    result = server.cluster_info()
+    assert isinstance(result, dict)
+    assert result["scheduler"] == "slurm"
+    assert "operations" in result
+
+    # Test submit_job_workflow prompt function
+    assert hasattr(server, "submit_job_workflow")
+    messages = server.submit_job_workflow("/path/to/script.sh")
+    assert isinstance(messages, list)
+    assert len(messages) == 1

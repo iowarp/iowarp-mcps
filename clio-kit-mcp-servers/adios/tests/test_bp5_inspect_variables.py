@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import Mock, patch
-from src.implementation.bp5_inspect_variables import inspect_variables
+from adios_mcp.implementation.bp5_inspect_variables import inspect_variables
 
 
 class TestInspectVariables:
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_all_variables_success(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -33,7 +33,7 @@ class TestInspectVariables:
         assert result["temperature"]["Type"] == "double"
         assert result["pressure"]["Type"] == "float"
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_specific_variable_success(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -60,7 +60,7 @@ class TestInspectVariables:
         assert result["temperature"]["Shape"] == "100,50,25"
         assert result["temperature"]["Type"] == "double"
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variable_not_found(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -78,7 +78,7 @@ class TestInspectVariables:
 
         assert result["error"] == "Variable 'nonexistent_var' not found in file."
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_empty_file(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -89,7 +89,7 @@ class TestInspectVariables:
 
         assert result == {}
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_with_additional_params(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -112,7 +112,7 @@ class TestInspectVariables:
         assert result["velocity"]["Max"] == "100.0"
         assert result["velocity"]["CustomParam"] == "CustomValue"
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_metadata_conversion(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -132,14 +132,14 @@ class TestInspectVariables:
         assert result["data"]["Shape"] == "10,20"
         assert result["data"]["Type"] == "int32"
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_file_error(self, mock_file_reader):
         mock_file_reader.side_effect = FileNotFoundError("File not found")
 
         with pytest.raises(FileNotFoundError):
             inspect_variables("nonexistent.bp")
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_default_parameter(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream
@@ -152,7 +152,7 @@ class TestInspectVariables:
         assert len(result) == 1
         assert "test_var" in result
 
-    @patch("src.implementation.bp5_inspect_variables.FileReader")
+    @patch("adios_mcp.implementation.bp5_inspect_variables.FileReader")
     def test_inspect_variables_case_sensitive(self, mock_file_reader):
         mock_stream = Mock()
         mock_file_reader.return_value.__enter__.return_value = mock_stream

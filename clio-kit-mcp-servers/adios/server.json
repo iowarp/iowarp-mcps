@@ -1,0 +1,59 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/adios-mcp",
+  "title": "CLIO Adios",
+  "description": "Fetch and analyze BP5 data files using ADIOS2 for scientific data and metadata access.",
+  "version": "2.0.1",
+  "repository": {"url": "https://github.com/iowarp/clio-kit", "source": "github"},
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.0.1",
+      "transport": {"type": "stdio"},
+      "arguments": ["clio-kit", "adios"]
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_bp5",
+      "description": "Lists all BP5 files in a given directory. The 'directory' parameter must be an absolute path."
+    },
+    {
+      "name": "inspect_variables",
+      "description": "Inspects variables in a BP5 file, returning type, shape, and steps. Optionally filters by variable name."
+    },
+    {
+      "name": "inspect_variables_at_step",
+      "description": "Inspects a specific variable at a given step in a BP5 file. All parameters are required."
+    },
+    {
+      "name": "inspect_attributes",
+      "description": "Reads global or variable-specific attributes from a BP5 file. The 'variable_name' is optional."
+    },
+    {
+      "name": "read_variable_at_step",
+      "description": "Reads a named variable at a specific step from a BP5 file. All parameters are required."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "adios://capabilities",
+      "name": "adios_capabilities",
+      "description": "ADIOS2 file format capabilities and supported engines."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "explore_bp_file",
+      "description": "Guided workflow for exploring an ADIOS2 BP file."
+    }
+  ],
+  "tags": [
+    "scientific-computing",
+    "adios2",
+    "bp5",
+    "data-io",
+    "hpc"
+  ]
+}

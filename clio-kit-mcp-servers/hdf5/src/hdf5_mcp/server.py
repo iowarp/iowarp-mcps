@@ -65,7 +65,7 @@ import h5py
 import numpy as np
 from fastmcp import FastMCP, Context
 from fastmcp.exceptions import ToolError, ResourceError
-from fastmcp.prompts.prompt import Message
+from fastmcp.prompts import Message
 
 from .config import get_config
 from .resources import ResourceManager, LazyHDF5Proxy, discover_hdf5_files_in_roots
@@ -129,7 +129,7 @@ async def lifespan(app):
 
 # Create FastMCP server with lifespan and instructions
 mcp = FastMCP(
-    name="HDF5",
+    name="hdf5",
     version="1.0.0",
     instructions="""
         HDF5 FastMCP provides comprehensive HDF5 file operations with AI intelligence.
@@ -157,6 +157,7 @@ mcp = FastMCP(
         - Interactive export with format selection
     """,
     lifespan=lifespan,
+    list_page_size=10,
 )
 
 # =========================================================================
@@ -2314,20 +2315,19 @@ async def cleanup():
 def main():
     """Main entry point for HDF5 FastMCP server."""
     import argparse
-    import sys
 
     parser = argparse.ArgumentParser(description="IoWarp HDF5 FastMCP Server v1.0")
     parser.add_argument(
         "--transport",
-        choices=["stdio", "sse", "http"],
-        default="stdio",
+        choices=["stdio", "http"],
+        default=None,
         help="Transport protocol (default: stdio)",
     )
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Host for HTTP/SSE (default: 0.0.0.0)"
+        "--host", default="0.0.0.0", help="Host for HTTP transport (default: 0.0.0.0)"
     )
     parser.add_argument(
-        "--port", type=int, default=8765, help="Port for HTTP/SSE (default: 8765)"
+        "--port", type=int, default=8765, help="Port for HTTP transport (default: 8765)"
     )
     parser.add_argument("--data-dir", type=Path, help="Directory containing HDF5 files")
     parser.add_argument(
@@ -2351,27 +2351,11 @@ def main():
     # No need to call initialize() - lifespan handles it
     # Server initialization now happens in lifespan context manager
 
-    try:
-        # Run with selected transport
-        # The lifespan context manager will handle startup/shutdown
-        if args.transport == "stdio":
-            logger.info("Starting IoWarp HDF5 FastMCP with stdio transport")
-            mcp.run(transport="stdio")
-        elif args.transport == "sse":
-            logger.info(
-                f"Starting IoWarp HDF5 FastMCP with SSE transport on {args.host}:{args.port}"
-            )
-            mcp.run(transport="sse", host=args.host, port=args.port)
-        elif args.transport == "http":
-            logger.info(
-                f"Starting IoWarp HDF5 FastMCP with HTTP transport on {args.host}:{args.port}"
-            )
-            mcp.run(transport="http", host=args.host, port=args.port)
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
-    except Exception as e:
-        logger.error(f"Server failed: {e}")
-        sys.exit(1)
+    transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    if transport == "http":
+        mcp.run(transport="http", host=args.host, port=args.port)
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

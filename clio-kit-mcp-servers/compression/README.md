@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/compression-mcp.svg)](https://pypi.org/project/compression-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Compression MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to perform efficient file compression operations using industry-standard algorithms. This server provides high-performance gzip compression with detailed statistics and seamless int...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server compression
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 
@@ -141,13 +141,75 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\compression run comp
 
 ## Capabilities
 
-### `compress_file`
-**Description**: Compress a file using gzip compression with detailed statistics and performance analytics. Supports all file types with comprehensive error handling.
+### `compress_file_tool`
+**Description**: Compress a file using gzip. Returns original/compressed sizes and compression ratio.
+**Hints**: idempotent
+**Tags**: compression, file-io
 
-**Parameters**:
-- `file_path` (str): Absolute path to the file to compress
+### `decompress_file_tool`
+**Description**: Decompress a gzip-compressed (.gz) file back to its original form.
+**Hints**: idempotent
+**Tags**: decompression, file-io
 
-**Returns**: dict: Dictionary containing compression results with detailed statistics including original size, compressed size, compression ratio, and output file path.
+### Resources
+
+- `compression://capabilities` - Supported compression formats and their capabilities.
+
+### Prompts
+
+- **compress_workflow**: Guided workflow for compressing a file and verifying the result.
+## Claude Code
+
+```bash
+claude mcp add clio-compression -- uvx clio-kit compression
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-compression@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-compression": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "compression"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-compression": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "compression"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. Log File Compression and Storage Optimization

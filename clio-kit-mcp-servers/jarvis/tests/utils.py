@@ -518,17 +518,12 @@ class ServerToolTester:
 
     @staticmethod
     async def call_tool_function(tool, *args, **kwargs):
-        """Call the underlying function of a FastMCP tool."""
-        # For FastMCP tools, we need to call the underlying function
-        if hasattr(tool, "fn"):
-            # Call the function directly
-            return (
-                await tool.fn(*args, **kwargs)
-                if asyncio.iscoroutinefunction(tool.fn)
-                else tool.fn(*args, **kwargs)
-            )
-        elif callable(tool):
-            # If it's callable directly
+        """Call the underlying function of a FastMCP tool.
+
+        In FastMCP v3, decorators return the original function, so
+        tools can be called directly without accessing .fn.
+        """
+        if callable(tool):
             return (
                 await tool(*args, **kwargs)
                 if asyncio.iscoroutinefunction(tool)
@@ -540,10 +535,12 @@ class ServerToolTester:
 
     @staticmethod
     def call_sync_tool_function(tool, *args, **kwargs):
-        """Call the underlying function of a synchronous FastMCP tool."""
-        if hasattr(tool, "fn"):
-            return tool.fn(*args, **kwargs)
-        elif callable(tool):
+        """Call the underlying function of a synchronous FastMCP tool.
+
+        In FastMCP v3, decorators return the original function, so
+        tools can be called directly without accessing .fn.
+        """
+        if callable(tool):
             return tool(*args, **kwargs)
         else:
             return {"status": "mocked", "args": args, "kwargs": kwargs}

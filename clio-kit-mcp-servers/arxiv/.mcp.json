@@ -1,0 +1,9 @@
+{
+  "clio-arxiv": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "arxiv"
+    ]
+  }
+}

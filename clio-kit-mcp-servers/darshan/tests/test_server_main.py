@@ -2,33 +2,32 @@
 
 import pytest
 from unittest.mock import patch
-import os
-import sys
-
-# Add the src directory to the path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from darshan_mcp import server
 
 
 def test_main_function():
-    """Test the main function executes asyncio.run."""
-    with patch("asyncio.run") as mock_run:
-        with patch.object(server.mcp, "run", return_value=None):
+    """Test the main function calls mcp.run with default transport."""
+    with patch.object(server.mcp, "run", return_value=None) as mock_run:
+        with patch("argparse.ArgumentParser.parse_args") as mock_args:
+            mock_args.return_value = type(
+                "Args", (), {"transport": None, "host": "0.0.0.0", "port": 8000}
+            )()
             server.main()
-            mock_run.assert_called_once()
+            mock_run.assert_called_once_with(transport="stdio")
 
 
 def test_main_function_callable():
     """Test that the main function is callable and properly configured."""
-    with patch("asyncio.run") as mock_run:
-        with patch.object(server.mcp, "run", return_value=None):
+    with patch.object(server.mcp, "run", return_value=None) as mock_run:
+        with patch("argparse.ArgumentParser.parse_args") as mock_args:
+            mock_args.return_value = type(
+                "Args", (), {"transport": "http", "host": "127.0.0.1", "port": 9000}
+            )()
             server.main()
-            # Verify asyncio.run was called
-            assert mock_run.called
-            # Verify it was called with the mcp.run() coroutine
-            call_args = mock_run.call_args
-            assert call_args is not None
+            mock_run.assert_called_once_with(
+                transport="http", host="127.0.0.1", port=9000
+            )
 
 
 @pytest.mark.asyncio

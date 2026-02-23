@@ -1,34 +1,30 @@
 """Comprehensive tests for MCP tool handlers to achieve >90% coverage."""
 
-import json
-import os
-import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import server
-from server import Dataset
+from ndp_mcp import server
+from ndp_mcp.server import Dataset
 
 
 @pytest.fixture
 def list_organizations_fn():
-    """Get the underlying list_organizations function."""
-    return server.mcp._tool_manager._tools["list_organizations"].fn
+    """Get the list_organizations function."""
+    return server.list_organizations
 
 
 @pytest.fixture
 def search_datasets_fn():
-    """Get the underlying search_datasets function."""
-    return server.mcp._tool_manager._tools["search_datasets"].fn
+    """Get the search_datasets function."""
+    return server.search_datasets
 
 
 @pytest.fixture
 def get_dataset_details_fn():
-    """Get the underlying get_dataset_details function."""
-    return server.mcp._tool_manager._tools["get_dataset_details"].fn
+    """Get the get_dataset_details function."""
+    return server.get_dataset_details
 
 
 class TestListOrganizationsTool:
@@ -39,7 +35,9 @@ class TestListOrganizationsTool:
         """Test successful organization listing."""
         mock_orgs = ["nasa", "noaa", "usgs"]
 
-        with patch("server.ndp_client.list_organizations", new=AsyncMock(return_value=mock_orgs)):
+        with patch(
+            "ndp_mcp.server.ndp_client.list_organizations", new=AsyncMock(return_value=mock_orgs)
+        ):
             result = await list_organizations_fn(name_filter="n", server="global")
 
             assert result["organizations"] == mock_orgs
@@ -54,7 +52,9 @@ class TestListOrganizationsTool:
         """Test organization listing without filter."""
         mock_orgs = ["nasa", "noaa", "usgs", "epa"]
 
-        with patch("server.ndp_client.list_organizations", new=AsyncMock(return_value=mock_orgs)):
+        with patch(
+            "ndp_mcp.server.ndp_client.list_organizations", new=AsyncMock(return_value=mock_orgs)
+        ):
             result = await list_organizations_fn(server="local")
 
             assert result["organizations"] == mock_orgs
@@ -66,7 +66,7 @@ class TestListOrganizationsTool:
     @pytest.mark.asyncio
     async def test_list_organizations_empty_result(self, list_organizations_fn):
         """Test organization listing with empty result."""
-        with patch("server.ndp_client.list_organizations", new=AsyncMock(return_value=[])):
+        with patch("ndp_mcp.server.ndp_client.list_organizations", new=AsyncMock(return_value=[])):
             result = await list_organizations_fn(name_filter="nonexistent")
 
             assert result["organizations"] == []
@@ -79,40 +79,31 @@ class TestListOrganizationsTool:
         error_msg = "Network connection failed"
 
         with patch(
-            "server.ndp_client.list_organizations", new=AsyncMock(side_effect=Exception(error_msg))
+            "ndp_mcp.server.ndp_client.list_organizations",
+            new=AsyncMock(side_effect=Exception(error_msg)),
         ):
-            result = await list_organizations_fn()
-
-            assert "content" in result
-            assert "error" in json.loads(result["content"][0]["text"])
-            assert error_msg in json.loads(result["content"][0]["text"])["error"]
-            assert result["_meta"]["tool"] == "list_organizations"
-            assert result["_meta"]["error"] == "Exception"
-            assert result["isError"] is True
+            with pytest.raises(ToolError, match=error_msg):
+                await list_organizations_fn()
 
     @pytest.mark.asyncio
     async def test_list_organizations_connection_error(self, list_organizations_fn):
         """Test connection error handling in list_organizations."""
         with patch(
-            "server.ndp_client.list_organizations",
+            "ndp_mcp.server.ndp_client.list_organizations",
             new=AsyncMock(side_effect=ConnectionError("Connection refused")),
         ):
-            result = await list_organizations_fn()
-
-            assert result["isError"] is True
-            assert result["_meta"]["error"] == "ConnectionError"
+            with pytest.raises(ToolError, match="Connection refused"):
+                await list_organizations_fn()
 
     @pytest.mark.asyncio
     async def test_list_organizations_timeout_error(self, list_organizations_fn):
         """Test timeout error handling in list_organizations."""
         with patch(
-            "server.ndp_client.list_organizations",
+            "ndp_mcp.server.ndp_client.list_organizations",
             new=AsyncMock(side_effect=TimeoutError("Request timed out")),
         ):
-            result = await list_organizations_fn()
-
-            assert result["isError"] is True
-            assert result["_meta"]["error"] == "TimeoutError"
+            with pytest.raises(ToolError, match="Request timed out"):
+                await list_organizations_fn()
 
 
 class TestSearchDatasetsTool:
@@ -127,7 +118,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(
                 search_terms=["climate", "weather"],
@@ -149,7 +141,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"])
 
@@ -164,7 +157,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(
                 dataset_name="nasa_climate",
@@ -186,7 +180,8 @@ class TestSearchDatasetsTool:
         mock_datasets = []
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(
                 dataset_name="test",
@@ -218,7 +213,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"], limit=10)
 
@@ -234,7 +230,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"], limit="5")
 
@@ -249,7 +246,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"], limit="invalid")
 
@@ -264,7 +262,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"], limit=0)
 
@@ -279,7 +278,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"])
 
@@ -295,7 +295,8 @@ class TestSearchDatasetsTool:
         ]
 
         with patch(
-            "server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=mock_datasets)
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
+            new=AsyncMock(return_value=mock_datasets),
         ):
             result = await search_datasets_fn(search_terms=["test"])
 
@@ -308,34 +309,28 @@ class TestSearchDatasetsTool:
         error_msg = "Search service unavailable"
 
         with patch(
-            "server.ndp_client.search_datasets_simple",
+            "ndp_mcp.server.ndp_client.search_datasets_simple",
             new=AsyncMock(side_effect=Exception(error_msg)),
         ):
-            result = await search_datasets_fn(search_terms=["test"])
-
-            assert "content" in result
-            assert "error" in json.loads(result["content"][0]["text"])
-            assert error_msg in json.loads(result["content"][0]["text"])["error"]
-            assert result["_meta"]["tool"] == "search_datasets"
-            assert result["_meta"]["error"] == "Exception"
-            assert result["isError"] is True
+            with pytest.raises(ToolError, match=error_msg):
+                await search_datasets_fn(search_terms=["test"])
 
     @pytest.mark.asyncio
     async def test_search_datasets_advanced_exception(self, search_datasets_fn):
         """Test exception handling in advanced search."""
         with patch(
-            "server.ndp_client.search_datasets_advanced",
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
             new=AsyncMock(side_effect=ValueError("Invalid parameter")),
         ):
-            result = await search_datasets_fn(dataset_name="test")
-
-            assert result["isError"] is True
-            assert result["_meta"]["error"] == "ValueError"
+            with pytest.raises(ToolError, match="Invalid parameter"):
+                await search_datasets_fn(dataset_name="test")
 
     @pytest.mark.asyncio
     async def test_search_datasets_empty_result(self, search_datasets_fn):
         """Test search with empty result."""
-        with patch("server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=[])):
+        with patch(
+            "ndp_mcp.server.ndp_client.search_datasets_simple", new=AsyncMock(return_value=[])
+        ):
             result = await search_datasets_fn(search_terms=["nonexistent"])
 
             assert result["count"] == 0
@@ -358,7 +353,8 @@ class TestGetDatasetDetailsTool:
         )
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
             result = await get_dataset_details_fn(
                 dataset_identifier="test-id-123", identifier_type="id", server="global"
@@ -383,7 +379,8 @@ class TestGetDatasetDetailsTool:
         )
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
             result = await get_dataset_details_fn(
                 dataset_identifier="climate_data", identifier_type="name", server="local"
@@ -401,20 +398,13 @@ class TestGetDatasetDetailsTool:
         mock_dataset = Dataset(id="other-id", name="other", title="Other")
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
-            result = await get_dataset_details_fn(
-                dataset_identifier="nonexistent-id", identifier_type="id"
-            )
-
-            assert "content" in result
-            assert "error" in json.loads(result["content"][0]["text"])
-            assert (
-                "Dataset not found with id: nonexistent-id"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["error"] == "NotFound"
-            assert result["isError"] is True
+            with pytest.raises(ToolError, match="Dataset not found with id: nonexistent-id"):
+                await get_dataset_details_fn(
+                    dataset_identifier="nonexistent-id", identifier_type="id"
+                )
 
     @pytest.mark.asyncio
     async def test_get_dataset_details_not_found_by_name(self, get_dataset_details_fn):
@@ -422,29 +412,22 @@ class TestGetDatasetDetailsTool:
         mock_dataset = Dataset(id="1", name="other_dataset", title="Other")
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
-            result = await get_dataset_details_fn(
-                dataset_identifier="nonexistent_name", identifier_type="name"
-            )
-
-            assert result["isError"] is True
-            assert (
-                "Dataset not found with name: nonexistent_name"
-                in json.loads(result["content"][0]["text"])["error"]
-            )
-            assert result["_meta"]["error"] == "NotFound"
+            with pytest.raises(ToolError, match="Dataset not found with name: nonexistent_name"):
+                await get_dataset_details_fn(
+                    dataset_identifier="nonexistent_name", identifier_type="name"
+                )
 
     @pytest.mark.asyncio
     async def test_get_dataset_details_empty_search_result(self, get_dataset_details_fn):
         """Test when search returns empty results."""
-        with patch("server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[])):
-            result = await get_dataset_details_fn(
-                dataset_identifier="test-id", identifier_type="id"
-            )
-
-            assert result["isError"] is True
-            assert "Dataset not found" in json.loads(result["content"][0]["text"])["error"]
+        with patch(
+            "ndp_mcp.server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[])
+        ):
+            with pytest.raises(ToolError, match="Dataset not found"):
+                await get_dataset_details_fn(dataset_identifier="test-id", identifier_type="id")
 
     @pytest.mark.asyncio
     async def test_get_dataset_details_multiple_resources(self, get_dataset_details_fn):
@@ -461,7 +444,8 @@ class TestGetDatasetDetailsTool:
         )
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
             result = await get_dataset_details_fn(
                 dataset_identifier="test-id", identifier_type="id"
@@ -480,7 +464,8 @@ class TestGetDatasetDetailsTool:
         )
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
             result = await get_dataset_details_fn(
                 dataset_identifier="test-id", identifier_type="id"
@@ -495,19 +480,11 @@ class TestGetDatasetDetailsTool:
         error_msg = "Database connection failed"
 
         with patch(
-            "server.ndp_client.search_datasets_advanced",
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
             new=AsyncMock(side_effect=Exception(error_msg)),
         ):
-            result = await get_dataset_details_fn(
-                dataset_identifier="test-id", identifier_type="id"
-            )
-
-            assert "content" in result
-            assert "error" in json.loads(result["content"][0]["text"])
-            assert error_msg in json.loads(result["content"][0]["text"])["error"]
-            assert result["_meta"]["tool"] == "get_dataset_details"
-            assert result["_meta"]["error"] == "Exception"
-            assert result["isError"] is True
+            with pytest.raises(ToolError, match=error_msg):
+                await get_dataset_details_fn(dataset_identifier="test-id", identifier_type="id")
 
     @pytest.mark.asyncio
     async def test_get_dataset_details_with_extras(self, get_dataset_details_fn):
@@ -520,7 +497,8 @@ class TestGetDatasetDetailsTool:
         )
 
         with patch(
-            "server.ndp_client.search_datasets_advanced", new=AsyncMock(return_value=[mock_dataset])
+            "ndp_mcp.server.ndp_client.search_datasets_advanced",
+            new=AsyncMock(return_value=[mock_dataset]),
         ):
             result = await get_dataset_details_fn(
                 dataset_identifier="test-id", identifier_type="id"

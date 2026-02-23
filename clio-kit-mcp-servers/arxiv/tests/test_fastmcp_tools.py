@@ -11,10 +11,9 @@ import subprocess
 import tempfile
 from unittest.mock import patch, AsyncMock
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from fastmcp.exceptions import ToolError
 
-import server
+from arxiv_mcp import server
 
 
 class TestFastMCPTools:
@@ -25,7 +24,7 @@ class TestFastMCPTools:
         """Execute all FastMCP tool functions to hit logger statements."""
 
         with (
-            patch("server.logger"),
+            patch("arxiv_mcp.server.logger"),
             patch.object(server, "mcp_handlers") as mock_handlers,
         ):
             # Configure all handlers to return proper responses
@@ -67,7 +66,7 @@ class TestFastMCPTools:
                 return_value={"status": "success"}
             )
 
-            # Try to call the actual decorated functions to hit logger statements
+            # In FastMCP 3.0, decorated functions are the original functions
             tool_functions = [
                 ("search_arxiv_tool", ["cs.AI", 5]),
                 ("get_recent_papers_tool", ["cs.AI", 5]),
@@ -75,13 +74,13 @@ class TestFastMCPTools:
                 ("search_by_title_tool", ["Test Title", 5]),
                 ("search_by_abstract_tool", ["Test Abstract", 5]),
                 ("search_by_subject_tool", ["Test Subject", 5]),
-                ("search_date_range_tool", ["2023-01-01", "2023-12-31", 5]),
+                ("search_date_range_tool", ["2023-01-01", "2023-12-31"]),
                 ("get_paper_details_tool", ["test-id"]),
                 ("find_similar_papers_tool", ["test-id", 5]),
-                ("export_to_bibtex_tool", [["test-id"]]),
+                ("export_to_bibtex_tool", ['["test-id"]']),
                 ("download_paper_pdf_tool", ["test-id", "/tmp"]),
                 ("get_pdf_url_tool", ["test-id"]),
-                ("download_multiple_pdfs_tool", [["test-id"], "/tmp"]),
+                ("download_multiple_pdfs_tool", ['["test-id"]', "/tmp"]),
             ]
 
             executed_count = 0
@@ -106,7 +105,7 @@ class TestFastMCPTools:
     async def test_fastmcp_tools_direct_access(self):
         """Try to access FastMCP tools directly through the mcp instance."""
 
-        with patch("server.logger"):
+        with patch("arxiv_mcp.server.logger"):
             # Try to access FastMCP tools through various methods
             if hasattr(server, "mcp"):
                 mcp_instance = server.mcp
@@ -135,11 +134,11 @@ class TestFastMCPTools:
                                 if "search" in tool_name.lower():
                                     await handler("test", 5)
                                 elif "date" in tool_name.lower():
-                                    await handler("2023-01-01", "2023-12-31", 5)
+                                    await handler("2023-01-01", "2023-12-31")
                                 elif "download" in tool_name.lower():
                                     await handler("test", "/tmp")
                                 elif "bibtex" in tool_name.lower():
-                                    await handler(["test"])
+                                    await handler('["test"]')
                                 else:
                                     await handler("test")
                         except Exception:
@@ -195,8 +194,8 @@ class TestFastMCPTools:
                 ("search_by_title_tool", ["Machine Learning", 10]),
                 ("search_by_abstract_tool", ["neural networks", 8]),
                 ("search_by_subject_tool", ["computer science", 12]),
-                ("search_date_range_tool", ["2022-01-01", "2022-12-31", 10]),
-                ("search_date_range_tool", ["2021-06-01", "2021-06-30", 5]),
+                ("search_date_range_tool", ["2022-01-01", "2022-12-31"]),
+                ("search_date_range_tool", ["2021-06-01", "2021-06-30"]),
             ]
 
             for func_name, args in test_scenarios:
@@ -213,7 +212,7 @@ class TestFastMCPTools:
 
     @pytest.mark.asyncio
     async def test_server_tool_error_scenarios(self):
-        """Test tool functions with error scenarios."""
+        """Test tool functions with error scenarios raise ToolError."""
 
         with patch.object(server, "mcp_handlers") as mock_handlers:
             # Configure handlers to raise exceptions
@@ -227,30 +226,23 @@ class TestFastMCPTools:
                 side_effect=ConnectionError("Network error")
             )
 
-            # Test that tool functions handle handler errors gracefully
-            error_test_cases = [
-                ("search_arxiv_tool", ["cs.AI", 5]),
-                ("get_recent_papers_tool", ["cs.AI", 5]),
-                ("search_papers_by_author_tool", ["Test Author", 5]),
-            ]
+            # Test that tool functions raise ToolError
+            with pytest.raises(ToolError, match="Handler error"):
+                await server.search_arxiv_tool("cs.AI", 5)
 
-            for func_name, args in error_test_cases:
-                if hasattr(server, func_name):
-                    func = getattr(server, func_name)
-                    try:
-                        if asyncio.iscoroutinefunction(func):
-                            await func(*args)
-                        else:
-                            func(*args)
-                    except Exception:
-                        # Expected to fail, but should hit error handling code
-                        pass
+            with pytest.raises(ToolError, match="Invalid parameters"):
+                await server.get_recent_papers_tool("cs.AI", 5)
+
+            with pytest.raises(ToolError, match="Network error"):
+                await server.search_papers_by_author_tool("Test Author", 5)
 
     def test_server_main_execution_simulation(self):
         """Test server.py main execution block simulation."""
 
         # Read server.py content to verify main execution block exists
-        server_file = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
+        server_file = os.path.join(
+            os.path.dirname(__file__), "..", "src", "arxiv_mcp", "server.py"
+        )
         with open(server_file, "r") as f:
             content = f.read()
 
@@ -259,7 +251,7 @@ class TestFastMCPTools:
         assert "main()" in content
 
         # Try to simulate the execution without actually running the server
-        with patch("server.main"):
+        with patch("arxiv_mcp.server.main"):
             # Import server and manually trigger the condition
             import importlib
 
@@ -286,7 +278,7 @@ def mock_main():
 with patch('server.main', mock_main):
     # Import server (this loads the module)
     import server
-    
+
     # Manually trigger the main execution logic
     if __name__ == "__main__":
         server.main()  # This should hit line 322
@@ -320,7 +312,7 @@ with patch('server.main', mock_main):
         """Comprehensive test to hit as many tool function lines as possible."""
 
         with (
-            patch("server.logger"),
+            patch("arxiv_mcp.server.logger"),
             patch.object(server, "mcp_handlers") as mock_handlers,
         ):
             # Configure all handlers with varied responses
@@ -382,25 +374,25 @@ with patch('server.main', mock_main):
                 ("search_by_subject_tool", ["computer science", 5]),
                 ("search_by_subject_tool", ["mathematics", 6]),
                 # Date range searches
-                ("search_date_range_tool", ["2023-01-01", "2023-12-31", 5]),
-                ("search_date_range_tool", ["2022-06-01", "2022-06-30", 3]),
+                ("search_date_range_tool", ["2023-01-01", "2023-12-31"]),
+                ("search_date_range_tool", ["2022-06-01", "2022-06-30"]),
                 # Paper details
                 ("get_paper_details_tool", ["2301.12345"]),
                 ("get_paper_details_tool", ["1234.5678"]),
                 ("find_similar_papers_tool", ["2301.12345", 5]),
                 ("find_similar_papers_tool", ["1234.5678", 3]),
                 # Export functions
-                ("export_to_bibtex_tool", [["2301.12345"]]),
-                ("export_to_bibtex_tool", [["1234.5678", "2301.12345"]]),
+                ("export_to_bibtex_tool", ['["2301.12345"]']),
+                ("export_to_bibtex_tool", ['["1234.5678", "2301.12345"]']),
                 # Download functions
                 ("download_paper_pdf_tool", ["2301.12345", "/tmp"]),
                 ("download_paper_pdf_tool", ["1234.5678", "/tmp/downloads"]),
                 ("get_pdf_url_tool", ["2301.12345"]),
                 ("get_pdf_url_tool", ["1234.5678"]),
-                ("download_multiple_pdfs_tool", [["2301.12345"], "/tmp"]),
+                ("download_multiple_pdfs_tool", ['["2301.12345"]', "/tmp"]),
                 (
                     "download_multiple_pdfs_tool",
-                    [["1234.5678", "2301.12345"], "/tmp/batch"],
+                    ['["1234.5678", "2301.12345"]', "/tmp/batch"],
                 ),
             ]
 

@@ -12,17 +12,17 @@ authors = [
 keywords = ["hardware-monitoring", "system-analysis", "performance-metrics", "node-information", "ssh-monitoring", "remote-hardware", "mcp", "llm-integration", "infrastructure-monitoring", "distributed-systems"]
 
 dependencies = [
-  "fastmcp>=2.13.0",
+  "fastmcp>=3.0.1",
   "python-dotenv>=1.0.0",
   "psutil>=5.9.0"
 ]
 
 [project.urls]
-Homepage = "https://toolkit.iowarp.ai/"
+Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]
-node-hardware-mcp = "server:main"
+node-hardware-mcp = "node_hardware_mcp.server:main"
 
 [dependency-groups]
 dev = [
@@ -36,5 +36,13 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=64.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/node_hardware_mcp"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -431,6 +431,6 @@ uv run <server-name>-mcp
 Your contributions help advance AI integration in scientific computing. 
 
 For more information, visit:
-- **Website**: [https://toolkit.iowarp.ai/](https://toolkit.iowarp.ai/)
+- **Website**: [https://docs.iowarp.ai/](https://docs.iowarp.ai/)
 - **Repository**: [https://github.com/iowarp/clio-kit](https://github.com/iowarp/clio-kit)
 - **Gnosis Research Center**: [https://grc.iit.edu/](https://grc.iit.edu/)

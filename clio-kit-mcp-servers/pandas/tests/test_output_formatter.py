@@ -7,13 +7,8 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-import sys
-import os
 
-# Add the parent directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.output_formatter import (
+from pandas_mcp.implementation.output_formatter import (
     BeautifulFormatter,
     create_beautiful_response,
 )

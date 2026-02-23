@@ -7,12 +7,12 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-import sys
 
-# Add the parent directory to Python path so we can import src
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.data_io import load_data_file, save_data_file, get_file_info
+from pandas_mcp.implementation.data_io import (
+    load_data_file,
+    save_data_file,
+    get_file_info,
+)
 
 
 class TestLoadDataFile:

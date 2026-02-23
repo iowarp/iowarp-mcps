@@ -4,7 +4,7 @@ Targets missing lines to improve coverage from 71% to 85%+.
 """
 
 from unittest.mock import Mock, patch
-from src.implementation.node_allocation import (
+from slurm_mcp.implementation.node_allocation import (
     allocate_nodes,
     deallocate_nodes,
     get_allocation_status,
@@ -21,10 +21,12 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_with_memory_specification(self):
         """Test allocate_nodes with memory specification."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(
                     returncode=0, stdout="Granted job allocation 12345\n", stderr=""
                 )
@@ -43,7 +45,7 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_without_slurm(self):
         """Test allocate_nodes when Slurm is not available."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=False,
         ):
             result = allocate_nodes(nodes=1, cores=1)
@@ -53,17 +55,19 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_immediate_mode(self):
         """Test immediate allocation mode."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
                 with patch(
-                    "src.implementation.node_allocation._get_recent_allocation_id",
+                    "slurm_mcp.implementation.node_allocation._get_recent_allocation_id",
                     return_value="12345",
                 ):
                     with patch(
-                        "src.implementation.node_allocation._get_allocation_nodes",
+                        "slurm_mcp.implementation.node_allocation._get_allocation_nodes",
                         return_value={"nodes": ["node01"]},
                     ):
                         result = allocate_nodes(nodes=1, cores=2, immediate=True)
@@ -75,10 +79,12 @@ class TestNodeAllocationCoverage:
         import subprocess
 
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.side_effect = subprocess.TimeoutExpired("salloc", 60)
 
                 result = allocate_nodes(nodes=1, cores=1)
@@ -87,10 +93,12 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_policy_violation(self):
         """Test allocation policy violation error."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(
                     returncode=1, stdout="", stderr="Job violates accounting/QOS policy"
                 )
@@ -102,10 +110,12 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_insufficient_resources(self):
         """Test insufficient resources error."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(
                     returncode=1, stdout="", stderr="Unable to allocate resources"
                 )
@@ -160,7 +170,9 @@ class TestNodeAllocationCoverage:
 
     def test_get_allocation_nodes_with_valid_id(self):
         """Test _get_allocation_nodes with valid allocation ID."""
-        with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+        with patch(
+            "slurm_mcp.implementation.node_allocation.subprocess.run"
+        ) as mock_run:
             mock_run.return_value = Mock(
                 returncode=0, stdout="node01,node02 RUNNING 8 16000", stderr=""
             )
@@ -170,7 +182,9 @@ class TestNodeAllocationCoverage:
 
     def test_get_allocation_nodes_with_invalid_id(self):
         """Test _get_allocation_nodes with invalid allocation ID."""
-        with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+        with patch(
+            "slurm_mcp.implementation.node_allocation.subprocess.run"
+        ) as mock_run:
             mock_run.return_value = Mock(
                 returncode=1, stdout="", stderr="Invalid job id specified"
             )
@@ -180,9 +194,12 @@ class TestNodeAllocationCoverage:
 
     def test_get_recent_allocation_id_found(self):
         """Test _get_recent_allocation_id when allocation exists."""
-        with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+        with patch(
+            "slurm_mcp.implementation.node_allocation.subprocess.run"
+        ) as mock_run:
             with patch(
-                "src.implementation.node_allocation.os.getenv", return_value="testuser"
+                "slurm_mcp.implementation.node_allocation.os.getenv",
+                return_value="testuser",
             ):
                 mock_run.return_value = Mock(
                     returncode=0,
@@ -195,7 +212,9 @@ class TestNodeAllocationCoverage:
 
     def test_get_recent_allocation_id_not_found(self):
         """Test _get_recent_allocation_id when no allocation exists."""
-        with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+        with patch(
+            "slurm_mcp.implementation.node_allocation.subprocess.run"
+        ) as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             result = _get_recent_allocation_id()
@@ -204,10 +223,12 @@ class TestNodeAllocationCoverage:
     def test_deallocate_nodes_success(self):
         """Test deallocate_nodes with successful deallocation."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
                 result = deallocate_nodes("12345")
@@ -217,7 +238,7 @@ class TestNodeAllocationCoverage:
     def test_deallocate_nodes_without_slurm(self):
         """Test deallocate_nodes when Slurm is not available."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=False,
         ):
             result = deallocate_nodes("12345")
@@ -227,10 +248,12 @@ class TestNodeAllocationCoverage:
     def test_deallocate_nodes_failure(self):
         """Test deallocate_nodes with failed deallocation."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(
                     returncode=1, stdout="", stderr="scancel: Invalid job id 99999"
                 )
@@ -241,10 +264,12 @@ class TestNodeAllocationCoverage:
     def test_get_allocation_status_success(self):
         """Test get_allocation_status with valid allocation."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(
                     returncode=0, stdout="12345 RUNNING node[01-02] user 2 8", stderr=""
                 )
@@ -256,7 +281,7 @@ class TestNodeAllocationCoverage:
     def test_get_allocation_status_without_slurm(self):
         """Test get_allocation_status when Slurm is not available."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=False,
         ):
             result = get_allocation_status("12345")
@@ -266,10 +291,12 @@ class TestNodeAllocationCoverage:
     def test_get_allocation_status_not_found(self):
         """Test get_allocation_status with non-existent allocation."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(
                     returncode=1, stdout="", stderr="Invalid job id specified"
                 )
@@ -282,13 +309,15 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_with_job_name(self):
         """Test allocate_nodes with custom job name."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
                 with patch(
-                    "src.implementation.node_allocation._get_recent_allocation_id",
+                    "slurm_mcp.implementation.node_allocation._get_recent_allocation_id",
                     return_value="12345",
                 ):
                     allocate_nodes(nodes=1, cores=1, job_name="test_job")
@@ -300,13 +329,15 @@ class TestNodeAllocationCoverage:
     def test_allocate_nodes_default_job_name(self):
         """Test allocate_nodes with default job name."""
         with patch(
-            "src.implementation.node_allocation.check_slurm_available",
+            "slurm_mcp.implementation.node_allocation.check_slurm_available",
             return_value=True,
         ):
-            with patch("src.implementation.node_allocation.subprocess.run") as mock_run:
+            with patch(
+                "slurm_mcp.implementation.node_allocation.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
                 with patch(
-                    "src.implementation.node_allocation._get_recent_allocation_id",
+                    "slurm_mcp.implementation.node_allocation._get_recent_allocation_id",
                     return_value="12345",
                 ):
                     allocate_nodes(nodes=1, cores=1)

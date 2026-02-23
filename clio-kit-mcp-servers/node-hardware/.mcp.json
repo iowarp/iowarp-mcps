@@ -1,0 +1,9 @@
+{
+  "clio-node-hardware": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "node-hardware"
+    ]
+  }
+}

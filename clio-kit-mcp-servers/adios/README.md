@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/adios-mcp.svg)](https://pypi.org/project/adios-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 ADIOS MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to access and analyze scientific simulation and real-time data through the ADIOS2 framework. This server provides read-only access to BP5 datasets with intelligent data handling and seaml...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server adios
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 
@@ -143,50 +143,89 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\adios run adios-mcp 
 ## Capabilities
 
 ### `list_bp5`
-**Description**: List all BP5 files in a specified directory with comprehensive file information including metadata and structure details.
-
-**Parameters**:
-- `directory` (str): Absolute path to directory containing BP5 files
-
-**Returns**: List of BP5 files with metadata, size information, and basic structure details.
+**Description**: Lists all BP5 files in a given directory. The 'directory' parameter must be an absolute path.
+**Hints**: read-only, idempotent
+**Tags**: adios, scientific-io
 
 ### `inspect_variables`
-**Description**: Inspect all variables in a BP5 file including type information, shape dimensions, and available time steps for comprehensive data structure analysis. If variable_name is provided, returns data for that specific variable.
-
-**Parameters**:
-- `filename` (str): Absolute path to BP5 file
-- `variable_name` (str, optional): Specific variable name for targeted inspection
-
-**Returns**: Complete variable inventory with types, shapes, step counts, and data structure information for all variables or specific variable.
+**Description**: Inspects variables in a BP5 file, returning type, shape, and steps. Optionally filters by variable name.
+**Hints**: read-only, idempotent
+**Tags**: adios, variables
 
 ### `inspect_variables_at_step`
-**Description**: Inspect a specific variable at a given step in a BP5 file. Shows variable type, shape, and metadata at the specified time step.
-
-**Parameters**:
-- `filename` (str): Absolute path to BP5 file
-- `variable_name` (str): Name of the variable to inspect
-- `step` (int): Step number to inspect
-
-**Returns**: Variable information at the specified step including type, shape, and available metadata.
+**Description**: Inspects a specific variable at a given step in a BP5 file. All parameters are required.
+**Hints**: read-only, idempotent
+**Tags**: adios, variables
 
 ### `inspect_attributes`
-**Description**: Read global or variable-specific attributes from a BP5 file with detailed metadata extraction and attribute value analysis.
-
-**Parameters**:
-- `filename` (str): Absolute path to BP5 file
-- `variable_name` (str, optional): Specific variable name for targeted attribute inspection
-
-**Returns**: Comprehensive attribute dictionary with metadata, variable-specific attributes, and global file attributes.
+**Description**: Reads global or variable-specific attributes from a BP5 file. The 'variable_name' is optional.
+**Hints**: read-only, idempotent
+**Tags**: adios, attributes
 
 ### `read_variable_at_step`
-**Description**: Read a named variable at a specific time step from a BP5 file with full data extraction and conversion to Python native types.
+**Description**: Reads a named variable at a specific step from a BP5 file. All parameters are required.
+**Hints**: read-only, idempotent
+**Tags**: adios, variables
 
-**Parameters**:
-- `filename` (str): Absolute path to BP5 file
-- `variable_name` (str): Name of variable to read
-- `target_step` (int): Time step number to read from
+### Resources
 
-**Returns**: Variable data as Python scalar or list (flattened array) at the specified step.
+- `adios://capabilities` - ADIOS2 file format capabilities and supported engines.
+
+### Prompts
+
+- **explore_bp_file**: Guided workflow for exploring an ADIOS2 BP file.
+## Claude Code
+
+```bash
+claude mcp add clio-adios -- uvx clio-kit adios
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-adios@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-adios": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "adios"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-adios": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "adios"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. Scientific Data Structure Analysis

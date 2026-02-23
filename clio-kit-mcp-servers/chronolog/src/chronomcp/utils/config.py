@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import py_chronolog_client
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 # load .env and set up logging
 load_dotenv()
@@ -33,7 +33,13 @@ client_conf = py_chronolog_client.ClientPortalServiceConf(
 client = py_chronolog_client.Client(client_conf)
 
 # MCP server instance
-mcp: FastMCP = FastMCP("chronologMCP")
+mcp: FastMCP = FastMCP(
+    "chronolog",
+    instructions=(
+        "Manages ChronoLog distributed logging system. "
+        "Record events, query logs by time range, and monitor log status."
+    ),
+)
 
 # session state
 _active_chronicle = ""

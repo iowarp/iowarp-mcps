@@ -9,8 +9,7 @@ import os
 import tempfile
 from unittest.mock import patch
 
-# Import the handlers
-from pandasmcp.mcp_handlers import (
+from pandas_mcp.mcp_handlers import (
     load_data_handler,
     save_data_handler,
     statistical_summary_handler,
@@ -159,7 +158,7 @@ class TestPandasMCPHandlers:
         assert "error" in result["_meta"]
         assert result["_meta"]["tool"] == "load_data"
 
-    @patch("pandasmcp.mcp_handlers.load_data_file")
+    @patch("pandas_mcp.mcp_handlers.load_data_file")
     def test_handler_exception_handling(self, mock_load_data):
         """Test exception handling in handlers"""
         # Mock an exception

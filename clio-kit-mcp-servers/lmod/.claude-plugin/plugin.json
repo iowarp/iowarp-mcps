@@ -1,0 +1,5 @@
+{
+  "name": "clio-lmod",
+  "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
+  "version": "1.0.0"
+}

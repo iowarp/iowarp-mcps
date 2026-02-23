@@ -7,9 +7,7 @@ Requires Slurm to be installed and available on the system.
 import pytest
 import os
 import tempfile
-import sys
-from pathlib import Path
-from implementation.slurm_handler import (
+from slurm_mcp.implementation.slurm_handler import (
     submit_slurm_job,
     get_job_status,
     cancel_slurm_job,
@@ -23,10 +21,6 @@ from implementation.slurm_handler import (
     _check_slurm_available,
     _create_sbatch_script,
 )
-
-# Add src to Python path
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
 
 
 class TestSlurmCapabilities:

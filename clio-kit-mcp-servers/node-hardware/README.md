@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/node-hardware-mcp.svg)](https://pypi.org/project/node-hardware-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 Node Hardware MCP is a Model Context Protocol server that enables LLMs to monitor and analyze system hardware information including CPU specifications, memory usage, disk performance, network interfaces, GPU details, and sensor data for both local and remote nodes via SSH connections, providing c...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server node-hardware
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 
@@ -132,70 +132,119 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\node-hardware run no
 ## Capabilities
 
 ### `get_cpu_info`
-**Description**: Get comprehensive CPU information including specifications, core configuration, frequency analysis, and performance metrics.
-
-**Returns**: dict: Structured CPU information with performance insights and optimization recommendations.
+**Description**: Get CPU specifications, core counts, frequencies, and per-core usage.
+**Hints**: read-only, idempotent
+**Tags**: cpu, hardware
 
 ### `get_memory_info`
-**Description**: Get comprehensive memory information including capacity, usage patterns, and performance characteristics.
-
-**Returns**: dict: Structured memory information with usage insights and optimization recommendations.
+**Description**: Get RAM and swap capacity, usage percentages, and availability.
+**Hints**: read-only, idempotent
+**Tags**: hardware, memory
 
 ### `get_system_info`
-**Description**: Get comprehensive system information including operating system details, platform configuration, and system status.
-
-**Returns**: dict: Structured system information with configuration insights and security recommendations.
+**Description**: Get OS details, hostname, uptime, and active users.
+**Hints**: read-only, idempotent
+**Tags**: hardware, system
 
 ### `get_disk_info`
-**Description**: Get comprehensive disk information including storage devices, partitions, and I/O performance metrics.
-
-**Returns**: dict: Structured disk information with performance insights and maintenance recommendations.
+**Description**: Get disk partitions, usage statistics, and I/O counters.
+**Hints**: read-only, idempotent
+**Tags**: disk, hardware
 
 ### `get_network_info`
-**Description**: Get comprehensive network information including interfaces, connections, and bandwidth analysis.
-
-**Returns**: dict: Structured network information with performance insights and security recommendations.
+**Description**: Get network interfaces, IP addresses, and I/O statistics.
+**Hints**: read-only, idempotent
+**Tags**: hardware, network
 
 ### `get_gpu_info`
-**Description**: Get comprehensive GPU information including specifications, memory, and compute capabilities.
-
-**Returns**: dict: Structured GPU information with performance insights and optimization recommendations.
+**Description**: Get GPU model, memory, temperature, and utilization via nvidia-smi/rocm-smi.
+**Hints**: read-only, idempotent
+**Tags**: gpu, hardware
 
 ### `get_sensor_info`
-**Description**: Get sensor information including temperature, fan speeds, and thermal data.
-
-**Returns**: dict: Structured sensor information with thermal insights and health recommendations.
+**Description**: Get temperature, fan speed, and battery sensor readings.
+**Hints**: read-only, idempotent
+**Tags**: hardware, sensor
 
 ### `get_process_info`
-**Description**: Get process information including running processes and resource usage.
-
-**Returns**: dict: Structured process information with resource insights and optimization recommendations.
+**Description**: Get running processes with CPU, memory, and status details.
+**Hints**: read-only, idempotent
+**Tags**: hardware, process
 
 ### `get_performance_info`
-**Description**: Get real-time performance metrics including CPU, memory, and disk usage.
-
-**Returns**: dict: Structured performance information with bottleneck analysis and optimization recommendations.
+**Description**: Get real-time CPU, memory, disk, and network performance metrics.
+**Hints**: read-only, idempotent
+**Tags**: hardware, performance
 
 ### `get_remote_node_info`
-**Description**: Get comprehensive remote node hardware and system information via SSH with advanced filtering and intelligent analysis.
-
-**Parameters**:
-- `hostname` (str): Target hostname or IP address for remote collection.
-- `username` (Optional[str]): SSH username for remote authentication.
-- `port` (int): SSH port number for remote connection.
-- `ssh_key` (Optional[str]): Path to SSH private key file for authentication.
-- `timeout` (int): SSH connection timeout in seconds.
-- `components` (Optional[List[str]]): List of specific components to include in collection.
-- `exclude_components` (Optional[List[str]]): List of specific components to exclude from collection.
-- `include_performance` (bool): Whether to include real-time performance analysis.
-- `include_health` (bool): Whether to include health assessment and predictive maintenance insights.
-
-**Returns**: dict: Comprehensive remote hardware and system analysis, including hardware_data, collection_metadata, performance_analysis, health_assessment, ssh_connection_info, error_information, intelligent_insights, optimization_recommendations, and beautiful_formatting.
+**Description**: Collect hardware info from a remote node via SSH. Supports component filtering.
+**Hints**: read-only, idempotent
+**Tags**: hardware, remote, ssh
 
 ### `health_check`
-**Description**: Perform comprehensive health check and system diagnostics with advanced capability verification.
+**Description**: Verify server health and hardware monitoring capability status.
+**Hints**: read-only, idempotent
+**Tags**: diagnostics, hardware
 
-**Returns**: dict: Comprehensive health assessment, including server_status, capability_status, system_compatibility, performance_metrics, diagnostic_insights, optimization_recommendations, troubleshooting_guide, predictive_maintenance, security_assessment, and health_summary.
+### Resources
+
+- `node-hardware://system-info` - Basic system identification info.
+
+### Prompts
+
+- **system_health_check**: Guided workflow for a full system health check.
+## Claude Code
+
+```bash
+claude mcp add clio-node-hardware -- uvx clio-kit node-hardware
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-node-hardware@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-node-hardware": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "node-hardware"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-node-hardware": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "node-hardware"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. Local Hardware Overview

@@ -5,7 +5,7 @@ Tests for the pattern detection capability.
 import pytest
 import tempfile
 import os
-from implementation.pattern_detection import (
+from parallel_sort_mcp.implementation.pattern_detection import (
     detect_patterns,
     normalize_message_for_pattern,
 )

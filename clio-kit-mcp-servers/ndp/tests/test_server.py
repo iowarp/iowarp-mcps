@@ -1,16 +1,10 @@
 """Tests for NDP MCP server."""
 
-import os
-
-# Import the server module
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from server import Dataset, NDPClient, mcp
+from ndp_mcp.server import Dataset, NDPClient, mcp
 
 
 class TestNDPClient:
@@ -115,7 +109,7 @@ class TestServerBasics:
 
     def test_server_name(self):
         """Test that the server has the correct name."""
-        assert mcp.name == "NDPServer"
+        assert mcp.name == "ndp"
 
     def test_dataset_model(self):
         """Test Dataset pydantic model."""

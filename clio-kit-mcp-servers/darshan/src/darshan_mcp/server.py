@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""
-Darshan MCP Server for analyzing I/O profiler trace files.
-Provides tools to load, explore, and analyze Darshan log files to understand I/O patterns and performance.
-"""
+"""Darshan MCP Server for analyzing I/O profiler trace files."""
 
 import os
-import sys
-from mcp.server.fastmcp import FastMCP
-from dotenv import load_dotenv
 import logging
-from typing import List, Optional
+from typing import Optional
+
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
+from dotenv import load_dotenv
+
 from darshan_mcp.capabilities import darshan_parser
 
 # Configure logging
@@ -18,213 +18,297 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Ensure project root is on path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 # Load environment variables
 load_dotenv()
 
 # Initialize MCP server
-mcp: FastMCP = FastMCP("DarshanMCP")
+mcp: FastMCP = FastMCP(
+    "darshan",
+    instructions=(
+        "Analyzes I/O performance logs from Darshan profiler. "
+        "Open log files, examine module data, analyze counters, and generate performance insights."
+    ),
+    list_page_size=10,
+)
+
+
+_READ_ONLY_ANNOTATIONS = {
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": True,
+}
 
 
 @mcp.tool(
     name="load_darshan_log",
-    description="Load and parse a Darshan log file to extract I/O performance metrics and metadata. Returns basic information about the trace file including job details, file access patterns, and available modules.",
+    description="Load and parse a Darshan log file to extract I/O performance metrics and metadata.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "io-analysis"},
 )
 async def load_darshan_log_tool(log_file_path: str) -> dict:
-    """
-    Load and parse a Darshan log file to extract metadata and basic I/O information.
+    """Load and parse a Darshan log file to extract metadata and basic I/O information.
 
     Args:
-        log_file_path (str): Absolute path to the .darshan log file
+        log_file_path: Absolute path to the .darshan log file.
 
     Returns:
-        dict: Dictionary with job information, modules detected, and file count statistics.
+        Dictionary with job information, modules detected, and file count statistics.
     """
-    return await darshan_parser.load_darshan_log(log_file_path)
+    result = await darshan_parser.load_darshan_log(log_file_path)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to load Darshan log"))
+    return result
 
 
 @mcp.tool(
     name="get_job_summary",
-    description="Get comprehensive job-level summary from a loaded Darshan log including execution time, number of processes, total I/O volume, and performance metrics.",
+    description="Get job-level summary from a Darshan log including runtime, process count, and I/O volume.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "io-analysis"},
 )
 async def get_job_summary_tool(log_file_path: str) -> dict:
-    """
-    Get comprehensive job-level summary including runtime statistics and I/O performance overview.
+    """Get comprehensive job-level summary including runtime statistics and I/O performance overview.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
+        log_file_path: Path to the Darshan log file.
 
     Returns:
-        dict: Dictionary with runtime metrics, process information, and I/O volume statistics.
+        Dictionary with runtime metrics, process information, and I/O volume statistics.
     """
-    return await darshan_parser.get_job_summary(log_file_path)
+    result = await darshan_parser.get_job_summary(log_file_path)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to get job summary"))
+    return result
 
 
 @mcp.tool(
     name="analyze_file_access_patterns",
-    description="Analyze file access patterns from the trace including which files were accessed, access types (read/write), sequential vs random access patterns, and file size distributions.",
+    description="Analyze file access patterns including read/write types and sequential vs random access.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "io-analysis"},
 )
 async def analyze_file_access_patterns_tool(
     log_file_path: str, file_pattern: Optional[str] = None
 ) -> dict:
-    """
-    Analyze file access patterns to understand application I/O behavior and optimization opportunities.
+    """Analyze file access patterns to understand application I/O behavior.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
-        file_pattern (str, optional): Filter files by pattern (e.g., '*.dat', '/scratch/*')
+        log_file_path: Path to the Darshan log file.
+        file_pattern: Filter files by pattern (e.g., '*.dat', '/scratch/*').
 
     Returns:
-        dict: Dictionary with access pattern analysis including sequential vs random access statistics.
+        Dictionary with access pattern analysis including sequential vs random access statistics.
     """
-    return await darshan_parser.analyze_file_access_patterns(
+    result = await darshan_parser.analyze_file_access_patterns(
         log_file_path, file_pattern
     )
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to analyze file access patterns"))
+    return result
 
 
 @mcp.tool(
     name="get_io_performance_metrics",
-    description="Extract detailed I/O performance metrics including bandwidth, IOPS, average request sizes, and timing information for read and write operations.",
+    description="Extract I/O performance metrics including bandwidth, IOPS, and request sizes.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "performance"},
 )
 async def get_io_performance_metrics_tool(log_file_path: str) -> dict:
-    """
-    Extract detailed I/O performance metrics including bandwidth, IOPS, and request size analysis.
+    """Extract detailed I/O performance metrics including bandwidth, IOPS, and request size analysis.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
+        log_file_path: Path to the Darshan log file.
 
     Returns:
-        dict: Dictionary with comprehensive performance metrics and throughput analysis.
+        Dictionary with comprehensive performance metrics and throughput analysis.
     """
-    return await darshan_parser.get_io_performance_metrics(log_file_path)
+    result = await darshan_parser.get_io_performance_metrics(log_file_path)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to get I/O performance metrics"))
+    return result
 
 
 @mcp.tool(
     name="analyze_posix_operations",
-    description="Analyze POSIX I/O operations from the trace including read/write system calls, file operations (open, close, seek), and their frequency and timing patterns.",
+    description="Analyze POSIX I/O operations including read/write system calls and their frequency.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "io-analysis"},
 )
 async def analyze_posix_operations_tool(log_file_path: str) -> dict:
-    """
-    Analyze POSIX system call patterns including open, read, write, and seek operations.
+    """Analyze POSIX system call patterns including open, read, write, and seek operations.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
+        log_file_path: Path to the Darshan log file.
 
     Returns:
-        dict: Dictionary with POSIX operation statistics and system call analysis.
+        Dictionary with POSIX operation statistics and system call analysis.
     """
-    return await darshan_parser.analyze_posix_operations(log_file_path)
+    result = await darshan_parser.analyze_posix_operations(log_file_path)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to analyze POSIX operations"))
+    return result
 
 
 @mcp.tool(
     name="analyze_mpiio_operations",
-    description="Analyze MPI-IO operations if present in the trace, including collective vs independent operations, file view usage, and MPI-IO specific performance metrics.",
+    description="Analyze MPI-IO operations including collective vs independent operations.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "io-analysis"},
 )
 async def analyze_mpiio_operations_tool(log_file_path: str) -> dict:
-    """
-    Analyze MPI-IO operations including collective vs independent I/O patterns and performance.
+    """Analyze MPI-IO operations including collective vs independent I/O patterns.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
+        log_file_path: Path to the Darshan log file.
 
     Returns:
-        dict: Dictionary with MPI-IO operation analysis and collective I/O performance metrics.
+        Dictionary with MPI-IO operation analysis and collective I/O performance metrics.
     """
-    return await darshan_parser.analyze_mpiio_operations(log_file_path)
+    result = await darshan_parser.analyze_mpiio_operations(log_file_path)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to analyze MPI-IO operations"))
+    return result
 
 
 @mcp.tool(
     name="identify_io_bottlenecks",
-    description="Identify potential I/O performance bottlenecks by analyzing access patterns, file system usage, small vs large I/O operations, and synchronization patterns.",
+    description="Identify I/O performance bottlenecks by analyzing access patterns and operations.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "performance"},
 )
 async def identify_io_bottlenecks_tool(log_file_path: str) -> dict:
-    """
-    Automatically identify potential I/O performance bottlenecks and optimization opportunities.
+    """Identify potential I/O performance bottlenecks and optimization opportunities.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
+        log_file_path: Path to the Darshan log file.
 
     Returns:
-        dict: Dictionary with identified performance issues and recommended optimizations.
+        Dictionary with identified performance issues and recommended optimizations.
     """
-    return await darshan_parser.identify_io_bottlenecks(log_file_path)
+    result = await darshan_parser.identify_io_bottlenecks(log_file_path)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to identify I/O bottlenecks"))
+    return result
 
 
 @mcp.tool(
     name="get_timeline_analysis",
-    description="Generate timeline analysis showing I/O activity over time, including peak I/O periods, idle times, and temporal patterns in file access.",
+    description="Generate timeline analysis showing I/O activity over time and temporal patterns.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "performance"},
 )
 async def get_timeline_analysis_tool(
     log_file_path: str, time_resolution: str = "1s"
 ) -> dict:
-    """
-    Generate temporal analysis of I/O activity to understand performance patterns over time.
+    """Generate temporal analysis of I/O activity to understand performance patterns over time.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
-        time_resolution (str): Time resolution for analysis (e.g., '1s', '100ms')
+        log_file_path: Path to the Darshan log file.
+        time_resolution: Time resolution for analysis (e.g., '1s', '100ms').
 
     Returns:
-        dict: Dictionary with timeline analysis and temporal I/O patterns.
+        Dictionary with timeline analysis and temporal I/O patterns.
     """
-    return await darshan_parser.get_timeline_analysis(log_file_path, time_resolution)
+    result = await darshan_parser.get_timeline_analysis(log_file_path, time_resolution)
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to get timeline analysis"))
+    return result
 
 
 @mcp.tool(
     name="compare_darshan_logs",
-    description="Compare two Darshan log files to identify differences in I/O patterns, performance changes, and behavioral variations between different runs or configurations.",
+    description="Compare two Darshan log files to identify performance differences between runs.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "performance"},
 )
 async def compare_darshan_logs_tool(
-    log_file_1: str, log_file_2: str, comparison_metrics: Optional[List[str]] = None
+    log_file_1: str, log_file_2: str, comparison_metrics: Optional[list[str]] = None
 ) -> dict:
-    """
-    Compare two Darshan log files to identify performance differences and optimization results.
+    """Compare two Darshan log files to identify performance differences.
 
     Args:
-        log_file_1 (str): Path to the first log file
-        log_file_2 (str): Path to the second log file
-        comparison_metrics (list): List of metrics to compare ['bandwidth', 'iops', 'file_count']
+        log_file_1: Path to the first log file.
+        log_file_2: Path to the second log file.
+        comparison_metrics: List of metrics to compare ['bandwidth', 'iops', 'file_count'].
 
     Returns:
-        dict: Dictionary with comparative analysis and performance delta identification.
+        Dictionary with comparative analysis and performance delta identification.
     """
     if comparison_metrics is None:
         comparison_metrics = ["bandwidth", "iops", "file_count"]
-    return await darshan_parser.compare_darshan_logs(
+    result = await darshan_parser.compare_darshan_logs(
         log_file_1, log_file_2, comparison_metrics
     )
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to compare Darshan logs"))
+    return result
 
 
 @mcp.tool(
     name="generate_io_summary_report",
-    description="Generate a comprehensive I/O summary report combining all analysis results into a human-readable format with key findings, performance insights, and recommendations.",
+    description="Generate a comprehensive I/O summary report with findings and recommendations.",
+    annotations=_READ_ONLY_ANNOTATIONS,
+    tags={"darshan", "performance"},
 )
 async def generate_io_summary_report_tool(
     log_file_path: str, include_visualizations: bool = False
 ) -> dict:
-    """
-    Generate comprehensive I/O analysis report with detailed metrics and recommendations.
+    """Generate comprehensive I/O analysis report with detailed metrics and recommendations.
 
     Args:
-        log_file_path (str): Path to the Darshan log file
-        include_visualizations (bool): Whether to include visualization data in the report
+        log_file_path: Path to the Darshan log file.
+        include_visualizations: Whether to include visualization data in the report.
 
     Returns:
-        dict: Dictionary with complete I/O analysis report and performance insights.
+        Dictionary with complete I/O analysis report and performance insights.
     """
-    return await darshan_parser.generate_io_summary_report(
+    result = await darshan_parser.generate_io_summary_report(
         log_file_path, include_visualizations
     )
+    if not result.get("success", False):
+        raise ToolError(result.get("error", "Failed to generate I/O summary report"))
+    return result
 
 
-def main():
-    """Main entry point for the server."""
-    import asyncio
+@mcp.resource("darshan://capabilities")
+def darshan_capabilities() -> dict:
+    """Darshan I/O profiling analysis capabilities."""
+    return {
+        "supported_formats": ["darshan log files (.darshan)"],
+        "analysis_types": [
+            "module counters",
+            "file records",
+            "I/O patterns",
+            "performance summary",
+        ],
+    }
 
-    # Run the FastMCP server
-    asyncio.run(mcp.run())
+
+@mcp.prompt()
+def analyze_io_performance(log_path: str) -> list[Message]:
+    """Guided workflow for analyzing I/O performance from a Darshan log."""
+    return [
+        Message(
+            f"I need to analyze the I/O performance in the Darshan log at {log_path}. "
+            "Open the log, list available modules, show key counters, and provide a performance summary."
+        ),
+    ]
+
+
+def main() -> None:
+    """Main entry point for the Darshan MCP server."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Darshan MCP Server")
+    parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args()
+    transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    if transport == "http":
+        mcp.run(transport="http", host=args.host, port=args.port)
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

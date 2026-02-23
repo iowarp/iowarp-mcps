@@ -1,0 +1,9 @@
+{
+  "clio-plot": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "plot"
+    ]
+  }
+}

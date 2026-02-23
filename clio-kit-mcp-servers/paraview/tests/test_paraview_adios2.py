@@ -139,9 +139,11 @@ class TestConvertAdiosToVtkImproved:
         with (
             patch(
                 "os.path.exists",
-                side_effect=lambda p: True
-                if p == "/test/file.bp5" or p == "/test/file_converted.vti"
-                else False,
+                side_effect=lambda p: (
+                    True
+                    if p == "/test/file.bp5" or p == "/test/file_converted.vti"
+                    else False
+                ),
             ),
             patch("os.path.isdir", return_value=False),
             patch("os.path.splitext", return_value=("/test/file", ".bp5")),

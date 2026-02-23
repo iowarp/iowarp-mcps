@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/arxiv-mcp.svg)](https://pypi.org/project/arxiv-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
-**Part of [CLIO Kit](https://toolkit.iowarp.ai/) - Gnosis Research Center**
+**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
 ArXiv MCP is a comprehensive Model Context Protocol (MCP) server that enables Language Learning Models (LLMs) to search, analyze, and access research papers from the ArXiv preprint repository. This server provides advanced search capabilities, paper analysis tools, and citation management with se...
 
@@ -16,7 +16,7 @@ uvx clio-kit mcp-server arxiv
 
 ## Documentation
 
-- **Full Documentation**: [CLIO Kit Website](https://toolkit.iowarp.ai/)
+- **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
 - **Installation Guide**: See [INSTALLATION.md](../../../CLAUDE.md#setup--installation)
 - **Contributing**: See [Contribution Guide](https://github.com/iowarp/clio-kit/wiki/Contribution)
 
@@ -142,121 +142,129 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\arxiv run arxiv-mcp 
 ## Capabilities
 
 ### `search_arxiv`
-**Description**: Search ArXiv for research papers by category or topic with comprehensive filtering and ranking capabilities.
-
-**Parameters**:
-- `query` (str, optional): Search query or category (default: "cs.AI")
-- `max_results` (int, optional): Maximum number of results to return (default: 5)
-
-**Returns**: Dictionary with search results including paper metadata, abstracts, and ArXiv identifiers.
+**Description**: Search ArXiv for papers by category or topic.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `get_recent_papers`
-**Description**: Get recent papers from a specific ArXiv category with chronological ordering and metadata extraction.
-
-**Parameters**:
-- `category` (str, optional): ArXiv category (default: "cs.AI")
-- `max_results` (int, optional): Maximum number of results to return (default: 5)
-
-**Returns**: Dictionary with recent papers including publication dates, authors, and paper summaries.
+**Description**: Get recent papers from a specific ArXiv category.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, papers
 
 ### `search_papers_by_author`
-**Description**: Search ArXiv papers by author name with comprehensive author matching and publication history.
-
-**Parameters**:
-- `author` (str): Author name to search for
-- `max_results` (int, optional): Maximum number of results to return (default: 10)
-
-**Returns**: Dictionary with author's papers including co-authors, publication timeline, and research areas.
+**Description**: Search ArXiv papers by author name.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `search_by_title`
-**Description**: Search ArXiv papers by title keywords with intelligent keyword matching and relevance scoring.
-
-**Parameters**:
-- `title_keywords` (str): Keywords to search in paper titles
-- `max_results` (int, optional): Maximum number of results to return (default: 10)
-
-**Returns**: Dictionary with search results ranked by title relevance and keyword matching.
+**Description**: Search ArXiv papers by title keywords.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `search_by_abstract`
-**Description**: Search ArXiv papers by abstract keywords with semantic content analysis and relevance ranking.
-
-**Parameters**:
-- `abstract_keywords` (str): Keywords to search in paper abstracts
-- `max_results` (int, optional): Maximum number of results to return (default: 10)
-
-**Returns**: Dictionary with papers matching abstract content with relevance scores and keyword highlights.
+**Description**: Search ArXiv papers by abstract keywords.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `search_by_subject`
-**Description**: Search ArXiv papers by subject classification with comprehensive category-based filtering.
-
-**Parameters**:
-- `subject` (str): ArXiv subject classification (e.g., 'cs.AI', 'physics.astro-ph')
-- `max_results` (int, optional): Maximum number of results to return (default: 10)
-
-**Returns**: Dictionary with papers from specified subject areas with classification metadata.
+**Description**: Search ArXiv papers by subject classification.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `search_date_range`
-**Description**: Search ArXiv papers within a specific date range with optional category filtering and chronological organization.
-
-**Parameters**:
-- `start_date` (str): Start date in YYYY-MM-DD format
-- `end_date` (str): End date in YYYY-MM-DD format
-- `category` (str, optional, optional): Optional category filter (e.g., 'cs.AI')
-- `max_results` (int, optional): Maximum number of results to return (default: 20)
-
-**Returns**: Dictionary with papers published within date range with temporal metadata and category information.
+**Description**: Search ArXiv papers within a specific date range.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `get_paper_details`
-**Description**: Get detailed information about a specific ArXiv paper by ID with comprehensive metadata extraction.
-
-**Parameters**:
-- `arxiv_id` (str): ArXiv paper ID (e.g., '2301.12345' or 'cs/0501001')
-
-**Returns**: Dictionary with detailed paper information including full abstract, authors, categories, and publication data.
+**Description**: Get detailed information about a specific ArXiv paper by ID.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, papers
 
 ### `export_to_bibtex`
-**Description**: Export search results to BibTeX format for citation management and bibliography generation.
-
-**Parameters**:
-- `papers_json` (str): JSON string containing list of papers to export
-
-**Returns**: Dictionary with BibTeX citations properly formatted for academic reference management.
+**Description**: Export search results to BibTeX format for citation management.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, export
 
 ### `find_similar_papers`
-**Description**: Find papers similar to a reference paper based on categories, keywords, and content analysis.
-
-**Parameters**:
-- `reference_paper_id` (str): ArXiv ID of the reference paper
-- `max_results` (int, optional): Maximum number of similar papers to return (default: 10)
-
-**Returns**: Dictionary with similar papers ranked by relevance with similarity scores and matching criteria.
+**Description**: Find papers similar to a reference paper based on categories and keywords.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, search
 
 ### `download_paper_pdf`
-**Description**: Download the PDF of a paper from ArXiv with automatic file management and error handling.
-
-**Parameters**:
-- `arxiv_id` (str): ArXiv paper ID (e.g., '2301.12345' or 'cs/0501001')
-- `download_path` (str, optional, optional): Optional path to save the PDF
-
-**Returns**: Dictionary with download information.
+**Description**: Download the PDF of a paper from ArXiv.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, download
 
 ### `get_pdf_url`
-**Description**: Get PDF URL for an ArXiv paper.
-
-**Parameters**:
-- `arxiv_id` (str): Parameter for arxiv_id
-
-**Returns**: Dictionary with PDF URL information
+**Description**: Get the direct PDF URL for a paper without downloading.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, papers
 
 ### `download_multiple_pdfs`
-**Description**: Download multiple PDFs concurrently.
+**Description**: Download multiple PDFs concurrently with rate limiting.
+**Hints**: read-only, idempotent
+**Tags**: arxiv, download
 
-**Parameters**:
-- `arxiv_ids_json` (str): Parameter for arxiv_ids_json
-- `download_path` (Any, optional): Parameter for download_path
-- `max_concurrent` (int, optional): Parameter for max_concurrent (default: 3)
+### Resources
 
-**Returns**: Dictionary with download results
+- `arxiv://categories` - Common arXiv subject categories and their descriptions.
+
+### Prompts
+
+- **literature_search**: Guided workflow for conducting an arXiv literature search.
+## Claude Code
+
+```bash
+claude mcp add clio-arxiv -- uvx clio-kit arxiv
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-arxiv@iowarp-clio-kit
+```
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-arxiv": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "arxiv"
+      ]
+    }
+  }
+}
+```
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-arxiv": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "arxiv"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
 ## Examples
 
 ### 1. Academic Research Discovery

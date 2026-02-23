@@ -7,12 +7,8 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-import sys
 
-# Add the parent directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.implementation.validation import (
+from pandas_mcp.implementation.validation import (
     validate_data,
     hypothesis_testing,
 )

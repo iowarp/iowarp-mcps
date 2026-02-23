@@ -207,8 +207,8 @@ class TestGetHistogram:
         mock_bin_centers.GetValue.side_effect = [0.0, 50.0, 100.0]
         mock_frequencies.GetValue.side_effect = [10, 20, 30]
         mock_table.GetNumberOfRows.return_value = 3
-        mock_table.GetColumnByName.side_effect = (
-            lambda name: mock_bin_centers if "center" in name else mock_frequencies
+        mock_table.GetColumnByName.side_effect = lambda name: (
+            mock_bin_centers if "center" in name else mock_frequencies
         )
 
         servermanager.Fetch.return_value = mock_table
