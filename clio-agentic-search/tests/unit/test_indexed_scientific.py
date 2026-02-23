@@ -26,6 +26,8 @@ _SCIENCE_TEXT = (
     "Governing relation: $P V = n R T$.\n"
 )
 
+_PLAIN_FORMULA_TEXT = "# Kinetics\nThe rate follows k = A e^{-E_a/RT}, where A is a constant.\n"
+
 
 def _index_document(storage: DuckDBStorage, namespace: str, text: str) -> None:
     doc_id = hashlib.sha1(f"{namespace}:test.md".encode()).hexdigest()
@@ -134,6 +136,19 @@ def test_indexed_search_matches_old_full_scan(tmp_path: Path) -> None:
         assert indexed_ids == full_scan_ids
     finally:
         connector.teardown()
+
+
+def test_plain_text_formula_indexed_and_queryable(tmp_path: Path) -> None:
+    """Plain-text equations (no $ delimiters) are stored in scientific_formulas."""
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.connect()
+    try:
+        _index_document(storage, "ns", _PLAIN_FORMULA_TEXT)
+        sig = normalize_formula("k = A e^{-E_a/RT}")
+        results = storage.query_chunks_by_formula("ns", sig)
+        assert results, "Plain-text Arrhenius formula should be indexed and queryable"
+    finally:
+        storage.teardown()
 
 
 def test_delete_cleans_scientific_tables(tmp_path: Path) -> None:

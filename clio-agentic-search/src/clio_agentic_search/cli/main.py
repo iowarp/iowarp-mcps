@@ -208,6 +208,11 @@ def _run_query(
                     f"score={citation.score:.4f},"
                     f"snippet={citation.snippet}"
                 )
+            if citations[0].score < 0.5:
+                print(
+                    "note: top score is low — results may not be relevant to your query",
+                    file=sys.stderr,
+                )
         else:
             total_indexed = sum(int(s.split("indexed=")[1].split(",")[0]) for s in index_summaries)
             print(

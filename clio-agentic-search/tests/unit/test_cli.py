@@ -57,6 +57,29 @@ def test_seed_command_reports_seeded_namespaces(
     assert "seeded namespace=vector_qdrant,records=1" in captured.out
 
 
+def test_query_plain_text_formula_retrieval(
+    capsys: CaptureFixture[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Plain-text equations (no $ delimiters) are indexed and found via --formula."""
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "kinetics.md").write_text(
+        "# Kinetics\nThe rate follows k = A e^{-E_a/RT}, where A is a constant.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CLIO_LOCAL_ROOT", str(docs_dir))
+    monkeypatch.setenv("CLIO_STORAGE_PATH", str(tmp_path / "formula.duckdb"))
+
+    exit_code = main(["query", "--q", "rate constant", "--formula", "k = A e^{-E_a/RT}"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "citation=" in captured.out
+    assert "kinetics.md" in captured.out
+
+
 def test_query_supports_scientific_operator_flags(
     capsys: CaptureFixture[str],
     tmp_path: Path,

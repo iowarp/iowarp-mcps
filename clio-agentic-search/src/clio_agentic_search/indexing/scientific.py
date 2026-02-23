@@ -16,6 +16,19 @@ _INLINE_EQUATION_PATTERN = re.compile(r"(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)", fl
 _TABLE_LINE_PATTERN = re.compile(r"^\s*\|.*\|\s*$")
 _FACTOR_PATTERN = re.compile(r"(\\[a-z]+|[a-z])(\^\d+)?")
 
+# Plain-text equation: <short_var(s)> = <expression ending at } or ^digits>.
+# Catches e.g. ``k = A e^{-E_a/RT}`` or ``E = mc^2`` without $ delimiters.
+# Uses lazy quantifier so the match stops at the *first* valid math endpoint.
+_PLAIN_EQUATION_PATTERN = re.compile(
+    r"(?<!\$)\b"
+    r"([a-zA-Z_]{1,3}(?:\s+[a-zA-Z_]{1,3})*"
+    r"\s*=\s*"
+    r"[^\n,;$|]*?"
+    r"(?:\}|\^\d+))"
+    r"(?=[,.\s;:!?]|$)",
+)
+_MATH_INDICATOR_RE = re.compile(r"[\^{\\]")
+
 _MEASUREMENT_PATTERN = re.compile(
     r"(?P<value>[+-]?\d+(?:\.\d+)?)\s*(?P<unit>km/h|m/s|km|cm|mm|m|kg|mg|g|h|min|s|mpa|kpa|pa)\b",
     flags=re.IGNORECASE,
@@ -427,6 +440,21 @@ def _extract_equation_expressions(text: str) -> list[str]:
         expression = match.group(1).strip()
         if expression:
             expressions.append(expression)
+            blocked_ranges.append((match.start(), match.end()))
+
+    # Third pass: plain-text equations without $ delimiters.
+    # Matches patterns like ``k = A e^{-E_a/RT}`` or ``E = mc^2``.
+    for match in _PLAIN_EQUATION_PATTERN.finditer(text):
+        if _is_in_blocked_range(match.start(), blocked_ranges):
+            continue
+        expression = match.group(1).strip()
+        if not expression or not _MATH_INDICATOR_RE.search(expression):
+            continue
+        # Skip matches on table lines
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        if text[line_start:].lstrip().startswith("|"):
+            continue
+        expressions.append(expression)
 
     return expressions
 
