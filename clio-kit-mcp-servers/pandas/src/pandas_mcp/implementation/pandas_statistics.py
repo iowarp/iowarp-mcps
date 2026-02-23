@@ -78,7 +78,9 @@ def get_statistical_summary(
                         }
 
         # Categorical column analysis
-        categorical_cols = df.select_dtypes(include=["object", "str", "category"]).columns
+        categorical_cols = df.select_dtypes(
+            include=["object", "string", "category"]
+        ).columns
         categorical_stats = {}
 
         for col in categorical_cols:

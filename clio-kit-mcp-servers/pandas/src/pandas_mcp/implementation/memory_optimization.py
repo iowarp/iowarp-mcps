@@ -71,7 +71,9 @@ def optimize_memory_usage(
                         )
                         if not numeric_series.isnull().all():
                             optimized_df[col] = numeric_series
-                            dtype_changes[col] = f"{original_dtype} -> {numeric_series.dtype}"
+                            dtype_changes[col] = (
+                                f"{original_dtype} -> {numeric_series.dtype}"
+                            )
                             continue
                     except (ValueError, TypeError):
                         pass

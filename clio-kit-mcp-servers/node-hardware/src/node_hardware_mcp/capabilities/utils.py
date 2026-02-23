@@ -70,7 +70,7 @@ def get_os_info() -> dict:
     }
 
 
-def format_bytes(bytes_value: int) -> str:
+def format_bytes(bytes_value: int | float) -> str:
     """
     Format bytes into human-readable string.
 

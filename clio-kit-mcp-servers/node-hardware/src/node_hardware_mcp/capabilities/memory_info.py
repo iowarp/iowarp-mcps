@@ -48,21 +48,21 @@ def get_memory_info() -> dict:
 
         # Add additional memory info if available
         if hasattr(virtual_memory, "buffers"):
-            result["virtual_memory"]["buffers"] = virtual_memory.buffers
+            result["virtual_memory"]["buffers"] = virtual_memory.buffers  # type: ignore[attr-defined]
             result["virtual_memory"]["buffers_formatted"] = format_bytes(
-                virtual_memory.buffers
+                virtual_memory.buffers  # type: ignore[attr-defined]
             )
 
         if hasattr(virtual_memory, "cached"):
-            result["virtual_memory"]["cached"] = virtual_memory.cached
+            result["virtual_memory"]["cached"] = virtual_memory.cached  # type: ignore[attr-defined]
             result["virtual_memory"]["cached_formatted"] = format_bytes(
-                virtual_memory.cached
+                virtual_memory.cached  # type: ignore[attr-defined]
             )
 
         if hasattr(virtual_memory, "shared"):
-            result["virtual_memory"]["shared"] = virtual_memory.shared
+            result["virtual_memory"]["shared"] = virtual_memory.shared  # type: ignore[attr-defined]
             result["virtual_memory"]["shared_formatted"] = format_bytes(
-                virtual_memory.shared
+                virtual_memory.shared  # type: ignore[attr-defined]
             )
 
         return result

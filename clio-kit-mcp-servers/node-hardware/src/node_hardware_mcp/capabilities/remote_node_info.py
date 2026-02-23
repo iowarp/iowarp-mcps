@@ -6,7 +6,7 @@ Handles SSH-based remote node information retrieval.
 import subprocess
 import json
 import os
-from typing import Dict, Optional, List
+from typing import Callable, Dict, Optional, List
 from .system_info import get_system_info
 from .cpu_info import get_cpu_info
 from .memory_info import get_memory_info
@@ -36,7 +36,7 @@ def get_node_info(
     """
     try:
         # Available components with their estimated sizes
-        available_components = {
+        available_components: Dict[str, Callable[..., dict]] = {
             "system": get_system_info,
             "cpu": get_cpu_info,
             "memory": get_memory_info,
@@ -136,7 +136,7 @@ def get_node_info(
 
         # Add metadata
         node_info["_metadata"] = {
-            "hostname": os.uname().nodename,
+            "hostname": os.uname().nodename,  # type: ignore[attr-defined]
             "collection_method": "local",
             "components_requested": list(components_to_include),
             "components_collected": collected_components,

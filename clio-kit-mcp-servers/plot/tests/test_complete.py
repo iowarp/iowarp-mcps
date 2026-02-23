@@ -535,7 +535,7 @@ class TestCompleteSystem:
         # Create comprehensive test scenario
         comprehensive_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2023-01-01", periods=200, freq="H"),
+                "timestamp": pd.date_range("2023-01-01", periods=200, freq="h"),
                 "sensor_1": [50 + 10 * (i % 24) + (i % 7) for i in range(200)],
                 "sensor_2": [30 + 15 * ((i + 12) % 24) + (i % 5) for i in range(200)],
                 "location": [f"Location_{i % 8}" for i in range(200)],

@@ -96,7 +96,9 @@ class TestMCPHandlers:
         """Test parallel sort handler with valid input."""
         output_file = tempfile.mktemp(suffix=".log")
         try:
-            result = await parallel_sort_handler(sample_log_file, 1, 2)
+            result = await parallel_sort_handler(
+                sample_log_file, output_file, chunk_size_mb=1, num_workers=2
+            )
             assert "error" not in result or result.get("error") is None
         finally:
             if os.path.exists(output_file):
@@ -105,7 +107,7 @@ class TestMCPHandlers:
     @pytest.mark.asyncio
     async def test_parallel_sort_handler_file_not_found(self):
         """Test parallel sort handler with non-existent file."""
-        result = await parallel_sort_handler("/nonexistent/file.log")
+        result = await parallel_sort_handler("/nonexistent/file.log", "/tmp/output.log")
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -167,27 +169,25 @@ class TestMCPHandlers:
     @pytest.mark.asyncio
     async def test_filter_level_handler_success(self, sample_log_file):
         """Test filter level handler."""
-        result = await filter_level_handler(sample_log_file, "ERROR", False)
+        result = await filter_level_handler(sample_log_file, "ERROR")
         assert "filtered_lines" in result
 
     @pytest.mark.asyncio
     async def test_filter_level_handler_error(self):
         """Test filter level handler with error."""
-        result = await filter_level_handler("/nonexistent/file.log", "ERROR", False)
+        result = await filter_level_handler("/nonexistent/file.log", "ERROR")
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_filter_keyword_handler_success(self, sample_log_file):
         """Test filter keyword handler."""
-        result = await filter_keyword_handler(sample_log_file, "entry", False, False)
+        result = await filter_keyword_handler(sample_log_file, "entry")
         assert "filtered_lines" in result
 
     @pytest.mark.asyncio
     async def test_filter_keyword_handler_error(self):
         """Test filter keyword handler with error."""
-        result = await filter_keyword_handler(
-            "/nonexistent/file.log", "entry", False, False
-        )
+        result = await filter_keyword_handler("/nonexistent/file.log", "entry")
         assert "error" in result
 
     @pytest.mark.asyncio

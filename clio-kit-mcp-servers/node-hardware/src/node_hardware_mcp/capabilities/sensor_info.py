@@ -24,7 +24,7 @@ def get_sensor_info() -> Dict[str, Any]:
 
         # Try to get temperature information using psutil
         try:
-            temps = psutil.sensors_temperatures()
+            temps = psutil.sensors_temperatures()  # type: ignore[attr-defined]
             if temps:
                 sensor_info["sensors_available"] = True
                 for sensor_name, sensor_list in temps.items():
@@ -48,7 +48,7 @@ def get_sensor_info() -> Dict[str, Any]:
 
         # Try to get fan information using psutil
         try:
-            fans = psutil.sensors_fans()
+            fans = psutil.sensors_fans()  # type: ignore[attr-defined]
             if fans:
                 sensor_info["sensors_available"] = True
                 for fan_name, fan_list in fans.items():

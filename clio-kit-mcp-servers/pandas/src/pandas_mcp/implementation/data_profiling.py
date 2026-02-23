@@ -87,7 +87,9 @@ def profile_data(
                 }
 
         # Categorical columns
-        categorical_cols = df.select_dtypes(include=["object", "str", "category"]).columns
+        categorical_cols = df.select_dtypes(
+            include=["object", "string", "category"]
+        ).columns
         for col in categorical_cols:
             col_data = df[col].dropna()
             if len(col_data) > 0:
@@ -138,7 +140,7 @@ def profile_data(
         }
 
         # Check for mixed types in object columns
-        for col in df.select_dtypes(include=["object", "str"]).columns:
+        for col in df.select_dtypes(include=["object", "string"]).columns:
             col_data = df[col].dropna()
             if len(col_data) > 0:
                 # Check if column has mixed numeric and string values
