@@ -236,18 +236,20 @@ jobs:
         SMITHERY_API_KEY: ${{ secrets.SMITHERY_TOKEN }}
       run: |
         FAILURES=0
+        PUBLISHED=0
         for server_dir in clio-kit-mcp-servers/*/; do
-          if [ ! -f "$server_dir/server.json" ]; then continue; fi
+          if [ ! -f "$server_dir/smithery.yaml" ]; then continue; fi
           server_name=$(basename "$server_dir")
           echo "Publishing $server_name to Smithery..."
-          if smithery mcp publish "https://github.com/${{ github.repository }}" \
-            -n "iowarp/${server_name}-mcp"; then
+          if (cd "$server_dir" && smithery mcp publish -n "iowarp/${server_name}-mcp"); then
             echo "Published $server_name to Smithery"
+            PUBLISHED=$((PUBLISHED + 1))
           else
             echo "::error::Failed to publish $server_name to Smithery"
             FAILURES=$((FAILURES + 1))
           fi
         done
+        echo "Smithery: $PUBLISHED published, $FAILURES failed"
         if [ $FAILURES -gt 0 ]; then
           echo "::error::$FAILURES server(s) failed to publish to Smithery"
           exit 1
