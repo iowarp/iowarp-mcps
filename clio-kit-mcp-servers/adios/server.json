@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/adios-mcp",
   "title": "CLIO Adios",
   "description": "Fetch and analyze BP5 data files using ADIOS2 for scientific data and metadata access.",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "repository": {"url": "https://github.com/iowarp/clio-kit", "source": "github"},
   "packages": [
     {

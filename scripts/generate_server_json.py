@@ -136,7 +136,7 @@ def build_server_json(
         "name": f"io.github.iowarp/{server_name}-mcp",
         "title": f"CLIO {server_name.replace('-', ' ').title()}",
         "description": description,
-        "version": version,
+        "version": pypi_version,
         "repository": {"url": REPO_URL, "source": "github"},
         "packages": [
             {

@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/slurm-mcp",
   "title": "CLIO Slurm",
   "description": "MCP server for Slurm workload management and HPC job scheduling",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
