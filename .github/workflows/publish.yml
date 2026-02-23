@@ -241,7 +241,8 @@ jobs:
           if [ ! -f "$server_dir/smithery.yaml" ]; then continue; fi
           server_name=$(basename "$server_dir")
           echo "Publishing $server_name to Smithery..."
-          if (cd "$server_dir" && smithery mcp publish -n "iowarp/${server_name}-mcp"); then
+          if smithery mcp publish "https://github.com/${{ github.repository }}" \
+            -n "iowarp/${server_name}-mcp" --transport stdio; then
             echo "Published $server_name to Smithery"
             PUBLISHED=$((PUBLISHED + 1))
           else
