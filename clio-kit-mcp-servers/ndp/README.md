@@ -134,6 +134,61 @@ uv run python src/server.py
 **Hints**: read-only, idempotent
 **Tags**: datasets, metadata
 
+### `register_dataset`
+**Description**: Create a new general dataset in NDP. Requires bearer auth (NDP_BEARER_TOKEN env var). The dataset is created in the specified catalog scope and can then be populated with resources.
+**Hints**: destructive
+**Tags**: datasets, registration, write
+
+### `register_kafka_topic`
+**Description**: Register a Kafka topic as an NDP streaming data source. Requires bearer auth. Creates a dataset entry that points at the topic.
+**Hints**: destructive
+**Tags**: kafka, registration, streaming, write
+
+### `register_s3_resource`
+**Description**: Register an S3-hosted file as an NDP resource. Requires bearer auth. The S3 URL must be reachable from the NDP endpoint.
+**Hints**: destructive
+**Tags**: registration, resources, s3, write
+
+### `register_url_resource`
+**Description**: Register a URL-addressable resource (CSV / JSON / NetCDF / stream / etc.). Requires bearer auth.
+**Hints**: destructive
+**Tags**: registration, resources, url, write
+
+### `search_resources`
+**Description**: Search the NDP resource catalog (across all datasets) by name, URL, format, or free-text query. Returns matching resources with their parent dataset references.
+**Hints**: read-only, idempotent
+**Tags**: resources, search
+
+### `get_jupyter_details`
+**Description**: Fetch JupyterHub workspace connection details for the current user (URL, available kernels, token-handling guidance). Requires bearer auth.
+**Hints**: read-only, idempotent
+**Tags**: jupyter, status, workspace
+
+### `get_user_info`
+**Description**: Return the calling user's identity and authorization claims (name, email, roles, org memberships). Requires bearer auth.
+**Hints**: read-only, idempotent
+**Tags**: auth, user
+
+### `list_kafka_streams`
+**Description**: List Kafka streaming data sources in NDP — host/port/topic of each. Free to call without auth on `server='local'`. Optionally filter by free-text query or topic-name substring.
+**Hints**: read-only, idempotent
+**Tags**: discovery, kafka, streams
+
+### `get_kafka_details`
+**Description**: Get NDP-EP's Kafka broker connection details — broker list, consumer-group hints, auth requirements. Requires bearer auth.
+**Hints**: read-only, idempotent
+**Tags**: kafka, status, streams
+
+### `get_system_metrics`
+**Description**: Get NDP-EP system health metrics (CPU, memory, message rate, lag). Requires bearer auth.
+**Hints**: read-only, idempotent
+**Tags**: metrics, status
+
+### `register_derived_stream`
+**Description**: Register a NEW Kafka topic that filters / derives from an existing one — the pattern used by the EarthScope GNSS UI to publish per-station or per-SNCL filtered streams. Wraps NDP-EP's /kafka registration with a `mapping` field that records the filter. Requires bearer auth.
+**Hints**: destructive
+**Tags**: kafka, registration, streams, write
+
 ### Resources
 
 - `ndp://catalogs` - List of available NDP dataset catalogs.
