@@ -120,10 +120,14 @@ class TestNDPClientEdgeCases:
             result = await client._make_request("POST", "/test", json_data=test_data)
             assert result == {"result": "created"}
 
-            # Verify the POST was called with correct parameters
-            mock_client.return_value.__aenter__.return_value.post.assert_called_once_with(
-                "http://test.example.com:8003/test", params=None, json=test_data
-            )
+            # Verify the POST was called with correct parameters. Headers now
+            # carry Accept (and Authorization when NDP_BEARER_TOKEN is set),
+            # so check the call piece-by-piece instead of strict equality.
+            call = mock_client.return_value.__aenter__.return_value.post.call_args
+            assert call.args == ("http://test.example.com:8003/test",)
+            assert call.kwargs["params"] is None
+            assert call.kwargs["json"] == test_data
+            assert call.kwargs["headers"].get("Accept") == "application/json"
 
     @pytest.mark.asyncio
     async def test_list_organizations_empty_result(self, client):

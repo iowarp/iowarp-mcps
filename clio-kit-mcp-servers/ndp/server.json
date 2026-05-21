@@ -34,6 +34,50 @@
     {
       "name": "get_dataset_details",
       "description": "Retrieve detailed metadata for a specific dataset by ID or name."
+    },
+    {
+      "name": "register_dataset",
+      "description": "Create a new general dataset in NDP. Requires bearer auth."
+    },
+    {
+      "name": "register_kafka_topic",
+      "description": "Register a Kafka topic as an NDP streaming data source. Requires bearer auth."
+    },
+    {
+      "name": "register_s3_resource",
+      "description": "Register an S3-hosted file as an NDP resource. Requires bearer auth."
+    },
+    {
+      "name": "register_url_resource",
+      "description": "Register a URL-addressable resource (CSV / JSON / NetCDF / stream). Requires bearer auth."
+    },
+    {
+      "name": "search_resources",
+      "description": "Search the NDP resource catalog by name, URL, format, or free-text query."
+    },
+    {
+      "name": "get_jupyter_details",
+      "description": "Fetch JupyterHub workspace connection details. Requires bearer auth."
+    },
+    {
+      "name": "get_user_info",
+      "description": "Return the calling user's identity and authorization claims. Requires bearer auth."
+    },
+    {
+      "name": "list_kafka_streams",
+      "description": "List Kafka streaming data sources in NDP. Free to call on server='local'; optional q/name/limit filters."
+    },
+    {
+      "name": "get_kafka_details",
+      "description": "Get NDP-EP Kafka broker connection details. Requires bearer auth."
+    },
+    {
+      "name": "get_system_metrics",
+      "description": "Get NDP-EP system health metrics. Requires bearer auth."
+    },
+    {
+      "name": "register_derived_stream",
+      "description": "Register a derived Kafka topic that filters an upstream one (EarthScope GNSS UI pattern). Requires bearer auth."
     }
   ],
   "resources": [
