@@ -27,6 +27,7 @@ import csv as _csv
 import hashlib
 import io as _io
 import json as _json
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -72,6 +73,48 @@ from clio_agentic_search.retrieval.scientific import (
     score_scientific_metadata,
 )
 from clio_agentic_search.storage.contracts import DocumentBundle, FileIndexState, StorageAdapter
+
+# Whether the clio-core CTE client has been initialised in this process.
+_CTE_CLIENT_READY = False
+
+
+def _ensure_cte_client() -> None:
+    """Initialise the clio-core CTE client once per process.
+
+    clio-core requires the Chimaera client and the CTE subsystem to be
+    initialised before ``get_cte_client()``/``Tag`` operations; skipping this
+    segfaults on the first ``Tag`` call against a live runtime. This mirrors
+    the official client bring-up sequence (``chimaera_init`` followed by
+    ``initialize_cte``). It is idempotent and a no-op on the legacy
+    ``wrp_cte_core_ext`` module, which does not expose these entry points.
+
+    Honoured environment variables:
+      ``CLIO_SERVER_CONF``  runtime YAML path (default ``~/.clio/clio.yaml``)
+      ``CHI_WITH_RUNTIME``  ``1`` to start an in-process runtime (single-node);
+                            otherwise the client attaches to an external
+                            ``clio_run`` daemon.
+    """
+    global _CTE_CLIENT_READY
+    if _CTE_CLIENT_READY:
+        return
+    chimaera_init = getattr(cte, "chimaera_init", None)
+    chimaera_mode = getattr(cte, "ChimaeraMode", None)
+    if chimaera_init is None or chimaera_mode is None:
+        # Legacy module: the client is initialised by the host process.
+        _CTE_CLIENT_READY = True
+        return
+    with_runtime = os.environ.get("CHI_WITH_RUNTIME", "0").strip().lower() in ("1", "true", "yes")
+    if not chimaera_init(chimaera_mode.kClient, with_runtime):
+        raise RuntimeError("Failed to initialise the IOWarp Chimaera client (chimaera_init)")
+    initialize_cte = getattr(cte, "initialize_cte", None)
+    if initialize_cte is not None:
+        config_path = os.environ.get("CLIO_SERVER_CONF") or os.path.expanduser("~/.clio/clio.yaml")
+        if not initialize_cte(config_path, cte.PoolQuery.Dynamic()):
+            raise RuntimeError(
+                "Failed to initialise the IOWarp CTE subsystem "
+                f"(initialize_cte, config={config_path})"
+            )
+    _CTE_CLIENT_READY = True
 
 
 @dataclass(slots=True)
@@ -120,6 +163,7 @@ class IOWarpConnector:
                 "IOWarp CTE bindings are not installed. Install clio-core "
                 "(pip install iowarp-core), which provides the clio_cte_core_ext module."
             )
+        _ensure_cte_client()
         self._cte_client = cte.get_cte_client()
         self.storage.connect()
         self._connected = True
