@@ -368,17 +368,21 @@ def search(args):
     """Run agentic search commands (query, index, serve, list, seed)."""
 
     if not args:
-        click.echo("clio-kit search: Hybrid retrieval engine for scientific corpora")
+        click.echo("clio-kit search: Agentic hybrid retrieval engine for scientific corpora")
         click.echo("\nSubcommands:")
-        click.echo("  query   Run retrieval queries")
+        click.echo("  query   Run retrieval queries (add --agentic for the multi-hop loop)")
         click.echo("  index   Index documents into a namespace")
         click.echo("  serve   Start the FastAPI server")
         click.echo("  list    List indexed documents")
         click.echo("  seed    Seed sample data")
+        click.echo("\nNamespaces: local_fs, object_s3, vector_qdrant, hdf5_data, netcdf_data")
         click.echo("\nUsage: uvx clio-kit search <subcommand> [options]")
         click.echo("\nExamples:")
         click.echo('  uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"')
-        click.echo("  uvx clio-kit search index --namespace local_fs")
+        click.echo('  uvx clio-kit search query --namespace local_fs --q "F=ma" --formula "F=ma"')
+        click.echo('  uvx clio-kit search query --namespace local_fs --q "turbulence" \\')
+        click.echo("        --agentic --max-hops 3 --llm-rewrite")
+        click.echo("  uvx clio-kit search index --namespace hdf5_data")
         click.echo("  uvx clio-kit search serve --port 8080")
         return
 
