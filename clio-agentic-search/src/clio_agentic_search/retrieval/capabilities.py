@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from clio_agentic_search.retrieval.scientific import ScientificQueryOperators
+
+if TYPE_CHECKING:
+    from clio_agentic_search.retrieval.corpus_profile import CorpusProfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,3 +74,9 @@ class ScientificSearchCapable(Protocol):
         operators: ScientificQueryOperators,
     ) -> list[ScoredChunk]:
         """Search by scientific operators on structured/indexed scientific metadata."""
+
+
+@runtime_checkable
+class CorpusProfileCapable(Protocol):
+    def corpus_profile(self) -> CorpusProfile:
+        """Return a lightweight statistical profile of indexed content."""

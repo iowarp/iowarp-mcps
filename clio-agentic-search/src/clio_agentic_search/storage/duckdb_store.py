@@ -8,7 +8,10 @@ import threading
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from clio_agentic_search.retrieval.corpus_profile import CorpusProfile
 
 import duckdb
 
@@ -128,10 +131,20 @@ class DuckDBStorage:
                     canonical_unit TEXT,
                     canonical_value DOUBLE,
                     raw_unit TEXT,
-                    raw_value DOUBLE
+                    raw_value DOUBLE,
+                    quality TEXT DEFAULT 'unknown'
                 )
                 """
             )
+            # Additive migration for pre-existing databases that were created
+            # before the quality column was introduced. ALTER ADD COLUMN is
+            # idempotent on DuckDB via try/except.
+            try:
+                connection.execute(
+                    "ALTER TABLE scientific_measurements ADD COLUMN quality TEXT DEFAULT 'unknown'"
+                )
+            except duckdb.Error:
+                pass  # column already exists
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scientific_formulas (
@@ -355,6 +368,7 @@ class DuckDBStorage:
                             m.canonical_value,
                             m.raw_unit,
                             m.raw_value,
+                            m.quality,
                         )
                     )
             elif meta_item.key == "scientific.formulas":
@@ -372,8 +386,9 @@ class DuckDBStorage:
             connection.executemany(
                 """
                 INSERT INTO scientific_measurements(
-                    namespace, chunk_id, canonical_unit, canonical_value, raw_unit, raw_value
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    namespace, chunk_id, canonical_unit, canonical_value,
+                    raw_unit, raw_value, quality
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 measurement_rows,
             )
@@ -508,6 +523,40 @@ class DuckDBStorage:
 
         return [self._row_to_chunk_record(row) for row in rows]
 
+    def sample_chunks(
+        self,
+        namespace: str,
+        sample_size: int,
+        seed: int = 42,
+    ) -> list[ChunkRecord]:
+        """Return at most ``sample_size`` chunks chosen deterministically.
+
+        Uses a hash over ``(chunk_id, seed)`` so results are stable for a
+        given seed — useful for reproducible schema-inference runs and
+        tests. If the namespace has fewer chunks than requested, returns
+        everything.
+        """
+        if sample_size <= 0:
+            return []
+        with self._connection_lock:
+            connection = self._require_connection()
+            # DuckDB supports hash(col1, col2). We salt with the seed as a
+            # string so different seeds produce different orderings. ORDER
+            # BY on the resulting integer gives a deterministic random
+            # permutation.
+            rows = connection.execute(
+                """
+                SELECT namespace, chunk_id, document_id, chunk_index, text,
+                       start_offset, end_offset
+                FROM chunks
+                WHERE namespace = ?
+                ORDER BY hash(chunk_id || CAST(? AS VARCHAR))
+                LIMIT ?
+                """,
+                [namespace, str(seed), int(sample_size)],
+            ).fetchall()
+        return [self._row_to_chunk_record(row) for row in rows]
+
     def list_embeddings(self, namespace: str, model: str) -> dict[str, tuple[float, ...]]:
         with self._connection_lock:
             connection = self._require_connection()
@@ -558,6 +607,20 @@ class DuckDBStorage:
             ).fetchall()
         return {str(key): str(value) for key, value in rows}
 
+    def get_document_metadata(self, namespace: str, document_id: str) -> dict[str, str]:
+        with self._connection_lock:
+            connection = self._require_connection()
+            rows = connection.execute(
+                """
+                SELECT key, value
+                FROM metadata
+                WHERE namespace = ? AND scope = 'document' AND record_id = ?
+                ORDER BY key
+                """,
+                [namespace, document_id],
+            ).fetchall()
+        return {str(key): str(value) for key, value in rows}
+
     def get_document_uri(self, namespace: str, document_id: str) -> str:
         with self._connection_lock:
             connection = self._require_connection()
@@ -579,7 +642,29 @@ class DuckDBStorage:
         canonical_unit: str,
         minimum: float | None,
         maximum: float | None,
+        acceptable_quality: tuple[str, ...] | None = None,
     ) -> list[ChunkRecord]:
+        """Range query on ``scientific_measurements``.
+
+        Args:
+            namespace, canonical_unit, minimum, maximum: Standard range bounds.
+                The canonical_unit may be either the dim-key form
+                (``"1,-1,-2,0,0,0,0"``) or a short unit name (``"pa"``) which
+                is converted internally.
+            acceptable_quality: Optional whitelist of ``QualityFlag`` string
+                values. When provided, only measurements whose ``quality``
+                column is in this set are returned. ``None`` (default)
+                disables quality filtering for backward compatibility.
+        """
+        # Support both legacy unit strings ("pa") and dimension keys ("1|-1|-2|0|0|0|0").
+        # If the caller passes a short unit name, convert it to the dimension key.
+        if "," not in canonical_unit:
+            from clio_agentic_search.indexing.scientific import canonicalize_measurement
+
+            try:
+                _, canonical_unit = canonicalize_measurement(0.0, canonical_unit)
+            except ValueError:
+                pass  # keep original string if unit is unknown
         conditions = ["sm.namespace = ?", "sm.canonical_unit = ?"]
         params: list[Any] = [namespace, canonical_unit]
         if minimum is not None:
@@ -588,6 +673,10 @@ class DuckDBStorage:
         if maximum is not None:
             conditions.append("sm.canonical_value <= ?")
             params.append(maximum)
+        if acceptable_quality is not None and len(acceptable_quality) > 0:
+            placeholders = ",".join("?" * len(acceptable_quality))
+            conditions.append(f"sm.quality IN ({placeholders})")
+            params.extend(acceptable_quality)
         where = " AND ".join(conditions)
         with self._connection_lock:
             connection = self._require_connection()
@@ -603,6 +692,56 @@ class DuckDBStorage:
                 params,
             ).fetchall()
         return [self._row_to_chunk_record(row) for row in rows]
+
+    def query_metadata_schema_rows(
+        self,
+        namespace: str,
+    ) -> list[tuple[str, str, str, int]]:
+        """Return ``(key, scope, sample_value, count)`` rows for schema inference.
+
+        Each row counts how many distinct ``record_id`` values in the namespace
+        have that ``(key, scope)`` pair. Used by
+        :func:`clio_agentic_search.retrieval.metadata_schema.build_metadata_schema`.
+        """
+        with self._connection_lock:
+            connection = self._require_connection()
+            rows = connection.execute(
+                """
+                SELECT key,
+                       scope,
+                       ANY_VALUE(value) AS sample_value,
+                       COUNT(DISTINCT record_id) AS record_count
+                FROM metadata
+                WHERE namespace = ?
+                GROUP BY key, scope
+                ORDER BY record_count DESC
+                """,
+                [namespace],
+            ).fetchall()
+        return [(str(k), str(s), str(v) if v is not None else "", int(c)) for k, s, v, c in rows]
+
+    def query_quality_summary(
+        self,
+        namespace: str,
+    ) -> dict[str, int]:
+        """Return a count of measurements per quality flag in the namespace.
+
+        Returns a dict keyed by quality string (e.g. ``{"good": 1234,
+        "questionable": 5, "missing": 12}``). Unknown / missing values
+        map to ``"unknown"``.
+        """
+        with self._connection_lock:
+            connection = self._require_connection()
+            rows = connection.execute(
+                """
+                SELECT COALESCE(quality, 'unknown') AS q, COUNT(*)
+                FROM scientific_measurements
+                WHERE namespace = ?
+                GROUP BY q
+                """,
+                [namespace],
+            ).fetchall()
+        return {str(q): int(count) for q, count in rows}
 
     def query_chunks_by_formula(self, namespace: str, formula_signature: str) -> list[ChunkRecord]:
         with self._connection_lock:
@@ -630,22 +769,58 @@ class DuckDBStorage:
         if not tokens or limit <= 0:
             return []
         placeholders = ", ".join("?" for _ in tokens)
-        params: list[Any] = [namespace, *tokens, namespace, limit]
+        # BM25 parameters (Okapi BM25: k1=1.2, b=0.75)
+        k1 = 1.2
+        b = 0.75
+        params: list[Any] = [namespace, namespace, namespace, namespace, *tokens, namespace, limit]
         with self._connection_lock:
             connection = self._require_connection()
             rows = connection.execute(
                 f"""
-                WITH matched AS (
-                    SELECT chunk_id, SUM(term_freq) AS overlap
+                WITH corpus_stats AS (
+                    SELECT
+                        COUNT(DISTINCT chunk_id) AS total_chunks,
+                        AVG(chunk_token_count) AS avgdl
+                    FROM (
+                        SELECT chunk_id, SUM(term_freq) AS chunk_token_count
+                        FROM lexical_postings
+                        WHERE namespace = ?
+                        GROUP BY chunk_id
+                    ) sub
+                ),
+                token_df AS (
+                    SELECT token, COUNT(DISTINCT chunk_id) AS df
                     FROM lexical_postings
-                    WHERE namespace = ? AND token IN ({placeholders})
+                    WHERE namespace = ?
+                    GROUP BY token
+                ),
+                chunk_lengths AS (
+                    SELECT chunk_id, SUM(term_freq) AS dl
+                    FROM lexical_postings
+                    WHERE namespace = ?
                     GROUP BY chunk_id
+                ),
+                bm25_scored AS (
+                    SELECT
+                        lp.chunk_id,
+                        SUM(
+                            LN((cs.total_chunks - td.df + 0.5) / (td.df + 0.5) + 1.0)
+                            * (lp.term_freq * ({k1} + 1.0))
+                            / (lp.term_freq + {k1} * (1.0 - {b} + {b} * cl.dl / cs.avgdl))
+                        ) AS bm25_score,
+                        SUM(lp.term_freq) AS overlap
+                    FROM lexical_postings lp
+                    JOIN token_df td ON td.token = lp.token
+                    JOIN chunk_lengths cl ON cl.chunk_id = lp.chunk_id
+                    CROSS JOIN corpus_stats cs
+                    WHERE lp.namespace = ? AND lp.token IN ({placeholders})
+                    GROUP BY lp.chunk_id
                 )
                 SELECT c.namespace, c.chunk_id, c.document_id, c.chunk_index, c.text,
-                       c.start_offset, c.end_offset, matched.overlap
-                FROM matched
-                JOIN chunks c ON c.namespace = ? AND c.chunk_id = matched.chunk_id
-                ORDER BY matched.overlap DESC, c.chunk_id
+                       c.start_offset, c.end_offset, bm.overlap, bm.bm25_score
+                FROM bm25_scored bm
+                JOIN chunks c ON c.namespace = ? AND c.chunk_id = bm.chunk_id
+                ORDER BY bm.bm25_score DESC, c.chunk_id
                 LIMIT ?
                 """,
                 params,
@@ -654,8 +829,13 @@ class DuckDBStorage:
         for row in rows:
             chunk_row = row[:7]
             overlap = int(row[7])
+            bm25 = float(row[8])
             matches.append(
-                LexicalChunkMatch(chunk=self._row_to_chunk_record(chunk_row), overlap_count=overlap)
+                LexicalChunkMatch(
+                    chunk=self._row_to_chunk_record(chunk_row),
+                    overlap_count=overlap,
+                    bm25_score=bm25,
+                )
             )
         return matches
 
@@ -758,6 +938,81 @@ class DuckDBStorage:
         if self._connection is None:
             raise RuntimeError("Storage is not connected")
         return self._connection
+
+    def corpus_profile_stats(self, namespace: str) -> CorpusProfile:
+        """Return lightweight corpus statistics for *namespace*."""
+        from clio_agentic_search.retrieval.corpus_profile import CorpusProfile
+
+        with self._connection_lock:
+            connection = self._require_connection()
+
+            doc_count = connection.execute(
+                "SELECT COUNT(*) FROM documents WHERE namespace = ?", [namespace]
+            ).fetchone()[0]
+
+            chunk_count = connection.execute(
+                "SELECT COUNT(*) FROM chunks WHERE namespace = ?", [namespace]
+            ).fetchone()[0]
+
+            meas_count = connection.execute(
+                "SELECT COUNT(*) FROM scientific_measurements WHERE namespace = ?",
+                [namespace],
+            ).fetchone()[0]
+
+            formula_count = connection.execute(
+                "SELECT COUNT(*) FROM scientific_formulas WHERE namespace = ?",
+                [namespace],
+            ).fetchone()[0]
+
+            distinct_units_rows = connection.execute(
+                "SELECT DISTINCT canonical_unit FROM scientific_measurements WHERE namespace = ?",
+                [namespace],
+            ).fetchall()
+            distinct_units = tuple(sorted(r[0] for r in distinct_units_rows))
+
+            distinct_formulas_rows = connection.execute(
+                "SELECT DISTINCT formula_signature FROM scientific_formulas WHERE namespace = ?",
+                [namespace],
+            ).fetchall()
+            distinct_formulas = tuple(sorted(r[0] for r in distinct_formulas_rows))
+
+            embedding_count = connection.execute(
+                "SELECT COUNT(*) FROM embeddings WHERE namespace = ?", [namespace]
+            ).fetchone()[0]
+
+            lexical_count = connection.execute(
+                "SELECT COUNT(*) FROM lexical_postings WHERE namespace = ?",
+                [namespace],
+            ).fetchone()[0]
+
+            # metadata_density: fraction of chunks that have at least one
+            # scientific.measurements or scientific.formulas metadata key.
+            if chunk_count > 0:
+                sci_chunk_count = connection.execute(
+                    """
+                    SELECT COUNT(DISTINCT record_id) FROM metadata
+                    WHERE namespace = ? AND scope = 'chunk'
+                      AND key IN ('scientific.measurements', 'scientific.formulas')
+                      AND value IS NOT NULL AND value != ''
+                    """,
+                    [namespace],
+                ).fetchone()[0]
+                metadata_density = sci_chunk_count / chunk_count
+            else:
+                metadata_density = 0.0
+
+        return CorpusProfile(
+            namespace=namespace,
+            document_count=doc_count,
+            chunk_count=chunk_count,
+            measurement_count=meas_count,
+            formula_count=formula_count,
+            distinct_units=distinct_units,
+            distinct_formulas=distinct_formulas,
+            metadata_density=metadata_density,
+            embedding_count=embedding_count,
+            lexical_posting_count=lexical_count,
+        )
 
     @staticmethod
     def _row_to_chunk_record(row: tuple[Any, ...]) -> ChunkRecord:

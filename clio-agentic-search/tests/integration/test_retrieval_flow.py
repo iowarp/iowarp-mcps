@@ -47,6 +47,7 @@ def test_query_returns_deterministic_citations_and_trace(tmp_path: Path) -> None
     assert first.trace and second.trace
     assert [event.stage for event in first.trace] == [
         "query_started",
+        "branch_plan_selected",
         "lexical_completed",
         "vector_completed",
         "graph_completed",

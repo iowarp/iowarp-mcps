@@ -156,9 +156,9 @@ def _run_numeric_exactness_scenario(
         measurements.extend(decode_measurements(metadata.get("scientific.measurements", "")))
 
     expected = [
-        (101000.0, "pa"),
-        (200000.0, "pa"),
-        (350000.0, "pa"),
+        (101000.0, "1,-1,-2,0,0,0,0"),
+        (200000.0, "1,-1,-2,0,0,0,0"),
+        (350000.0, "1,-1,-2,0,0,0,0"),
     ]
     exactness = numeric_exactness(measurements, expected, tolerance=1e-6)
     results.append(

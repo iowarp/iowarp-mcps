@@ -28,6 +28,7 @@ class FileIndexState:
 class LexicalChunkMatch:
     chunk: ChunkRecord
     overlap_count: int
+    bm25_score: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)

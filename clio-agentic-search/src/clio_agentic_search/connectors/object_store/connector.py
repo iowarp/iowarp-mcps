@@ -336,7 +336,7 @@ class S3ObjectStoreConnector:
                 chunk_id=match.chunk.chunk_id,
                 document_id=match.chunk.document_id,
                 text=match.chunk.text,
-                lexical_score=match.overlap_count / len(query_tokens),
+                lexical_score=match.bm25_score,
             )
             for match in matches
         ]

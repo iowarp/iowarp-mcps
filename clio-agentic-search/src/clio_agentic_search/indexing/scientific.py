@@ -30,26 +30,169 @@ _PLAIN_EQUATION_PATTERN = re.compile(
 _MATH_INDICATOR_RE = re.compile(r"[\^{\\]")
 
 _MEASUREMENT_PATTERN = re.compile(
-    r"(?P<value>[+-]?\d+(?:\.\d+)?)\s*(?P<unit>km/h|m/s|km|cm|mm|m|kg|mg|g|h|min|s|mpa|kpa|pa)\b",
+    r"(?P<value>[+-]?\d+(?:\.\d+)?)\s*"
+    r"(?P<unit>"
+    r"km/h|m/s|rad/s|m/s2|"  # compound velocity/acceleration
+    r"degf|degc|°f|°c|kelvin|"  # temperature
+    r"km|cm|mm|nm|m|"  # length
+    r"kg|mg|g|"  # mass
+    r"hz|khz|mhz|ghz|"  # frequency
+    r"bq|ci|"  # radioactivity
+    r"ha|"  # area
+    r"ev|kev|mev|gev|"  # energy
+    r"kj|mj|gj|"  # energy (joule family)
+    r"kw|mw|gw|w|"  # power
+    r"kn|"  # force (kilonewton)
+    r"bar|atm|psi|hpa|mpa|kpa|pa|"  # pressure
+    r"h|min|s"  # time
+    r")\b",
     flags=re.IGNORECASE,
 )
 
-_UNIT_CANONICALIZATION: dict[str, tuple[str, float]] = {
-    "mm": ("m", 1e-3),
-    "cm": ("m", 1e-2),
-    "m": ("m", 1.0),
-    "km": ("m", 1e3),
-    "mg": ("kg", 1e-6),
-    "g": ("kg", 1e-3),
-    "kg": ("kg", 1.0),
-    "s": ("s", 1.0),
-    "min": ("s", 60.0),
-    "h": ("s", 3600.0),
-    "pa": ("pa", 1.0),
-    "kpa": ("pa", 1e3),
-    "mpa": ("pa", 1e6),
-    "m/s": ("m/s", 1.0),
-    "km/h": ("m/s", 1000.0 / 3600.0),
+# ---------------------------------------------------------------------------
+# Composable unit registry based on dimensional analysis.
+#
+# Every physical unit is represented as:
+#   - dim_vector: exponents of the 7 SI base dimensions [M, L, T, I, Θ, N, J]
+#     (mass, length, time, electric current, temperature, amount, luminous intensity)
+#   - scale: multiplicative factor relative to the SI base unit for that dimension
+#   - offset: additive offset (non-zero only for temperature scales)
+#   - domain: semantic grouping for disambiguation (e.g., Hz vs Bq are both T⁻¹)
+#
+# Compatibility check: dimension vectors must match.
+# Conversion: canonical_value = raw_value * scale + offset.
+# Adding a new unit = adding a single row. No code changes required.
+# ---------------------------------------------------------------------------
+
+# Dimension vector indices: M=0, L=1, T=2, I=3, Θ=4, N=5, J=6
+# We use tuples for hashability and fast comparison.
+
+# Base dimension vectors for common physical quantities
+_DIM_LENGTH = (0, 1, 0, 0, 0, 0, 0)  # L
+_DIM_MASS = (1, 0, 0, 0, 0, 0, 0)  # M
+_DIM_TIME = (0, 0, 1, 0, 0, 0, 0)  # T
+_DIM_TEMPERATURE = (0, 0, 0, 0, 1, 0, 0)  # Θ
+_DIM_VELOCITY = (0, 1, -1, 0, 0, 0, 0)  # L·T⁻¹
+_DIM_ACCEL = (0, 1, -2, 0, 0, 0, 0)  # L·T⁻²
+_DIM_PRESSURE = (1, -1, -2, 0, 0, 0, 0)  # M·L⁻¹·T⁻²
+_DIM_FORCE = (1, 1, -2, 0, 0, 0, 0)  # M·L·T⁻²
+_DIM_ENERGY = (1, 2, -2, 0, 0, 0, 0)  # M·L²·T⁻²
+_DIM_POWER = (1, 2, -3, 0, 0, 0, 0)  # M·L²·T⁻³
+_DIM_FREQUENCY = (0, 0, -1, 0, 0, 0, 0)  # T⁻¹
+_DIM_AREA = (0, 2, 0, 0, 0, 0, 0)  # L²
+_DIM_RADIOACT = (0, 0, -1, 0, 0, 0, 0)  # T⁻¹ (same as frequency, different domain)
+
+
+@dataclass(frozen=True, slots=True)
+class UnitEntry:
+    """One row in the composable unit registry."""
+
+    dim_vector: tuple[int, ...]  # exponents of [M, L, T, I, Θ, N, J]
+    scale: float  # multiplicative factor to SI base
+    offset: float = 0.0  # additive offset (temperature only)
+    domain: str = ""  # semantic grouping (pressure, temperature, etc.)
+
+
+# The registry: unit_name → UnitEntry.
+# Adding a new unit = adding a single line here.
+_UNIT_REGISTRY: dict[str, UnitEntry] = {
+    # --- Length (L) ---
+    "nm": UnitEntry(_DIM_LENGTH, 1e-9, domain="length"),
+    "mm": UnitEntry(_DIM_LENGTH, 1e-3, domain="length"),
+    "cm": UnitEntry(_DIM_LENGTH, 1e-2, domain="length"),
+    "m": UnitEntry(_DIM_LENGTH, 1.0, domain="length"),
+    "km": UnitEntry(_DIM_LENGTH, 1e3, domain="length"),
+    # --- Mass (M) ---
+    "mg": UnitEntry(_DIM_MASS, 1e-6, domain="mass"),
+    "g": UnitEntry(_DIM_MASS, 1e-3, domain="mass"),
+    "kg": UnitEntry(_DIM_MASS, 1.0, domain="mass"),
+    # --- Time (T) ---
+    "s": UnitEntry(_DIM_TIME, 1.0, domain="time"),
+    "min": UnitEntry(_DIM_TIME, 60.0, domain="time"),
+    "h": UnitEntry(_DIM_TIME, 3600.0, domain="time"),
+    # --- Temperature (Θ) ---
+    "kelvin": UnitEntry(_DIM_TEMPERATURE, 1.0, 0.0, domain="temperature"),
+    "k": UnitEntry(_DIM_TEMPERATURE, 1.0, 0.0, domain="temperature"),
+    "degc": UnitEntry(_DIM_TEMPERATURE, 1.0, 273.15, domain="temperature"),
+    "°c": UnitEntry(_DIM_TEMPERATURE, 1.0, 273.15, domain="temperature"),
+    "c": UnitEntry(_DIM_TEMPERATURE, 1.0, 273.15, domain="temperature"),
+    "celsius": UnitEntry(_DIM_TEMPERATURE, 1.0, 273.15, domain="temperature"),
+    "centigrade": UnitEntry(_DIM_TEMPERATURE, 1.0, 273.15, domain="temperature"),
+    "degf": UnitEntry(_DIM_TEMPERATURE, 5.0 / 9.0, 255.372, domain="temperature"),
+    "°f": UnitEntry(_DIM_TEMPERATURE, 5.0 / 9.0, 255.372, domain="temperature"),
+    "f": UnitEntry(_DIM_TEMPERATURE, 5.0 / 9.0, 255.372, domain="temperature"),
+    "fahrenheit": UnitEntry(_DIM_TEMPERATURE, 5.0 / 9.0, 255.372, domain="temperature"),
+    # --- Pressure (M·L⁻¹·T⁻²) ---
+    "pa": UnitEntry(_DIM_PRESSURE, 1.0, domain="pressure"),
+    "pascal": UnitEntry(_DIM_PRESSURE, 1.0, domain="pressure"),
+    "pascals": UnitEntry(_DIM_PRESSURE, 1.0, domain="pressure"),
+    "hpa": UnitEntry(_DIM_PRESSURE, 1e2, domain="pressure"),
+    "hectopascal": UnitEntry(_DIM_PRESSURE, 1e2, domain="pressure"),
+    "kpa": UnitEntry(_DIM_PRESSURE, 1e3, domain="pressure"),
+    "kilopascal": UnitEntry(_DIM_PRESSURE, 1e3, domain="pressure"),
+    "mpa": UnitEntry(_DIM_PRESSURE, 1e6, domain="pressure"),
+    "megapascal": UnitEntry(_DIM_PRESSURE, 1e6, domain="pressure"),
+    "bar": UnitEntry(_DIM_PRESSURE, 1e5, domain="pressure"),
+    "atm": UnitEntry(_DIM_PRESSURE, 101325.0, domain="pressure"),
+    "atmosphere": UnitEntry(_DIM_PRESSURE, 101325.0, domain="pressure"),
+    "psi": UnitEntry(_DIM_PRESSURE, 6894.757, domain="pressure"),
+    # --- Velocity (L·T⁻¹) ---
+    "m/s": UnitEntry(_DIM_VELOCITY, 1.0, domain="velocity"),
+    "km/h": UnitEntry(_DIM_VELOCITY, 1000.0 / 3600.0, domain="velocity"),
+    "kn": UnitEntry(_DIM_VELOCITY, 0.514444, domain="velocity"),  # knots
+    # --- Acceleration (L·T⁻²) ---
+    "m/s2": UnitEntry(_DIM_ACCEL, 1.0, domain="acceleration"),
+    # --- Frequency (T⁻¹) ---
+    "hz": UnitEntry(_DIM_FREQUENCY, 1.0, domain="frequency"),
+    "khz": UnitEntry(_DIM_FREQUENCY, 1e3, domain="frequency"),
+    "mhz": UnitEntry(_DIM_FREQUENCY, 1e6, domain="frequency"),
+    "ghz": UnitEntry(_DIM_FREQUENCY, 1e9, domain="frequency"),
+    "rad/s": UnitEntry(_DIM_FREQUENCY, 1.0 / (2 * 3.14159265), domain="frequency"),
+    # --- Radioactivity (T⁻¹, different domain from frequency) ---
+    "bq": UnitEntry(_DIM_RADIOACT, 1.0, domain="radioactivity"),
+    "ci": UnitEntry(_DIM_RADIOACT, 3.7e10, domain="radioactivity"),
+    # --- Energy (M·L²·T⁻²) ---
+    "ev": UnitEntry(_DIM_ENERGY, 1.602176634e-19, domain="energy"),
+    "kev": UnitEntry(_DIM_ENERGY, 1.602176634e-16, domain="energy"),
+    "mev": UnitEntry(_DIM_ENERGY, 1.602176634e-13, domain="energy"),
+    "gev": UnitEntry(_DIM_ENERGY, 1.602176634e-10, domain="energy"),
+    "kj": UnitEntry(_DIM_ENERGY, 1e3, domain="energy"),
+    "mj": UnitEntry(_DIM_ENERGY, 1e6, domain="energy"),
+    "gj": UnitEntry(_DIM_ENERGY, 1e9, domain="energy"),
+    # --- Power (M·L²·T⁻³) ---
+    "w": UnitEntry(_DIM_POWER, 1.0, domain="power"),
+    "kw": UnitEntry(_DIM_POWER, 1e3, domain="power"),
+    "mw": UnitEntry(_DIM_POWER, 1e6, domain="power"),
+    "gw": UnitEntry(_DIM_POWER, 1e9, domain="power"),
+    # --- Area (L²) ---
+    "ha": UnitEntry(_DIM_AREA, 1e4, domain="area"),
+    # --- Force (M·L·T⁻²) ---
+    # "n" omitted — collides with amount-of-substance "N" and generic variables.
+    # Users can add it if their corpus doesn't use "N" as a variable.
+}
+
+# Backward-compatible flat dict for query_rewriter.py (_expand_unit_variants).
+# Maps unit_name → (canonical_dim_key, scale, offset).
+# The canonical_dim_key is a string representation of the dimension vector
+# so that existing code comparing canonical_unit strings still works.
+_DIM_KEY_CACHE: dict[tuple[int, ...], str] = {}
+
+
+def _dim_key(dim_vector: tuple[int, ...]) -> str:
+    """Return a stable string key for a dimension vector.
+
+    Uses comma separator to avoid conflict with the pipe-delimited
+    measurement encoding format used by encode_measurements().
+    """
+    if dim_vector not in _DIM_KEY_CACHE:
+        _DIM_KEY_CACHE[dim_vector] = ",".join(str(d) for d in dim_vector)
+    return _DIM_KEY_CACHE[dim_vector]
+
+
+# Build backward-compatible _UNIT_CANONICALIZATION from the registry.
+_UNIT_CANONICALIZATION: dict[str, tuple[str, float, float]] = {
+    name: (_dim_key(entry.dim_vector), entry.scale, entry.offset)
+    for name, entry in _UNIT_REGISTRY.items()
 }
 
 
@@ -58,7 +201,8 @@ class Measurement:
     raw_value: float
     raw_unit: str
     canonical_value: float
-    canonical_unit: str
+    canonical_unit: str  # dimension key string (e.g., "1|-1|-2|0|0|0|0" for pressure)
+    quality: str = "unknown"  # QualityFlag string form; see indexing.quality
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,8 +225,8 @@ def canonicalize_measurement(value: float, unit: str) -> tuple[float, str]:
     canonical = _UNIT_CANONICALIZATION.get(normalized_unit)
     if canonical is None:
         raise ValueError(f"Unsupported unit '{unit}'")
-    canonical_unit, multiplier = canonical
-    return value * multiplier, canonical_unit
+    canonical_unit, scale, offset = canonical
+    return value * scale + offset, canonical_unit
 
 
 def normalize_formula(formula: str) -> str:
@@ -114,6 +258,20 @@ def _normalize_formula_side(side: str) -> str:
 
 
 def extract_measurements(text: str) -> list[Measurement]:
+    """Extract numeric measurements with units from free text.
+
+    Each match is canonicalised to SI base units. Quality is set to
+    ``"good"`` by default since the value was successfully parsed and
+    canonicalised — downstream connectors can override this when the
+    source provides explicit QC flags (e.g. CSV qc columns).
+    """
+    # Import locally to avoid a top-level circular import (quality depends
+    # on nothing, but indexing.scientific is imported widely).
+    from clio_agentic_search.indexing.quality import (
+        QualityFlag,
+        derive_flag_from_value,
+    )
+
     measurements: list[Measurement] = []
     for match in _MEASUREMENT_PATTERN.finditer(text):
         raw_value = float(match.group("value"))
@@ -122,12 +280,20 @@ def extract_measurements(text: str) -> list[Measurement]:
             canonical_value, canonical_unit = canonicalize_measurement(raw_value, raw_unit)
         except ValueError:
             continue
+        # Default to GOOD, then let the physical-plausibility check
+        # potentially downgrade to QUESTIONABLE for out-of-range values.
+        flag = derive_flag_from_value(
+            canonical_unit,
+            canonical_value,
+            QualityFlag.GOOD,
+        )
         measurements.append(
             Measurement(
                 raw_value=raw_value,
                 raw_unit=raw_unit.lower(),
                 canonical_value=canonical_value,
                 canonical_unit=canonical_unit,
+                quality=flag.value,
             )
         )
     return measurements
@@ -146,24 +312,44 @@ def extract_formula_signatures(text: str) -> list[str]:
 
 
 def encode_measurements(measurements: list[Measurement]) -> str:
+    """Encode a list of :class:`Measurement` objects to a string.
+
+    Format: semicolon-separated entries; each entry pipe-separated as:
+        canonical_unit|canonical_value|raw_unit|raw_value[|quality]
+
+    The optional ``quality`` field is a :class:`~indexing.quality.QualityFlag`
+    string (``"good"``, ``"bad"``, etc). When absent (legacy rows), decoding
+    yields ``quality="unknown"``.
+    """
     if not measurements:
         return ""
     return ";".join(
-        f"{item.canonical_unit}|{item.canonical_value:.12g}|{item.raw_unit}|{item.raw_value:.12g}"
+        f"{item.canonical_unit}|{item.canonical_value:.12g}|"
+        f"{item.raw_unit}|{item.raw_value:.12g}|{item.quality}"
         for item in measurements
     )
 
 
 def decode_measurements(value: str) -> list[Measurement]:
+    """Decode a string produced by :func:`encode_measurements`.
+
+    Accepts both the 4-field legacy format (no quality) and the 5-field
+    format (with quality) for backward compatibility. Malformed entries
+    are skipped silently.
+    """
     decoded: list[Measurement] = []
     if not value:
         return decoded
 
     for item in value.split(";"):
         parts = item.split("|")
-        if len(parts) != 4:
+        if len(parts) < 4:
             continue
-        canonical_unit, canonical_value, raw_unit, raw_value = parts
+        canonical_unit = parts[0]
+        canonical_value = parts[1]
+        raw_unit = parts[2]
+        raw_value = parts[3]
+        quality = parts[4] if len(parts) >= 5 else "unknown"
         try:
             decoded.append(
                 Measurement(
@@ -171,6 +357,7 @@ def decode_measurements(value: str) -> list[Measurement]:
                     raw_unit=raw_unit,
                     canonical_value=float(canonical_value),
                     canonical_unit=canonical_unit,
+                    quality=quality,
                 )
             )
         except ValueError:

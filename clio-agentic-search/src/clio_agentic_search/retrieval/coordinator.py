@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from clio_agentic_search.core.connectors import NamespaceConnector
 from clio_agentic_search.models.contracts import CitationRecord, TraceEvent
 from clio_agentic_search.retrieval.capabilities import (
+    CorpusProfileCapable,
     GraphSearchCapable,
     LexicalSearchCapable,
     MetadataFilterCapable,
@@ -17,7 +18,11 @@ from clio_agentic_search.retrieval.capabilities import (
     VectorSearchCapable,
 )
 from clio_agentic_search.retrieval.rerank import DefaultHeuristicReranker, Reranker
-from clio_agentic_search.retrieval.scientific import ScientificQueryOperators
+from clio_agentic_search.retrieval.scientific import (
+    QualityFilterOperator,
+    ScientificQueryOperators,
+)
+from clio_agentic_search.retrieval.strategy import select_branches
 from clio_agentic_search.telemetry import Tracer, get_tracer
 
 
@@ -137,8 +142,51 @@ class RetrievalCoordinator:
             attributes={"query": query},
         )
 
+        # --- Intelligent branch selection via corpus profiling ---
+        profile = None
+        if isinstance(connector, CorpusProfileCapable):
+            profile = connector.corpus_profile()
+
+        plan = select_branches(
+            query=query,
+            operators=scientific_operators,
+            profile=profile,
+            connector_has_lexical=isinstance(connector, LexicalSearchCapable),
+            connector_has_vector=isinstance(connector, VectorSearchCapable),
+            connector_has_graph=isinstance(connector, GraphSearchCapable),
+            connector_has_scientific=isinstance(connector, ScientificSearchCapable),
+        )
+        # If the plan says to apply the quality filter and the user didn't
+        # specify one explicitly, inject the default QualityFilterOperator so
+        # the scientific branch drops bad/missing rows automatically.
+        if plan.apply_quality_filter and scientific_operators.quality_filter is None:
+            scientific_operators = ScientificQueryOperators(
+                numeric_range=scientific_operators.numeric_range,
+                unit_match=scientific_operators.unit_match,
+                formula=scientific_operators.formula,
+                quality_filter=QualityFilterOperator(),
+            )
+
+        self._append_trace(
+            trace=trace,
+            stage="branch_plan_selected",
+            message=f"branch plan: {plan.reasoning}",
+            attributes={
+                "namespace": namespace,
+                "use_lexical": str(plan.use_lexical),
+                "use_vector": str(plan.use_vector),
+                "use_graph": str(plan.use_graph),
+                "use_scientific": str(plan.use_scientific),
+                "apply_quality_filter": str(plan.apply_quality_filter),
+                "targeted_concepts": ",".join(plan.targeted_concepts),
+                "schema_richness": f"{plan.schema_richness:.3f}",
+                "average_quality": f"{plan.average_quality:.3f}",
+                "has_profile": str(profile is not None),
+            },
+        )
+
         lexical: list[ScoredChunk] = []
-        if isinstance(connector, LexicalSearchCapable):
+        if plan.use_lexical and isinstance(connector, LexicalSearchCapable):
             lexical = connector.search_lexical(query, top_k=top_k * 4)
         self._append_trace(
             trace=trace,
@@ -148,7 +196,7 @@ class RetrievalCoordinator:
         )
 
         vector: list[ScoredChunk] = []
-        if isinstance(connector, VectorSearchCapable):
+        if plan.use_vector and isinstance(connector, VectorSearchCapable):
             vector = connector.search_vector(query, top_k=top_k * 4)
         self._append_trace(
             trace=trace,
@@ -158,7 +206,7 @@ class RetrievalCoordinator:
         )
 
         graph: list[ScoredChunk] = []
-        if isinstance(connector, GraphSearchCapable):
+        if plan.use_graph and isinstance(connector, GraphSearchCapable):
             graph = connector.search_graph(query, top_k=top_k * 2)
         self._append_trace(
             trace=trace,
@@ -168,7 +216,7 @@ class RetrievalCoordinator:
         )
 
         scientific: list[ScoredChunk] = []
-        if scientific_operators.is_active() and isinstance(connector, ScientificSearchCapable):
+        if plan.use_scientific and isinstance(connector, ScientificSearchCapable):
             scientific = connector.search_scientific(
                 query=query,
                 top_k=top_k * 4,
@@ -187,7 +235,7 @@ class RetrievalCoordinator:
             graph=graph,
             scientific=scientific,
         )
-        if scientific_operators.is_active() and isinstance(connector, ScientificSearchCapable):
+        if plan.use_scientific and isinstance(connector, ScientificSearchCapable):
             matched_scientific_ids = {candidate.chunk_id for candidate in scientific}
             merged = [
                 candidate for candidate in merged if candidate.chunk_id in matched_scientific_ids
