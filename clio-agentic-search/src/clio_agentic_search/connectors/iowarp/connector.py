@@ -21,6 +21,7 @@ import io as _io
 import json as _json
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 try:
     from iowarp_core import wrp_cte_core_ext as cte
@@ -28,7 +29,7 @@ try:
     HAS_IOWARP = True
 except ImportError:
     HAS_IOWARP = False
-    cte = None  # type: ignore[assignment]
+    cte = None
 
 from clio_agentic_search.core.connectors import IndexReport
 from clio_agentic_search.indexing.lexical import (
@@ -87,7 +88,7 @@ class IOWarpConnector:
     ann_backend: str = "exact"
     cache_shards: int = 16
     _connected: bool = False
-    _cte_client: object | None = field(default=None, init=False, repr=False)
+    _cte_client: Any = field(default=None, init=False, repr=False)
     _ann_index: ANNAdapter | None = field(default=None, init=False, repr=False)
     _tag_cache: dict[str, object] = field(default_factory=dict, init=False, repr=False)
 
@@ -160,7 +161,7 @@ class IOWarpConnector:
             if hasattr(cte, "MemContext"):
                 _mctx = cte.MemContext()
                 raw_results = list(
-                    self._cte_client.BlobQuery(  # type: ignore[union-attr]
+                    self._cte_client.BlobQuery(
                         _mctx,
                         self.tag_pattern,
                         self.blob_pattern,
@@ -170,7 +171,7 @@ class IOWarpConnector:
                 )
             else:
                 raw_results = list(
-                    self._cte_client.BlobQuery(  # type: ignore[union-attr]
+                    self._cte_client.BlobQuery(
                         self.tag_pattern,
                         self.blob_pattern,
                         self.max_blobs_per_query,
@@ -611,7 +612,7 @@ class IOWarpConnector:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _get_or_create_tag(self, tag_name: str) -> object:
+    def _get_or_create_tag(self, tag_name: str) -> Any:
         if tag_name not in self._tag_cache:
             self._tag_cache[tag_name] = cte.Tag(tag_name)
         return self._tag_cache[tag_name]
@@ -623,7 +624,7 @@ class IOWarpConnector:
         tag_name: str,
         blob_name: str,
         document_id: str,
-        chunks: list,
+        chunks: list[Any],
         chunk_metadata: dict[str, dict[str, str]],
     ) -> list[MetadataRecord]:
         records: list[MetadataRecord] = [

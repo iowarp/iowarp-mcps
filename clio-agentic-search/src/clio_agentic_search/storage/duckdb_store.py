@@ -353,7 +353,7 @@ class DuckDBStorage:
         )
 
         # Populate scientific index tables from metadata
-        measurement_rows: list[tuple[str, str, str, float, str, float]] = []
+        measurement_rows: list[tuple[str, str, str, float, str, float, str]] = []
         formula_rows: list[tuple[str, str, str]] = []
         for meta_item in metadata:
             if meta_item.scope != "chunk":
@@ -939,6 +939,12 @@ class DuckDBStorage:
             raise RuntimeError("Storage is not connected")
         return self._connection
 
+    @staticmethod
+    def _scalar_int(connection: duckdb.DuckDBPyConnection, sql: str, params: list[Any]) -> int:
+        """Execute a single-aggregate query and return its scalar as an int."""
+        row = connection.execute(sql, params).fetchone()
+        return int(row[0]) if row is not None else 0
+
     def corpus_profile_stats(self, namespace: str) -> CorpusProfile:
         """Return lightweight corpus statistics for *namespace*."""
         from clio_agentic_search.retrieval.corpus_profile import CorpusProfile
@@ -946,23 +952,25 @@ class DuckDBStorage:
         with self._connection_lock:
             connection = self._require_connection()
 
-            doc_count = connection.execute(
-                "SELECT COUNT(*) FROM documents WHERE namespace = ?", [namespace]
-            ).fetchone()[0]
+            doc_count = self._scalar_int(
+                connection, "SELECT COUNT(*) FROM documents WHERE namespace = ?", [namespace]
+            )
 
-            chunk_count = connection.execute(
-                "SELECT COUNT(*) FROM chunks WHERE namespace = ?", [namespace]
-            ).fetchone()[0]
+            chunk_count = self._scalar_int(
+                connection, "SELECT COUNT(*) FROM chunks WHERE namespace = ?", [namespace]
+            )
 
-            meas_count = connection.execute(
+            meas_count = self._scalar_int(
+                connection,
                 "SELECT COUNT(*) FROM scientific_measurements WHERE namespace = ?",
                 [namespace],
-            ).fetchone()[0]
+            )
 
-            formula_count = connection.execute(
+            formula_count = self._scalar_int(
+                connection,
                 "SELECT COUNT(*) FROM scientific_formulas WHERE namespace = ?",
                 [namespace],
-            ).fetchone()[0]
+            )
 
             distinct_units_rows = connection.execute(
                 "SELECT DISTINCT canonical_unit FROM scientific_measurements WHERE namespace = ?",
@@ -976,19 +984,21 @@ class DuckDBStorage:
             ).fetchall()
             distinct_formulas = tuple(sorted(r[0] for r in distinct_formulas_rows))
 
-            embedding_count = connection.execute(
-                "SELECT COUNT(*) FROM embeddings WHERE namespace = ?", [namespace]
-            ).fetchone()[0]
+            embedding_count = self._scalar_int(
+                connection, "SELECT COUNT(*) FROM embeddings WHERE namespace = ?", [namespace]
+            )
 
-            lexical_count = connection.execute(
+            lexical_count = self._scalar_int(
+                connection,
                 "SELECT COUNT(*) FROM lexical_postings WHERE namespace = ?",
                 [namespace],
-            ).fetchone()[0]
+            )
 
             # metadata_density: fraction of chunks that have at least one
             # scientific.measurements or scientific.formulas metadata key.
             if chunk_count > 0:
-                sci_chunk_count = connection.execute(
+                sci_chunk_count = self._scalar_int(
+                    connection,
                     """
                     SELECT COUNT(DISTINCT record_id) FROM metadata
                     WHERE namespace = ? AND scope = 'chunk'
@@ -996,7 +1006,7 @@ class DuckDBStorage:
                       AND value IS NOT NULL AND value != ''
                     """,
                     [namespace],
-                ).fetchone()[0]
+                )
                 metadata_density = sci_chunk_count / chunk_count
             else:
                 metadata_density = 0.0

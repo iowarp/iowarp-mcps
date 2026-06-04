@@ -100,7 +100,8 @@ class NDPMCPClient:
                 try:
                     data = json.loads(block.text)
                     if isinstance(data, dict) and "organizations" in data:
-                        return data["organizations"]
+                        organizations: list[str] = data["organizations"]
+                        return organizations
                 except json.JSONDecodeError:
                     pass
         return []

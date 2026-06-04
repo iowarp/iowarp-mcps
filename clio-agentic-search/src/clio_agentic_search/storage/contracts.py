@@ -114,6 +114,7 @@ class StorageAdapter(Protocol):
         canonical_unit: str,
         minimum: float | None,
         maximum: float | None,
+        acceptable_quality: tuple[str, ...] | None = None,
     ) -> list[ChunkRecord]:
         """Query chunks by canonical measurement range."""
 

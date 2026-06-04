@@ -342,7 +342,7 @@ class NDPConnector:
         # Cap at max_csvs after scanning ALL datasets
         csv_urls = csv_urls[:max_csvs]
 
-        stats = {
+        stats: dict[str, Any] = {
             "csvs_attempted": len(csv_urls),
             "csvs_processed": 0,
             "rows_indexed": 0,

@@ -66,9 +66,9 @@ def _extract_hdf5_text(file_path: Path) -> str:
     """
     sections: list[str] = []
 
-    def _visitor(name: str, obj: h5py.Dataset | h5py.Group) -> None:  # type: ignore[name-defined]
+    def _visitor(name: str, obj: h5py.Dataset | h5py.Group) -> None:
         lines: list[str] = []
-        if isinstance(obj, h5py.Dataset):  # type: ignore[name-defined]
+        if isinstance(obj, h5py.Dataset):
             lines.append(f"Dataset: /{name}")
             lines.append(f"Shape: {obj.shape}")
             lines.append(f"Dtype: {obj.dtype}")
@@ -85,7 +85,7 @@ def _extract_hdf5_text(file_path: Path) -> str:
                 lines.append(f"  {attr_name}: {attr_value}")
         sections.append("\n".join(lines))
 
-    with h5py.File(file_path, "r") as f:  # type: ignore[name-defined]
+    with h5py.File(file_path, "r") as f:
         # Emit root-level attributes first.
         if f.attrs:
             root_lines = ["Group: /", "Attributes:"]

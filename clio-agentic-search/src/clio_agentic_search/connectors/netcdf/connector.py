@@ -56,7 +56,7 @@ try:
 
     HAS_XARRAY = True
 except ImportError:
-    xr = None  # type: ignore[assignment]
+    xr = None
     HAS_XARRAY = False
 
 NETCDF_SUFFIXES: frozenset[str] = frozenset({".nc", ".nc4", ".netcdf", ".cdf"})
