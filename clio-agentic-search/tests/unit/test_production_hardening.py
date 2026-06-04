@@ -38,7 +38,7 @@ class TestRegistryCleanup:
         monkeypatch.setenv("CLIO_LOCAL_ROOT", str(tmp_path))
         monkeypatch.setenv("CLIO_STORAGE_PATH", str(tmp_path / "reg2.duckdb"))
         registry = build_default_registry()
-        assert len(registry.list_namespaces()) == 3
+        assert len(registry.list_namespaces()) == 5
         registry.teardown()
 
 

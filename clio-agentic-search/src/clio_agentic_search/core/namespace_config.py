@@ -23,6 +23,8 @@ def load_default_namespace_bundles() -> dict[str, NamespaceConfigBundle]:
     vector_collection = os.environ.get("CLIO_VECTOR_COLLECTION", "local_collection")
     graph_namespace = os.environ.get("CLIO_GRAPH_NAMESPACE", "graph_default")
     kv_stream = os.environ.get("CLIO_KV_STREAM", "events")
+    hdf5_root = Path(os.environ.get("CLIO_HDF5_ROOT", local_root)).resolve()
+    netcdf_root = Path(os.environ.get("CLIO_NETCDF_ROOT", local_root)).resolve()
 
     return {
         "local_fs": NamespaceConfigBundle(
@@ -80,6 +82,16 @@ def load_default_namespace_bundles() -> dict[str, NamespaceConfigBundle]:
                     "password": "CLIO_NEO4J_PASSWORD",
                 },
             ),
+        ),
+        "hdf5_data": NamespaceConfigBundle(
+            namespace="hdf5_data",
+            connector_type="hdf5",
+            runtime=NamespaceRuntimeConfig(options={"root": str(hdf5_root)}),
+        ),
+        "netcdf_data": NamespaceConfigBundle(
+            namespace="netcdf_data",
+            connector_type="netcdf",
+            runtime=NamespaceRuntimeConfig(options={"root": str(netcdf_root)}),
         ),
         "kv_redis": NamespaceConfigBundle(
             namespace="kv_redis",
