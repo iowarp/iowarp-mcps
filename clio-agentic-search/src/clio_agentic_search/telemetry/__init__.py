@@ -7,7 +7,7 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 # ---------- Tracer abstraction ----------
 
@@ -243,7 +243,7 @@ class _PrometheusClientMetricsBackend:
         self._index_duration.observe(seconds)
 
     def export(self) -> str:
-        raw = cast(bytes, self._generate_latest(self._registry))
+        raw: bytes = self._generate_latest(self._registry)
         return raw.decode("utf-8")
 
 

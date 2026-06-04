@@ -82,7 +82,10 @@ class QueryRewriter:
             messages=[{"role": "user", "content": user_message}],
         )
 
-        raw_text = response.content[0].text.strip()
+        # response.content[0] is a content-block union; only text blocks carry
+        # `.text`. The model is prompted to return plain text, so read it
+        # defensively to satisfy the typed Anthropic SDK.
+        raw_text = getattr(response.content[0], "text", "").strip()
         result = _parse_llm_response(raw_text, original_query=query)
         input_tokens = getattr(response.usage, "input_tokens", 0)
         output_tokens = getattr(response.usage, "output_tokens", 0)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -43,10 +44,13 @@ class TestRegistryCleanup:
 
 
 class TestEmbedderAutoDetect:
-    def test_falls_back_to_hash_when_no_sentence_transformers(self) -> None:
+    def test_falls_back_to_hash_when_no_sentence_transformers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Force the no-sentence-transformers path regardless of whether the
+        # optional `semantic` extra is installed in this environment.
+        monkeypatch.setitem(sys.modules, "sentence_transformers", None)
         embedder = _default_embedder()
-        # In test environment without sentence-transformers installed,
-        # should fall back to HashEmbedder
         assert isinstance(embedder, HashEmbedder)
 
 

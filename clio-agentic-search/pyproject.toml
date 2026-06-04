@@ -95,6 +95,11 @@ python_version = "3.11"
 strict = true
 mypy_path = "src"
 packages = ["clio_agentic_search"]
+# Optional-backend imports carry `# type: ignore` that is needed when the
+# typed package is installed (dev/all-extras) but unused when it is absent
+# (CI/--ignore-missing-imports). Tolerate both so `mypy src/` is clean in
+# either environment.
+warn_unused_ignores = false
 
 [[tool.mypy.overrides]]
 module = [
@@ -107,6 +112,8 @@ module = [
   "netCDF4",
   "anthropic",
   "openai",
+  "clio_cte_core_ext",
+  "iowarp_core",
 ]
 ignore_missing_imports = true
 
