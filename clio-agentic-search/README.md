@@ -11,7 +11,7 @@ Part of [**CLIO Kit**](https://github.com/iowarp/clio-kit) — the IoWarp platfo
 
 ---
 
-Hybrid retrieval engine for scientific computing corpora. Indexes documents into namespace-specific backends and supports lexical (BM25), vector, graph, metadata, and scientific-operator retrieval in one pipeline. DuckDB storage, FastAPI server, async job queue, OpenTelemetry tracing, Prometheus metrics.
+Agentic hybrid retrieval engine for scientific computing corpora. Indexes documents into namespace-specific backends and supports lexical (BM25), vector, graph, metadata, and scientific-operator retrieval in one pipeline, with an optional multi-hop agentic loop that rewrites queries and adapts to each corpus. DuckDB storage, FastAPI server, async job queue, OpenTelemetry tracing, Prometheus metrics.
 
 ## Quick start
 
@@ -36,8 +36,11 @@ uv run clio index --namespace local_fs
 ## Features
 
 - **Multi-namespace registry** with runtime/auth config bundles
-- **Connectors**: filesystem + DuckDB (`local_fs`), S3 object store, Qdrant vector store, Neo4j graph, Redis KV log
+- **Connectors**: filesystem + DuckDB (`local_fs`), S3 object store, Qdrant vector store, Neo4j graph, Redis KV log, HDF5 (`hdf5_data`), NetCDF (`netcdf_data`), IOWarp content store, NDP datasets
 - **Scientific retrieval operators**: numeric range (`unit`, `min`, `max`), unit matching, formula targeting (normalized signatures)
+- **Agentic retrieval**: optional multi-hop loop with LLM query rewriting (with a no-LLM fallback) and SI-unit variant inference
+- **Corpus-adaptive strategy**: schema/metadata profiling drives per-query branch selection and content-quality filtering
+- **Structured ingestion**: CSV/tabular detection and table-aware chunking alongside text
 - **Background indexing** job API with cancellation tokens and per-namespace serialized execution
 - **Retry/backoff** wrappers for connect/index operations
 - **Telemetry**: OpenTelemetry tracing (opt-in), Prometheus metrics at `/metrics`
@@ -59,7 +62,7 @@ uv run clio index --namespace local_fs
 
 | Command | Description |
 |---------|-------------|
-| `clio query` | Run retrieval queries against a namespace |
+| `clio query` | Run retrieval queries against a namespace (add `--agentic --max-hops N` for the multi-hop loop, `--llm-rewrite` for LLM query rewriting) |
 | `clio index` | Index documents into a namespace |
 | `clio list` | List indexed documents |
 | `clio seed` | Seed sample data for testing |
