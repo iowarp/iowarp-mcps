@@ -1,9 +1,10 @@
 """IOWarp CTE namespace connector.
 
 Bridges CLIO's retrieval pipeline to IOWarp's Context Transfer Engine.
-Blobs live in CTE (managed by the Chimaera runtime); this connector:
+Blobs live in CTE (managed by the clio_runtime / Chimaera runtime); this
+connector:
 
-  1. Enumerates blobs via ``BlobQuery`` / ``TagQuery``
+  1. Enumerates blobs via ``BlobQuery`` / ``Tag.GetContainedBlobs``
   2. Reads blob content via ``Tag.GetBlob``
   3. Indexes text + scientific metadata into CLIO's DuckDB store
   4. Searches using CLIO's standard lexical, vector, and scientific branches
@@ -11,6 +12,13 @@ Blobs live in CTE (managed by the Chimaera runtime); this connector:
 This lets CLIO's science-aware operators (SI unit conversion, formula
 normalization, corpus profiling) run on data that physically resides in
 IOWarp's tiered blob storage — the integration point the paper needs.
+
+The low-level CTE Python module is imported with backward compatibility:
+clio-core v2.0.0+ (``pip install iowarp-core``) exposes it as the top-level
+``clio_cte_core_ext``; older builds shipped it as
+``iowarp_core.wrp_cte_core_ext``. The blob/tag API
+(``get_cte_client``/``Tag``/``BlobQuery``/``GetContainedBlobs``/``GetBlob``)
+is identical across both, so only the import path differs.
 """
 
 from __future__ import annotations
@@ -24,12 +32,19 @@ from dataclasses import dataclass, field
 from typing import Any
 
 try:
-    from iowarp_core import wrp_cte_core_ext as cte
+    # clio-core v2.0.0+ (pip install iowarp-core): top-level module.
+    import clio_cte_core_ext as cte
 
     HAS_IOWARP = True
 except ImportError:
-    HAS_IOWARP = False
-    cte = None
+    try:
+        # Legacy iowarp_core wheel (pre-rebrand).
+        from iowarp_core import wrp_cte_core_ext as cte
+
+        HAS_IOWARP = True
+    except ImportError:
+        HAS_IOWARP = False
+        cte = None
 
 from clio_agentic_search.core.connectors import IndexReport
 from clio_agentic_search.indexing.lexical import (
@@ -102,7 +117,8 @@ class IOWarpConnector:
     def connect(self) -> None:
         if not HAS_IOWARP:
             raise RuntimeError(
-                "iowarp_core is not installed. Install the wheel: pip install iowarp_core-*.whl"
+                "IOWarp CTE bindings are not installed. Install clio-core "
+                "(pip install iowarp-core), which provides the clio_cte_core_ext module."
             )
         self._cte_client = cte.get_cte_client()
         self.storage.connect()
