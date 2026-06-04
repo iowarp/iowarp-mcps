@@ -33,17 +33,67 @@ uv run clio query --namespace local_fs --q "pressure > 200 kPa"
 uv run clio index --namespace local_fs
 ```
 
+### Optional extras
+
+The core install is lightweight; heavier or backend-specific dependencies ship as extras (`uv sync --extra <name>`):
+
+| Extra | Pulls in | Enables |
+|-------|----------|---------|
+| `semantic` | sentence-transformers | Transformer embeddings (otherwise a hash embedder is used) |
+| `ann` | numpy, hnswlib | Approximate nearest-neighbour vector backend (`CLIO_ANN_BACKEND=hnsw`) |
+| `hdf5` | h5py | HDF5 connector (`hdf5_data` namespace) |
+| `netcdf` | xarray, netCDF4 | NetCDF connector (`netcdf_data` namespace) |
+| `llm` | anthropic, openai | LLM-based query rewriting (`--llm-rewrite`); without it, a rule-based fallback is used |
+| `telemetry` | opentelemetry, prometheus-client | Tracing + `/metrics` exposition |
+| `eval` | claude-agent-sdk, anthropic | SC26 evaluation harness |
+
 ## Features
 
 - **Multi-namespace registry** with runtime/auth config bundles
-- **Connectors**: filesystem + DuckDB (`local_fs`), S3 object store, Qdrant vector store, Neo4j graph, Redis KV log, HDF5 (`hdf5_data`), NetCDF (`netcdf_data`), IOWarp content store, NDP datasets
+- **Hybrid retrieval** across lexical (BM25), vector, graph and metadata branches in one pipeline
 - **Scientific retrieval operators**: numeric range (`unit`, `min`, `max`), unit matching, formula targeting (normalized signatures)
 - **Agentic retrieval**: optional multi-hop loop with LLM query rewriting (with a no-LLM fallback) and SI-unit variant inference
 - **Corpus-adaptive strategy**: schema/metadata profiling drives per-query branch selection and content-quality filtering
 - **Structured ingestion**: CSV/tabular detection and table-aware chunking alongside text
+- **Nine connectors** spanning POSIX, object, vector, graph, KV and science formats — see [Connectors](#connectors)
 - **Background indexing** job API with cancellation tokens and per-namespace serialized execution
 - **Retry/backoff** wrappers for connect/index operations
 - **Telemetry**: OpenTelemetry tracing (opt-in), Prometheus metrics at `/metrics`
+
+## Retrieval pipeline
+
+```
+Query → Namespace registry → Retrieval coordinator → parallel branches
+          ├── Lexical (BM25)
+          ├── Vector (embeddings; hash or transformer)
+          ├── Graph (BFS)
+          ├── Metadata (schema-aware filters)
+          └── Scientific (SI unit conversion + formula normalization)
+        → Merge + rerank → Citations + trace events
+```
+
+With `--agentic`, the coordinator runs inside an observe–decide–act loop: it
+inspects results, rewrites the query (LLM or rule-based), and re-runs branches
+until it converges or hits `--max-hops`. A corpus profiler inspects what
+metadata each namespace actually provides and adapts branch selection and
+quality filtering per query.
+
+## Connectors
+
+| Connector | Namespace | Default registry | Extra required |
+|-----------|-----------|:---------------:|----------------|
+| Filesystem + DuckDB | `local_fs` | ✅ | — |
+| S3 object store | `object_s3` | ✅ | — |
+| Qdrant vector store | `vector_qdrant` | ✅ | — |
+| HDF5 | `hdf5_data` | ✅ | `hdf5` (h5py is also a core dep) |
+| NetCDF | `netcdf_data` | ✅ | `netcdf` |
+| Neo4j graph | (configurable) | — | — |
+| Redis KV log | (configurable) | — | — |
+| IOWarp content store | (configurable) | — | `iowarp_core` wheel |
+| NDP datasets | (configurable) | — | `mcp` (for MCP-backed discovery) |
+
+`build_default_registry()` provisions the first five namespaces; the remaining
+connectors are available to register explicitly.
 
 ## API endpoints
 
@@ -67,6 +117,16 @@ uv run clio index --namespace local_fs
 | `clio list` | List indexed documents |
 | `clio seed` | Seed sample data for testing |
 | `clio serve` | Start the FastAPI server |
+
+Agentic retrieval is opt-in — a plain `clio query` behaves exactly as before:
+
+```bash
+# Single-shot (default)
+clio query --namespace local_fs --q "pressure 200 kPa"
+
+# Multi-hop agentic loop (max 3 hops), with LLM query rewriting
+clio query --namespace local_fs --q "pressure 200 kPa" --agentic --max-hops 3 --llm-rewrite
+```
 
 ## Environment variables
 
