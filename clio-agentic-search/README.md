@@ -128,6 +128,60 @@ clio query --namespace local_fs --q "pressure 200 kPa"
 clio query --namespace local_fs --q "pressure 200 kPa" --agentic --max-hops 3 --llm-rewrite
 ```
 
+## Examples
+
+Point the filesystem connector at a folder, index it, then run the queries below.
+
+```bash
+export CLIO_LOCAL_ROOT=./docs            # folder of .txt/.md/.csv files
+export CLIO_STORAGE_PATH=./clio.duckdb
+clio index --namespace local_fs          # build the index
+clio list  --namespace local_fs          # show indexed docs + chunk counts
+```
+
+**Scientific numeric-range** — match by real unit math, not keywords. Only
+documents whose measurements fall in the range are returned:
+
+```bash
+# "pressure between 300 and 400 kPa"
+clio query --namespace local_fs --q "pressure" --numeric-range "300:400:kPa"
+
+# Same physical range expressed in Pa — finds the same 320 kPa document,
+# because values are canonicalized to SI base units before matching.
+clio query --namespace local_fs --q "pressure" --numeric-range "300000:400000:Pa"
+```
+
+**Formula targeting** — match normalized equation signatures:
+
+```bash
+clio query --namespace local_fs --q "newton law" --formula "F=ma"
+```
+
+**Agentic multi-hop** — the loop rewrites/expands the query between hops
+(here, `kPa` is auto-expanded to its SI variants):
+
+```bash
+clio query --namespace local_fs --q "pressure 320 kPa" --agentic --max-hops 3
+```
+
+**Science-format connectors** — index HDF5 / NetCDF datasets:
+
+```bash
+CLIO_HDF5_ROOT=./h5_files     clio index --namespace hdf5_data
+CLIO_NETCDF_ROOT=./nc_files   clio index --namespace netcdf_data   # needs the `netcdf` extra
+clio query --namespace hdf5_data --q "compressor pressure"
+```
+
+**HTTP API** — start the server and query over HTTP:
+
+```bash
+clio serve &                                         # FastAPI on :8000
+curl -s localhost:8000/health
+curl -s -X POST localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"namespace":"local_fs","query":"turbine pressure","top_k":3}'
+```
+
 ## Environment variables
 
 | Variable | Default | Description |
