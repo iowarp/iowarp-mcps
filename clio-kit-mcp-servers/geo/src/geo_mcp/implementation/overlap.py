@@ -86,3 +86,29 @@ def points_in_polygons(
         "matched_count": len(matched),
         "matched": matched,
     }
+
+
+def bounding_box(geojson: Any, *, pad_km: float = 0.0) -> dict[str, Any]:
+    """Compute the bounding box of GeoJSON features, optionally padded.
+
+    A deterministic geometry op (models are unreliable at deriving bboxes from
+    perimeter geometry). Returns ``bbox = [min_lon, min_lat, max_lon, max_lat]``.
+    """
+    feats = _coerce_feature_collection(geojson)
+    geoms = []
+    for feat in feats:
+        try:
+            geom = shape(feat["geometry"])
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+        if not geom.is_empty:
+            geoms.append(geom)
+    if not geoms:
+        return {"status": "empty", "bbox": None, "feature_count": 0}
+    minx, miny, maxx, maxy = gpd.GeoSeries(geoms, crs=WGS84).total_bounds
+    pad = (pad_km or 0.0) * _DEG_PER_KM
+    return {
+        "status": "success",
+        "feature_count": len(geoms),
+        "bbox": [round(minx - pad, 4), round(miny - pad, 4), round(maxx + pad, 4), round(maxy + pad, 4)],
+    }

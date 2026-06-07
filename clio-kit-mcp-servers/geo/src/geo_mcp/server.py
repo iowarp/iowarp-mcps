@@ -14,7 +14,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from pydantic import Field
 
-from .implementation import MapRenderError, render_map
+from .implementation import MapRenderError, bounding_box, points_in_polygons, render_map
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -98,6 +98,28 @@ async def points_in_polygons_tool(
     except Exception as exc:  # noqa: BLE001 - surface as tool error
         logger.exception("points_in_polygons failed")
         raise ToolError(f"Spatial overlap failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="bounding_box",
+    description=(
+        "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON "
+        "features (inline or file path), optionally padded by buffer_km. A "
+        "deterministic geometry op for deriving an analysis region from a fire perimeter."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geospatial", "bbox", "region", "geojson"},
+)
+async def bounding_box_tool(
+    geojson: Annotated[Any, Field(description="GeoJSON features (FeatureCollection/Feature/list/JSON/path).")],
+    pad_km: Annotated[float, Field(description="Optional padding in km added on each side.")] = 0.0,
+) -> dict[str, Any]:
+    """Return the (optionally padded) bounding box of GeoJSON features."""
+    try:
+        return bounding_box(geojson, pad_km=pad_km)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("bounding_box failed")
+        raise ToolError(f"Bounding box failed: {exc}") from exc
 
 
 def main() -> None:
