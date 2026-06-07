@@ -85,7 +85,6 @@ so they need no network access.
 ### Prompts
 
 - **characterize_sequence**: Guided workflow for characterizing a saved earthquake catalog.
-
 ## Claude Code
 
 ```bash
@@ -98,7 +97,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-seismic@iowarp-clio-kit
 ```
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -116,7 +114,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:

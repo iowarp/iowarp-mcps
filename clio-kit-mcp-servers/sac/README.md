@@ -82,7 +82,6 @@ uv run --extra dev pytest
 ### Prompts
 
 - **analyze_sac_archive**: Guided workflow for inspecting and analyzing a SAC file or archive.
-
 ## Claude Code
 
 ```bash
@@ -95,7 +94,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-sac@iowarp-clio-kit
 ```
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -113,7 +111,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:

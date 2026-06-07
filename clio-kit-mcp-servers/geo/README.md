@@ -70,7 +70,6 @@ Tests disable the basemap so they run without network access.
 **Description**: Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON features (inline or file path), optionally padded by buffer_km. A deterministic geometry op for deriving an analysis region from a fire perimeter.
 **Hints**: read-only, idempotent
 **Tags**: bbox, geojson, geospatial, region
-
 ## Claude Code
 
 ```bash
@@ -83,7 +82,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-geo@iowarp-clio-kit
 ```
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -101,7 +99,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:

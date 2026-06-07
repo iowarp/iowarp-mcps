@@ -73,7 +73,6 @@ uv run pytest -v
 ### Prompts
 
 - **terrain_suitability_workflow**: Guided workflow for assessing site suitability from terrain data.
-
 ## Claude Code
 
 ```bash
@@ -86,7 +85,6 @@ Or install via the CLIO Kit plugin marketplace:
 /plugin marketplace add iowarp/clio-kit
 /plugin install clio-terrain@iowarp-clio-kit
 ```
-
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -104,7 +102,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
