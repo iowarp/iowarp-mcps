@@ -1,6 +1,6 @@
 [project]
 name = "geo-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "MCP server for rendering GeoJSON vector layers into map images with basemaps"
 readme = "README.md"
 requires-python = ">=3.10"
