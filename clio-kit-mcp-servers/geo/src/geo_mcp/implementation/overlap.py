@@ -43,11 +43,21 @@ def points_in_polygons(
     pts = _coerce_feature_collection(points_geojson)
     polys = _coerce_feature_collection(polygons_geojson)
     if not pts:
-        return {"status": "success", "points_total": 0, "polygons_total": len(polys),
-                "matched_count": 0, "matched": []}
+        return {
+            "status": "success",
+            "points_total": 0,
+            "polygons_total": len(polys),
+            "matched_count": 0,
+            "matched": [],
+        }
     if not polys:
-        return {"status": "success", "points_total": len(pts), "polygons_total": 0,
-                "matched_count": 0, "matched": []}
+        return {
+            "status": "success",
+            "points_total": len(pts),
+            "polygons_total": 0,
+            "matched_count": 0,
+            "matched": [],
+        }
 
     poly_geoms = []
     for feat in polys:
@@ -58,8 +68,13 @@ def points_in_polygons(
         if not geom.is_empty:
             poly_geoms.append(geom)
     if not poly_geoms:
-        return {"status": "success", "points_total": len(pts), "polygons_total": 0,
-                "matched_count": 0, "matched": []}
+        return {
+            "status": "success",
+            "points_total": len(pts),
+            "polygons_total": 0,
+            "matched_count": 0,
+            "matched": [],
+        }
 
     region = gpd.GeoSeries(poly_geoms, crs=WGS84).union_all()
     if buffer_km and buffer_km > 0:
@@ -110,5 +125,10 @@ def bounding_box(geojson: Any, *, pad_km: float = 0.0) -> dict[str, Any]:
     return {
         "status": "success",
         "feature_count": len(geoms),
-        "bbox": [round(minx - pad, 4), round(miny - pad, 4), round(maxx + pad, 4), round(maxy + pad, 4)],
+        "bbox": [
+            round(minx - pad, 4),
+            round(miny - pad, 4),
+            round(maxx + pad, 4),
+            round(maxy + pad, 4),
+        ],
     }

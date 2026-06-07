@@ -107,8 +107,21 @@ def _coerce_feature_collection(geojson: Any) -> list[dict[str, Any]]:
                 features.append(item)
         elif "geometry" in item:
             if item.get("geometry"):
-                features.append({"type": "Feature", "geometry": item["geometry"], "properties": item.get("properties", {})})
-        elif item.get("type") in {"Point", "Polygon", "LineString", "MultiPolygon", "MultiPoint", "MultiLineString"}:
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": item["geometry"],
+                        "properties": item.get("properties", {}),
+                    }
+                )
+        elif item.get("type") in {
+            "Point",
+            "Polygon",
+            "LineString",
+            "MultiPolygon",
+            "MultiPoint",
+            "MultiLineString",
+        }:
             features.append({"type": "Feature", "geometry": item, "properties": {}})
     return features
 
@@ -228,21 +241,41 @@ def render_map(
                 _plot_colored(ax, draw, colors, is_point, style, alpha, zorder)
             else:
                 cmap = scale or "viridis"
-                draw.plot(ax=ax, column=color_by, cmap=cmap, alpha=alpha, zorder=zorder,
-                          markersize=float(style.get("markersize", 40)) if is_point else None,
-                          legend=bool(want_legend))
+                draw.plot(
+                    ax=ax,
+                    column=color_by,
+                    cmap=cmap,
+                    alpha=alpha,
+                    zorder=zorder,
+                    markersize=float(style.get("markersize", 40)) if is_point else None,
+                    legend=bool(want_legend),
+                )
         else:
             color = style.get("color") or style.get("facecolor") or _default_color(index)
             if is_point:
-                draw.plot(ax=ax, color=color, edgecolor=style.get("edgecolor", "black"),
-                          markersize=float(style.get("markersize", 45)), alpha=alpha, zorder=zorder)
+                draw.plot(
+                    ax=ax,
+                    color=color,
+                    edgecolor=style.get("edgecolor", "black"),
+                    markersize=float(style.get("markersize", 45)),
+                    alpha=alpha,
+                    zorder=zorder,
+                )
             else:
-                draw.plot(ax=ax, facecolor=color, edgecolor=style.get("edgecolor", color),
-                          linewidth=float(style.get("linewidth", 1.0)), alpha=alpha, zorder=zorder)
+                draw.plot(
+                    ax=ax,
+                    facecolor=color,
+                    edgecolor=style.get("edgecolor", color),
+                    linewidth=float(style.get("linewidth", 1.0)),
+                    alpha=alpha,
+                    zorder=zorder,
+                )
             if want_legend:
                 legend_entries.append((color, name))
 
-        layer_summaries.append({"name": name, "features": int(len(draw)), "geometry": sorted(geom_types)})
+        layer_summaries.append(
+            {"name": name, "features": int(len(draw)), "geometry": sorted(geom_types)}
+        )
 
     if not all_bounds:
         plt.close(fig)
@@ -280,7 +313,12 @@ def render_map(
         "status": "success",
         "output_path": str(out),
         "size_bytes": out.stat().st_size,
-        "bounds": {"min_lon": merged[0], "min_lat": merged[1], "max_lon": merged[2], "max_lat": merged[3]},
+        "bounds": {
+            "min_lon": merged[0],
+            "min_lat": merged[1],
+            "max_lon": merged[2],
+            "max_lat": merged[3],
+        },
         "basemap": basemap_added,
         "layers": layer_summaries,
     }
@@ -293,14 +331,33 @@ def _default_color(index: int) -> str:
     return _PALETTE[index % len(_PALETTE)]
 
 
-def _plot_colored(ax: Any, draw: gpd.GeoDataFrame, colors: list[str], is_point: bool,
-                  style: dict[str, Any], alpha: float, zorder: int) -> None:
+def _plot_colored(
+    ax: Any,
+    draw: gpd.GeoDataFrame,
+    colors: list[str],
+    is_point: bool,
+    style: dict[str, Any],
+    alpha: float,
+    zorder: int,
+) -> None:
     if is_point:
-        draw.plot(ax=ax, color=colors, edgecolor=style.get("edgecolor", "black"),
-                  markersize=float(style.get("markersize", 45)), alpha=alpha, zorder=zorder)
+        draw.plot(
+            ax=ax,
+            color=colors,
+            edgecolor=style.get("edgecolor", "black"),
+            markersize=float(style.get("markersize", 45)),
+            alpha=alpha,
+            zorder=zorder,
+        )
     else:
-        draw.plot(ax=ax, color=colors, edgecolor=style.get("edgecolor", "none"),
-                  linewidth=float(style.get("linewidth", 0.0)), alpha=alpha, zorder=zorder)
+        draw.plot(
+            ax=ax,
+            color=colors,
+            edgecolor=style.get("edgecolor", "none"),
+            linewidth=float(style.get("linewidth", 0.0)),
+            alpha=alpha,
+            zorder=zorder,
+        )
 
 
 def _apply_bbox(ax: Any, bbox: list[float], crs: int) -> None:
@@ -312,7 +369,9 @@ def _apply_bbox(ax: Any, bbox: list[float], crs: int) -> None:
     ax.set_ylim(pts.y.min(), pts.y.max())
 
 
-def _merge_bounds(bounds: list[tuple[float, float, float, float]]) -> tuple[float, float, float, float]:
+def _merge_bounds(
+    bounds: list[tuple[float, float, float, float]],
+) -> tuple[float, float, float, float]:
     minx = min(b[0] for b in bounds)
     miny = min(b[1] for b in bounds)
     maxx = max(b[2] for b in bounds)

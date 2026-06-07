@@ -17,7 +17,9 @@ from geo_mcp.implementation import MapRenderError, render_map
 
 POLY = {
     "type": "Polygon",
-    "coordinates": [[[-118.5, 34.0], [-118.0, 34.0], [-118.0, 34.5], [-118.5, 34.5], [-118.5, 34.0]]],
+    "coordinates": [
+        [[-118.5, 34.0], [-118.0, 34.0], [-118.0, 34.5], [-118.5, 34.5], [-118.5, 34.0]]
+    ],
 }
 POINT = {"type": "Point", "coordinates": [-118.25, 34.05]}
 
@@ -48,8 +50,13 @@ def test_renders_multiple_layers_and_points(tmp_path: Path) -> None:
     res = render_map(
         [
             {"name": "perimeter", "geojson": POLY, "style": {"facecolor": "red", "alpha": 0.5}},
-            {"name": "stations", "geojson": _fc(_feat(POINT), _feat({"type": "Point", "coordinates": [-118.1, 34.2]})),
-             "style": {"color": "blue", "markersize": 30}},
+            {
+                "name": "stations",
+                "geojson": _fc(
+                    _feat(POINT), _feat({"type": "Point", "coordinates": [-118.1, 34.2]})
+                ),
+                "style": {"color": "blue", "markersize": 30},
+            },
         ],
         str(out),
         basemap=False,
@@ -81,11 +88,25 @@ def test_category_colors(tmp_path: Path) -> None:
     out = tmp_path / "cat.png"
     feats = _fc(
         _feat(POLY, klass="3 - 25"),
-        _feat({"type": "Polygon", "coordinates": [[[-117.9, 34.0], [-117.5, 34.0], [-117.5, 34.4], [-117.9, 34.0]]]}, klass="25 - 50"),
+        _feat(
+            {
+                "type": "Polygon",
+                "coordinates": [[[-117.9, 34.0], [-117.5, 34.0], [-117.5, 34.4], [-117.9, 34.0]]],
+            },
+            klass="25 - 50",
+        ),
     )
     res = render_map(
-        [{"name": "smoke", "geojson": feats,
-          "style": {"color_by": "klass", "category_colors": {"3 - 25": "#cccccc", "25 - 50": "#888888"}}}],
+        [
+            {
+                "name": "smoke",
+                "geojson": feats,
+                "style": {
+                    "color_by": "klass",
+                    "category_colors": {"3 - 25": "#cccccc", "25 - 50": "#888888"},
+                },
+            }
+        ],
         str(out),
         basemap=False,
     )
@@ -100,7 +121,9 @@ def test_accepts_json_string_and_path(tmp_path: Path) -> None:
     gj_path = tmp_path / "layer.geojson"
     gj_path.write_text(json.dumps(_fc(_feat(POINT))), encoding="utf-8")
     out2 = tmp_path / "frompath.png"
-    res2 = render_map([{"geojson": str(gj_path), "style": {"color": "green"}}], str(out2), basemap=False)
+    res2 = render_map(
+        [{"geojson": str(gj_path), "style": {"color": "green"}}], str(out2), basemap=False
+    )
     assert res2["layers"][0]["features"] == 1
 
 
@@ -132,7 +155,9 @@ def test_bad_json_string_raises(tmp_path: Path) -> None:
 
 def test_missing_path_raises(tmp_path: Path) -> None:
     with pytest.raises(MapRenderError):
-        render_map([{"geojson": str(tmp_path / "nope.geojson")}], str(tmp_path / "e.png"), basemap=False)
+        render_map(
+            [{"geojson": str(tmp_path / "nope.geojson")}], str(tmp_path / "e.png"), basemap=False
+        )
 
 
 def test_bad_bbox_raises(tmp_path: Path) -> None:

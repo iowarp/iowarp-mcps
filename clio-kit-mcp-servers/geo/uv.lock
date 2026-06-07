@@ -1013,12 +1013,13 @@ wheels = [
 
 [[package]]
 name = "geo-mcp"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "contextily" },
     { name = "fastmcp" },
     { name = "geopandas" },
+    { name = "httpx" },
     { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1040,6 +1041,7 @@ requires-dist = [
     { name = "contextily", specifier = ">=1.5.0" },
     { name = "fastmcp", specifier = ">=3.0.1" },
     { name = "geopandas", specifier = ">=0.14.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "matplotlib", specifier = ">=3.6.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },

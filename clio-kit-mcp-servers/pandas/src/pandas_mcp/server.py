@@ -34,6 +34,7 @@ from .implementation.transformations import (
     create_pivot_table,
 )
 from .implementation.data_profiling import profile_data
+from .implementation.csv_profiling import profile_csv
 from .implementation.time_series import time_series_operations
 from .implementation.memory_optimization import optimize_memory_usage
 from .implementation.filtering import filter_data
@@ -606,6 +607,45 @@ async def profile_data_tool(
     except Exception as e:
         logger.error(f"Data profiling error: {e}")
         raise ToolError(f"Data profiling error: {e}") from e
+
+
+@mcp.tool(
+    name="profile_csv",
+    description="Quickly profile a CSV file: row/column counts, per-column dtype, null counts, and min/max/mean for numeric columns.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"data-analysis", "profiling", "csv"},
+)
+async def profile_csv_tool(
+    data_path: Annotated[str, Field(description="Absolute path to the CSV file")],
+    columns: Annotated[
+        Optional[List[str]],
+        Field(description="Subset of columns to profile; None profiles all"),
+    ] = None,
+    max_rows: Annotated[
+        Optional[int],
+        Field(
+            description="Maximum rows to retain for statistics (default 5000, capped at 250000)"
+        ),
+    ] = None,
+) -> dict:
+    """Generate a fast, dependency-light profile of a CSV file."""
+    try:
+        logger.info(f"Profiling CSV file: {data_path}")
+        result = profile_csv(data_path, columns, max_rows)
+        if not result.get("success", False):
+            raise ToolError(
+                f"CSV profiling error: {result.get('error', 'unknown error')}"
+            )
+        return result
+    except ToolError:
+        raise
+    except Exception as e:
+        logger.error(f"CSV profiling error: {e}")
+        raise ToolError(f"CSV profiling error: {e}") from e
 
 
 # ===============================================================================

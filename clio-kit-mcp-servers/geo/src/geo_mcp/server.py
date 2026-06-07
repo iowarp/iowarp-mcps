@@ -12,9 +12,17 @@ from typing import Annotated, Any
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
 from pydantic import Field
 
-from .implementation import MapRenderError, bounding_box, points_in_polygons, render_map
+from .implementation import (
+    ArcGISQueryError,
+    MapRenderError,
+    bounding_box,
+    points_in_polygons,
+    query_arcgis_features,
+    render_map,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -24,10 +32,12 @@ load_dotenv()
 mcp: FastMCP = FastMCP(
     "geo",
     instructions=(
-        "Renders geospatial vector data into map images. Pass one or more layers "
-        "of GeoJSON (polygons, lines, points) and get back a PNG with an optional "
-        "basemap. Use render_feature_map to visualize fire perimeters, smoke "
-        "polygons, monitoring stations, regions, or any GeoJSON features on one map."
+        "Renders and retrieves geospatial vector data. Pass one or more layers of "
+        "GeoJSON (polygons, lines, points) to render_feature_map and get back a PNG "
+        "with an optional basemap. Use query_arcgis_features to pull features from an "
+        "ArcGIS FeatureServer layer into a native GeoJSON file, points_in_polygons "
+        "for spatial overlap, and bounding_box to derive an analysis region from "
+        "GeoJSON features."
     ),
 )
 
@@ -46,16 +56,20 @@ mcp: FastMCP = FastMCP(
 async def render_feature_map_tool(
     layers: Annotated[
         list[dict[str, Any]],
-        Field(description=(
-            "Ordered layers (later layers draw on top). Each: {'geojson': "
-            "FeatureCollection|Feature|geometry|list|JSON-string|path, 'name': str, "
-            "'style': {facecolor, edgecolor, alpha, linewidth, color, markersize, "
-            "zorder, color_by, scale, category_colors, legend}}."
-        )),
+        Field(
+            description=(
+                "Ordered layers (later layers draw on top). Each: {'geojson': "
+                "FeatureCollection|Feature|geometry|list|JSON-string|path, 'name': str, "
+                "'style': {facecolor, edgecolor, alpha, linewidth, color, markersize, "
+                "zorder, color_by, scale, category_colors, legend}}."
+            )
+        ),
     ],
     output_path: Annotated[str, Field(description="Destination PNG path.")] = "map.png",
     title: Annotated[str, Field(description="Figure title.")] = "",
-    basemap: Annotated[bool, Field(description="Add a CartoDB Positron basemap (needs network).")] = True,
+    basemap: Annotated[
+        bool, Field(description="Add a CartoDB Positron basemap (needs network).")
+    ] = True,
     bbox: Annotated[
         list[float] | None,
         Field(description="Optional view window [min_lon, min_lat, max_lon, max_lat]."),
@@ -83,9 +97,14 @@ async def render_feature_map_tool(
     tags={"geospatial", "overlap", "spatial-join", "geojson"},
 )
 async def points_in_polygons_tool(
-    points_geojson: Annotated[Any, Field(description="GeoJSON points (FeatureCollection/Feature/list/JSON/path).")],
+    points_geojson: Annotated[
+        Any, Field(description="GeoJSON points (FeatureCollection/Feature/list/JSON/path).")
+    ],
     polygons_geojson: Annotated[Any, Field(description="GeoJSON polygons (same accepted forms).")],
-    buffer_km: Annotated[float, Field(description="Optional margin added to polygons so near points count. 0 = strict.")] = 0.0,
+    buffer_km: Annotated[
+        float,
+        Field(description="Optional margin added to polygons so near points count. 0 = strict."),
+    ] = 0.0,
     point_label_fields: Annotated[
         list[str] | None, Field(description="Property names to surface per matched point.")
     ] = None,
@@ -93,7 +112,10 @@ async def points_in_polygons_tool(
     """Return the points that fall within (optionally buffered) polygons."""
     try:
         return points_in_polygons(
-            points_geojson, polygons_geojson, buffer_km=buffer_km, point_label_fields=point_label_fields
+            points_geojson,
+            polygons_geojson,
+            buffer_km=buffer_km,
+            point_label_fields=point_label_fields,
         )
     except Exception as exc:  # noqa: BLE001 - surface as tool error
         logger.exception("points_in_polygons failed")
@@ -111,7 +133,9 @@ async def points_in_polygons_tool(
     tags={"geospatial", "bbox", "region", "geojson"},
 )
 async def bounding_box_tool(
-    geojson: Annotated[Any, Field(description="GeoJSON features (FeatureCollection/Feature/list/JSON/path).")],
+    geojson: Annotated[
+        Any, Field(description="GeoJSON features (FeatureCollection/Feature/list/JSON/path).")
+    ],
     pad_km: Annotated[float, Field(description="Optional padding in km added on each side.")] = 0.0,
 ) -> dict[str, Any]:
     """Return the (optionally padded) bounding box of GeoJSON features."""
@@ -120,6 +144,105 @@ async def bounding_box_tool(
     except Exception as exc:  # noqa: BLE001
         logger.exception("bounding_box failed")
         raise ToolError(f"Bounding box failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="query_arcgis_features",
+    description=(
+        "Query an ArcGIS FeatureServer layer (with optional lon/lat bbox and where "
+        "clause) and write the returned features to a local GeoJSON file. The saved "
+        "FeatureCollection can be fed directly into render_feature_map, "
+        "points_in_polygons, or bounding_box."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geospatial", "arcgis", "features", "geojson", "retrieval"},
+)
+async def query_arcgis_features_tool(
+    feature_service_url: Annotated[
+        str,
+        Field(description="ArcGIS FeatureServer service, layer, or query URL (HTTP(S))."),
+    ],
+    layer_id: Annotated[
+        int | str | None,
+        Field(description="Numeric layer id when querying a FeatureServer root."),
+    ] = None,
+    where: Annotated[
+        str,
+        Field(description="ArcGIS SQL where clause (default '1=1')."),
+    ] = "1=1",
+    out_fields: Annotated[
+        str,
+        Field(description="Comma-separated output fields or '*' for all."),
+    ] = "*",
+    max_features: Annotated[
+        int | str | None,
+        Field(description="Maximum features to return (default 25, capped at 200)."),
+    ] = 25,
+    min_lon: Annotated[float | str | None, Field(description="Bbox minimum longitude.")] = None,
+    min_lat: Annotated[float | str | None, Field(description="Bbox minimum latitude.")] = None,
+    max_lon: Annotated[float | str | None, Field(description="Bbox maximum longitude.")] = None,
+    max_lat: Annotated[float | str | None, Field(description="Bbox maximum latitude.")] = None,
+    output_path: Annotated[
+        str | None,
+        Field(description="Output GeoJSON path; auto-named under the artifacts root if omitted."),
+    ] = None,
+) -> dict[str, Any]:
+    """Query an ArcGIS FeatureServer layer and persist features as GeoJSON.
+
+    Returns ``{ok, output_path, feature_count, geometry_type, fields, features, ...}``
+    and writes a native GeoJSON FeatureCollection (ArcGIS ``f=geojson``) to
+    ``output_path``.
+    """
+    try:
+        return await query_arcgis_features(
+            feature_service_url,
+            layer_id=layer_id,
+            where=where,
+            out_fields=out_fields,
+            max_features=max_features,
+            min_lon=min_lon,
+            min_lat=min_lat,
+            max_lon=max_lon,
+            max_lat=max_lat,
+            output_path=output_path,
+        )
+    except ArcGISQueryError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface query failures as tool errors
+        logger.exception("query_arcgis_features failed")
+        raise ToolError(f"ArcGIS feature query failed: {exc}") from exc
+
+
+@mcp.resource("geo://capabilities")
+def capabilities() -> dict[str, Any]:
+    """Describe what the geo MCP server can do."""
+    return {
+        "tools": [
+            "render_feature_map",
+            "points_in_polygons",
+            "bounding_box",
+            "query_arcgis_features",
+        ],
+        "accepts": "GeoJSON (FeatureCollection/Feature/geometry/list/JSON-string/path)",
+        "outputs": ["map PNG", "GeoJSON FeatureCollection file", "spatial-overlap matches", "bbox"],
+        "crs": "EPSG:4326 (lon/lat)",
+        "description": (
+            "Render GeoJSON vector layers to maps, retrieve ArcGIS FeatureServer "
+            "features as GeoJSON, run point-in-polygon overlap, and compute bounding boxes."
+        ),
+    }
+
+
+@mcp.prompt()
+def map_arcgis_layer(feature_service_url: str) -> list[Message]:
+    """Guided workflow: retrieve an ArcGIS layer and render it on a map."""
+    return [
+        Message(
+            f"Retrieve features from the ArcGIS FeatureServer at '{feature_service_url}' "
+            "with query_arcgis_features, then render the saved GeoJSON onto a map with "
+            "render_feature_map. Report the feature count and the output paths."
+        ),
+    ]
 
 
 def main() -> None:
