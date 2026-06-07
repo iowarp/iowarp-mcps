@@ -57,3 +57,83 @@ sac-mcp                   # direct entry point
 ```sh
 uv run --extra dev pytest
 ```
+
+## Capabilities
+
+### `inspect_archive`
+**Description**: Inspect a staged SAC file or TAR archive and summarize its SAC waveform members: count, a sample of member names and sizes, and the inferred stations and phases. Read-only; a good first step before computing statistics or plotting.
+**Hints**: read-only, idempotent
+**Tags**: inspect, sac, seismic, waveform
+
+### `compute_trace_statistics`
+**Description**: Compute per-trace amplitude statistics (min, max, mean, std, peak_abs) plus header metadata (npts, delta_s, begin_s, end_s) for SAC traces in a file or archive. Read-only; bounded by max_traces.
+**Hints**: read-only, idempotent
+**Tags**: sac, seismic, statistics, waveform
+
+### `plot_traces`
+**Description**: Plot selected SAC traces from a file or archive to a PNG artifact. Traces are amplitude-normalized and vertically offset. Writes a file; returns the output path, plotted member names, and render duration.
+**Hints**: destructive, idempotent
+**Tags**: plot, sac, seismic, visualization, waveform
+
+### Resources
+
+- `sac://capabilities` - What this server can do and the inputs it accepts.
+
+### Prompts
+
+- **analyze_sac_archive**: Guided workflow for inspecting and analyzing a SAC file or archive.
+
+## Claude Code
+
+```bash
+claude mcp add clio-sac -- uvx clio-kit sac
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-sac@iowarp-clio-kit
+```
+
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-sac": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "sac"
+      ]
+    }
+  }
+}
+```
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-sac": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "sac"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```

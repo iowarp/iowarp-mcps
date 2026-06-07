@@ -53,3 +53,78 @@ terrain-mcp            # direct entry point
 ```sh
 uv run pytest -v
 ```
+
+## Capabilities
+
+### `dem_terrain`
+**Description**: Analyze a Digital Elevation Model grid for elevation, slope, aspect, and site suitability. Accepts CSV numeric grids, NPY, and NPZ (with a 'dem' array); GeoTIFF requires the optional rasterio extra. Returns grid shape, summary statistics, suitability counts, and representative suitable cells.
+**Hints**: read-only, idempotent
+**Tags**: dem, slope, suitability, terrain
+
+### `pointcloud_read`
+**Description**: Read an x/y/z point cloud and grid it into a DEM-like surface by averaging z per cell. Accepts CSV with x,y,z columns, NPY, and NPZ; LAS/LAZ requires the optional laspy extra. Optionally writes the gridded surface to a CSV DEM for downstream dem_terrain analysis. Returns point/grid stats and bounds.
+**Hints**: idempotent
+**Tags**: dem, gridding, pointcloud, terrain
+
+### Resources
+
+- `terrain://capabilities` - Supported input formats, tools, and safety limits for terrain analysis.
+
+### Prompts
+
+- **terrain_suitability_workflow**: Guided workflow for assessing site suitability from terrain data.
+
+## Claude Code
+
+```bash
+claude mcp add clio-terrain -- uvx clio-kit terrain
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-terrain@iowarp-clio-kit
+```
+
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-terrain": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "terrain"
+      ]
+    }
+  }
+}
+```
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-terrain": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "terrain"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```

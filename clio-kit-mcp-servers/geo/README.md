@@ -53,3 +53,75 @@ uv run --extra dev pytest
 ```
 
 Tests disable the basemap so they run without network access.
+
+## Capabilities
+
+### `render_feature_map`
+**Description**: Render one or more GeoJSON layers (polygons/lines/points) onto a single map PNG with an optional basemap. Each layer accepts a style with fixed colors or data-driven coloring (color_by + category_colors, an 'epa_aqi' AQI scale, or a matplotlib colormap). Returns the output path and bounds.
+**Hints**: destructive, idempotent
+**Tags**: geojson, geospatial, map, visualization
+
+### `points_in_polygons`
+**Description**: Spatial overlap: return which GeoJSON points fall within (optionally buffered) GeoJSON polygons — e.g. which AirNow monitors lie inside the smoke footprint. Accepts inline GeoJSON or file paths. Returns the matched points with their properties and a matched_count.
+**Hints**: read-only, idempotent
+**Tags**: geojson, geospatial, overlap, spatial-join
+
+### `bounding_box`
+**Description**: Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON features (inline or file path), optionally padded by buffer_km. A deterministic geometry op for deriving an analysis region from a fire perimeter.
+**Hints**: read-only, idempotent
+**Tags**: bbox, geojson, geospatial, region
+
+## Claude Code
+
+```bash
+claude mcp add clio-geo -- uvx clio-kit geo
+```
+
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-geo@iowarp-clio-kit
+```
+
+## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clio-geo": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "geo"
+      ]
+    }
+  }
+}
+```
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-geo": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "geo"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
+```
