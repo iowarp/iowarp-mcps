@@ -71,6 +71,35 @@ async def render_feature_map_tool(
         raise ToolError(f"Map render failed: {exc}") from exc
 
 
+@mcp.tool(
+    name="points_in_polygons",
+    description=(
+        "Spatial overlap: return which GeoJSON points fall within (optionally "
+        "buffered) GeoJSON polygons — e.g. which AirNow monitors lie inside the "
+        "smoke footprint. Accepts inline GeoJSON or file paths. Returns the "
+        "matched points with their properties and a matched_count."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geospatial", "overlap", "spatial-join", "geojson"},
+)
+async def points_in_polygons_tool(
+    points_geojson: Annotated[Any, Field(description="GeoJSON points (FeatureCollection/Feature/list/JSON/path).")],
+    polygons_geojson: Annotated[Any, Field(description="GeoJSON polygons (same accepted forms).")],
+    buffer_km: Annotated[float, Field(description="Optional margin added to polygons so near points count. 0 = strict.")] = 0.0,
+    point_label_fields: Annotated[
+        list[str] | None, Field(description="Property names to surface per matched point.")
+    ] = None,
+) -> dict[str, Any]:
+    """Return the points that fall within (optionally buffered) polygons."""
+    try:
+        return points_in_polygons(
+            points_geojson, polygons_geojson, buffer_km=buffer_km, point_label_fields=point_label_fields
+        )
+    except Exception as exc:  # noqa: BLE001 - surface as tool error
+        logger.exception("points_in_polygons failed")
+        raise ToolError(f"Spatial overlap failed: {exc}") from exc
+
+
 def main() -> None:
     """Entry point for the geo MCP server."""
     mcp.run()
