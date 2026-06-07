@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/geo-mcp",
+  "title": "CLIO Geo",
+  "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
+  "version": "2.1.2",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "geo"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "render_feature_map",
+      "description": "Render one or more GeoJSON layers (polygons/lines/points) onto a single map PNG with an optional basemap. Each layer accepts a style with fixed colors or data-driven coloring (color_by + category_colors, an 'epa_aqi' AQI scale, or a matplotlib colormap). Returns the output path and bounds."
+    }
+  ],
+  "tags": []
+}
