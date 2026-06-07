@@ -138,21 +138,6 @@ uv run python src/server.py
 **Description**: Download/stage an HTTP(S) or OSDF/Pelican dataset resource to a local file and return its local_path, size, and content-type.
 **Tags**: datasets, download, staging
 
-### `query_arcgis_features`
-**Description**: Query an ArcGIS FeatureServer layer (with optional lon/lat bbox and where clause) and write the returned features to a local GeoJSON file.
-**Hints**: read-only, idempotent
-**Tags**: arcgis, features, geospatial
-
-### `profile_csv_resource`
-**Description**: Profile a local CSV: columns, sample rows, numeric stats, and missing values.
-**Hints**: read-only, idempotent
-**Tags**: analysis, csv, profiling
-
-### `plot_csv_timeseries`
-**Description**: Create a PNG line plot from columns of a local CSV file.
-**Hints**: idempotent
-**Tags**: csv, plot, visualization
-
 ### Resources
 
 - `ndp://catalogs` - List of available NDP dataset catalogs.

@@ -70,6 +70,19 @@ Tests disable the basemap so they run without network access.
 **Description**: Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON features (inline or file path), optionally padded by buffer_km. A deterministic geometry op for deriving an analysis region from a fire perimeter.
 **Hints**: read-only, idempotent
 **Tags**: bbox, geojson, geospatial, region
+
+### `query_arcgis_features`
+**Description**: Query an ArcGIS FeatureServer layer (with optional lon/lat bbox and where clause) and write the returned features to a local GeoJSON file. The saved FeatureCollection can be fed directly into render_feature_map, points_in_polygons, or bounding_box.
+**Hints**: read-only, idempotent
+**Tags**: arcgis, features, geojson, geospatial, retrieval
+
+### Resources
+
+- `geo://capabilities` - Describe what the geo MCP server can do.
+
+### Prompts
+
+- **map_arcgis_layer**: Guided workflow: retrieve an ArcGIS layer and render it on a map.
 ## Claude Code
 
 ```bash
