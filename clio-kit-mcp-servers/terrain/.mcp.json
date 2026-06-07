@@ -1,0 +1,9 @@
+{
+  "clio-terrain": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "terrain"
+    ]
+  }
+}
