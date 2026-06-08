@@ -76,6 +76,11 @@ Tests disable the basemap so they run without network access.
 **Hints**: read-only, idempotent
 **Tags**: arcgis, features, geojson, geospatial, retrieval
 
+### `geocode`
+**Description**: Look up a free-text place name or location and return real coordinates from OpenStreetMap Nominatim (a lookup, not a model guess). Each match carries lat/lon, a [min_lon, min_lat, max_lon, max_lat] bbox, type, importance, and a provenance source so the region can be grounded and cited.
+**Hints**: read-only, idempotent
+**Tags**: coordinates, geocoding, location
+
 ### Resources
 
 - `geo://capabilities` - Describe what the geo MCP server can do.
