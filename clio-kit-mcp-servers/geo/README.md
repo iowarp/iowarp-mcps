@@ -81,6 +81,11 @@ Tests disable the basemap so they run without network access.
 **Hints**: read-only, idempotent
 **Tags**: coordinates, geocoding, location
 
+### `filter_points_by_radius`
+**Description**: Filter/rank any table of points by great-circle distance to a center. Reads a CSV (or GeoJSON points) of locations, computes the haversine distance from (center_lat, center_lon) to each row, and returns the rows within radius_km sorted ascending by distance, each annotated with distance_km. Latitude/longitude columns are auto-detected from common names (latitude/lat, longitude/lon/long) when not given. Domain-neutral: works for sensors, sites, cities, samples, or any lon/lat table.
+**Hints**: read-only, idempotent
+**Tags**: distance, filter, geospatial, haversine, proximity
+
 ### Resources
 
 - `geo://capabilities` - Describe what the geo MCP server can do.

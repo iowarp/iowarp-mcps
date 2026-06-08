@@ -66,6 +66,26 @@ Tests run against small temporary `.geojson` fixtures only — no network access
 
 ## Capabilities
 
+### `inspect_geojson`
+**Description**: Inspect a GeoJSON document and report its geometry types and counts, feature count, property keys (schema), bounding box [min_lon, min_lat, max_lon, max_lat], CRS if present, and total vertex count. Accepts a file path or inline GeoJSON.
+**Hints**: read-only, idempotent
+**Tags**: geojson, inspection, metadata, schema
+
+### `validate_geojson`
+**Description**: Validate the structural well-formedness of a GeoJSON document: that the top-level type is recognized and every geometry's type and coordinates are well-formed (correct nesting depth, finite numeric positions). Returns {valid, errors}.
+**Hints**: read-only, idempotent
+**Tags**: geojson, linting, validation
+
+### `summarize_geojson`
+**Description**: Produce a compact human-readable summary of a GeoJSON document: counts per geometry type, bounding box, property keys, and a few sample feature property sets. Accepts a file path or inline GeoJSON.
+**Hints**: read-only, idempotent
+**Tags**: geojson, inspection, summary
+
+### `feature_bbox`
+**Description**: Compute the overall bounding box [min_lon, min_lat, max_lon, max_lat] of all features in a GeoJSON document. Accepts a file path or inline GeoJSON. Returns the bbox (or null when there are no coordinates) and the feature count.
+**Hints**: read-only, idempotent
+**Tags**: bbox, geojson, region
+
 ### Resources
 
 - `geojson://capabilities` - Describe what the geojson MCP server can do.
@@ -73,13 +93,18 @@ Tests run against small temporary `.geojson` fixtures only — no network access
 ### Prompts
 
 - **inspect_workflow**: Guided workflow: validate, then inspect and summarize a GeoJSON document.
-
 ## Claude Code
 
 ```bash
 claude mcp add clio-geojson -- uvx clio-kit geojson
 ```
 
+Or install via the CLIO Kit plugin marketplace:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-geojson@iowarp-clio-kit
+```
 ## Claude Desktop
 
 Add to your Claude Desktop config (`claude_desktop_config.json`):
@@ -96,4 +121,28 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
     }
   }
 }
+```
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-geojson": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "geojson"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
 ```
