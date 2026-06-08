@@ -17,8 +17,10 @@ from pydantic import Field
 
 from .implementation import (
     ArcGISQueryError,
+    GeocodeError,
     MapRenderError,
     bounding_box,
+    geocode,
     points_in_polygons,
     query_arcgis_features,
     render_map,
@@ -213,6 +215,51 @@ async def query_arcgis_features_tool(
         raise ToolError(f"ArcGIS feature query failed: {exc}") from exc
 
 
+@mcp.tool(
+    name="geocode",
+    description=(
+        "Look up a free-text place name or location and return real coordinates "
+        "from OpenStreetMap Nominatim (a lookup, not a model guess). Each match "
+        "carries lat/lon, a [min_lon, min_lat, max_lon, max_lat] bbox, type, "
+        "importance, and a provenance source so the region can be grounded and cited."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geocoding", "location", "coordinates"},
+)
+async def geocode_tool(
+    query: Annotated[
+        str,
+        Field(description="Place name or free-text location to look up (e.g. 'Boulder, CO')."),
+    ],
+    limit: Annotated[
+        int,
+        Field(description="Maximum number of matches to return (default 1, capped at 50)."),
+    ] = 1,
+    countrycodes: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional comma-separated ISO 3166-1 alpha-2 country codes to "
+                "restrict results (e.g. 'us' or 'us,ca')."
+            )
+        ),
+    ] = None,
+) -> list[dict[str, Any]]:
+    """Geocode a place name into coordinates via OpenStreetMap Nominatim.
+
+    Returns a list of matches, each with ``display_name``, ``lat``, ``lon``,
+    ``bbox`` ([min_lon, min_lat, max_lon, max_lat]), ``type``, ``importance``,
+    and ``provenance`` (the data source, e.g. ``"osm_nominatim"``).
+    """
+    try:
+        return await geocode(query, limit=limit, countrycodes=countrycodes)
+    except GeocodeError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface lookup failures as tool errors
+        logger.exception("geocode failed")
+        raise ToolError(f"Geocoding failed: {exc}") from exc
+
+
 @mcp.resource("geo://capabilities")
 def capabilities() -> dict[str, Any]:
     """Describe what the geo MCP server can do."""
@@ -222,13 +269,21 @@ def capabilities() -> dict[str, Any]:
             "points_in_polygons",
             "bounding_box",
             "query_arcgis_features",
+            "geocode",
         ],
         "accepts": "GeoJSON (FeatureCollection/Feature/geometry/list/JSON-string/path)",
-        "outputs": ["map PNG", "GeoJSON FeatureCollection file", "spatial-overlap matches", "bbox"],
+        "outputs": [
+            "map PNG",
+            "GeoJSON FeatureCollection file",
+            "spatial-overlap matches",
+            "bbox",
+            "geocoded location matches",
+        ],
         "crs": "EPSG:4326 (lon/lat)",
         "description": (
             "Render GeoJSON vector layers to maps, retrieve ArcGIS FeatureServer "
-            "features as GeoJSON, run point-in-polygon overlap, and compute bounding boxes."
+            "features as GeoJSON, run point-in-polygon overlap, compute bounding "
+            "boxes, and geocode place names into coordinates via OpenStreetMap Nominatim."
         ),
     }
 
