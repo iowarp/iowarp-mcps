@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/parallel-sort-mcp",
   "title": "CLIO Parallel Sort",
   "description": "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.1.2",
+      "version": "2.2.0",
       "transport": {
         "type": "stdio"
       },

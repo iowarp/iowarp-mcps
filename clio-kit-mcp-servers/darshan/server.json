@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/darshan-mcp",
   "title": "CLIO Darshan",
   "description": "Darshan I/O profiler MCP server for analyzing I/O trace files",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.1.2",
+      "version": "2.2.0",
       "transport": {
         "type": "stdio"
       },
