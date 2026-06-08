@@ -87,6 +87,16 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-geo",
+      "source": "./clio-kit-mcp-servers/geo",
+      "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
+      "version": "1.0.1",
+      "category": "development",
+      "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-hdf5",
       "source": "./clio-kit-mcp-servers/hdf5",
       "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
@@ -235,6 +245,26 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-sac",
+      "source": "./clio-kit-mcp-servers/sac",
+      "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-seismic",
+      "source": "./clio-kit-mcp-servers/seismic",
+      "description": "MCP server for earthquake-sequence analysis on saved catalogs: completeness magnitude, Gutenberg-Richter b-value, Bath gap, Omori decay, and a three-panel figure",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-slurm",
       "source": "./clio-kit-mcp-servers/slurm",
       "description": "MCP server for Slurm workload management and HPC job scheduling",
@@ -246,6 +276,16 @@
         "job-scheduling",
         "cluster-management"
       ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-terrain",
+      "source": "./clio-kit-mcp-servers/terrain",
+      "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     }

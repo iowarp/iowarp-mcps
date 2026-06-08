@@ -1,0 +1,9 @@
+{
+  "clio-sac": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "sac"
+    ]
+  }
+}

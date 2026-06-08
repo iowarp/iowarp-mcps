@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/ndp-mcp",
   "title": "CLIO Ndp",
   "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple...",
-  "version": "2.0.1",
+  "version": "2.1.2",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.0.1",
+      "version": "2.1.2",
       "transport": {
         "type": "stdio"
       },
@@ -34,6 +34,10 @@
     {
       "name": "get_dataset_details",
       "description": "Retrieve detailed metadata for a specific dataset by ID or name."
+    },
+    {
+      "name": "stage_resource",
+      "description": "Download/stage an HTTP(S) or OSDF/Pelican dataset resource to a local file and return its local_path, size, and content-type."
     }
   ],
   "resources": [

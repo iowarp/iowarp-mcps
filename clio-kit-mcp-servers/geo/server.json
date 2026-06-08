@@ -26,6 +26,31 @@
     {
       "name": "render_feature_map",
       "description": "Render one or more GeoJSON layers (polygons/lines/points) onto a single map PNG with an optional basemap. Each layer accepts a style with fixed colors or data-driven coloring (color_by + category_colors, an 'epa_aqi' AQI scale, or a matplotlib colormap). Returns the output path and bounds."
+    },
+    {
+      "name": "points_in_polygons",
+      "description": "Spatial overlap: return which GeoJSON points fall within (optionally buffered) GeoJSON polygons \u2014 e.g. which AirNow monitors lie inside the smoke footprint. Accepts inline GeoJSON or file paths. Returns the matched points with their properties and a matched_count."
+    },
+    {
+      "name": "bounding_box",
+      "description": "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON features (inline or file path), optionally padded by buffer_km. A deterministic geometry op for deriving an analysis region from a fire perimeter."
+    },
+    {
+      "name": "query_arcgis_features",
+      "description": "Query an ArcGIS FeatureServer layer (with optional lon/lat bbox and where clause) and write the returned features to a local GeoJSON file. The saved FeatureCollection can be fed directly into render_feature_map, points_in_polygons, or bounding_box."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "geo://capabilities",
+      "name": "capabilities",
+      "description": "Describe what the geo MCP server can do."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "map_arcgis_layer",
+      "description": "Guided workflow: retrieve an ArcGIS layer and render it on a map."
     }
   ],
   "tags": []

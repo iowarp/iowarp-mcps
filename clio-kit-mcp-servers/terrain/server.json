@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/terrain-mcp",
+  "title": "CLIO Terrain",
+  "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
+  "version": "2.1.2",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "terrain"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "dem_terrain",
+      "description": "Analyze a Digital Elevation Model grid for elevation, slope, aspect, and site suitability. Accepts CSV numeric grids, NPY, and NPZ (with a 'dem' array); GeoTIFF requires the optional rasterio extra. Returns grid shape, summary statistics, suitability counts, and representative suitable cells."
+    },
+    {
+      "name": "pointcloud_read",
+      "description": "Read an x/y/z point cloud and grid it into a DEM-like surface by averaging z per cell. Accepts CSV with x,y,z columns, NPY, and NPZ; LAS/LAZ requires the optional laspy extra. Optionally writes the gridded surface to a CSV DEM for downstream dem_terrain analysis. Returns point/grid stats and bounds."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "terrain://capabilities",
+      "name": "terrain_capabilities",
+      "description": "Supported input formats, tools, and safety limits for terrain analysis."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "terrain_suitability_workflow",
+      "description": "Guided workflow for assessing site suitability from terrain data."
+    }
+  ],
+  "tags": []
+}

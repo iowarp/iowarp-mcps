@@ -1,0 +1,5 @@
+{
+  "name": "clio-sac",
+  "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
+  "version": "1.0.0"
+}
