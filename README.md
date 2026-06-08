@@ -5,6 +5,8 @@
 <!-- mcp-name: io.github.iowarp/chronolog-mcp -->
 <!-- mcp-name: io.github.iowarp/compression-mcp -->
 <!-- mcp-name: io.github.iowarp/darshan-mcp -->
+<!-- mcp-name: io.github.iowarp/geo-mcp -->
+<!-- mcp-name: io.github.iowarp/geojson-mcp -->
 <!-- mcp-name: io.github.iowarp/hdf5-mcp -->
 <!-- mcp-name: io.github.iowarp/jarvis-mcp -->
 <!-- mcp-name: io.github.iowarp/lmod-mcp -->
@@ -15,7 +17,10 @@
 <!-- mcp-name: io.github.iowarp/paraview-mcp -->
 <!-- mcp-name: io.github.iowarp/parquet-mcp -->
 <!-- mcp-name: io.github.iowarp/plot-mcp -->
+<!-- mcp-name: io.github.iowarp/sac-mcp -->
+<!-- mcp-name: io.github.iowarp/seismic-mcp -->
 <!-- mcp-name: io.github.iowarp/slurm-mcp -->
+<!-- mcp-name: io.github.iowarp/terrain-mcp -->
 
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyPI version](https://img.shields.io/pypi/v/clio-kit.svg)](https://pypi.org/project/clio-kit/)

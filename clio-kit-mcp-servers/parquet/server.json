@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/parquet-mcp",
   "title": "CLIO Parquet",
   "description": "MCP server for Apache Parquet files",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "transport": {
         "type": "stdio"
       },
