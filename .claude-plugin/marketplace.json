@@ -97,6 +97,16 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-geojson",
+      "source": "./clio-kit-mcp-servers/geojson",
+      "description": "MCP server for inspecting, validating, and summarizing GeoJSON documents (stdlib only)",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-hdf5",
       "source": "./clio-kit-mcp-servers/hdf5",
       "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",

@@ -42,6 +42,13 @@
         "geo"
       ]
     },
+    "clio-geojson": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "geojson"
+      ]
+    },
     "clio-hdf5": {
       "command": "uvx",
       "args": [

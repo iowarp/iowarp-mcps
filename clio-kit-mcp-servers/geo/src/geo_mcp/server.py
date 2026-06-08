@@ -19,7 +19,9 @@ from .implementation import (
     ArcGISQueryError,
     GeocodeError,
     MapRenderError,
+    ProximityError,
     bounding_box,
+    filter_points_by_radius,
     geocode,
     points_in_polygons,
     query_arcgis_features,
@@ -38,8 +40,9 @@ mcp: FastMCP = FastMCP(
         "GeoJSON (polygons, lines, points) to render_feature_map and get back a PNG "
         "with an optional basemap. Use query_arcgis_features to pull features from an "
         "ArcGIS FeatureServer layer into a native GeoJSON file, points_in_polygons "
-        "for spatial overlap, and bounding_box to derive an analysis region from "
-        "GeoJSON features."
+        "for spatial overlap, bounding_box to derive an analysis region from "
+        "GeoJSON features, and filter_points_by_radius to rank/filter any CSV or "
+        "GeoJSON table of points by great-circle distance to a center location."
     ),
 )
 
@@ -260,6 +263,77 @@ async def geocode_tool(
         raise ToolError(f"Geocoding failed: {exc}") from exc
 
 
+@mcp.tool(
+    name="filter_points_by_radius",
+    description=(
+        "Filter/rank any table of points by great-circle distance to a center. "
+        "Reads a CSV (or GeoJSON points) of locations, computes the haversine "
+        "distance from (center_lat, center_lon) to each row, and returns the rows "
+        "within radius_km sorted ascending by distance, each annotated with "
+        "distance_km. Latitude/longitude columns are auto-detected from common "
+        "names (latitude/lat, longitude/lon/long) when not given. Domain-neutral: "
+        "works for sensors, sites, cities, samples, or any lon/lat table."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geospatial", "distance", "filter", "haversine", "proximity"},
+)
+async def filter_points_by_radius_tool(
+    data_path: Annotated[
+        str,
+        Field(description="Path to a CSV or GeoJSON file of points to filter."),
+    ],
+    center_lat: Annotated[
+        float, Field(description="Center latitude in decimal degrees ([-90, 90]).")
+    ],
+    center_lon: Annotated[
+        float, Field(description="Center longitude in decimal degrees ([-180, 180]).")
+    ],
+    radius_km: Annotated[
+        float, Field(description="Radius in kilometers; only points within are kept (> 0).")
+    ],
+    lat_column: Annotated[
+        str | None,
+        Field(description="Latitude column name; auto-detected (latitude/lat/y) when omitted."),
+    ] = None,
+    lon_column: Annotated[
+        str | None,
+        Field(
+            description="Longitude column name; auto-detected (longitude/lon/long/x) when omitted."
+        ),
+    ] = None,
+    id_column: Annotated[
+        str | None,
+        Field(description="Optional column whose value is surfaced as 'id' on each point."),
+    ] = None,
+    limit: Annotated[
+        int | None,
+        Field(description="Optional cap on the number of returned points (after sorting)."),
+    ] = None,
+) -> dict[str, Any]:
+    """Return the points within radius_km of the center, sorted by distance.
+
+    Returns ``{ok, count, within_radius_count, points:[{..., distance_km}],
+    center, radius_km, lat_column, lon_column, ...}``. Domain-neutral; no
+    station/catalog semantics.
+    """
+    try:
+        return filter_points_by_radius(
+            data_path,
+            center_lat,
+            center_lon,
+            radius_km,
+            lat_column=lat_column,
+            lon_column=lon_column,
+            id_column=id_column,
+            limit=limit,
+        )
+    except ProximityError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface as tool error
+        logger.exception("filter_points_by_radius failed")
+        raise ToolError(f"Distance filtering failed: {exc}") from exc
+
+
 @mcp.resource("geo://capabilities")
 def capabilities() -> dict[str, Any]:
     """Describe what the geo MCP server can do."""
@@ -270,20 +344,27 @@ def capabilities() -> dict[str, Any]:
             "bounding_box",
             "query_arcgis_features",
             "geocode",
+            "filter_points_by_radius",
         ],
-        "accepts": "GeoJSON (FeatureCollection/Feature/geometry/list/JSON-string/path)",
+        "accepts": (
+            "GeoJSON (FeatureCollection/Feature/geometry/list/JSON-string/path); "
+            "CSV or GeoJSON point tables for distance filtering"
+        ),
         "outputs": [
             "map PNG",
             "GeoJSON FeatureCollection file",
             "spatial-overlap matches",
             "bbox",
             "geocoded location matches",
+            "distance-filtered points sorted by distance_km",
         ],
         "crs": "EPSG:4326 (lon/lat)",
         "description": (
             "Render GeoJSON vector layers to maps, retrieve ArcGIS FeatureServer "
             "features as GeoJSON, run point-in-polygon overlap, compute bounding "
-            "boxes, and geocode place names into coordinates via OpenStreetMap Nominatim."
+            "boxes, geocode place names into coordinates via OpenStreetMap "
+            "Nominatim, and filter/rank any CSV or GeoJSON table of points by "
+            "great-circle (haversine) distance to a center location."
         ),
     }
 
