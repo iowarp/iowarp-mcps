@@ -1,0 +1,9 @@
+{
+  "clio-seismic": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "seismic"
+    ]
+  }
+}

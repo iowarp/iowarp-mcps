@@ -37,6 +37,20 @@
         "darshan"
       ]
     },
+    "clio-geo": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "geo"
+      ]
+    },
+    "clio-geojson": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "geojson"
+      ]
+    },
     "clio-hdf5": {
       "command": "uvx",
       "args": [
@@ -107,11 +121,32 @@
         "plot"
       ]
     },
+    "clio-sac": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "sac"
+      ]
+    },
+    "clio-seismic": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "seismic"
+      ]
+    },
     "clio-slurm": {
       "command": "uvx",
       "args": [
         "clio-kit",
         "slurm"
+      ]
+    },
+    "clio-terrain": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "terrain"
       ]
     }
   }

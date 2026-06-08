@@ -206,6 +206,11 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\pandas run pandas-mc
 **Hints**: read-only, idempotent
 **Tags**: data-analysis, profiling
 
+### `profile_csv`
+**Description**: Quickly profile a CSV file: row/column counts, per-column dtype, null counts, and min/max/mean for numeric columns.
+**Hints**: read-only, idempotent
+**Tags**: csv, data-analysis, profiling
+
 ### Resources
 
 - `pandas://capabilities` - Supported pandas operations and file formats.

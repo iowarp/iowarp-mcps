@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/pandas-mcp",
   "title": "CLIO Pandas",
   "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
-  "version": "2.0.1",
+  "version": "2.1.2",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.0.1",
+      "version": "2.1.2",
       "transport": {
         "type": "stdio"
       },
@@ -82,6 +82,10 @@
     {
       "name": "profile_data",
       "description": "Generate a full dataset profile: shape, types, missing values, distributions, quality checks, and optional correlations."
+    },
+    {
+      "name": "profile_csv",
+      "description": "Quickly profile a CSV file: row/column counts, per-column dtype, null counts, and min/max/mean for numeric columns."
     }
   ],
   "resources": [

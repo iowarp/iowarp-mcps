@@ -1,0 +1,5 @@
+{
+  "name": "clio-geo",
+  "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
+  "version": "1.0.1"
+}

@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/plot-mcp",
   "title": "CLIO Plot",
   "description": "MCP server for advanced data visualization and plotting operations",
-  "version": "2.0.1",
+  "version": "2.1.2",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.0.1",
+      "version": "2.1.2",
       "transport": {
         "type": "stdio"
       },
@@ -42,6 +42,10 @@
     {
       "name": "heatmap_plot",
       "description": "Create a correlation heatmap from numeric columns in CSV or Excel data."
+    },
+    {
+      "name": "plot_timeseries",
+      "description": "Create a multi-series line chart PNG from one or more y columns of a CSV or Excel file, auto-detecting a time, numeric, or categorical x axis."
     },
     {
       "name": "data_info",

@@ -155,6 +155,11 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\plot run plot-mcp --
 **Hints**: destructive, idempotent
 **Tags**: heatmap, plot, visualization
 
+### `plot_timeseries`
+**Description**: Create a multi-series line chart PNG from one or more y columns of a CSV or Excel file, auto-detecting a time, numeric, or categorical x axis.
+**Hints**: destructive, idempotent
+**Tags**: line-chart, plot, timeseries, visualization
+
 ### `data_info`
 **Description**: Get schema, column types, and summary statistics for a CSV or Excel file.
 **Hints**: read-only, idempotent

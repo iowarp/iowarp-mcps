@@ -134,6 +134,10 @@ uv run python src/server.py
 **Hints**: read-only, idempotent
 **Tags**: datasets, metadata
 
+### `stage_resource`
+**Description**: Download/stage an HTTP(S) or OSDF/Pelican dataset resource to a local file and return its local_path, size, and content-type.
+**Tags**: datasets, download, staging
+
 ### Resources
 
 - `ndp://catalogs` - List of available NDP dataset catalogs.

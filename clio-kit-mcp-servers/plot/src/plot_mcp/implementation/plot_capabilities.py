@@ -2,12 +2,16 @@
 Plot capabilities implementation for data visualization.
 """
 
+import math
 import os
-import pandas as pd
+from datetime import datetime, timezone
+from typing import Any, Dict, List
+
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
-from typing import Dict, Any
+import pandas as pd
+import seaborn as sns
 import logging
 
 logger = logging.getLogger(__name__)
@@ -384,4 +388,247 @@ def create_heatmap(
         }
     except Exception as e:
         logger.error(f"Error creating heatmap: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+def _to_float(value: Any) -> float | None:
+    """Best-effort float coercion that tolerates blanks and non-numeric text."""
+    try:
+        text = str(value).strip()
+        if not text or text.lower() in {"nan", "none", "null"}:
+            return None
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_datetime_text(value: Any) -> datetime | None:
+    """Parse an ISO or common date string into a naive UTC datetime."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    normalized = text.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    except ValueError:
+        pass
+    for fmt in ("%m/%d/%Y", "%Y/%m/%d", "%Y-%m-%d", "%m/%d/%Y %H:%M:%S"):
+        try:
+            return datetime.strptime(text, fmt)  # noqa: DTZ007
+        except ValueError:
+            continue
+    return None
+
+
+def _infer_x_axis(values: List[str]) -> Dict[str, Any]:
+    """Infer plot-ready x values and trace metadata from a generic x column.
+
+    Detects, in order: epoch-millisecond integers, epoch-second integers,
+    parseable date/time strings, and finally falls back to a categorical row
+    index. This is fully domain-neutral and makes no assumptions about the
+    meaning of the data.
+
+    Args:
+        values: Raw string values from the chosen x column.
+
+    Returns:
+        Dictionary with the inferred ``kind``, plot-ready ``values``, an axis
+        ``label``, the ``parse_success_ratio``, and (for categorical data) the
+        original ``labels``.
+    """
+    if not values:
+        return {
+            "kind": "row_index",
+            "values": [],
+            "label": "row index",
+            "parse_success_ratio": 0.0,
+        }
+
+    numeric: list[float | None] = [_to_float(value) for value in values]
+    numeric_values = [v for v in numeric if v is not None and math.isfinite(v)]
+    numeric_ratio = len(numeric_values) / len(values)
+    if numeric_ratio >= 0.8 and numeric_values:
+        median_abs = sorted(abs(v) for v in numeric_values)[len(numeric_values) // 2]
+        if median_abs >= 1_000_000_000_000:
+            datetimes = [
+                datetime.fromtimestamp(v / 1000, timezone.utc).replace(tzinfo=None)
+                if v is not None and math.isfinite(v)
+                else None
+                for v in numeric
+            ]
+            return {
+                "kind": "epoch_milliseconds",
+                "values": datetimes,
+                "label": "time (UTC)",
+                "parse_success_ratio": numeric_ratio,
+            }
+        if median_abs >= 1_000_000_000:
+            datetimes = [
+                datetime.fromtimestamp(v, timezone.utc).replace(tzinfo=None)
+                if v is not None and math.isfinite(v)
+                else None
+                for v in numeric
+            ]
+            return {
+                "kind": "epoch_seconds",
+                "values": datetimes,
+                "label": "time (UTC)",
+                "parse_success_ratio": numeric_ratio,
+            }
+        return {
+            "kind": "numeric",
+            "values": [
+                v if (v is not None and math.isfinite(v)) else None for v in numeric
+            ],
+            "label": "value",
+            "parse_success_ratio": numeric_ratio,
+        }
+
+    parsed_datetimes = [_parse_datetime_text(value) for value in values]
+    parsed_count = sum(value is not None for value in parsed_datetimes)
+    parsed_ratio = parsed_count / len(values)
+    if parsed_ratio >= 0.8 and parsed_count:
+        return {
+            "kind": "datetime",
+            "values": parsed_datetimes,
+            "label": "time",
+            "parse_success_ratio": parsed_ratio,
+        }
+
+    return {
+        "kind": "categorical",
+        "values": list(range(len(values))),
+        "labels": values,
+        "label": "row index",
+        "parse_success_ratio": max(numeric_ratio, parsed_ratio),
+    }
+
+
+def create_timeseries_plot(
+    file_path: str,
+    x_column: str,
+    y_columns: List[str] | str,
+    title: str | None = None,
+    output_path: str = "timeseries.png",
+    max_rows: int = 2000,
+) -> Dict[str, Any]:
+    """Create a multi-series line plot from one or more y columns of a data file.
+
+    The x axis type is inferred automatically: epoch-millisecond/second
+    integers and date strings are rendered as a time axis, plain numbers as a
+    numeric axis, and anything else falls back to a categorical row index. This
+    is domain-neutral and works with any tabular CSV/Excel input.
+
+    Args:
+        file_path: Path to a CSV or Excel data file.
+        x_column: Column to use for the x axis.
+        y_columns: One or more numeric y columns (a list, or a comma-separated
+            string such as ``"temp,pressure"``).
+        title: Optional plot title (defaults to the file name).
+        output_path: Output image file path (PNG, PDF, or SVG).
+        max_rows: Maximum number of leading rows to read and plot.
+
+    Returns:
+        Dictionary with plot information, or an ``{"status": "error"}`` payload.
+    """
+    try:
+        if isinstance(y_columns, str):
+            selected_y = [part.strip() for part in y_columns.split(",") if part.strip()]
+        else:
+            selected_y = [str(part).strip() for part in y_columns if str(part).strip()]
+        if not selected_y:
+            raise ValueError("At least one y column is required for a time-series plot")
+
+        df = load_data(file_path)
+        row_limit = max(1, int(max_rows))
+        if len(df) > row_limit:
+            df = df.head(row_limit)
+
+        missing = [col for col in [x_column, *selected_y] if col not in df.columns]
+        if missing:
+            raise ValueError(
+                f"Column(s) not found in data: {missing}. "
+                f"Available columns: {df.columns.tolist()}"
+            )
+
+        x_raw = ["" if pd.isna(v) else str(v) for v in df[x_column].tolist()]
+        x_axis = _infer_x_axis(x_raw)
+        x_plot_values = x_axis["values"]
+        valid_x = [value is not None for value in x_plot_values]
+
+        series: Dict[str, list[float | None]] = {
+            col: [_to_float(v) for v in df[col].tolist()] for col in selected_y
+        }
+        plotted = {
+            col: vals
+            for col, vals in series.items()
+            if any(v is not None for v in vals)
+        }
+        if not plotted:
+            raise ValueError(
+                "None of the requested y columns contained numeric values in the scanned rows"
+            )
+
+        fig, ax = plt.subplots(figsize=(10, 4.8))
+        for col, vals in plotted.items():
+            xy = [
+                (xv, val)
+                for xv, val, ok in zip(x_plot_values, vals, valid_x, strict=False)
+                if ok
+            ]
+            x_series = [item[0] for item in xy]
+            y_series = [float("nan") if item[1] is None else item[1] for item in xy]
+            ax.plot(x_series, y_series, linewidth=1.2, label=col)
+
+        if x_axis["kind"] in {"epoch_milliseconds", "epoch_seconds", "datetime"}:
+            locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+            fig.autofmt_xdate(rotation=30, ha="right")
+        elif x_axis["kind"] == "categorical":
+            tick_count = min(8, len(x_raw))
+            if tick_count:
+                step = max(1, len(x_raw) // tick_count)
+                tick_positions = list(range(0, len(x_raw), step))[:tick_count]
+                tick_labels = x_axis.get("labels", x_raw)
+                ax.set_xticks(tick_positions)
+                ax.set_xticklabels(
+                    [tick_labels[i] for i in tick_positions], rotation=35, ha="right"
+                )
+
+        ax.set_xlabel(f"{x_column} ({x_axis['label']})", fontsize=12)
+        ax.set_ylabel(", ".join(plotted), fontsize=12)
+        ax.set_title(
+            title or os.path.basename(file_path), fontsize=14, fontweight="bold"
+        )
+        ax.grid(True, alpha=0.25)
+        ax.legend(loc="best")
+        fig.tight_layout()
+
+        os.makedirs(
+            os.path.dirname(output_path) if os.path.dirname(output_path) else ".",
+            exist_ok=True,
+        )
+        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
+        return {
+            "status": "success",
+            "plot_type": "timeseries",
+            "output_path": output_path,
+            "x_column": x_column,
+            "x_axis": {
+                "kind": x_axis["kind"],
+                "label": x_axis["label"],
+                "parse_success_ratio": x_axis["parse_success_ratio"],
+            },
+            "y_columns": sorted(plotted),
+            "title": title or os.path.basename(file_path),
+            "data_points": len(x_raw),
+        }
+    except Exception as e:
+        logger.error(f"Error creating timeseries plot: {e}")
         return {"status": "error", "error": str(e)}

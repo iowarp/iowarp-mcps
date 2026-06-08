@@ -1,0 +1,9 @@
+{
+  "clio-geo": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "geo"
+    ]
+  }
+}

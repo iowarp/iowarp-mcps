@@ -1,0 +1,9 @@
+{
+  "clio-geojson": {
+    "command": "uvx",
+    "args": [
+      "clio-kit",
+      "geojson"
+    ]
+  }
+}
