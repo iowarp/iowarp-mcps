@@ -56,14 +56,19 @@ _SIZE_UNITS = {
 }
 
 
-def artifacts_root() -> Path:
+def artifacts_root(output_dir: str | Path | None = None) -> Path:
     """Return the writable root for staged resources and generated artifacts.
 
-    Configurable via the ``CLIO_KIT_ARTIFACTS`` environment variable; otherwise a
-    stable per-user temp directory is used. No clio-agent paths are hardcoded.
+    Precedence: an explicit ``output_dir`` (caller-supplied destination) wins;
+    otherwise the ``CLIO_KIT_ARTIFACTS`` environment variable; otherwise a stable
+    per-user temp directory. The tool writes where it is told — no destination is
+    hardcoded and nothing is rerouted.
     """
+    explicit = str(output_dir).strip() if output_dir not in (None, "") else ""
     configured = os.environ.get("CLIO_KIT_ARTIFACTS", "").strip()
-    if configured:
+    if explicit:
+        root = Path(explicit).expanduser()
+    elif configured:
         root = Path(configured).expanduser()
     else:
         root = Path(tempfile.gettempdir()) / "clio-kit-ndp-artifacts"
@@ -71,14 +76,17 @@ def artifacts_root() -> Path:
     return root.resolve()
 
 
-def _validate_output_path(candidate: str | Path, *, default_name: str) -> Path:
-    """Resolve an output path, confining writes to the configurable artifacts root.
+def _validate_output_path(
+    candidate: str | Path, *, default_name: str, output_dir: str | Path | None = None
+) -> Path:
+    """Resolve an output path, confining writes to the resolved artifacts root.
 
-    A relative path, bare filename, or any path outside the artifacts root is
-    relocated under the artifacts root using only its filename. This is the
-    standalone allowed-root check (no clio-agent file policy dependency).
+    The root is ``output_dir`` if supplied (the caller's chosen destination),
+    else the configurable artifacts root. A relative path, bare filename, or any
+    path outside that root is relocated under it using only its filename — a
+    self-contained allowed-root check with no external dependency.
     """
-    root = artifacts_root()
+    root = artifacts_root(output_dir)
     raw = Path(str(candidate)).expanduser() if candidate else Path(default_name)
     name = raw.name or default_name
     if raw.is_absolute():
@@ -540,6 +548,15 @@ async def stage_resource(
         str | None,
         Field(description="Optional filename for the staged file; derived from URL if omitted."),
     ] = None,
+    output_dir: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional destination directory for the staged file. Defaults to "
+                "CLIO_KIT_ARTIFACTS or a per-user temp dir if omitted."
+            )
+        ),
+    ] = None,
     max_bytes: Annotated[
         int | str | None,
         Field(description="Maximum download size in bytes (default 50 MiB)."),
@@ -565,7 +582,9 @@ async def stage_resource(
     max_stage_bytes = _clean_max_bytes(max_bytes)
     filename_source = output_name or Path(target_url.split("?", 1)[0]).name
     filename = _safe_filename(filename_source, default="ndp-resource")
-    output_path = _validate_output_path(filename, default_name="ndp-resource")
+    output_path = _validate_output_path(
+        filename, default_name="ndp-resource", output_dir=output_dir
+    )
 
     is_osdf = target_url.lower().startswith("osdf://")
     if is_osdf:
