@@ -35,6 +35,39 @@ def _artifacts_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# artifacts_root precedence
+# ---------------------------------------------------------------------------
+
+
+def test_artifacts_root_explicit_output_dir_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An explicit output_dir takes precedence over env and CWD."""
+    monkeypatch.setenv("CLIO_KIT_ARTIFACTS", str(tmp_path / "env"))
+    explicit = tmp_path / "explicit"
+    assert server.artifacts_root(explicit) == explicit.resolve()
+
+
+def test_artifacts_root_env_overrides_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLIO_KIT_ARTIFACTS is used when no explicit output_dir is supplied."""
+    env_root = tmp_path / "env"
+    monkeypatch.setenv("CLIO_KIT_ARTIFACTS", str(env_root))
+    monkeypatch.chdir(tmp_path)
+    assert server.artifacts_root() == env_root.resolve()
+
+
+def test_artifacts_root_defaults_to_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """With no output_dir and no env var, the fallback is the process CWD.
+
+    A caller that launches the server from a chosen working directory gets
+    artifacts written there by default.
+    """
+    monkeypatch.delenv("CLIO_KIT_ARTIFACTS", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert server.artifacts_root() == tmp_path.resolve()
+
+
+# ---------------------------------------------------------------------------
 # stage_resource
 # ---------------------------------------------------------------------------
 

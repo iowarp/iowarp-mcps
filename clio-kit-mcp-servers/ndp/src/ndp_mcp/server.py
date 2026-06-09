@@ -2,7 +2,6 @@ import asyncio
 import os
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -60,9 +59,11 @@ def artifacts_root(output_dir: str | Path | None = None) -> Path:
     """Return the writable root for staged resources and generated artifacts.
 
     Precedence: an explicit ``output_dir`` (caller-supplied destination) wins;
-    otherwise the ``CLIO_KIT_ARTIFACTS`` environment variable; otherwise a stable
-    per-user temp directory. The tool writes where it is told — no destination is
-    hardcoded and nothing is rerouted.
+    otherwise the ``CLIO_KIT_ARTIFACTS`` environment variable; otherwise the
+    current working directory. Falling back to the process CWD lets a caller
+    that launches the server with a chosen working directory control where
+    artifacts land by default. The tool writes where it is told — no destination
+    is hardcoded and nothing is rerouted.
     """
     explicit = str(output_dir).strip() if output_dir not in (None, "") else ""
     configured = os.environ.get("CLIO_KIT_ARTIFACTS", "").strip()
@@ -71,7 +72,7 @@ def artifacts_root(output_dir: str | Path | None = None) -> Path:
     elif configured:
         root = Path(configured).expanduser()
     else:
-        root = Path(tempfile.gettempdir()) / "clio-kit-ndp-artifacts"
+        root = Path.cwd()
     root.mkdir(parents=True, exist_ok=True)
     return root.resolve()
 
@@ -553,7 +554,7 @@ async def stage_resource(
         Field(
             description=(
                 "Optional destination directory for the staged file. Defaults to "
-                "CLIO_KIT_ARTIFACTS or a per-user temp dir if omitted."
+                "CLIO_KIT_ARTIFACTS or the current working directory if omitted."
             )
         ),
     ] = None,

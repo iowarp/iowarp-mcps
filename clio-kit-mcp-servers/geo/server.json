@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/geo-mcp",
   "title": "CLIO Geo",
   "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.2",
+      "version": "2.2.3",
       "transport": {
         "type": "stdio"
       },
