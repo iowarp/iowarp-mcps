@@ -309,12 +309,22 @@ async def filter_points_by_radius_tool(
         int | None,
         Field(description="Optional cap on the number of returned points (after sorting)."),
     ] = None,
+    compact: Annotated[
+        bool,
+        Field(
+            description="When true, each returned point carries only its id "
+            "(if id_column given) and distance_km, dropping the other source "
+            "columns. Use this for ranking by proximity when you only need ids "
+            "and distances — it keeps the result small for large tables."
+        ),
+    ] = False,
 ) -> dict[str, Any]:
     """Return the points within radius_km of the center, sorted by distance.
 
     Returns ``{ok, count, within_radius_count, points:[{..., distance_km}],
-    center, radius_km, lat_column, lon_column, ...}``. Domain-neutral; no
-    station/catalog semantics.
+    center, radius_km, lat_column, lon_column, ...}``. With ``compact=true`` each
+    point is just ``{id, distance_km}``. Domain-neutral; no station/catalog
+    semantics.
     """
     try:
         return filter_points_by_radius(
@@ -326,6 +336,7 @@ async def filter_points_by_radius_tool(
             lon_column=lon_column,
             id_column=id_column,
             limit=limit,
+            compact=compact,
         )
     except ProximityError as exc:
         raise ToolError(str(exc)) from exc

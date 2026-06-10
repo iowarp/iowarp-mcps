@@ -205,6 +205,7 @@ def filter_points_by_radius(
     lon_column: str | None = None,
     id_column: str | None = None,
     limit: int | None = None,
+    compact: bool = False,
 ) -> dict[str, Any]:
     """Filter a table of points to those within ``radius_km`` of a center.
 
@@ -277,10 +278,20 @@ def filter_points_by_radius(
         distance = haversine_km(center_lat, center_lon, lat, lon)
         if distance > radius:
             continue
-        point: dict[str, Any] = dict(row)
-        point["distance_km"] = round(distance, 4)
-        if id_column is not None:
-            point["id"] = row.get(id_column)
+        point: dict[str, Any]
+        if compact:
+            # Lean projection: only the id + distance_km a ranker needs. Keeps the
+            # result small so a many-row table (or many repeated calls) does not
+            # flood a small-context agent's trajectory with full rows it discards.
+            point = {"distance_km": round(distance, 4)}
+            if id_column is not None:
+                point["id"] = row.get(id_column)
+                point[id_column] = row.get(id_column)
+        else:
+            point = dict(row)
+            point["distance_km"] = round(distance, 4)
+            if id_column is not None:
+                point["id"] = row.get(id_column)
         within.append(point)
 
     within.sort(key=lambda item: item["distance_km"])
