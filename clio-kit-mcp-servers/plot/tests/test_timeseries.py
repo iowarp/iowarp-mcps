@@ -331,3 +331,61 @@ def test_plot_timeseries_tool_registered():
     assert hasattr(server, "plot_timeseries")
     assert callable(server.plot_timeseries)
     assert hasattr(server, "create_timeseries_plot")
+
+
+def _write_station_csv(path: str, base: float) -> None:
+    """A tiny GNSS-like CSV (time + up displacement)."""
+    pd.DataFrame(
+        {"time": list(range(10)), "up": [base + i * 0.1 for i in range(10)]}
+    ).to_csv(path, index=False)
+
+
+def test_create_timeseries_plot_overlay_multiple_files():
+    """overlay_paths overlays the same column from several files on one figure,
+    labelling each by its file stem; a single non-empty PNG results."""
+    with tempfile.TemporaryDirectory() as d:
+        a = os.path.join(d, "P475.CI.LY_.20.csv")
+        b = os.path.join(d, "P473.PW.LY_.00.csv")
+        c = os.path.join(d, "MTA1.CI.LY_.30.csv")
+        _write_station_csv(a, 0.0)
+        _write_station_csv(b, 5.0)
+        _write_station_csv(c, 10.0)
+        out = os.path.join(d, "overlay.png")
+        result = create_timeseries_plot(
+            a, "time", "up", output_path=out, overlay_paths=[b, c]
+        )
+        assert result["status"] == "success"
+        assert result["files"] == [a, b, c]
+        assert result["y_columns"] == ["up"]
+        assert os.path.exists(out) and os.path.getsize(out) > 1024
+
+
+def test_create_timeseries_plot_single_file_unchanged_without_overlay():
+    """Omitting overlay_paths keeps the original single-file behaviour (title =
+    file basename, series labelled by column)."""
+    with tempfile.TemporaryDirectory() as d:
+        a = os.path.join(d, "P475.CI.LY_.20.csv")
+        _write_station_csv(a, 0.0)
+        out = os.path.join(d, "single.png")
+        result = create_timeseries_plot(a, "time", "up", output_path=out)
+        assert result["status"] == "success"
+        assert result["title"] == "P475.CI.LY_.20.csv"
+        assert result["files"] == [a]
+        assert os.path.exists(out)
+
+
+@pytest.mark.asyncio
+async def test_plot_timeseries_tool_overlay_paths():
+    with tempfile.TemporaryDirectory() as d:
+        a = os.path.join(d, "A.csv")
+        b = os.path.join(d, "B.csv")
+        _write_station_csv(a, 0.0)
+        _write_station_csv(b, 3.0)
+        out = os.path.join(d, "ov.png")
+        result = await server.plot_timeseries(
+            data_path=a, x_column="time", y_columns="up", output_path=out,
+            overlay_paths=[b],
+        )
+        assert result["status"] == "success"
+        assert len(result["files"]) == 2
+        assert os.path.exists(out)

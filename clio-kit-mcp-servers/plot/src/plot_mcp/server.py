@@ -267,6 +267,12 @@ async def plot_timeseries(
     output_path: str = "timeseries.png",
     title: str | None = None,
     max_rows: int = 2000,
+    overlay_paths: Annotated[
+        list[str] | None,
+        Field(
+            description="Optional additional CSV/Excel files to OVERLAY on the same axes, each contributing the same x_column/y_columns — e.g. compare one displacement component across several station files on one chart. Each file's lines are labelled by its file name. Omit for a normal single-file plot."
+        ),
+    ] = None,
 ) -> dict:
     """
     Create a time-series line plot from one or more columns of a data file.
@@ -295,7 +301,7 @@ async def plot_timeseries(
     """
     logger.info(f"Creating timeseries plot from {data_path}")
     result = create_timeseries_plot(
-        data_path, x_column, y_columns, title, output_path, max_rows
+        data_path, x_column, y_columns, title, output_path, max_rows, overlay_paths
     )
     if result.get("status") == "error":
         raise ToolError(result["error"])

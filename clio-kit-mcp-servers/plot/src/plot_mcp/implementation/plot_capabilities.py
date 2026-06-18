@@ -514,6 +514,7 @@ def create_timeseries_plot(
     title: str | None = None,
     output_path: str = "timeseries.png",
     max_rows: int = 2000,
+    overlay_paths: List[str] | None = None,
 ) -> Dict[str, Any]:
     """Create a multi-series line plot from one or more y columns of a data file.
 
@@ -530,6 +531,12 @@ def create_timeseries_plot(
         title: Optional plot title (defaults to the file name).
         output_path: Output image file path (PNG, PDF, or SVG).
         max_rows: Maximum number of leading rows to read and plot.
+        overlay_paths: Optional additional CSV/Excel files to OVERLAY on the same
+            axes, each contributing the same ``x_column``/``y_columns``. Used to
+            compare the same measurement across several files (e.g. one displacement
+            component across several stations) on one figure. Each file's series are
+            labelled by the file stem so the legend distinguishes them. Omit for a
+            normal single-file plot (behaviour is then unchanged).
 
     Returns:
         Dictionary with plot information, or an ``{"status": "error"}`` payload.
@@ -542,47 +549,62 @@ def create_timeseries_plot(
         if not selected_y:
             raise ValueError("At least one y column is required for a time-series plot")
 
-        df = load_data(file_path)
+        files = [file_path, *[str(p) for p in (overlay_paths or []) if str(p).strip()]]
+        multi = len(files) > 1
         row_limit = max(1, int(max_rows))
-        if len(df) > row_limit:
-            df = df.head(row_limit)
 
-        missing = [col for col in [x_column, *selected_y] if col not in df.columns]
-        if missing:
-            raise ValueError(
-                f"Column(s) not found in data: {missing}. "
-                f"Available columns: {df.columns.tolist()}"
-            )
+        fig, ax = plt.subplots(figsize=(10, 4.8))
+        primary_x_axis: Dict[str, Any] | None = None
+        primary_x_raw: list[str] = []
+        plotted_cols: set[str] = set()
+        for index, fpath in enumerate(files):
+            df = load_data(fpath)
+            if len(df) > row_limit:
+                df = df.head(row_limit)
+            missing = [col for col in [x_column, *selected_y] if col not in df.columns]
+            if missing:
+                raise ValueError(
+                    f"Column(s) not found in {os.path.basename(fpath)}: {missing}. "
+                    f"Available columns: {df.columns.tolist()}"
+                )
+            x_raw = ["" if pd.isna(v) else str(v) for v in df[x_column].tolist()]
+            x_axis = _infer_x_axis(x_raw)
+            if index == 0:
+                primary_x_axis = x_axis
+                primary_x_raw = x_raw
+            x_plot_values = x_axis["values"]
+            valid_x = [value is not None for value in x_plot_values]
+            stem = os.path.splitext(os.path.basename(fpath))[0]
+            for col in selected_y:
+                vals = [_to_float(v) for v in df[col].tolist()]
+                if not any(v is not None for v in vals):
+                    continue
+                xy = [
+                    (xv, val)
+                    for xv, val, ok in zip(x_plot_values, vals, valid_x, strict=False)
+                    if ok
+                ]
+                x_series = [item[0] for item in xy]
+                y_series = [float("nan") if item[1] is None else item[1] for item in xy]
+                # Single file: label by column (unchanged). Overlay: label by file
+                # stem (+ column when more than one) so each station is legible.
+                if not multi:
+                    label = col
+                elif len(selected_y) > 1:
+                    label = f"{stem}:{col}"
+                else:
+                    label = stem
+                ax.plot(x_series, y_series, linewidth=1.2, label=label)
+                plotted_cols.add(col)
 
-        x_raw = ["" if pd.isna(v) else str(v) for v in df[x_column].tolist()]
-        x_axis = _infer_x_axis(x_raw)
-        x_plot_values = x_axis["values"]
-        valid_x = [value is not None for value in x_plot_values]
-
-        series: Dict[str, list[float | None]] = {
-            col: [_to_float(v) for v in df[col].tolist()] for col in selected_y
-        }
-        plotted = {
-            col: vals
-            for col, vals in series.items()
-            if any(v is not None for v in vals)
-        }
-        if not plotted:
+        if not plotted_cols:
             raise ValueError(
                 "None of the requested y columns contained numeric values in the scanned rows"
             )
 
-        fig, ax = plt.subplots(figsize=(10, 4.8))
-        for col, vals in plotted.items():
-            xy = [
-                (xv, val)
-                for xv, val, ok in zip(x_plot_values, vals, valid_x, strict=False)
-                if ok
-            ]
-            x_series = [item[0] for item in xy]
-            y_series = [float("nan") if item[1] is None else item[1] for item in xy]
-            ax.plot(x_series, y_series, linewidth=1.2, label=col)
-
+        assert primary_x_axis is not None
+        x_axis = primary_x_axis
+        x_raw = primary_x_raw
         if x_axis["kind"] in {"epoch_milliseconds", "epoch_seconds", "datetime"}:
             locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
             ax.xaxis.set_major_locator(locator)
@@ -600,10 +622,11 @@ def create_timeseries_plot(
                 )
 
         ax.set_xlabel(f"{x_column} ({x_axis['label']})", fontsize=12)
-        ax.set_ylabel(", ".join(plotted), fontsize=12)
-        ax.set_title(
-            title or os.path.basename(file_path), fontsize=14, fontweight="bold"
+        ax.set_ylabel(", ".join(sorted(plotted_cols)), fontsize=12)
+        default_title = (
+            f"{len(files)} files overlaid" if multi else os.path.basename(file_path)
         )
+        ax.set_title(title or default_title, fontsize=14, fontweight="bold")
         ax.grid(True, alpha=0.25)
         ax.legend(loc="best")
         fig.tight_layout()
@@ -625,8 +648,9 @@ def create_timeseries_plot(
                 "label": x_axis["label"],
                 "parse_success_ratio": x_axis["parse_success_ratio"],
             },
-            "y_columns": sorted(plotted),
-            "title": title or os.path.basename(file_path),
+            "y_columns": sorted(plotted_cols),
+            "files": files,
+            "title": title or default_title,
             "data_points": len(x_raw),
         }
     except Exception as e:
