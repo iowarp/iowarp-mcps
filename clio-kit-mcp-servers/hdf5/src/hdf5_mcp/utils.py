@@ -56,6 +56,7 @@ from threading import Lock, RLock
 import json
 from collections import OrderedDict
 import threading
+import weakref
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,8 @@ def monitor_performance(monitor: PerformanceMonitor):
 class FileHandleCache:
     """LRU cache for HDF5 file handles with time-based expiry."""
 
+    _instances: "weakref.WeakSet[FileHandleCache]" = weakref.WeakSet()
+
     def __init__(self, max_size: int = 1024, expiry_time: float = 300):
         """
         Initialize the file handle cache.
@@ -233,6 +236,7 @@ class FileHandleCache:
         self._stop_checker = threading.Event()
         self._checker_thread = threading.Thread(target=self._check_expiry, daemon=True)
         self._checker_thread.start()
+        self._instances.add(self)
 
     def get(self, file_path: str, mode: str = "r") -> h5py.File:
         """Get a file handle from cache or create a new one."""
@@ -288,6 +292,12 @@ class FileHandleCache:
             for file_path in list(self._cache.keys()):
                 self._close_handle(file_path)
             self._stop_checker.set()
+
+    @classmethod
+    def close_all_instances(cls):
+        """Close all file handles owned by live cache instances."""
+        for cache in list(cls._instances):
+            cache.close_all()
 
     def __del__(self):
         """Ensure all handles are closed on deletion."""

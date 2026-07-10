@@ -14,13 +14,38 @@ import h5py
 import numpy as np
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock
+import gc
+import logging
+
+from hdf5_mcp import utils
+
+
+def _cleanup_runtime_handles() -> None:
+    """Release process-global handles created by tests."""
+    utils.FileHandleCache.close_all_instances()
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        handler.close()
+    logging.shutdown()
+    gc.collect()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_hdf5_handles():
+    """Close cached HDF5 handles so Windows can remove temporary files."""
+    yield
+    _cleanup_runtime_handles()
 
 
 @pytest.fixture
 def temp_dir():
     """Temporary directory for test files."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
+        try:
+            yield Path(tmpdir)
+        finally:
+            _cleanup_runtime_handles()
 
 
 @pytest.fixture

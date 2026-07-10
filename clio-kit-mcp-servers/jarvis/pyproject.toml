@@ -45,6 +45,7 @@ dev-dependencies = [
     "psutil>=6.0.0",
     "mypy>=1.17.0",
     "types-requests",
+    "pip-audit>=2.10.0",
 ]
 
 [build-system]

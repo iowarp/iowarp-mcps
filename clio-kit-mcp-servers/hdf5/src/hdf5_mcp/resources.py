@@ -154,7 +154,12 @@ class LazyHDF5Proxy:
         """Close the file handle if it's open."""
         with self._lock:
             if self._file is not None:
+                self._file.close()
                 self._file = None
+
+    def __del__(self):
+        """Close the file handle when the proxy is collected."""
+        self.close()
 
 
 class LazyDatasetProxy:
