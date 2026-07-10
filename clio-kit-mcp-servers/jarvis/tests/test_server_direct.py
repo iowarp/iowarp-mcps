@@ -560,8 +560,8 @@ class TestJarvisManagerToolsDirect:
 
             result = jm_get_repo("repo1")
 
-            assert "RepoInfo" in result[0]["text"]
-            mock_mgr.get_repo.assert_called_once()
+            assert result["repo"] == "RepoInfo"
+            mock_mgr.get_repo.assert_called_once_with("repo1")
 
     def test_jm_get_repo_error_direct(self):
         """Test jm_get_repo error handling."""

@@ -584,10 +584,11 @@ def jm_reset() -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_list_pipelines() -> list:
+def jm_list_pipelines() -> dict[str, Any]:
     """List all current pipelines under management."""
     try:
-        return [{"type": "text", "text": p} for p in manager.list_pipelines()]
+        pipelines = [str(pipeline) for pipeline in manager.list_pipelines()]
+        return {"pipelines": pipelines, "count": len(pipelines)}
     except Exception as e:
         raise ToolError(f"Error: {e}")
 
@@ -622,10 +623,11 @@ def jm_cd(pipeline_id: str) -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_list_repos() -> list:
+def jm_list_repos() -> dict[str, Any]:
     """List all registered repositories."""
     try:
-        return [{"type": "text", "text": str(repo)} for repo in manager.list_repos()]
+        repos = [str(repo) for repo in manager.list_repos()]
+        return {"repos": repos, "count": len(repos)}
     except Exception as e:
         raise ToolError(f"Error: {e}")
 
@@ -700,10 +702,11 @@ def jm_promote_repo(repo_name: str) -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_get_repo(repo_name: str) -> list:
+def jm_get_repo(repo_name: str) -> dict[str, Any]:
     """Get detailed information about a repository."""
     try:
-        return [{"type": "text", "text": str(manager.get_repo(repo_name))}]
+        repo = manager.get_repo(repo_name)
+        return {"repo": repo if isinstance(repo, dict) else str(repo)}
     except Exception as e:
         raise ToolError(f"Error: {e}")
 
