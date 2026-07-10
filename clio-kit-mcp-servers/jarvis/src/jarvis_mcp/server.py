@@ -1,12 +1,17 @@
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+import asyncio
+import importlib
+import inspect
 import os
+from pathlib import Path
 from dotenv import load_dotenv
-from typing import Optional
+from typing import Any, Optional
 from .capabilities.jarvis_handler import (
     create_pipeline,
     load_pipeline,
+    export_pipeline,
     append_pkg,
     configure_pkg,
     unlink_pkg,
@@ -17,7 +22,143 @@ from .capabilities.jarvis_handler import (
     update_pipeline,
     build_pipeline_env,
 )
-from jarvis_cd.basic.jarvis_manager import JarvisManager
+
+
+class _CurrentJarvisManager:
+    """Compatibility adapter over the current JARVIS-CD Jarvis singleton."""
+
+    @classmethod
+    def get_instance(cls) -> "_CurrentJarvisManager":
+        jarvis_module = importlib.import_module("jarvis_cd.core.config")
+        return cls(jarvis_module.Jarvis.get_instance())
+
+    def __init__(self, jarvis: Any) -> None:
+        self.jarvis = jarvis
+
+    def create(
+        self, config_dir: str, private_dir: str, shared_dir: Optional[str] = None
+    ) -> "_CurrentJarvisManager":
+        self.jarvis.initialize(
+            config_dir=config_dir,
+            private_dir=private_dir,
+            shared_dir=shared_dir or private_dir,
+        )
+        return self
+
+    def load(self) -> "_CurrentJarvisManager":
+        _ = self.jarvis.config
+        return self
+
+    def save(self) -> "_CurrentJarvisManager":
+        if getattr(self.jarvis, "_config", None) is not None:
+            self.jarvis.save_config(self.jarvis.config)
+        if getattr(self.jarvis, "_repos", None) is not None:
+            self.jarvis.save_repos(self.jarvis.repos)
+        return self
+
+    def set_hostfile(self, path: str) -> "_CurrentJarvisManager":
+        self.jarvis.set_hostfile(path)
+        return self
+
+    def bootstrap_from(self, machine: str) -> "_CurrentJarvisManager":
+        raise NotImplementedError(
+            f"bootstrap templates are not exposed by current JARVIS-CD: {machine}"
+        )
+
+    def bootstrap_list(self) -> list[str]:
+        return []
+
+    def reset(self) -> "_CurrentJarvisManager":
+        raise NotImplementedError(
+            "reset is not exposed through the compatibility adapter"
+        )
+
+    def list_pipelines(self) -> list[str]:
+        pipelines_dir = self.jarvis.get_pipelines_dir()
+        if not pipelines_dir.exists():
+            return []
+        return sorted(path.name for path in pipelines_dir.iterdir() if path.is_dir())
+
+    def cd(self, pipeline_id: str) -> "_CurrentJarvisManager":
+        self.jarvis.set_current_pipeline(pipeline_id)
+        return self
+
+    def list_repos(self) -> list[str]:
+        return list(self.jarvis.repos.get("repos", []))
+
+    def add_repo(self, path: str, force: bool = False) -> "_CurrentJarvisManager":
+        self.jarvis.add_repo(path, force=force)
+        return self
+
+    def remove_repo(self, repo_name: str) -> "_CurrentJarvisManager":
+        repo_paths = list(self.jarvis.repos.get("repos", []))
+        matches = [
+            repo_path
+            for repo_path in repo_paths
+            if repo_path == repo_name or Path(repo_path).name == repo_name
+        ]
+        if not matches:
+            self.jarvis.remove_repo(repo_name)
+        for repo_path in matches:
+            self.jarvis.remove_repo(repo_path)
+        return self
+
+    def promote_repo(self, repo_name: str) -> "_CurrentJarvisManager":
+        repos = self.jarvis.repos.copy()
+        repo_paths = list(repos.get("repos", []))
+        matches = [
+            repo_path
+            for repo_path in repo_paths
+            if repo_path == repo_name or Path(repo_path).name == repo_name
+        ]
+        if not matches:
+            raise ValueError(f"repository not found: {repo_name}")
+        for repo_path in reversed(matches):
+            repo_paths.remove(repo_path)
+            repo_paths.insert(0, repo_path)
+        repos["repos"] = repo_paths
+        self.jarvis.save_repos(repos)
+        return self
+
+    def get_repo(self, repo_name: str) -> dict[str, Any] | None:
+        for index, repo_path in enumerate(self.jarvis.repos.get("repos", []), start=1):
+            if repo_path == repo_name or Path(repo_path).name == repo_name:
+                return {
+                    "index": index,
+                    "name": Path(repo_path).name,
+                    "path": repo_path,
+                    "exists": Path(repo_path).exists(),
+                }
+        return None
+
+    def construct_pkg(self, pkg_type: str) -> Any:
+        raise NotImplementedError(
+            f"package construction is not exposed by current JARVIS-CD: {pkg_type}"
+        )
+
+    def resource_graph_show(self) -> dict[str, Any]:
+        return self.jarvis.resource_graph
+
+    def resource_graph_build(self, net_sleep: float) -> dict[str, Any]:
+        _ = net_sleep
+        raise NotImplementedError(
+            "resource graph build is not exposed through the compatibility adapter"
+        )
+
+    def resource_graph_modify(self, net_sleep: float) -> dict[str, Any]:
+        _ = net_sleep
+        raise NotImplementedError(
+            "resource graph modify is not exposed through the compatibility adapter"
+        )
+
+
+def _load_jarvis_manager_class() -> Any:
+    try:
+        module = importlib.import_module("jarvis_cd.basic.jarvis_manager")
+        return module.JarvisManager
+    except ModuleNotFoundError:
+        return _CurrentJarvisManager
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,7 +174,44 @@ mcp: FastMCP = FastMCP(
 )
 
 # Create a singleton instance of JarvisManager
+JarvisManager = _load_jarvis_manager_class()
 manager = JarvisManager.get_instance()
+
+USER_TOOLS = {
+    "update_pipeline",
+    "build_pipeline_env",
+    "create_pipeline",
+    "load_pipeline",
+    "export_pipeline",
+    "get_pkg_config",
+    "append_pkg",
+    "configure_pkg",
+    "unlink_pkg",
+    "remove_pkg",
+    "run_pipeline",
+    "jm_list_pipelines",
+    "jm_list_repos",
+    "jm_get_repo",
+}
+
+ADMIN_TOOLS = {
+    "jm_create_config",
+    "jm_load_config",
+    "jm_save_config",
+    "jm_set_hostfile",
+    "jm_bootstrap_from",
+    "jm_bootstrap_list",
+    "jm_reset",
+    "jm_cd",
+    "jm_add_repo",
+    "jm_remove_repo",
+    "jm_promote_repo",
+    "jm_construct_pkg",
+    "jm_graph_show",
+    "jm_graph_build",
+    "jm_graph_modify",
+    "destroy_pipeline",
+}
 
 
 # ─── RESOURCE ────────────────────────────────────────────────────────────────
@@ -124,6 +302,21 @@ async def create_pipeline_tool(pipeline_id: str) -> dict:
 async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
     """Load an existing pipeline environment by ID, or the current one if not specified."""
     return await load_pipeline(pipeline_id)
+
+
+@mcp.tool(
+    name="export_pipeline",
+    description="Export a structured snapshot of a Jarvis-CD pipeline.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline"},
+)
+async def export_pipeline_tool(pipeline_id: str, include_yaml: bool = True) -> dict:
+    """Export pipeline metadata, packages, configs, and optional source YAML."""
+    return await export_pipeline(pipeline_id, include_yaml=include_yaml)
 
 
 @mcp.tool(
@@ -391,10 +584,11 @@ def jm_reset() -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_list_pipelines() -> list:
+async def jm_list_pipelines() -> dict[str, Any]:
     """List all current pipelines under management."""
     try:
-        return [{"type": "text", "text": p} for p in manager.list_pipelines()]
+        pipelines = [str(pipeline) for pipeline in manager.list_pipelines()]
+        return {"pipelines": pipelines, "count": len(pipelines)}
     except Exception as e:
         raise ToolError(f"Error: {e}")
 
@@ -429,10 +623,11 @@ def jm_cd(pipeline_id: str) -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_list_repos() -> list:
+async def jm_list_repos() -> dict[str, Any]:
     """List all registered repositories."""
     try:
-        return [{"type": "text", "text": str(repo)} for repo in manager.list_repos()]
+        repos = [str(repo) for repo in manager.list_repos()]
+        return {"repos": repos, "count": len(repos)}
     except Exception as e:
         raise ToolError(f"Error: {e}")
 
@@ -507,10 +702,11 @@ def jm_promote_repo(repo_name: str) -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_get_repo(repo_name: str) -> list:
+async def jm_get_repo(repo_name: str) -> dict[str, Any]:
     """Get detailed information about a repository."""
     try:
-        return [{"type": "text", "text": str(manager.get_repo(repo_name))}]
+        repo = manager.get_repo(repo_name)
+        return {"repo": repo if isinstance(repo, dict) else str(repo)}
     except Exception as e:
         raise ToolError(f"Error: {e}")
 
@@ -597,14 +793,49 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+    parser.add_argument(
+        "--profile",
+        choices=["all", "user", "admin"],
+        default=None,
+        help=(
+            "Tool surface to expose. 'user' exposes pipeline authoring and read-only "
+            "discovery tools. 'admin' exposes manager and destructive operations. "
+            "'all' preserves the full legacy surface."
+        ),
+    )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "all")
+    apply_tool_profile(profile)
     if transport == "http":
         mcp.run(transport="http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")
+
+
+def apply_tool_profile(profile: str) -> None:
+    """Restrict the registered tool set for user or admin MCP modes."""
+    normalized = profile.strip().lower()
+    if normalized == "all":
+        return
+    if normalized == "user":
+        allowed = USER_TOOLS
+    elif normalized == "admin":
+        allowed = ADMIN_TOOLS
+    else:
+        raise ValueError("profile must be one of: all, user, admin")
+    for tool in _registered_tools():
+        if tool.name not in allowed:
+            mcp.remove_tool(tool.name)
+
+
+def _registered_tools() -> list:
+    tools = mcp.list_tools(run_middleware=False)
+    if inspect.isawaitable(tools):
+        return list(asyncio.run(tools))
+    return list(tools)
 
 
 if __name__ == "__main__":

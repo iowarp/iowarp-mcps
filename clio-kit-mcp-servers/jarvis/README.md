@@ -14,6 +14,14 @@ Jarvis MCP is a Model Context Protocol server that enables LLMs to manage the fu
 uvx clio-kit mcp-server jarvis
 ```
 
+Use `--profile user` for normal pipeline authoring and discovery, or
+`--profile admin` for manager and repository administration:
+
+```bash
+uvx clio-kit mcp-server jarvis --profile user
+uvx clio-kit mcp-server jarvis --profile admin
+```
+
 ## Documentation
 
 - **Full Documentation**: [CLIO Kit Website](https://docs.iowarp.ai/)
@@ -144,6 +152,11 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\jarvis run jarvis-mc
 
 ### `load_pipeline`
 **Description**: Load an existing Jarvis-CD pipeline environment.
+**Hints**: read-only, idempotent
+**Tags**: jarvis, pipeline
+
+### `export_pipeline`
+**Description**: Export a structured snapshot of a Jarvis-CD pipeline, including package configs and source YAML when available.
 **Hints**: read-only, idempotent
 **Tags**: jarvis, pipeline
 

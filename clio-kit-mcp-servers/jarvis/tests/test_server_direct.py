@@ -9,6 +9,42 @@ from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 
 
+class TestServerProfiles:
+    """Test user/admin profile filtering."""
+
+    def test_apply_user_profile_removes_admin_tools(self):
+        """User profile keeps pipeline authoring tools and hides admin tools."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        class Tool:
+            def __init__(self, name):
+                self.name = name
+
+        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("export_pipeline")]
+        with patch("jarvis_mcp.server.mcp") as mock_mcp:
+            mock_mcp.list_tools.return_value = tools
+
+            apply_tool_profile("user")
+
+            mock_mcp.remove_tool.assert_called_once_with("jm_reset")
+
+    def test_apply_admin_profile_removes_user_tools(self):
+        """Admin profile keeps manager tools and hides user pipeline authoring."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        class Tool:
+            def __init__(self, name):
+                self.name = name
+
+        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("jm_add_repo")]
+        with patch("jarvis_mcp.server.mcp") as mock_mcp:
+            mock_mcp.list_tools.return_value = tools
+
+            apply_tool_profile("admin")
+
+            mock_mcp.remove_tool.assert_called_once_with("create_pipeline")
+
+
 class TestPipelineToolsDirect:
     """Test pipeline tool implementations directly."""
 
@@ -80,6 +116,23 @@ class TestPipelineToolsDirect:
 
             assert result["status"] == "loaded"
             mock_handler.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_export_pipeline_tool_direct(self):
+        """Test export_pipeline_tool with mocked handler."""
+        with patch("jarvis_mcp.server.export_pipeline") as mock_handler:
+            mock_handler.return_value = {
+                "pipeline_id": "test",
+                "packages": [{"pkg_id": "lammps"}],
+            }
+
+            from jarvis_mcp.server import export_pipeline_tool
+
+            result = await export_pipeline_tool("test", include_yaml=False)
+
+            assert result["pipeline_id"] == "test"
+            assert result["packages"] == [{"pkg_id": "lammps"}]
+            mock_handler.assert_called_once_with("test", include_yaml=False)
 
     @pytest.mark.asyncio
     async def test_get_pkg_config_tool_direct(self):
@@ -360,19 +413,21 @@ class TestJarvisManagerToolsDirect:
             with pytest.raises(ToolError):
                 jm_reset()
 
-    def test_jm_list_pipelines_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_pipelines_direct(self):
         """Test jm_list_pipelines with mocked manager."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_pipelines.return_value = ["p1", "p2"]
 
             from jarvis_mcp.server import jm_list_pipelines
 
-            result = jm_list_pipelines()
+            result = await jm_list_pipelines()
 
-            assert len(result) == 2
+            assert result == {"pipelines": ["p1", "p2"], "count": 2}
             mock_mgr.list_pipelines.assert_called_once()
 
-    def test_jm_list_pipelines_error_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_pipelines_error_direct(self):
         """Test jm_list_pipelines error handling."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_pipelines.side_effect = Exception("List error")
@@ -380,7 +435,7 @@ class TestJarvisManagerToolsDirect:
             from jarvis_mcp.server import jm_list_pipelines
 
             with pytest.raises(ToolError):
-                jm_list_pipelines()
+                await jm_list_pipelines()
 
     def test_jm_cd_direct(self):
         """Test jm_cd with mocked manager."""
@@ -405,19 +460,21 @@ class TestJarvisManagerToolsDirect:
             with pytest.raises(ToolError):
                 jm_cd("pipe")
 
-    def test_jm_list_repos_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_repos_direct(self):
         """Test jm_list_repos with mocked manager."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_repos.return_value = ["repo1", "repo2"]
 
             from jarvis_mcp.server import jm_list_repos
 
-            result = jm_list_repos()
+            result = await jm_list_repos()
 
-            assert len(result) == 2
+            assert result == {"repos": ["repo1", "repo2"], "count": 2}
             mock_mgr.list_repos.assert_called_once()
 
-    def test_jm_list_repos_error_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_repos_error_direct(self):
         """Test jm_list_repos error handling."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_repos.side_effect = Exception("List error")
@@ -425,7 +482,7 @@ class TestJarvisManagerToolsDirect:
             from jarvis_mcp.server import jm_list_repos
 
             with pytest.raises(ToolError):
-                jm_list_repos()
+                await jm_list_repos()
 
     def test_jm_add_repo_direct(self):
         """Test jm_add_repo with mocked manager."""
@@ -496,7 +553,8 @@ class TestJarvisManagerToolsDirect:
             with pytest.raises(ToolError):
                 jm_promote_repo("repo")
 
-    def test_jm_get_repo_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_get_repo_direct(self):
         """Test jm_get_repo with mocked manager."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_repo = Mock()
@@ -505,12 +563,13 @@ class TestJarvisManagerToolsDirect:
 
             from jarvis_mcp.server import jm_get_repo
 
-            result = jm_get_repo("repo1")
+            result = await jm_get_repo("repo1")
 
-            assert "RepoInfo" in result[0]["text"]
-            mock_mgr.get_repo.assert_called_once()
+            assert result["repo"] == "RepoInfo"
+            mock_mgr.get_repo.assert_called_once_with("repo1")
 
-    def test_jm_get_repo_error_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_get_repo_error_direct(self):
         """Test jm_get_repo error handling."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.get_repo.side_effect = Exception("Get error")
@@ -518,7 +577,7 @@ class TestJarvisManagerToolsDirect:
             from jarvis_mcp.server import jm_get_repo
 
             with pytest.raises(ToolError):
-                jm_get_repo("repo")
+                await jm_get_repo("repo")
 
     def test_jm_construct_pkg_direct(self):
         """Test jm_construct_pkg with mocked manager."""

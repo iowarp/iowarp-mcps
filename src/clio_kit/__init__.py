@@ -229,7 +229,10 @@ def main(ctx):
         click.echo("  uvx clio-kit prompt <prompt-name>")
         click.echo("\nFor more help: uvx clio-kit <command> --help")
 
-@main.command("mcp-server")
+@main.command(
+    "mcp-server",
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+)
 @click.argument('server', required=False)
 @click.option('-b', '--branch', help='Git branch to use (for development)')
 @click.argument('args', nargs=-1, type=click.UNPROCESSED)

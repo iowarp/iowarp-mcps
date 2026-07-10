@@ -68,7 +68,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        if [[ -n $(git status --porcelain) ]]; then
+        if [[ -n $(git status --porcelain -- 'clio-kit-mcp-servers/*/README.md') ]]; then
           git add clio-kit-mcp-servers/*/README.md
           git commit -m "Auto-update MCP README files"
           git push

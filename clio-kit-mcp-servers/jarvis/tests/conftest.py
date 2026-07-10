@@ -73,11 +73,22 @@ def mock_pipeline():
 
         # Mock pipeline attributes
         mock_pipeline.global_id = "test_pipeline"
+        mock_pipeline.config_path = (
+            "/tmp/jarvis-config/test_pipeline/test_pipeline.yaml"
+        )
+        mock_pipeline.env_path = "/tmp/jarvis-config/test_pipeline/env.yaml"
+        mock_pipeline.config = {"sub_pkgs": [["builtin.lammps", "lammps"]]}
+        mock_pipeline.env = {"PATH": "/usr/bin"}
 
         # Mock get_pkg method
         mock_pkg = Mock()
+        mock_pkg.pkg_id = "lammps"
+        mock_pkg.pkg_type = "builtin.lammps"
+        mock_pkg.global_id = "test_pipeline.lammps"
+        mock_pkg.config_path = "/tmp/jarvis-config/test_pipeline/lammps/lammps.yaml"
         mock_pkg.config = {"test_config": "test_value"}
         mock_pipeline.get_pkg.return_value = mock_pkg
+        mock_pipeline.sub_pkgs = [mock_pkg]
 
         yield mock_pipeline
 

@@ -15,7 +15,6 @@ dependencies = [
   "fastmcp>=3.0.1",
   "fastapi",
   "python-dotenv>=1.0.0",
-  "jarvis-util @ git+https://github.com/grc-iit/jarvis-util.git@main#egg=jarvis-util",
   "jarvis-cd @ git+https://github.com/grc-iit/jarvis-cd.git@main#egg=jarvis-cd",
   "starlette>=0.49.1"
 ]
