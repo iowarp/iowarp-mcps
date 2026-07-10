@@ -5,6 +5,7 @@ Tests actual function bodies by patching handlers at the capabilities layer.
 
 import pytest
 import importlib
+import runpy
 import sys
 from unittest.mock import Mock, patch
 from fastmcp.exceptions import ToolError
@@ -1169,6 +1170,63 @@ class TestMainFunctionDirect:
 
             mock_profile.assert_called_once_with("admin")
             mock_run.assert_called_once_with(transport="stdio")
+
+    def test_user_server_entrypoint_defaults_to_stdio(self):
+        """The user entrypoint defaults to stdio when no transport is configured."""
+        sys.modules.pop("jarvis_mcp.user_server", None)
+        with (
+            patch("sys.argv", ["jarvis-mcp"]),
+            patch.dict("os.environ", {}, clear=True),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.user_server")
+
+            module.main()
+
+            mock_profile.assert_called_once_with("user")
+            mock_run.assert_called_once_with(transport="stdio")
+
+    def test_admin_server_entrypoint_runs_http(self):
+        """The admin entrypoint supports HTTP transport when requested."""
+        sys.modules.pop("jarvis_mcp.admin_server", None)
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp", "--transport", "http"]),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.admin_server")
+
+            module.main()
+
+            mock_profile.assert_called_once_with("admin")
+            mock_run.assert_called_once_with(
+                transport="http", host="0.0.0.0", port=8000
+            )
+
+    def test_user_server_module_main_guard(self):
+        """Running the user module as __main__ delegates through its main guard."""
+        sys.modules.pop("jarvis_mcp.user_server", None)
+        with (
+            patch("sys.argv", ["jarvis-mcp"]),
+            patch("jarvis_mcp.server.apply_tool_profile"),
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            runpy.run_module("jarvis_mcp.user_server", run_name="__main__")
+
+        mock_run.assert_called_with(transport="stdio")
+
+    def test_admin_server_module_main_guard(self):
+        """Running the admin module as __main__ delegates through its main guard."""
+        sys.modules.pop("jarvis_mcp.admin_server", None)
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp"]),
+            patch("jarvis_mcp.server.apply_tool_profile"),
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            runpy.run_module("jarvis_mcp.admin_server", run_name="__main__")
+
+        mock_run.assert_called_with(transport="stdio")
 
 
 class TestResourceAndPrompt:
