@@ -584,7 +584,7 @@ def jm_reset() -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_list_pipelines() -> dict[str, Any]:
+async def jm_list_pipelines() -> dict[str, Any]:
     """List all current pipelines under management."""
     try:
         pipelines = [str(pipeline) for pipeline in manager.list_pipelines()]
@@ -623,7 +623,7 @@ def jm_cd(pipeline_id: str) -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_list_repos() -> dict[str, Any]:
+async def jm_list_repos() -> dict[str, Any]:
     """List all registered repositories."""
     try:
         repos = [str(repo) for repo in manager.list_repos()]
@@ -702,7 +702,7 @@ def jm_promote_repo(repo_name: str) -> list:
     },
     tags={"jarvis", "monitoring"},
 )
-def jm_get_repo(repo_name: str) -> dict[str, Any]:
+async def jm_get_repo(repo_name: str) -> dict[str, Any]:
     """Get detailed information about a repository."""
     try:
         repo = manager.get_repo(repo_name)

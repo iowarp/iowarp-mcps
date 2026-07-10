@@ -413,19 +413,21 @@ class TestJarvisManagerToolsDirect:
             with pytest.raises(ToolError):
                 jm_reset()
 
-    def test_jm_list_pipelines_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_pipelines_direct(self):
         """Test jm_list_pipelines with mocked manager."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_pipelines.return_value = ["p1", "p2"]
 
             from jarvis_mcp.server import jm_list_pipelines
 
-            result = jm_list_pipelines()
+            result = await jm_list_pipelines()
 
-            assert len(result) == 2
+            assert result == {"pipelines": ["p1", "p2"], "count": 2}
             mock_mgr.list_pipelines.assert_called_once()
 
-    def test_jm_list_pipelines_error_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_pipelines_error_direct(self):
         """Test jm_list_pipelines error handling."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_pipelines.side_effect = Exception("List error")
@@ -433,7 +435,7 @@ class TestJarvisManagerToolsDirect:
             from jarvis_mcp.server import jm_list_pipelines
 
             with pytest.raises(ToolError):
-                jm_list_pipelines()
+                await jm_list_pipelines()
 
     def test_jm_cd_direct(self):
         """Test jm_cd with mocked manager."""
@@ -458,19 +460,21 @@ class TestJarvisManagerToolsDirect:
             with pytest.raises(ToolError):
                 jm_cd("pipe")
 
-    def test_jm_list_repos_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_repos_direct(self):
         """Test jm_list_repos with mocked manager."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_repos.return_value = ["repo1", "repo2"]
 
             from jarvis_mcp.server import jm_list_repos
 
-            result = jm_list_repos()
+            result = await jm_list_repos()
 
-            assert len(result) == 2
+            assert result == {"repos": ["repo1", "repo2"], "count": 2}
             mock_mgr.list_repos.assert_called_once()
 
-    def test_jm_list_repos_error_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_list_repos_error_direct(self):
         """Test jm_list_repos error handling."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.list_repos.side_effect = Exception("List error")
@@ -478,7 +482,7 @@ class TestJarvisManagerToolsDirect:
             from jarvis_mcp.server import jm_list_repos
 
             with pytest.raises(ToolError):
-                jm_list_repos()
+                await jm_list_repos()
 
     def test_jm_add_repo_direct(self):
         """Test jm_add_repo with mocked manager."""
@@ -549,7 +553,8 @@ class TestJarvisManagerToolsDirect:
             with pytest.raises(ToolError):
                 jm_promote_repo("repo")
 
-    def test_jm_get_repo_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_get_repo_direct(self):
         """Test jm_get_repo with mocked manager."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_repo = Mock()
@@ -558,12 +563,13 @@ class TestJarvisManagerToolsDirect:
 
             from jarvis_mcp.server import jm_get_repo
 
-            result = jm_get_repo("repo1")
+            result = await jm_get_repo("repo1")
 
             assert result["repo"] == "RepoInfo"
             mock_mgr.get_repo.assert_called_once_with("repo1")
 
-    def test_jm_get_repo_error_direct(self):
+    @pytest.mark.asyncio
+    async def test_jm_get_repo_error_direct(self):
         """Test jm_get_repo error handling."""
         with patch("jarvis_mcp.server.manager") as mock_mgr:
             mock_mgr.get_repo.side_effect = Exception("Get error")
@@ -571,7 +577,7 @@ class TestJarvisManagerToolsDirect:
             from jarvis_mcp.server import jm_get_repo
 
             with pytest.raises(ToolError):
-                jm_get_repo("repo")
+                await jm_get_repo("repo")
 
     def test_jm_construct_pkg_direct(self):
         """Test jm_construct_pkg with mocked manager."""
