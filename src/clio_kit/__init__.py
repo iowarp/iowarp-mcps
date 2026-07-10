@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import sys
 import subprocess
 from pathlib import Path
@@ -7,6 +6,7 @@ import click
 
 # Determine if we're running from development or installed package
 MODULE_DIR = Path(__file__).parent
+
 
 def get_servers_path():
     """Get the path to servers directory (dev or installed)"""
@@ -20,9 +20,11 @@ def get_servers_path():
     # Look for clio-kit-mcp-servers directory in various possible locations
     possible_paths = [
         # Standard site-packages installation
-        MODULE_DIR.parent / "clio-kit-mcp-servers",  # ../clio-kit-mcp-servers from module
+        MODULE_DIR.parent
+        / "clio-kit-mcp-servers",  # ../clio-kit-mcp-servers from module
         # Alternative installation paths
-        MODULE_DIR / "clio-kit-mcp-servers",  # ./clio-kit-mcp-servers from module (if included directly)
+        MODULE_DIR
+        / "clio-kit-mcp-servers",  # ./clio-kit-mcp-servers from module (if included directly)
         # System-wide data directory
         Path(sys.prefix) / "share" / "clio-kit" / "clio-kit-mcp-servers",
         # Local data directory
@@ -52,6 +54,7 @@ def get_servers_path():
     # Last resort: return the dev path even if it doesn't exist
     # so the caller can handle the missing directory appropriately
     return dev_path
+
 
 def get_prompts_path():
     """Get the path to prompts directory (dev or installed)"""
@@ -94,6 +97,7 @@ def get_prompts_path():
     # Last resort: return the dev path
     return dev_path
 
+
 def get_search_path():
     """Get the path to the clio-agentic-search directory (dev or installed)"""
     dev_path = MODULE_DIR.parent.parent / "clio-agentic-search"
@@ -125,6 +129,7 @@ def get_search_path():
 
     return dev_path
 
+
 def auto_discover_mcps():
     """Auto-discover MCP servers from the clio-kit-mcp-servers directory"""
     servers_path = get_servers_path()
@@ -136,40 +141,41 @@ def auto_discover_mcps():
 
     # Scan for directories containing pyproject.toml
     for item in servers_path.iterdir():
-        if item.is_dir() and not item.name.startswith('.'):
+        if item.is_dir() and not item.name.startswith("."):
             pyproject_file = item / "pyproject.toml"
             if pyproject_file.exists():
                 # Read pyproject.toml to extract entry point
                 try:
-                    with open(pyproject_file, 'r') as f:
+                    with open(pyproject_file, "r") as f:
                         content = f.read()
 
                     # Simple parsing to find the entry point
                     # Look for lines like: server-name-mcp = "module:main"
                     entry_point = None
-                    for line in content.split('\n'):
+                    for line in content.split("\n"):
                         line = line.strip()
-                        if '-mcp =' in line and '=' in line:
-                            entry_point = line.split('=')[0].strip().strip('"\'')
+                        if "-mcp =" in line and "=" in line:
+                            entry_point = line.split("=")[0].strip().strip("\"'")
                             break
 
                     if entry_point:
                         # Create server name by removing -mcp suffix
-                        server_name = entry_point.replace('-mcp', '').lower()
+                        server_name = entry_point.replace("-mcp", "").lower()
                         # Handle special cases for naming
-                        if server_name == 'node-hardware':
-                            server_name = 'node-hardware'
-                        elif server_name == 'parallel-sort':
-                            server_name = 'parallel-sort'
+                        if server_name == "node-hardware":
+                            server_name = "node-hardware"
+                        elif server_name == "parallel-sort":
+                            server_name = "parallel-sort"
 
                         server_command_map[server_name] = entry_point
                         dir_name_map[server_name] = item.name
 
-                except Exception as e:
+                except Exception:
                     # Skip directories that can't be processed
                     continue
 
     return server_command_map, dir_name_map
+
 
 def auto_discover_prompts():
     """Auto-discover prompts from the prompts directory (recursively)"""
@@ -187,19 +193,21 @@ def auto_discover_prompts():
         # Create prompt name from relative path without extension
         # e.g., "code-coverage-prompt.md" -> "code-coverage-prompt"
         # e.g., "testing/foo.md" -> "testing/foo"
-        prompt_name = str(relative_path.with_suffix(''))
+        prompt_name = str(relative_path.with_suffix(""))
 
         # Also support underscore version
         # "code-coverage-prompt" -> also accessible as "code_coverage_prompt"
         prompt_map[prompt_name] = md_file
-        prompt_map[prompt_name.replace('-', '_')] = md_file
+        prompt_map[prompt_name.replace("-", "_")] = md_file
 
     return prompt_map
+
 
 def list_available_servers():
     """List all available servers"""
     server_command_map, _ = auto_discover_mcps()
     return sorted(server_command_map.keys())
+
 
 def list_available_prompts():
     """List all available prompts"""
@@ -208,19 +216,24 @@ def list_available_prompts():
     unique_prompts = set()
     for name in prompt_map.keys():
         # Normalize to dash version for display
-        unique_prompts.add(name.replace('_', '-'))
+        unique_prompts.add(name.replace("_", "-"))
     return sorted(unique_prompts)
+
 
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx):
     """clio-kit: Unified launcher for MCP servers and AI prompts"""
     if ctx.invoked_subcommand is None:
-        click.echo("clio-kit: Unified launcher for MCP servers, AI prompts, and services")
+        click.echo(
+            "clio-kit: Unified launcher for MCP servers, AI prompts, and services"
+        )
         click.echo("\nAvailable commands:")
         click.echo("  mcp-server   Run an MCP server")
         click.echo("  mcp-servers  List all available MCP servers")
-        click.echo("  search       Run agentic search (query, index, serve, list, seed)")
+        click.echo(
+            "  search       Run agentic search (query, index, serve, list, seed)"
+        )
         click.echo("  prompt       Print a prompt to stdout")
         click.echo("  prompts      List all available prompts")
         click.echo("\nUsage:")
@@ -229,13 +242,14 @@ def main(ctx):
         click.echo("  uvx clio-kit prompt <prompt-name>")
         click.echo("\nFor more help: uvx clio-kit <command> --help")
 
+
 @main.command(
     "mcp-server",
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
 )
-@click.argument('server', required=False)
-@click.option('-b', '--branch', help='Git branch to use (for development)')
-@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+@click.argument("server", required=False)
+@click.option("-b", "--branch", help="Git branch to use (for development)")
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def mcp_server(server, branch, args):
     """Run an MCP server. List all if no server specified."""
 
@@ -268,7 +282,7 @@ def mcp_server(server, branch, args):
             "uvx",
             "--from",
             f"git+https://github.com/iowarp/clio-kit.git@{branch}#subdirectory=clio-kit-mcp-servers/{actual_dir}",
-            entry_command
+            entry_command,
         ]
     else:
         # Run from local path in development mode
@@ -277,12 +291,7 @@ def mcp_server(server, branch, args):
 
         if server_path.exists():
             # Development mode - run from local path
-            cmd = [
-                "uvx",
-                "--from",
-                str(server_path),
-                entry_command
-            ]
+            cmd = ["uvx", "--from", str(server_path), entry_command]
         else:
             # Not in development, try to run the command directly (if installed)
             cmd = [entry_command]
@@ -297,10 +306,15 @@ def mcp_server(server, branch, args):
         sys.exit(e.returncode)
     except FileNotFoundError:
         if cmd[0] == "uvx":
-            click.echo("Error: uvx not found. Please install uv: https://github.com/astral-sh/uv")
+            click.echo(
+                "Error: uvx not found. Please install uv: https://github.com/astral-sh/uv"
+            )
         else:
-            click.echo(f"Error: {entry_command} not found. Please install the server package.")
+            click.echo(
+                f"Error: {entry_command} not found. Please install the server package."
+            )
         sys.exit(1)
+
 
 @main.command("mcp-servers")
 def list_mcp_servers():
@@ -313,8 +327,9 @@ def list_mcp_servers():
     else:
         click.echo("No MCP servers found.")
 
+
 @main.command("prompt")
-@click.argument('prompt_name', required=False)
+@click.argument("prompt_name", required=False)
 def prompt(prompt_name):
     """Print a prompt to stdout. List all if no name specified."""
 
@@ -344,12 +359,13 @@ def prompt(prompt_name):
     # Read and print the prompt file
     prompt_file = prompt_map[prompt_lower]
     try:
-        with open(prompt_file, 'r') as f:
+        with open(prompt_file, "r") as f:
             content = f.read()
         click.echo(content)
     except Exception as e:
         click.echo(f"Error reading prompt file: {e}")
         sys.exit(1)
+
 
 @main.command("prompts")
 def list_prompts_cmd():
@@ -362,11 +378,15 @@ def list_prompts_cmd():
     else:
         click.echo("No prompts found.")
 
-@main.command("search", context_settings=dict(
-    ignore_unknown_options=True,
-    allow_extra_args=True,
-))
-@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+
+@main.command(
+    "search",
+    context_settings=dict(
+        ignore_unknown_options=True,
+        allow_extra_args=True,
+    ),
+)
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def search(args):
     """Run agentic search commands (query, index, serve, list, seed)."""
 
@@ -380,7 +400,9 @@ def search(args):
         click.echo("  seed    Seed sample data")
         click.echo("\nUsage: uvx clio-kit search <subcommand> [options]")
         click.echo("\nExamples:")
-        click.echo('  uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"')
+        click.echo(
+            '  uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"'
+        )
         click.echo("  uvx clio-kit search index --namespace local_fs")
         click.echo("  uvx clio-kit search serve --port 8080")
         return
@@ -399,12 +421,16 @@ def search(args):
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except FileNotFoundError:
-        click.echo("Error: uvx not found. Please install uv: https://github.com/astral-sh/uv")
+        click.echo(
+            "Error: uvx not found. Please install uv: https://github.com/astral-sh/uv"
+        )
         sys.exit(1)
+
 
 def cli():
     """Entry point for the CLI"""
     main()
+
 
 if __name__ == "__main__":
     main()

@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
-  "description": "Jarvis-CD MCP - Pipeline Management for High-Performance Computing with comprehensive workflow...",
-  "version": "2.2.3",
+  "description": "JARVIS-CD MCP server with a compact user pipeline surface and a separate admin entry point.",
+  "version": "2.2.4",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,136 +12,41 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.3",
+      "version": "2.2.4",
       "transport": {
         "type": "stdio"
       },
       "arguments": [
         "clio-kit",
+        "mcp-server",
         "jarvis"
       ]
     }
   ],
   "tools": [
     {
-      "name": "update_pipeline",
-      "description": "Re-apply environment and configuration to every package in a pipeline."
+      "name": "jarvis_create_pipeline",
+      "description": "Create a JARVIS pipeline for normal agent-driven workflows."
     },
     {
-      "name": "build_pipeline_env",
-      "description": "Rebuild a pipeline's env.yaml, capturing CMAKE_PREFIX_PATH and PATH."
+      "name": "jarvis_describe",
+      "description": "Describe JARVIS packages, one package, a pipeline, or one pipeline step."
     },
     {
-      "name": "create_pipeline",
-      "description": "Create a new Jarvis-CD pipeline environment."
+      "name": "jarvis_add_step",
+      "description": "Add a package-backed step to a JARVIS pipeline and optionally configure it."
     },
     {
-      "name": "load_pipeline",
-      "description": "Load an existing Jarvis-CD pipeline environment."
+      "name": "jarvis_edit_step",
+      "description": "Edit the configuration of a step in a JARVIS pipeline."
     },
     {
-      "name": "export_pipeline",
-      "description": "Export a structured snapshot of a Jarvis-CD pipeline."
+      "name": "jarvis_remove_step",
+      "description": "Remove a step from a JARVIS pipeline without deleting package files."
     },
     {
-      "name": "get_pkg_config",
-      "description": "Retrieve the configuration of a specific package in a pipeline."
-    },
-    {
-      "name": "append_pkg",
-      "description": "Append a package to a Jarvis-CD pipeline."
-    },
-    {
-      "name": "configure_pkg",
-      "description": "Configure a package in a Jarvis-CD pipeline."
-    },
-    {
-      "name": "unlink_pkg",
-      "description": "Unlink a package from a pipeline (preserve files)."
-    },
-    {
-      "name": "remove_pkg",
-      "description": "Remove a package entirely from a pipeline."
-    },
-    {
-      "name": "run_pipeline",
-      "description": "Execute a Jarvis-CD pipeline end-to-end."
-    },
-    {
-      "name": "destroy_pipeline",
-      "description": "Destroy a pipeline environment and clean up files."
-    },
-    {
-      "name": "jm_create_config",
-      "description": "Initialize JarvisManager config directories."
-    },
-    {
-      "name": "jm_load_config",
-      "description": "Load existing JarvisManager configuration."
-    },
-    {
-      "name": "jm_save_config",
-      "description": "Save current JarvisManager configuration."
-    },
-    {
-      "name": "jm_set_hostfile",
-      "description": "Set hostfile path for JarvisManager."
-    },
-    {
-      "name": "jm_bootstrap_from",
-      "description": "Bootstrap Jarvis config from a machine template."
-    },
-    {
-      "name": "jm_bootstrap_list",
-      "description": "List available bootstrap machine templates."
-    },
-    {
-      "name": "jm_reset",
-      "description": "Reset JarvisManager (destroy all pipelines and data)."
-    },
-    {
-      "name": "jm_list_pipelines",
-      "description": "List all existing Jarvis pipelines."
-    },
-    {
-      "name": "jm_cd",
-      "description": "Change current Jarvis pipeline context."
-    },
-    {
-      "name": "jm_list_repos",
-      "description": "List all Jarvis repositories."
-    },
-    {
-      "name": "jm_add_repo",
-      "description": "Add a repository to JarvisManager."
-    },
-    {
-      "name": "jm_remove_repo",
-      "description": "Remove a repository from JarvisManager."
-    },
-    {
-      "name": "jm_promote_repo",
-      "description": "Promote a repository in JarvisManager."
-    },
-    {
-      "name": "jm_get_repo",
-      "description": "Get repository info from JarvisManager."
-    },
-    {
-      "name": "jm_construct_pkg",
-      "description": "Construct a package skeleton in JarvisManager."
-    },
-    {
-      "name": "jm_graph_show",
-      "description": "Print the current resource graph frames."
-    },
-    {
-      "name": "jm_graph_build",
-      "description": "Build or rebuild the resource graph with a net sleep interval."
-    },
-    {
-      "name": "jm_graph_modify",
-      "description": "Modify the resource graph using a net sleep interval."
+      "name": "jarvis_run",
+      "description": "Run a configured JARVIS pipeline."
     }
   ],
   "resources": [

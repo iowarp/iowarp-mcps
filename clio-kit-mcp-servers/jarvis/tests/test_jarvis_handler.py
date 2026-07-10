@@ -3,11 +3,14 @@ Tests for the jarvis_handler module that contains pipeline operation logic.
 """
 
 import pytest
+from types import ModuleType, SimpleNamespace
+from pathlib import Path
 from unittest.mock import Mock, patch
 from fastapi import HTTPException
 
 from jarvis_mcp.capabilities.jarvis_handler import (
     create_pipeline,
+    configure_pipeline,
     load_pipeline,
     append_pkg,
     build_pipeline_env,
@@ -19,6 +22,213 @@ from jarvis_mcp.capabilities.jarvis_handler import (
     run_pipeline,
     destroy_pipeline,
 )
+
+
+class ModernPipeline:
+    """Small stand-in for the current JARVIS Pipeline API."""
+
+    instances = []
+
+    def __init__(self, name: str | None = None):
+        self.name = name or "loaded"
+        self.global_id = self.name
+        self.scheduler = None
+        self.hostfile = None
+        self.packages = [{"id": "pkg1", "type": "builtin.echo", "config": {"x": 1}}]
+        self.env = {}
+        self.config = {"name": self.name, "packages": self.packages}
+        self.saved = False
+        self.ran = False
+        self.submitted = False
+        self.jarvis = Mock()
+        self.jarvis.get_pipeline_shared_dir.return_value = Path("/tmp") / self.name
+        ModernPipeline.instances.append(self)
+
+    def load(self, load_type: str | None = None):
+        return self
+
+    def save(self):
+        self.saved = True
+
+    def run(self):
+        self.ran = True
+
+    def submit(self, *, submit: bool = True, wait: bool = False):
+        self.submitted = submit
+        self.waited = wait
+        return Path("/tmp") / self.name / "submit.slurm"
+
+
+class TestHandlerHelpers:
+    """Test helper branches used by the semantic MCP contract."""
+
+    def test_jsonable_and_config_arg_helpers(self):
+        """Non-JSON values are normalized and config args preserve bool spelling."""
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _jsonable,
+            _kwargs_to_config_args,
+        )
+
+        assert _jsonable({"path": Path("/tmp/x"), "items": (Path("/tmp/y"),)}) == {
+            "path": repr(Path("/tmp/x")),
+            "items": [repr(Path("/tmp/y"))],
+        }
+        assert _kwargs_to_config_args(
+            {"enabled": True, "disabled": False, "skip": None, "count": 2}
+        ) == ["enabled=true", "disabled=false", "count=2"]
+
+    def test_pipeline_snapshot_helpers_fallback_to_current_api_fields(self, tmp_path):
+        """Current Pipeline objects expose config, package, and path fallbacks."""
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _get_package,
+            _package_config,
+            _package_snapshot,
+            _pipeline_config,
+            _pipeline_config_path,
+            _pipeline_env_path,
+            _pipeline_packages,
+        )
+
+        jarvis = Mock()
+        jarvis.get_pipeline_dir.return_value = tmp_path / "pipe"
+        pipeline = SimpleNamespace(
+            name="pipe",
+            config=None,
+            packages=[{"id": "step1", "type": "builtin.echo", "config": {"x": 1}}],
+            sub_pkgs=None,
+            scheduler={"name": "slurm"},
+            hostfile="hosts.txt",
+            interceptors=None,
+            jarvis=jarvis,
+        )
+
+        assert _pipeline_packages(pipeline) == pipeline.packages
+        assert _get_package(pipeline, "step1") == pipeline.packages[0]
+        assert _package_config(pipeline.packages[0]) == {"x": 1}
+        assert _package_snapshot(pipeline.packages[0])["pkg_type"] == "builtin.echo"
+        assert _pipeline_config(pipeline)["scheduler"] == {"name": "slurm"}
+        assert _pipeline_config_path(pipeline) == tmp_path / "pipe" / "pipeline.yaml"
+        assert _pipeline_env_path(pipeline) == tmp_path / "pipe" / "environment.yaml"
+
+    def test_pipeline_class_requirement_reports_missing_import(self):
+        """Missing JARVIS pipeline support fails with actionable detail."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        with (
+            patch.object(jarvis_handler, "Pipeline", None),
+            patch.object(
+                jarvis_handler,
+                "_PIPELINE_IMPORT_ERROR",
+                ModuleNotFoundError("jarvis_cd"),
+            ),
+            pytest.raises(
+                RuntimeError, match="JARVIS-CD Pipeline API is not available"
+            ),
+        ):
+            jarvis_handler._require_pipeline_class()
+
+    def test_apply_pipeline_config_validation_branches(self):
+        """Pipeline config validation rejects unsupported scheduler/env shapes."""
+        from jarvis_mcp.capabilities.jarvis_handler import _apply_pipeline_config
+
+        pipeline = ModernPipeline("configured")
+        with pytest.raises(ValueError, match="scheduler must be an object"):
+            _apply_pipeline_config(pipeline, {"scheduler": "slurm"})
+        with pytest.raises(ValueError, match="hostfile_entries must be"):
+            _apply_pipeline_config(pipeline, {"hostfile_entries": "node1"})
+        with pytest.raises(ValueError, match="env must be an object"):
+            _apply_pipeline_config(pipeline, {"env": "OMP=4"})
+
+    def test_apply_pipeline_config_hostfiles_env_and_hooks(self, tmp_path):
+        """Hostfile, env, scheduler, and launcher hooks map to current Pipeline fields."""
+        from jarvis_mcp.capabilities.jarvis_handler import _apply_pipeline_config
+
+        class FakeHostfile:
+            def __init__(self, path: str):
+                self.path = path
+
+        hostfile_module = ModuleType("hostfile")
+        hostfile_module.Hostfile = FakeHostfile
+
+        pipeline = ModernPipeline("configured")
+        pipeline.jarvis.get_pipeline_shared_dir.return_value = tmp_path
+        pipeline._apply_scheduler_hostfile = Mock()
+        pipeline._apply_launcher_overrides = Mock()
+
+        with patch.dict(
+            "sys.modules",
+            {"jarvis_cd.util.hostfile": hostfile_module},
+        ):
+            _apply_pipeline_config(
+                pipeline,
+                {
+                    "scheduler": {"name": "slurm"},
+                    "hostfile": tmp_path / "hosts.txt",
+                    "hostfile_entries": ["n1", "n2"],
+                    "env": None,
+                    "container_image": "image.sif",
+                },
+            )
+
+        assert pipeline.scheduler == {"name": "slurm"}
+        pipeline._apply_scheduler_hostfile.assert_called_once_with()
+        pipeline._apply_launcher_overrides.assert_called_once_with()
+        assert pipeline.env == {}
+        assert pipeline.container_image == "image.sif"
+        assert pipeline.hostfile.path == str(tmp_path / "mcp-hostfile.txt")
+        assert (tmp_path / "mcp-hostfile.txt").read_text(encoding="utf-8") == "n1\nn2\n"
+
+    def test_load_and_env_helpers_cover_current_api_branches(self):
+        """Current Pipeline load and environment helpers handle optional APIs."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        class LoadedPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.build_calls = 0
+
+            def load(self, load_type: str | None = None):
+                self.loaded_type = load_type
+                return self
+
+            def build_env(self, env_track_dict=None):
+                self.build_calls += 1
+                if env_track_dict is not None:
+                    raise TypeError("old signature")
+                built = ModernPipeline("built")
+                built.saved = False
+                return built
+
+        with patch.object(jarvis_handler, "Pipeline", LoadedPipeline):
+            loaded = jarvis_handler._load_pipeline(None)
+            assert isinstance(loaded, LoadedPipeline)
+            jarvis_handler._build_pipeline_env(loaded)
+
+        assert loaded.build_calls == 2
+        assert ModernPipeline.instances[-1].saved is True
+
+        no_env = SimpleNamespace()
+        jarvis_handler._build_pipeline_env(no_env)
+
+    def test_package_lookup_object_and_missing_path_fallbacks(self):
+        """Package and path helpers handle object packages and missing Jarvis paths."""
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _get_package,
+            _package_config,
+            _pipeline_config_path,
+            _pipeline_env_path,
+        )
+
+        pkg = SimpleNamespace(pkg_id="step1", config={"alpha": 1})
+        pipeline = SimpleNamespace(packages=[pkg], sub_pkgs=None)
+
+        assert _get_package(pipeline, "step1") is pkg
+        assert _package_config(pkg) == {"alpha": 1}
+        assert _get_package(pipeline, "missing") is None
+        assert (
+            _pipeline_config_path(SimpleNamespace(name="pipe", jarvis=object())) is None
+        )
+        assert _pipeline_env_path(SimpleNamespace(name="pipe", jarvis=object())) is None
 
 
 class TestPipelineOperations:
@@ -318,6 +528,146 @@ class TestPipelineExecutionOperations:
 
         assert exc_info.value.status_code == 500
         assert "Run failed" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_scheduler_mode_submits_modern_pipeline(self):
+        """Scheduler mode delegates to native Pipeline.submit."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await run_pipeline(
+                "scheduled", mode="scheduler", submit=True, wait=True
+            )
+
+        pipeline = ModernPipeline.instances[-1]
+        assert result == {
+            "pipeline_id": "scheduled",
+            "status": "submitted",
+            "mode": "scheduler",
+            "scheduler": None,
+            "script_path": str(Path("/tmp") / "scheduled" / "submit.slurm"),
+            "wait": True,
+        }
+        assert pipeline.submitted is True
+        assert pipeline.waited is True
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_scheduler_script_only(self):
+        """Scheduler mode can render the scheduler script without submitting it."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await run_pipeline(
+                "scripted", mode="scheduler", submit=False, wait=False
+            )
+
+        assert result["status"] == "scripted"
+        assert result["mode"] == "scheduler"
+        assert ModernPipeline.instances[-1].submitted is False
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_auto_uses_scheduler_when_configured(self):
+        """Auto mode submits when the loaded pipeline already has scheduler config."""
+
+        class ScheduledPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm", "nodes": 1}
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline", ScheduledPipeline
+        ):
+            result = await run_pipeline("auto-scheduled")
+
+        assert result["mode"] == "scheduler"
+        assert result["scheduler"] == {"name": "slurm", "nodes": 1}
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_rejects_unknown_mode(self):
+        """Invalid execution modes fail explicitly."""
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            with pytest.raises(HTTPException) as exc_info:
+                await run_pipeline("bad", mode="unknown")
+
+        assert exc_info.value.status_code == 500
+        assert "mode must be one of" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_configure_pipeline_applies_scheduler_env_and_launcher(self):
+        """Pipeline-level config updates native scheduler/env/launcher fields."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await configure_pipeline(
+                "configured",
+                {
+                    "scheduler": {"name": "slurm", "nodes": 2},
+                    "env": {"OMP_NUM_THREADS": "4"},
+                    "base_deploy_mode": "scheduler",
+                    "mpi_cmd": "srun",
+                },
+            )
+
+        pipeline = ModernPipeline.instances[-1]
+        assert result["status"] == "configured"
+        assert pipeline.scheduler == {"name": "slurm", "nodes": 2}
+        assert pipeline.env == {"OMP_NUM_THREADS": "4"}
+        assert pipeline.base_deploy_mode == "scheduler"
+        assert pipeline.mpi_cmd == "srun"
+        assert pipeline.saved is True
+
+    @pytest.mark.asyncio
+    async def test_configure_pipeline_rejects_unknown_keys(self):
+        """Unsupported config keys fail before mutating pipeline state."""
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            with pytest.raises(HTTPException) as exc_info:
+                await configure_pipeline("configured", {"not_supported": True})
+
+        assert exc_info.value.status_code == 500
+        assert "unsupported pipeline config keys" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_modern_package_operations_use_current_pipeline_api(self):
+        """Append, configure, unlink, and remove use current Pipeline methods."""
+
+        class PackagePipeline(ModernPipeline):
+            instances = []
+
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                PackagePipeline.instances.append(self)
+
+            def append(self, pkg_type, package_alias=None, config_args=None):
+                self.appended = (pkg_type, package_alias, config_args)
+
+            def configure_package(self, pkg_id, config_args):
+                self.configured = (pkg_id, config_args)
+
+            def rm(self, pkg_id):
+                self.removed = pkg_id
+
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", PackagePipeline):
+            append_result = await append_pkg(
+                "pipe",
+                "builtin.echo",
+                pkg_id="echo",
+                do_configure=False,
+                message="hello",
+                enabled=True,
+            )
+            configure_result = await configure_pkg("pipe", "echo", message="updated")
+            unlink_result = await unlink_pkg("pipe", "echo")
+            remove_result = await remove_pkg("pipe", "echo")
+
+        assert append_result["appended"] == "builtin.echo"
+        assert PackagePipeline.instances[0].appended == (
+            "builtin.echo",
+            "echo",
+            ["message=hello", "enabled=true", "do_configure=false"],
+        )
+        assert configure_result["configured"] == "echo"
+        assert PackagePipeline.instances[1].configured == ("echo", ["message=updated"])
+        assert unlink_result["unlinked"] == "echo"
+        assert remove_result["removed"] == "echo"
+        assert PackagePipeline.instances[2].removed == "echo"
+        assert PackagePipeline.instances[3].removed == "echo"
 
     @pytest.mark.asyncio
     async def test_destroy_pipeline_success(self, mock_pipeline):

@@ -1,15 +1,14 @@
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
-import asyncio
 import importlib
-import inspect
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 from typing import Any, Optional
 from .capabilities.jarvis_handler import (
     create_pipeline,
+    configure_pipeline,
     load_pipeline,
     export_pipeline,
     append_pkg,
@@ -173,11 +172,34 @@ mcp: FastMCP = FastMCP(
     list_page_size=10,
 )
 
-# Create a singleton instance of JarvisManager
+# Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
+# functional JARVIS-CD installation. Admin tools still fail clearly at call time
+# if the installed JARVIS version lacks the needed manager API.
 JarvisManager = _load_jarvis_manager_class()
-manager = JarvisManager.get_instance()
+manager: Any | None = None
+_manager: Any | None = None
+
+
+def get_manager() -> Any:
+    """Return the process-local JARVIS manager singleton."""
+    global _manager
+    if manager is not None:
+        return manager
+    if _manager is None:
+        _manager = JarvisManager.get_instance()
+    return _manager
+
 
 USER_TOOLS = {
+    "jarvis_create_pipeline",
+    "jarvis_describe",
+    "jarvis_add_step",
+    "jarvis_edit_step",
+    "jarvis_remove_step",
+    "jarvis_run",
+}
+
+ADMIN_TOOLS = {
     "update_pipeline",
     "build_pipeline_env",
     "create_pipeline",
@@ -192,9 +214,6 @@ USER_TOOLS = {
     "jm_list_pipelines",
     "jm_list_repos",
     "jm_get_repo",
-}
-
-ADMIN_TOOLS = {
     "jm_create_config",
     "jm_load_config",
     "jm_save_config",
@@ -424,6 +443,174 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
 
 
 @mcp.tool(
+    name="jarvis_create_pipeline",
+    description=(
+        "Create a JARVIS pipeline. Optionally pass execution intent such as "
+        "local, cluster, or hostfile mode; backend details are resolved where "
+        "the MCP server runs."
+    ),
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_create_pipeline_tool(
+    pipeline_id: str, execution: Optional[dict[str, Any]] = None
+) -> dict:
+    """Create a new JARVIS pipeline, optionally seeding execution intent."""
+    created = await create_pipeline(pipeline_id)
+    if execution:
+        configured = await configure_pipeline(
+            pipeline_id, _execution_intent_to_pipeline_config(execution)
+        )
+        return {"created": created, "configured": configured}
+    return created
+
+
+@mcp.tool(
+    name="jarvis_describe",
+    description="Describe JARVIS packages, one package, a pipeline, or one pipeline step.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_describe_tool(
+    target: str,
+    pipeline_id: Optional[str] = None,
+    step_id: Optional[str] = None,
+    package_name: Optional[str] = None,
+    include_yaml: bool = True,
+) -> dict[str, Any]:
+    """Describe user-level JARVIS objects without exposing repository administration."""
+    normalized = target.strip().lower()
+    if normalized == "packages":
+        return {"target": "packages", "packages": _discover_packages()}
+    if normalized == "package":
+        if not package_name:
+            raise ToolError("package_name is required when target='package'")
+        package = _find_package_description(package_name)
+        if package is None:
+            raise ToolError(f"package not found: {package_name}")
+        return {"target": "package", "package": package}
+    if normalized == "pipeline":
+        if not pipeline_id:
+            raise ToolError("pipeline_id is required when target='pipeline'")
+        snapshot = await export_pipeline(pipeline_id, include_yaml=include_yaml)
+        return {"target": "pipeline", "pipeline": snapshot}
+    if normalized == "step":
+        if not pipeline_id or not step_id:
+            raise ToolError("pipeline_id and step_id are required when target='step'")
+        snapshot = await export_pipeline(pipeline_id, include_yaml=False)
+        step = _step_snapshot(snapshot, step_id)
+        if step is None:
+            raise ToolError(f"step not found in pipeline {pipeline_id}: {step_id}")
+        config = await get_pkg_config(pipeline_id, step_id)
+        return {"target": "step", "step": step, "config": config}
+    raise ToolError("target must be one of: packages, package, pipeline, step")
+
+
+@mcp.tool(
+    name="jarvis_add_step",
+    description=(
+        "Add a package-backed step to a JARVIS pipeline and optionally configure "
+        "that step with package-owned settings."
+    ),
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_add_step_tool(
+    pipeline_id: str,
+    package_name: str,
+    step_id: Optional[str] = None,
+    config: Optional[dict[str, Any]] = None,
+    do_configure: bool = True,
+) -> dict:
+    """Add a step to a pipeline."""
+    return await append_pkg(
+        pipeline_id,
+        package_name,
+        pkg_id=step_id,
+        do_configure=do_configure,
+        **(config or {}),
+    )
+
+
+@mcp.tool(
+    name="jarvis_edit_step",
+    description="Edit the configuration of a step in a JARVIS pipeline.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_edit_step_tool(
+    pipeline_id: str, step_id: str, config: dict[str, Any]
+) -> dict:
+    """Edit a step configuration in a pipeline."""
+    return await configure_pkg(pipeline_id, step_id, **config)
+
+
+@mcp.tool(
+    name="jarvis_remove_step",
+    description="Remove a step from a JARVIS pipeline without deleting package files.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
+    """Remove a step from a pipeline by unlinking its package."""
+    return await unlink_pkg(pipeline_id, step_id)
+
+
+@mcp.tool(
+    name="jarvis_run",
+    description=(
+        "Run a configured JARVIS pipeline. Optional execution intent selects "
+        "local, cluster, or hostfile mode without exposing scheduler internals."
+    ),
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_run_tool(
+    pipeline_id: str,
+    execution: Optional[dict[str, Any]] = None,
+    submit: bool = True,
+    wait: bool = False,
+) -> dict:
+    """Run or submit a configured JARVIS pipeline using native JARVIS semantics."""
+    mode = "auto"
+    if execution:
+        requested_mode = str(execution.get("mode", "auto")).strip().lower()
+        mode = {
+            "cluster": "scheduler",
+            "local": "direct",
+            "hostfile": "direct",
+        }.get(requested_mode, requested_mode)
+        await configure_pipeline(
+            pipeline_id, _execution_intent_to_pipeline_config(execution)
+        )
+    return await run_pipeline(pipeline_id, mode=mode, submit=submit, wait=wait)
+
+
+@mcp.tool(
     name="destroy_pipeline",
     description="Destroy a pipeline environment and clean up files.",
     annotations={
@@ -453,8 +640,10 @@ def jm_create_config(
 ) -> list:
     """Initialize manager directories and persist configuration."""
     try:
-        manager.create(config_dir, private_dir, shared_dir)
-        manager.save()
+        with _protocol_stdout_to_stderr():
+            manager = get_manager()
+            manager.create(config_dir, private_dir, shared_dir)
+            manager.save()
         return [{"type": "text", "text": "Jarvis configuration initialized."}]
     except Exception as e:
         raise ToolError(f"Error: {e}")
@@ -473,6 +662,7 @@ def jm_create_config(
 def jm_load_config() -> list:
     """Load manager configuration from saved state."""
     try:
+        manager = get_manager()
         manager.load()
         return [{"type": "text", "text": "Configuration loaded."}]
     except Exception as e:
@@ -492,6 +682,7 @@ def jm_load_config() -> list:
 def jm_save_config() -> list:
     """Save current configuration state to disk."""
     try:
+        manager = get_manager()
         manager.save()
         return [{"type": "text", "text": "Configuration saved."}]
     except Exception as e:
@@ -511,6 +702,7 @@ def jm_save_config() -> list:
 def jm_set_hostfile(path: str) -> list:
     """Set and save the path to the hostfile for deployments."""
     try:
+        manager = get_manager()
         manager.set_hostfile(path)
         manager.save()
         return [{"type": "text", "text": f"Hostfile set to '{path}'"}]
@@ -531,6 +723,7 @@ def jm_set_hostfile(path: str) -> list:
 def jm_bootstrap_from(machine: str) -> list:
     """Bootstrap configuration based on a predefined machine template."""
     try:
+        manager = get_manager()
         manager.bootstrap_from(machine)
         return [{"type": "text", "text": f"Bootstrapped from '{machine}'"}]
     except Exception as e:
@@ -550,6 +743,7 @@ def jm_bootstrap_from(machine: str) -> list:
 def jm_bootstrap_list() -> list:
     """List all bootstrap templates available."""
     try:
+        manager = get_manager()
         return [{"type": "text", "text": m} for m in manager.bootstrap_list()]
     except Exception as e:
         raise ToolError(f"Error: {e}")
@@ -568,6 +762,7 @@ def jm_bootstrap_list() -> list:
 def jm_reset() -> list:
     """Reset manager to a clean state by destroying all pipelines and config."""
     try:
+        manager = get_manager()
         manager.reset()
         return [{"type": "text", "text": "All pipelines and data reset."}]
     except Exception as e:
@@ -587,6 +782,7 @@ def jm_reset() -> list:
 async def jm_list_pipelines() -> dict[str, Any]:
     """List all current pipelines under management."""
     try:
+        manager = get_manager()
         pipelines = [str(pipeline) for pipeline in manager.list_pipelines()]
         return {"pipelines": pipelines, "count": len(pipelines)}
     except Exception as e:
@@ -606,6 +802,7 @@ async def jm_list_pipelines() -> dict[str, Any]:
 def jm_cd(pipeline_id: str) -> list:
     """Set the working pipeline context."""
     try:
+        manager = get_manager()
         manager.cd(pipeline_id)
         manager.save()
         return [{"type": "text", "text": f"Current pipeline set to '{pipeline_id}'"}]
@@ -626,6 +823,7 @@ def jm_cd(pipeline_id: str) -> list:
 async def jm_list_repos() -> dict[str, Any]:
     """List all registered repositories."""
     try:
+        manager = get_manager()
         repos = [str(repo) for repo in manager.list_repos()]
         return {"repos": repos, "count": len(repos)}
     except Exception as e:
@@ -645,6 +843,7 @@ async def jm_list_repos() -> dict[str, Any]:
 def jm_add_repo(path: str, force: bool = False) -> list:
     """Add a repository path to the manager."""
     try:
+        manager = get_manager()
         manager.add_repo(path, force)
         manager.save()
         return [{"type": "text", "text": f"Repo added: {path}"}]
@@ -665,6 +864,7 @@ def jm_add_repo(path: str, force: bool = False) -> list:
 def jm_remove_repo(repo_name: str) -> list:
     """Remove a repository from configuration."""
     try:
+        manager = get_manager()
         manager.remove_repo(repo_name)
         manager.save()
         return [{"type": "text", "text": f"Repo removed: {repo_name}"}]
@@ -685,6 +885,7 @@ def jm_remove_repo(repo_name: str) -> list:
 def jm_promote_repo(repo_name: str) -> list:
     """Promote a repository to higher priority."""
     try:
+        manager = get_manager()
         manager.promote_repo(repo_name)
         manager.save()
         return [{"type": "text", "text": f"Repo promoted: {repo_name}"}]
@@ -705,6 +906,7 @@ def jm_promote_repo(repo_name: str) -> list:
 async def jm_get_repo(repo_name: str) -> dict[str, Any]:
     """Get detailed information about a repository."""
     try:
+        manager = get_manager()
         repo = manager.get_repo(repo_name)
         return {"repo": repo if isinstance(repo, dict) else str(repo)}
     except Exception as e:
@@ -724,6 +926,7 @@ async def jm_get_repo(repo_name: str) -> dict[str, Any]:
 def jm_construct_pkg(pkg_type: str) -> list:
     """Generate a new package skeleton by type."""
     try:
+        manager = get_manager()
         obj = manager.construct_pkg(pkg_type)
         return [{"type": "text", "text": f"Constructed pkg: {obj.__class__.__name__}"}]
     except Exception as e:
@@ -743,6 +946,7 @@ def jm_construct_pkg(pkg_type: str) -> list:
 def jm_graph_show() -> list:
     """Print the resource graph to the console."""
     try:
+        manager = get_manager()
         manager.resource_graph_show()
         return [{"type": "text", "text": "Resource graph printed to console."}]
     except Exception as e:
@@ -762,6 +966,7 @@ def jm_graph_show() -> list:
 def jm_graph_build(net_sleep: float) -> list:
     """Construct or rebuild the graph with a given sleep delay."""
     try:
+        manager = get_manager()
         manager.resource_graph_build(net_sleep)
         return [{"type": "text", "text": "Resource graph built."}]
     except Exception as e:
@@ -781,10 +986,212 @@ def jm_graph_build(net_sleep: float) -> list:
 def jm_graph_modify(net_sleep: float) -> list:
     """Modify the current resource graph with a delay between operations."""
     try:
+        manager = get_manager()
         manager.resource_graph_modify(net_sleep)
         return [{"type": "text", "text": "Resource graph modified."}]
     except Exception as e:
         raise ToolError(f"Error: {e}")
+
+
+def _discover_packages() -> list[dict[str, Any]]:
+    packages: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    try:
+        manager = get_manager()
+        repos = [Path(str(repo)) for repo in manager.list_repos()]
+    except Exception:
+        repos = []
+    for repo in repos:
+        if not repo.exists():
+            continue
+        for pkg_file in repo.rglob("pkg.py"):
+            package = _package_from_pkg_file(repo, pkg_file)
+            name = str(package.get("name", ""))
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            packages.append(package)
+    return sorted(packages, key=lambda package: str(package.get("name", "")))
+
+
+def _find_package_description(package_name: str) -> dict[str, Any] | None:
+    normalized = package_name.strip().lower()
+    for package in _discover_packages():
+        names = {
+            str(package.get("name", "")).lower(),
+            str(package.get("short_name", "")).lower(),
+        }
+        if normalized in names:
+            return package
+    return None
+
+
+def _package_from_pkg_file(repo: Path, pkg_file: Path) -> dict[str, Any]:
+    relative = pkg_file.relative_to(repo)
+    parts = list(relative.parts[:-1])
+    short_name = parts[-1] if parts else repo.name
+    dotted = ".".join(parts) if parts else short_name
+    description = _first_docstring_or_comment(pkg_file)
+    package: dict[str, Any] = {
+        "name": dotted,
+        "short_name": short_name,
+        "description": description,
+        "path": str(pkg_file),
+    }
+    menu = _package_settings(dotted)
+    if menu is None and dotted != short_name:
+        menu = _package_settings(short_name)
+    if menu is not None:
+        package["settings"] = menu
+    return package
+
+
+def _first_docstring_or_comment(path: Path) -> str | None:
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    in_docstring = False
+    docstring_quote: str | None = None
+    collected: list[str] = []
+    for raw_line in lines[:80]:
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            comment = line.lstrip("#").strip()
+            if comment:
+                return comment
+            continue
+        if in_docstring and docstring_quote is not None:
+            if line.endswith(docstring_quote):
+                line = line[: -len(docstring_quote)]
+                if line:
+                    collected.append(line.strip())
+                return " ".join(collected).strip() or None
+            collected.append(line)
+            continue
+        if line.startswith(('"""', "'''")):
+            docstring_quote = line[:3]
+            remainder = line[3:]
+            if remainder.endswith(docstring_quote):
+                remainder = remainder[:-3]
+                return remainder.strip() or None
+            in_docstring = True
+            if remainder:
+                collected.append(remainder.strip())
+            continue
+        return None
+    return " ".join(collected).strip() or None
+
+
+def _step_snapshot(
+    pipeline_snapshot: dict[str, Any], step_id: str
+) -> dict[str, Any] | None:
+    for package in pipeline_snapshot.get("packages", []):
+        if not isinstance(package, dict):
+            continue
+        identifiers = {
+            str(package.get("pkg_id", "")),
+            str(package.get("global_id", "")),
+        }
+        if step_id in identifiers:
+            return package
+    return None
+
+
+def _package_settings(package_name: str) -> list[dict[str, Any]] | None:
+    try:
+        from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
+
+        pkg = Pkg.load_standalone(package_name)
+        return [_setting_from_menu_item(item) for item in pkg.configure_menu()]
+    except Exception:
+        return None
+
+
+def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
+    setting: dict[str, Any] = {
+        "name": item.get("name"),
+        "description": item.get("msg"),
+    }
+    kind = item.get("type")
+    if isinstance(kind, type):
+        setting["type"] = kind.__name__
+    elif kind is not None:
+        setting["type"] = str(kind)
+    if "default" in item:
+        setting["default"] = item["default"]
+    return {key: value for key, value in setting.items() if value is not None}
+
+
+def _execution_intent_to_pipeline_config(execution: dict[str, Any]) -> dict[str, Any]:
+    mode = str(execution.get("mode", "auto")).strip().lower()
+    if mode not in {"auto", "local", "direct", "cluster", "scheduler", "hostfile"}:
+        raise ToolError(
+            "execution.mode must be one of: auto, local, direct, cluster, scheduler, hostfile"
+        )
+    if mode in {"local", "direct"}:
+        return {"scheduler": None, "hostfile": None}
+    if mode == "hostfile":
+        hostfile = execution.get("hostfile")
+        hosts = execution.get("hosts")
+        if hostfile:
+            return {"scheduler": None, "hostfile": str(hostfile)}
+        if isinstance(hosts, list) and hosts:
+            return {
+                "scheduler": None,
+                "hostfile_entries": [str(host) for host in hosts],
+            }
+        raise ToolError("execution.hostfile is required when execution.mode='hostfile'")
+    if mode in {"cluster", "scheduler", "auto"}:
+        scheduler_name = _detect_scheduler_name()
+        if scheduler_name is None:
+            if mode == "auto":
+                return {}
+            raise ToolError("no supported cluster scheduler detected on this machine")
+        if set(execution) <= {"mode"}:
+            return {}
+        scheduler: dict[str, Any] = {"name": scheduler_name}
+        mapping = {
+            "job_name": "job_name",
+            "nodes": "nodes",
+            "tasks": "ntasks",
+            "tasks_per_node": "ntasks_per_node",
+            "cpus_per_task": "cpus_per_task",
+            "walltime": "time",
+            "partition": "partition",
+            "account": "account",
+            "qos": "qos",
+            "output": "output",
+            "error": "error",
+            "exclusive": "exclusive",
+            "gpus": "gpus",
+            "gpus_per_node": "gpus_per_node",
+        }
+        for public_key, scheduler_key in mapping.items():
+            if public_key in execution and execution[public_key] is not None:
+                scheduler[scheduler_key] = execution[public_key]
+        return {"scheduler": scheduler}
+    return {}
+
+
+def _detect_scheduler_name() -> str | None:
+    configured = os.getenv("JARVIS_MCP_SCHEDULER") or os.getenv("JARVIS_SCHEDULER")
+    if configured:
+        return configured.strip().lower()
+    from shutil import which
+
+    if which("sbatch") is not None:
+        return "slurm"
+    return None
+
+
+def _protocol_stdout_to_stderr() -> Any:
+    from contextlib import redirect_stdout
+    import sys
+
+    return redirect_stdout(sys.stderr)
 
 
 def main() -> None:
@@ -807,12 +1214,18 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
-    profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "all")
+    profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "user")
     apply_tool_profile(profile)
     if transport == "http":
         mcp.run(transport="http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")
+
+
+def admin_main() -> None:
+    """Main entry point for the Jarvis admin MCP server."""
+    os.environ.setdefault("JARVIS_MCP_PROFILE", "admin")
+    main()
 
 
 def apply_tool_profile(profile: str) -> None:
@@ -828,14 +1241,16 @@ def apply_tool_profile(profile: str) -> None:
         raise ValueError("profile must be one of: all, user, admin")
     for tool in _registered_tools():
         if tool.name not in allowed:
-            mcp.remove_tool(tool.name)
+            mcp.local_provider.remove_tool(tool.name)
 
 
 def _registered_tools() -> list:
-    tools = mcp.list_tools(run_middleware=False)
-    if inspect.isawaitable(tools):
-        return list(asyncio.run(tools))
-    return list(tools)
+    components = getattr(mcp.local_provider, "_components", {})
+    return [
+        component
+        for key, component in components.items()
+        if isinstance(key, str) and key.startswith("tool:")
+    ]
 
 
 if __name__ == "__main__":

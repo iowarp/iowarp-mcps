@@ -11,6 +11,13 @@ from typing import Dict, Any
 from fastmcp import FastMCP
 
 
+@pytest.fixture(autouse=True)
+def reset_server_manager_cache():
+    """Clear the lazy server manager cache around every test."""
+    with patch("jarvis_mcp.server._manager", None):
+        yield
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""
@@ -22,7 +29,11 @@ def temp_dir():
 @pytest.fixture
 def mock_jarvis_manager():
     """Mock JarvisManager instance."""
-    with patch("jarvis_mcp.server.JarvisManager") as mock_manager_class:
+    with (
+        patch("jarvis_mcp.server.JarvisManager") as mock_manager_class,
+        patch("jarvis_mcp.server._manager", None),
+        patch("jarvis_mcp.server.manager", None),
+    ):
         mock_manager = Mock()
         mock_manager_class.get_instance.return_value = mock_manager
 

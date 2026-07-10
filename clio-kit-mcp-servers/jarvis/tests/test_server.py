@@ -262,7 +262,7 @@ class TestJarvisManagerTools:
     @pytest.fixture
     def mock_jarvis_manager(self):
         """Mock JarvisManager for testing."""
-        with patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis:
+        with patch("jarvis_mcp.server.JarvisManager") as mock_jarvis:
             mock_instance = Mock()
             mock_jarvis.get_instance.return_value = mock_instance
             yield mock_instance
@@ -561,7 +561,7 @@ class TestErrorHandling:
     @pytest.fixture
     def mock_jarvis_manager(self):
         """Mock JarvisManager for testing."""
-        with patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis:
+        with patch("jarvis_mcp.server.JarvisManager") as mock_jarvis:
             mock_instance = Mock()
             mock_jarvis.get_instance.return_value = mock_instance
             yield mock_instance
@@ -617,7 +617,7 @@ class TestIntegration:
     @pytest.fixture
     def mock_jarvis_manager(self):
         """Mock JarvisManager for testing."""
-        with patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis:
+        with patch("jarvis_mcp.server.JarvisManager") as mock_jarvis:
             mock_instance = Mock()
             mock_jarvis.get_instance.return_value = mock_instance
             yield mock_instance

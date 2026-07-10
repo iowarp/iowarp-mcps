@@ -30,8 +30,8 @@ class TestJarvisIntegration:
 
         # Mock all imports to avoid import errors
         with (
-            patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             # Setup mocks
             mock_manager_instance = MockJarvisManager()
@@ -107,7 +107,7 @@ class TestJarvisIntegration:
     async def test_jarvis_manager_workflow(self):
         """Test JarvisManager workflow operations."""
 
-        with patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis:
+        with patch("jarvis_mcp.server.JarvisManager") as mock_jarvis:
             mock_manager = MockJarvisManager()
             mock_jarvis.get_instance.return_value = mock_manager
 
@@ -174,8 +174,8 @@ class TestJarvisIntegration:
         """Test error handling in complete workflows."""
 
         with (
-            patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             # Setup error scenarios
             mock_manager = MockJarvisManager()
@@ -205,8 +205,8 @@ class TestJarvisIntegration:
         """Test concurrent pipeline operations."""
 
         with (
-            patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             mock_manager = MockJarvisManager()
             mock_jarvis.get_instance.return_value = mock_manager
@@ -246,8 +246,8 @@ class TestJarvisIntegration:
         """Test server initialization with mocked dependencies."""
 
         with (
-            patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
             patch("sys.path"),
             patch("importlib.import_module"),
         ):
@@ -289,7 +289,7 @@ class TestJarvisIntegration:
             private_dir = os.path.join(temp_dir, "private")
             shared_dir = os.path.join(temp_dir, "shared")
 
-            with patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis:
+            with patch("jarvis_mcp.server.JarvisManager") as mock_jarvis:
                 mock_manager = MockJarvisManager()
                 mock_jarvis.get_instance.return_value = mock_manager
 
@@ -344,8 +344,8 @@ class TestJarvisIntegration:
         """Test workflow with multiple pipelines and packages."""
 
         with (
-            patch("jarvis_cd.basic.jarvis_manager.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             mock_manager = MockJarvisManager()
             mock_jarvis.get_instance.return_value = mock_manager

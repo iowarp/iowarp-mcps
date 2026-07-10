@@ -4,11 +4,52 @@ Tests for ArXiv text-based search capabilities.
 
 import pytest
 
+from arxiv_mcp.capabilities import text_search
 from arxiv_mcp.capabilities.text_search import (
     search_by_title,
     search_by_abstract,
     search_papers_by_author,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_arxiv_query(monkeypatch):
+    """Use deterministic ArXiv query results for text-search unit tests."""
+
+    async def fake_execute_arxiv_query(params):
+        max_results = int(params["max_results"])
+        query = str(params["search_query"])
+        if query.startswith("ti:"):
+            topic = query.removeprefix("ti:")
+            title = f"{topic.title()} methods for scientific computing"
+            summary = f"A paper about {topic}."
+            authors = ["Test Author"]
+        elif query.startswith("abs:"):
+            topic = query.removeprefix("abs:")
+            title = f"Applications of {topic.title()}"
+            summary = f"This abstract discusses {topic} and reproducible experiments."
+            authors = ["Test Author"]
+        elif query.startswith("au:"):
+            author = query.removeprefix("au:")
+            title = f"Recent work by {author}"
+            summary = "A representative author search result."
+            authors = [author]
+        else:
+            title = "Generic ArXiv result"
+            summary = "A representative search result."
+            authors = ["Test Author"]
+
+        return [
+            {
+                "id": f"test.{index}",
+                "title": title,
+                "summary": summary,
+                "authors": authors,
+            }
+            for index in range(max_results)
+        ]
+
+    monkeypatch.setattr(text_search, "execute_arxiv_query", fake_execute_arxiv_query)
 
 
 class TestTextSearch:

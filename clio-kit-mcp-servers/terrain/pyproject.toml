@@ -12,9 +12,20 @@ authors = [
 keywords = ["MCP", "terrain", "dem", "slope", "aspect", "point-cloud", "geospatial", "numpy"]
 
 dependencies = [
-    "fastmcp>=3.0.1",
-    "python-dotenv>=1.0.0",
+    "fastmcp>=3.2.0",
+    "python-dotenv>=1.2.2",
     "numpy>=1.24.0",
+    "authlib>=1.6.12",
+    "cryptography>=48.0.1",
+    "idna>=3.15",
+    "pydantic-settings>=2.14.2",
+    "pygments>=2.20.0",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.31",
+    "starlette>=1.3.1",
+    "urllib3>=2.7.0",
+    "msgpack>=1.2.1",
+    "requests>=2.33.0",
 ]
 
 [project.optional-dependencies]
@@ -31,7 +42,9 @@ terrain-mcp = "terrain_mcp.server:main"
 [dependency-groups]
 dev = [
     "mypy>=1.17.0",
-    "pytest>=8.4.0",
+    "pip>=26.1.2",
+    "pip-audit>=2.10.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
     "ruff>=0.12.5",

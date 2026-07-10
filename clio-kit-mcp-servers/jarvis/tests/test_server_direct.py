@@ -4,6 +4,9 @@ Tests actual function bodies by patching handlers at the capabilities layer.
 """
 
 import pytest
+import importlib
+import runpy
+import sys
 from unittest.mock import Mock, patch
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
@@ -20,13 +23,24 @@ class TestServerProfiles:
             def __init__(self, name):
                 self.name = name
 
-        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("export_pipeline")]
+        tools = [
+            Tool("jarvis_create_pipeline"),
+            Tool("jarvis_run"),
+            Tool("create_pipeline"),
+            Tool("jm_reset"),
+        ]
         with patch("jarvis_mcp.server.mcp") as mock_mcp:
-            mock_mcp.list_tools.return_value = tools
+            mock_mcp.local_provider._components = {
+                f"tool:{tool.name}@": tool for tool in tools
+            }
 
             apply_tool_profile("user")
 
-            mock_mcp.remove_tool.assert_called_once_with("jm_reset")
+            removed = [
+                call.args[0]
+                for call in mock_mcp.local_provider.remove_tool.call_args_list
+            ]
+            assert removed == ["create_pipeline", "jm_reset"]
 
     def test_apply_admin_profile_removes_user_tools(self):
         """Admin profile keeps manager tools and hides user pipeline authoring."""
@@ -36,13 +50,103 @@ class TestServerProfiles:
             def __init__(self, name):
                 self.name = name
 
-        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("jm_add_repo")]
+        tools = [
+            Tool("jarvis_create_pipeline"),
+            Tool("create_pipeline"),
+            Tool("jm_reset"),
+        ]
         with patch("jarvis_mcp.server.mcp") as mock_mcp:
-            mock_mcp.list_tools.return_value = tools
+            mock_mcp.local_provider._components = {
+                f"tool:{tool.name}@": tool for tool in tools
+            }
 
             apply_tool_profile("admin")
 
-            mock_mcp.remove_tool.assert_called_once_with("create_pipeline")
+            mock_mcp.local_provider.remove_tool.assert_called_once_with(
+                "jarvis_create_pipeline"
+            )
+
+    def test_apply_all_profile_keeps_every_tool(self):
+        """The compatibility profile leaves the full legacy surface intact."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        with patch("jarvis_mcp.server.mcp") as mock_mcp:
+            apply_tool_profile("all")
+
+            mock_mcp.local_provider.remove_tool.assert_not_called()
+
+
+class TestCurrentJarvisManagerAdapter:
+    """Test the compatibility adapter for current JARVIS-CD manager APIs."""
+
+    def test_adapter_delegates_stateful_manager_operations(self, tmp_path):
+        """The current manager adapter maps legacy manager calls to Jarvis APIs."""
+        from jarvis_mcp.server import _CurrentJarvisManager
+
+        pipelines_dir = tmp_path / "pipelines"
+        pipelines_dir.mkdir()
+        (pipelines_dir / "pipe-b").mkdir()
+        (pipelines_dir / "pipe-a").mkdir()
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        jarvis = Mock()
+        jarvis.config = {"loaded": True}
+        jarvis.repos = {"repos": [str(repo), "/missing/repo"]}
+        jarvis._config = {"loaded": True}
+        jarvis._repos = jarvis.repos
+        jarvis.get_pipelines_dir.return_value = pipelines_dir
+        jarvis.resource_graph = {"nodes": []}
+
+        adapter = _CurrentJarvisManager(jarvis)
+        assert adapter.create("cfg", "priv", "shared") is adapter
+        jarvis.initialize.assert_called_once_with(
+            config_dir="cfg", private_dir="priv", shared_dir="shared"
+        )
+        assert adapter.load() is adapter
+        assert adapter.save() is adapter
+        jarvis.save_config.assert_called_once_with(jarvis.config)
+        jarvis.save_repos.assert_called_once_with(jarvis.repos)
+        assert adapter.set_hostfile("/tmp/hosts") is adapter
+        jarvis.set_hostfile.assert_called_once_with("/tmp/hosts")
+        assert adapter.list_pipelines() == ["pipe-a", "pipe-b"]
+        assert adapter.cd("pipe-a") is adapter
+        jarvis.set_current_pipeline.assert_called_once_with("pipe-a")
+        assert adapter.list_repos() == [str(repo), "/missing/repo"]
+        assert adapter.get_repo(repo.name) == {
+            "index": 1,
+            "name": repo.name,
+            "path": str(repo),
+            "exists": True,
+        }
+        assert adapter.resource_graph_show() == {"nodes": []}
+
+    def test_adapter_handles_repo_mutation_and_unsupported_calls(self, tmp_path):
+        """Repo matching works by path or directory name and unsupported calls fail."""
+        from jarvis_mcp.server import _CurrentJarvisManager
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        jarvis = Mock()
+        jarvis.repos = {"repos": [str(repo), "/other/other-repo"]}
+        adapter = _CurrentJarvisManager(jarvis)
+
+        assert adapter.add_repo(str(repo), force=True) is adapter
+        jarvis.add_repo.assert_called_once_with(str(repo), force=True)
+        assert adapter.remove_repo(repo.name) is adapter
+        jarvis.remove_repo.assert_called_with(str(repo))
+        assert adapter.promote_repo("repo") is adapter
+        jarvis.save_repos.assert_called_with(
+            {"repos": [str(repo), "/other/other-repo"]}
+        )
+
+        with pytest.raises(ValueError, match="repository not found"):
+            adapter.promote_repo("missing")
+        with pytest.raises(NotImplementedError, match="bootstrap templates"):
+            adapter.bootstrap_from("ares")
+        with pytest.raises(NotImplementedError, match="reset"):
+            adapter.reset()
+        assert adapter.bootstrap_list() == []
 
 
 class TestPipelineToolsDirect:
@@ -234,6 +338,428 @@ class TestPipelineToolsDirect:
 
             assert result["status"] == "running"
             mock_handler.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_jarvis_create_pipeline_tool_direct(self):
+        """Test user-facing pipeline creation wrapper."""
+        with patch("jarvis_mcp.server.create_pipeline") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "new", "status": "created"}
+
+            from jarvis_mcp.server import jarvis_create_pipeline_tool
+
+            result = await jarvis_create_pipeline_tool("new")
+
+            assert result["status"] == "created"
+            mock_handler.assert_called_once_with("new")
+
+    @pytest.mark.asyncio
+    async def test_jarvis_create_pipeline_with_cluster_execution(self):
+        """Cluster execution intent configures native scheduler state."""
+        with (
+            patch("jarvis_mcp.server.create_pipeline") as create_handler,
+            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
+            patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}),
+        ):
+            create_handler.return_value = {"pipeline_id": "new", "status": "created"}
+            configure_handler.return_value = {
+                "pipeline_id": "new",
+                "status": "configured",
+            }
+
+            from jarvis_mcp.server import jarvis_create_pipeline_tool
+
+            result = await jarvis_create_pipeline_tool(
+                "new",
+                execution={
+                    "mode": "cluster",
+                    "nodes": 4,
+                    "tasks_per_node": 20,
+                    "walltime": "00:30:00",
+                    "exclusive": True,
+                },
+            )
+
+            assert result["created"]["status"] == "created"
+            configure_handler.assert_called_once_with(
+                "new",
+                {
+                    "scheduler": {
+                        "name": "slurm",
+                        "nodes": 4,
+                        "ntasks_per_node": 20,
+                        "time": "00:30:00",
+                        "exclusive": True,
+                    }
+                },
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_add_step_tool_direct(self):
+        """Test user-facing step addition maps to package append."""
+        with patch("jarvis_mcp.server.append_pkg") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "appended": "lammps"}
+
+            from jarvis_mcp.server import jarvis_add_step_tool
+
+            result = await jarvis_add_step_tool(
+                "test",
+                "builtin.lammps",
+                step_id="lammps_1",
+                config={"nodes": 4},
+            )
+
+            assert result["appended"] == "lammps"
+            mock_handler.assert_called_once_with(
+                "test",
+                "builtin.lammps",
+                pkg_id="lammps_1",
+                do_configure=True,
+                nodes=4,
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_edit_step_tool_direct(self):
+        """Test user-facing step edit maps to package configuration."""
+        with patch("jarvis_mcp.server.configure_pkg") as mock_handler:
+            mock_handler.return_value = {
+                "pipeline_id": "test",
+                "configured": "lammps_1",
+            }
+
+            from jarvis_mcp.server import jarvis_edit_step_tool
+
+            result = await jarvis_edit_step_tool("test", "lammps_1", {"nodes": 2})
+
+            assert result["configured"] == "lammps_1"
+            mock_handler.assert_called_once_with("test", "lammps_1", nodes=2)
+
+    @pytest.mark.asyncio
+    async def test_jarvis_remove_step_tool_direct(self):
+        """Test user-facing step removal unlinks the package."""
+        with patch("jarvis_mcp.server.unlink_pkg") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "unlinked": "lammps_1"}
+
+            from jarvis_mcp.server import jarvis_remove_step_tool
+
+            result = await jarvis_remove_step_tool("test", "lammps_1")
+
+            assert result["unlinked"] == "lammps_1"
+            mock_handler.assert_called_once_with("test", "lammps_1")
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_tool_direct(self):
+        """Test user-facing run maps to pipeline execution."""
+        with patch("jarvis_mcp.server.run_pipeline") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            result = await jarvis_run_tool("test")
+
+            assert result["status"] == "running"
+            mock_handler.assert_called_once_with(
+                "test", mode="auto", submit=True, wait=False
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_tool_maps_execution_intent(self):
+        """User execution intent maps to JARVIS-native configuration."""
+        with (
+            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
+            patch("jarvis_mcp.server.run_pipeline") as run_handler,
+            patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}),
+        ):
+            configure_handler.return_value = {"status": "configured"}
+            run_handler.return_value = {"pipeline_id": "test", "status": "submitted"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            result = await jarvis_run_tool(
+                "test",
+                execution={
+                    "mode": "cluster",
+                    "nodes": 2,
+                    "tasks": 40,
+                    "partition": "compute",
+                },
+            )
+
+            assert result["status"] == "submitted"
+            configure_handler.assert_called_once_with(
+                "test",
+                {
+                    "scheduler": {
+                        "name": "slurm",
+                        "nodes": 2,
+                        "ntasks": 40,
+                        "partition": "compute",
+                    }
+                },
+            )
+            run_handler.assert_called_once_with(
+                "test", mode="scheduler", submit=True, wait=False
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_tool_maps_hostfile_hosts(self):
+        """Hostfile intent can be supplied as semantic host names."""
+        with (
+            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
+            patch("jarvis_mcp.server.run_pipeline") as run_handler,
+        ):
+            configure_handler.return_value = {"status": "configured"}
+            run_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            await jarvis_run_tool(
+                "test",
+                execution={"mode": "hostfile", "hosts": ["node-a", "node-b"]},
+            )
+
+            configure_handler.assert_called_once_with(
+                "test",
+                {"scheduler": None, "hostfile_entries": ["node-a", "node-b"]},
+            )
+            run_handler.assert_called_once_with(
+                "test", mode="direct", submit=True, wait=False
+            )
+
+    def test_execution_intent_local_and_direct_disable_scheduler(self):
+        """Local and direct modes select single-node execution without a scheduler."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        assert _execution_intent_to_pipeline_config({"mode": "local"}) == {
+            "scheduler": None,
+            "hostfile": None,
+        }
+        assert _execution_intent_to_pipeline_config({"mode": "direct"}) == {
+            "scheduler": None,
+            "hostfile": None,
+        }
+
+    def test_execution_intent_hostfile_path(self):
+        """A hostfile path is passed through as a native JARVIS hostfile config."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        assert _execution_intent_to_pipeline_config(
+            {"mode": "hostfile", "hostfile": "/tmp/hosts"}
+        ) == {"scheduler": None, "hostfile": "/tmp/hosts"}
+
+    def test_execution_intent_hostfile_requires_target(self):
+        """Hostfile mode needs either a hostfile path or explicit host names."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with pytest.raises(ToolError, match="execution.hostfile is required"):
+            _execution_intent_to_pipeline_config({"mode": "hostfile"})
+
+    def test_execution_intent_rejects_unknown_mode(self):
+        """Unknown execution modes fail before they reach JARVIS."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with pytest.raises(ToolError, match="execution.mode must be one of"):
+            _execution_intent_to_pipeline_config({"mode": "magic"})
+
+    def test_execution_intent_cluster_requires_scheduler(self):
+        """Explicit cluster mode fails if no scheduler exists on the MCP host."""
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value=None),
+        ):
+            from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+            with pytest.raises(ToolError, match="no supported cluster scheduler"):
+                _execution_intent_to_pipeline_config({"mode": "cluster", "nodes": 2})
+
+    def test_execution_intent_auto_without_scheduler_is_noop(self):
+        """Auto mode does not overwrite an existing pipeline on non-scheduler hosts."""
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value=None),
+        ):
+            from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+            assert _execution_intent_to_pipeline_config({"mode": "auto"}) == {}
+
+    def test_detect_scheduler_name_from_env_and_path(self):
+        """Scheduler detection prefers explicit env and otherwise probes sbatch."""
+        from jarvis_mcp.server import _detect_scheduler_name
+
+        with patch.dict("os.environ", {"JARVIS_SCHEDULER": "pbs"}, clear=True):
+            assert _detect_scheduler_name() == "pbs"
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value="/usr/bin/sbatch"),
+        ):
+            assert _detect_scheduler_name() == "slurm"
+
+    def test_execution_intent_cluster_mode_without_options_preserves_pipeline(self):
+        """Cluster auto-detection without resource options leaves pipeline config intact."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value="/usr/bin/sbatch"),
+        ):
+            assert _execution_intent_to_pipeline_config({"mode": "cluster"}) == {}
+
+    def test_execution_intent_hostfile_entries(self):
+        """Hostfile mode can materialize explicit host entries."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        assert _execution_intent_to_pipeline_config(
+            {"mode": "hostfile", "hosts": ["n1", "n2"]}
+        ) == {"scheduler": None, "hostfile_entries": ["n1", "n2"]}
+
+    def test_apply_tool_profile_rejects_unknown_profile(self):
+        """Unknown profile names fail explicitly."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        with pytest.raises(ValueError, match="profile must be one of"):
+            apply_tool_profile("operator")
+
+    def test_package_description_helpers_cover_docstrings_comments_and_settings(
+        self, tmp_path
+    ):
+        """Package helper functions extract descriptions and optional settings."""
+        from jarvis_mcp.server import (
+            _first_docstring_or_comment,
+            _package_from_pkg_file,
+            _setting_from_menu_item,
+        )
+
+        comment_pkg = tmp_path / "comment_pkg.py"
+        comment_pkg.write_text("\n# comment description\nclass Pkg: pass\n")
+        assert _first_docstring_or_comment(comment_pkg) == "comment description"
+
+        multiline_pkg = tmp_path / "multiline_pkg.py"
+        multiline_pkg.write_text('"""\nfirst line\nsecond line\n"""\nclass Pkg: pass\n')
+        assert _first_docstring_or_comment(multiline_pkg) == "first line second line"
+        assert _first_docstring_or_comment(tmp_path) is None
+        assert _setting_from_menu_item(
+            {"name": "nodes", "msg": "Node count", "type": int, "default": 1}
+        ) == {
+            "name": "nodes",
+            "description": "Node count",
+            "type": "int",
+            "default": 1,
+        }
+
+        repo = tmp_path / "repo"
+        pkg_dir = repo / "builtin" / "demo"
+        pkg_dir.mkdir(parents=True)
+        pkg_file = pkg_dir / "pkg.py"
+        pkg_file.write_text('"""Demo."""\n')
+        with patch(
+            "jarvis_mcp.server._package_settings",
+            side_effect=[[{"name": "x"}], None],
+        ):
+            assert _package_from_pkg_file(repo, pkg_file)["settings"] == [{"name": "x"}]
+
+    @pytest.mark.asyncio
+    async def test_package_lookup_and_step_snapshot_edge_cases(self, tmp_path):
+        """Package lookup handles duplicates/misses and step snapshots skip invalid rows."""
+        from jarvis_mcp.server import (
+            _find_package_description,
+            _step_snapshot,
+            jarvis_describe_tool,
+        )
+
+        assert (
+            _step_snapshot({"packages": ["bad", {"pkg_id": "ok"}]}, "missing") is None
+        )
+        assert _step_snapshot({"packages": ["bad", {"global_id": "ok"}]}, "ok") == {
+            "global_id": "ok"
+        }
+
+        repo = tmp_path / "repo"
+        for subdir in ("builtin/demo", "duplicate/demo"):
+            pkg_dir = repo / subdir
+            pkg_dir.mkdir(parents=True)
+            (pkg_dir / "pkg.py").write_text('"""Demo."""\n')
+        manager = Mock()
+        manager.list_repos.return_value = [repo]
+        with patch("jarvis_mcp.server.get_manager", return_value=manager):
+            assert _find_package_description("missing") is None
+            packages = await jarvis_describe_tool("packages")
+            assert packages["target"] == "packages"
+
+    @pytest.mark.asyncio
+    async def test_jarvis_describe_pipeline_tool_direct(self):
+        """Test user-facing pipeline description uses pipeline export."""
+        with patch("jarvis_mcp.server.export_pipeline") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "packages": []}
+
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool("pipeline", pipeline_id="test")
+
+            assert result["target"] == "pipeline"
+            assert result["pipeline"]["pipeline_id"] == "test"
+            mock_handler.assert_called_once_with("test", include_yaml=True)
+
+    @pytest.mark.asyncio
+    async def test_jarvis_describe_package_tool_direct(self, tmp_path):
+        """Package description is discovered from registered JARVIS repos."""
+        repo = tmp_path / "repo"
+        pkg_dir = repo / "builtin" / "demo"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "pkg.py").write_text(
+            '"""Demo package for tests."""\nclass Pkg: pass\n',
+            encoding="utf-8",
+        )
+        manager = Mock()
+        manager.list_repos.return_value = [repo]
+
+        with (
+            patch("jarvis_mcp.server.get_manager", return_value=manager),
+            patch("jarvis_mcp.server._package_settings", return_value=None),
+        ):
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool("package", package_name="builtin.demo")
+
+            assert result["target"] == "package"
+            assert result["package"]["name"] == "builtin.demo"
+            assert result["package"]["short_name"] == "demo"
+            assert result["package"]["description"] == "Demo package for tests."
+
+    @pytest.mark.asyncio
+    async def test_jarvis_describe_packages_skips_missing_repos(self, tmp_path):
+        """Package discovery ignores stale repository paths."""
+        repo = tmp_path / "missing"
+        manager = Mock()
+        manager.list_repos.return_value = [repo]
+
+        with patch("jarvis_mcp.server.get_manager", return_value=manager):
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool("packages")
+
+            assert result == {"target": "packages", "packages": []}
+
+    @pytest.mark.asyncio
+    async def test_jarvis_describe_step_tool_direct(self):
+        """Test user-facing step description includes snapshot and config."""
+        with (
+            patch("jarvis_mcp.server.export_pipeline") as export_handler,
+            patch("jarvis_mcp.server.get_pkg_config") as config_handler,
+        ):
+            export_handler.return_value = {
+                "pipeline_id": "test",
+                "packages": [{"pkg_id": "lammps_1", "pkg_type": "builtin.lammps"}],
+            }
+            config_handler.return_value = {"pkg_id": "lammps_1", "config": {"nodes": 4}}
+
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool(
+                "step", pipeline_id="test", step_id="lammps_1"
+            )
+
+            assert result["target"] == "step"
+            assert result["step"]["pkg_id"] == "lammps_1"
+            assert result["config"]["config"]["nodes"] == 4
 
     @pytest.mark.asyncio
     async def test_destroy_pipeline_tool_direct(self):
@@ -677,14 +1203,121 @@ class TestMainFunctionDirect:
         """Test main() with stdio transport."""
         with (
             patch("sys.argv", ["jarvis-mcp"]),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
             patch("jarvis_mcp.server.mcp.run") as mock_run,
         ):
             from jarvis_mcp.server import main
 
             main()
 
+            mock_profile.assert_called_once_with("user")
             # Should be called with stdio transport (default)
             mock_run.assert_called_once_with(transport="stdio")
+
+    def test_admin_main_uses_admin_profile(self):
+        """Test admin entry point selects the admin profile."""
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp"]),
+            patch.dict("os.environ", {}, clear=True),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            from jarvis_mcp.server import admin_main
+
+            admin_main()
+
+            mock_profile.assert_called_once_with("admin")
+            mock_run.assert_called_once_with(transport="stdio")
+
+    def test_user_server_entrypoint_applies_user_profile_and_runs_http(self):
+        """The user entrypoint exposes user tools and supports HTTP transport."""
+        sys.modules.pop("jarvis_mcp.user_server", None)
+        with (
+            patch("sys.argv", ["jarvis-mcp", "--transport", "http", "--port", "9001"]),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.user_server")
+
+            module.main()
+
+            mock_profile.assert_called_once_with("user")
+            mock_run.assert_called_once_with(
+                transport="http", host="0.0.0.0", port=9001
+            )
+
+    def test_admin_server_entrypoint_applies_admin_profile_and_runs_stdio(self):
+        """The admin entrypoint exposes admin tools and defaults to stdio."""
+        sys.modules.pop("jarvis_mcp.admin_server", None)
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp"]),
+            patch.dict("os.environ", {}, clear=True),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.admin_server")
+
+            module.main()
+
+            mock_profile.assert_called_once_with("admin")
+            mock_run.assert_called_once_with(transport="stdio")
+
+    def test_user_server_entrypoint_defaults_to_stdio(self):
+        """The user entrypoint defaults to stdio when no transport is configured."""
+        sys.modules.pop("jarvis_mcp.user_server", None)
+        with (
+            patch("sys.argv", ["jarvis-mcp"]),
+            patch.dict("os.environ", {}, clear=True),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.user_server")
+
+            module.main()
+
+            mock_profile.assert_called_once_with("user")
+            mock_run.assert_called_once_with(transport="stdio")
+
+    def test_admin_server_entrypoint_runs_http(self):
+        """The admin entrypoint supports HTTP transport when requested."""
+        sys.modules.pop("jarvis_mcp.admin_server", None)
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp", "--transport", "http"]),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.admin_server")
+
+            module.main()
+
+            mock_profile.assert_called_once_with("admin")
+            mock_run.assert_called_once_with(
+                transport="http", host="0.0.0.0", port=8000
+            )
+
+    def test_user_server_module_main_guard(self):
+        """Running the user module as __main__ delegates through its main guard."""
+        sys.modules.pop("jarvis_mcp.user_server", None)
+        with (
+            patch("sys.argv", ["jarvis-mcp"]),
+            patch("jarvis_mcp.server.apply_tool_profile"),
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            runpy.run_module("jarvis_mcp.user_server", run_name="__main__")
+
+        mock_run.assert_called_with(transport="stdio")
+
+    def test_admin_server_module_main_guard(self):
+        """Running the admin module as __main__ delegates through its main guard."""
+        sys.modules.pop("jarvis_mcp.admin_server", None)
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp"]),
+            patch("jarvis_mcp.server.apply_tool_profile"),
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            runpy.run_module("jarvis_mcp.admin_server", run_name="__main__")
+
+        mock_run.assert_called_with(transport="stdio")
 
 
 class TestResourceAndPrompt:
