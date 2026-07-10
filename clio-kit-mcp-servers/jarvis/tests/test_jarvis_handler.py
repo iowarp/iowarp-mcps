@@ -3,11 +3,13 @@ Tests for the jarvis_handler module that contains pipeline operation logic.
 """
 
 import pytest
+from pathlib import Path
 from unittest.mock import Mock, patch
 from fastapi import HTTPException
 
 from jarvis_mcp.capabilities.jarvis_handler import (
     create_pipeline,
+    configure_pipeline,
     load_pipeline,
     append_pkg,
     build_pipeline_env,
@@ -19,6 +21,41 @@ from jarvis_mcp.capabilities.jarvis_handler import (
     run_pipeline,
     destroy_pipeline,
 )
+
+
+class ModernPipeline:
+    """Small stand-in for the current JARVIS Pipeline API."""
+
+    instances = []
+
+    def __init__(self, name: str | None = None):
+        self.name = name or "loaded"
+        self.global_id = self.name
+        self.scheduler = None
+        self.hostfile = None
+        self.packages = [{"id": "pkg1", "type": "builtin.echo", "config": {"x": 1}}]
+        self.env = {}
+        self.config = {"name": self.name, "packages": self.packages}
+        self.saved = False
+        self.ran = False
+        self.submitted = False
+        self.jarvis = Mock()
+        self.jarvis.get_pipeline_shared_dir.return_value = Path("/tmp") / self.name
+        ModernPipeline.instances.append(self)
+
+    def load(self, load_type: str | None = None):
+        return self
+
+    def save(self):
+        self.saved = True
+
+    def run(self):
+        self.ran = True
+
+    def submit(self, *, submit: bool = True, wait: bool = False):
+        self.submitted = submit
+        self.waited = wait
+        return Path("/tmp") / self.name / "submit.slurm"
 
 
 class TestPipelineOperations:
@@ -318,6 +355,100 @@ class TestPipelineExecutionOperations:
 
         assert exc_info.value.status_code == 500
         assert "Run failed" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_scheduler_mode_submits_modern_pipeline(self):
+        """Scheduler mode delegates to native Pipeline.submit."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await run_pipeline(
+                "scheduled", mode="scheduler", submit=True, wait=True
+            )
+
+        pipeline = ModernPipeline.instances[-1]
+        assert result == {
+            "pipeline_id": "scheduled",
+            "status": "submitted",
+            "mode": "scheduler",
+            "scheduler": None,
+            "script_path": str(Path("/tmp") / "scheduled" / "submit.slurm"),
+            "wait": True,
+        }
+        assert pipeline.submitted is True
+        assert pipeline.waited is True
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_scheduler_script_only(self):
+        """Scheduler mode can render the scheduler script without submitting it."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await run_pipeline(
+                "scripted", mode="scheduler", submit=False, wait=False
+            )
+
+        assert result["status"] == "scripted"
+        assert result["mode"] == "scheduler"
+        assert ModernPipeline.instances[-1].submitted is False
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_auto_uses_scheduler_when_configured(self):
+        """Auto mode submits when the loaded pipeline already has scheduler config."""
+
+        class ScheduledPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm", "nodes": 1}
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline", ScheduledPipeline
+        ):
+            result = await run_pipeline("auto-scheduled")
+
+        assert result["mode"] == "scheduler"
+        assert result["scheduler"] == {"name": "slurm", "nodes": 1}
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_rejects_unknown_mode(self):
+        """Invalid execution modes fail explicitly."""
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            with pytest.raises(HTTPException) as exc_info:
+                await run_pipeline("bad", mode="unknown")
+
+        assert exc_info.value.status_code == 500
+        assert "mode must be one of" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_configure_pipeline_applies_scheduler_env_and_launcher(self):
+        """Pipeline-level config updates native scheduler/env/launcher fields."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await configure_pipeline(
+                "configured",
+                {
+                    "scheduler": {"name": "slurm", "nodes": 2},
+                    "env": {"OMP_NUM_THREADS": "4"},
+                    "base_deploy_mode": "scheduler",
+                    "mpi_cmd": "srun",
+                },
+            )
+
+        pipeline = ModernPipeline.instances[-1]
+        assert result["status"] == "configured"
+        assert pipeline.scheduler == {"name": "slurm", "nodes": 2}
+        assert pipeline.env == {"OMP_NUM_THREADS": "4"}
+        assert pipeline.base_deploy_mode == "scheduler"
+        assert pipeline.mpi_cmd == "srun"
+        assert pipeline.saved is True
+
+    @pytest.mark.asyncio
+    async def test_configure_pipeline_rejects_unknown_keys(self):
+        """Unsupported config keys fail before mutating pipeline state."""
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            with pytest.raises(HTTPException) as exc_info:
+                await configure_pipeline("configured", {"not_supported": True})
+
+        assert exc_info.value.status_code == 500
+        assert "unsupported pipeline config keys" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_destroy_pipeline_success(self, mock_pipeline):
