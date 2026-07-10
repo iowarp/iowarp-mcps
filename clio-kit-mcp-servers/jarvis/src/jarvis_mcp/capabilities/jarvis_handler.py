@@ -1,30 +1,62 @@
 import json
 import inspect
+import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import HTTPException
 
-try:  # pragma: no cover - legacy JARVIS-CD environments.
-    from jarvis_cd.basic.pkg import Pipeline  # type: ignore[import-untyped]
-except ModuleNotFoundError:  # pragma: no cover - current JARVIS-CD environments.
-    from jarvis_cd.core.pipeline import Pipeline  # type: ignore[import-untyped]
+Pipeline: Any | None = None
+_PIPELINE_IMPORT_ERROR: Exception | None = None
+
+try:  # pragma: no cover - current JARVIS-CD environments.
+    from jarvis_cd.core.pipeline import Pipeline as _Pipeline  # type: ignore[import-untyped]
+
+    Pipeline = _Pipeline
+except ModuleNotFoundError as core_error:  # pragma: no cover - legacy environments.
+    try:
+        from jarvis_cd.basic.pkg import Pipeline as _Pipeline  # type: ignore[import-untyped]
+
+        Pipeline = _Pipeline
+    except ModuleNotFoundError as legacy_error:
+        _PIPELINE_IMPORT_ERROR = (
+            legacy_error if "jarvis_cd" in str(legacy_error) else core_error
+        )
 
 
 async def create_pipeline(pipeline_id: str) -> dict:
     try:
-        pipeline = Pipeline()
-        _create_pipeline(pipeline, pipeline_id)
-        _build_pipeline_env(pipeline)
-        _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _require_pipeline_class()()
+            _create_pipeline(pipeline, pipeline_id)
+            _build_pipeline_env(pipeline)
+            _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "status": "created"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Create failed: {e}")
 
 
+async def configure_pipeline(pipeline_id: str, config: dict[str, Any]) -> dict:
+    """Configure pipeline-level JARVIS settings using native Pipeline fields."""
+    try:
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            _apply_pipeline_config(pipeline, config)
+            _save_pipeline(pipeline)
+        return {
+            "pipeline_id": _pipeline_id(pipeline),
+            "status": "configured",
+            "config": _jsonable(_pipeline_config(pipeline)),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pipeline configure failed: {e}")
+
+
 async def load_pipeline(pipeline_id: Optional[str] = None) -> dict:
     try:
-        _load_pipeline(pipeline_id)
+        with _protocol_stdout_to_stderr():
+            _load_pipeline(pipeline_id)
         return {"pipeline_id": pipeline_id, "status": "loaded"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Load failed: {e}")
@@ -33,8 +65,9 @@ async def load_pipeline(pipeline_id: Optional[str] = None) -> dict:
 async def export_pipeline(pipeline_id: str, include_yaml: bool = True) -> dict:
     """Return a structured snapshot of a JARVIS pipeline."""
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        config = _pipeline_config(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            config = _pipeline_config(pipeline)
         yaml_path = _optional_str(config.get("JARVIS_YAML_PATH"))
         payload: dict[str, Any] = {
             "pipeline_id": _pipeline_id(pipeline),
@@ -69,17 +102,18 @@ async def append_pkg(
         if "do_configure" in raw_kwargs:
             config_flag = raw_kwargs.pop("do_configure")
 
-        pipeline = _load_pipeline(pipeline_id)
-        if _is_legacy_pipeline(pipeline):
-            pipeline.append(
-                pkg_type, pkg_id=pkg_id, do_configure=config_flag, **raw_kwargs
-            ).save()
-        else:
-            config_args = _kwargs_to_config_args(raw_kwargs)
-            if config_flag is not None:
-                config_args.append(f"do_configure={str(config_flag).lower()}")
-            pipeline.append(pkg_type, package_alias=pkg_id, config_args=config_args)
-            _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            if _is_legacy_pipeline(pipeline):
+                pipeline.append(
+                    pkg_type, pkg_id=pkg_id, do_configure=config_flag, **raw_kwargs
+                ).save()
+            else:
+                config_args = _kwargs_to_config_args(raw_kwargs)
+                if config_flag is not None:
+                    config_args.append(f"do_configure={str(config_flag).lower()}")
+                pipeline.append(pkg_type, package_alias=pkg_id, config_args=config_args)
+                _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "appended": pkg_type}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Append failed: {e}")
@@ -91,9 +125,10 @@ async def build_pipeline_env(pipeline_id: str) -> dict:
     tracking only CMAKE_PREFIX_PATH and PATH from the current shell, then save.
     """
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        _build_pipeline_env(pipeline)
-        _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            _build_pipeline_env(pipeline)
+            _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "status": "environment_built"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Build env failed: {e}")
@@ -105,9 +140,10 @@ async def update_pipeline(pipeline_id: str) -> dict:
     then persist the updated pipeline.
     """
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        pipeline.update()
-        _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            pipeline.update()
+            _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "status": "updated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Update failed: {e}")
@@ -115,12 +151,13 @@ async def update_pipeline(pipeline_id: str) -> dict:
 
 async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs: Any) -> dict:
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        if hasattr(pipeline, "configure"):
-            pipeline.configure(pkg_id, **kwargs)
-        else:
-            pipeline.configure_package(pkg_id, _kwargs_to_config_args(kwargs))
-        _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            if hasattr(pipeline, "configure"):
+                pipeline.configure(pkg_id, **kwargs)
+            else:
+                pipeline.configure_package(pkg_id, _kwargs_to_config_args(kwargs))
+            _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "configured": pkg_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Configure failed: {e}")
@@ -128,8 +165,9 @@ async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs: Any) -> dict:
 
 async def get_pkg_config(pipeline_id: str, pkg_id: str) -> dict:
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        pkg = _get_package(pipeline, pkg_id)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            pkg = _get_package(pipeline, pkg_id)
         if pkg is None:
             raise HTTPException(status_code=404, detail=f"Package '{pkg_id}' not found")
         return {
@@ -145,12 +183,13 @@ async def get_pkg_config(pipeline_id: str, pkg_id: str) -> dict:
 
 async def unlink_pkg(pipeline_id: str, pkg_id: str) -> dict:
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        if hasattr(pipeline, "unlink"):
-            pipeline.unlink(pkg_id)
-        else:
-            pipeline.rm(pkg_id)
-        _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            if hasattr(pipeline, "unlink"):
+                pipeline.unlink(pkg_id)
+            else:
+                pipeline.rm(pkg_id)
+            _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "unlinked": pkg_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unlink failed: {e}")
@@ -158,30 +197,58 @@ async def unlink_pkg(pipeline_id: str, pkg_id: str) -> dict:
 
 async def remove_pkg(pipeline_id: str, pkg_id: str) -> dict:
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        if hasattr(pipeline, "remove"):
-            pipeline.remove(pkg_id)
-        else:
-            pipeline.rm(pkg_id)
-        _save_pipeline(pipeline)
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            if hasattr(pipeline, "remove"):
+                pipeline.remove(pkg_id)
+            else:
+                pipeline.rm(pkg_id)
+            _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "removed": pkg_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Remove failed: {e}")
 
 
-async def run_pipeline(pipeline_id: str) -> dict:
+async def run_pipeline(
+    pipeline_id: str,
+    mode: str = "auto",
+    *,
+    submit: bool = True,
+    wait: bool = False,
+) -> dict:
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        pipeline.run()
-        return {"pipeline_id": pipeline_id, "status": "running"}
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            normalized = mode.strip().lower()
+            if normalized not in {"auto", "direct", "scheduler"}:
+                raise ValueError("mode must be one of: auto, direct, scheduler")
+            scheduler = getattr(pipeline, "scheduler", None)
+            has_scheduler = isinstance(scheduler, dict) and bool(scheduler)
+            if normalized == "scheduler" or (normalized == "auto" and has_scheduler):
+                script_path = pipeline.submit(submit=submit, wait=wait)
+                return {
+                    "pipeline_id": _pipeline_id(pipeline) or pipeline_id,
+                    "status": "submitted" if submit else "scripted",
+                    "mode": "scheduler",
+                    "scheduler": _jsonable(scheduler),
+                    "script_path": str(script_path),
+                    "wait": wait,
+                }
+            pipeline.run()
+            return {
+                "pipeline_id": _pipeline_id(pipeline) or pipeline_id,
+                "status": "running",
+                "mode": "direct",
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Run failed: {e}")
 
 
 async def destroy_pipeline(pipeline_id: str) -> dict:
     try:
-        pipeline = _load_pipeline(pipeline_id)
-        pipeline.destroy()
+        with _protocol_stdout_to_stderr():
+            pipeline = _load_pipeline(pipeline_id)
+            pipeline.destroy()
         return {"pipeline_id": pipeline_id, "status": "destroyed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Destroy failed: {e}")
@@ -219,6 +286,11 @@ def _jsonable(value: Any) -> Any:
         return repr(value)
 
 
+def _protocol_stdout_to_stderr() -> Any:
+    """Keep JARVIS package prints off stdio MCP stdout."""
+    return redirect_stdout(sys.stderr)
+
+
 def _optional_str(value: Any) -> str | None:
     if value is None:
         return None
@@ -226,13 +298,14 @@ def _optional_str(value: Any) -> str | None:
 
 
 def _load_pipeline(pipeline_id: str | None) -> Any:
+    pipeline_cls = _require_pipeline_class()
     if _uses_current_pipeline_api():
         if pipeline_id is not None:
-            return Pipeline(pipeline_id)
-        pipeline = Pipeline()
+            return pipeline_cls(pipeline_id)
+        pipeline = pipeline_cls()
         loaded = pipeline.load()
         return loaded if loaded is not None else pipeline
-    pipeline = Pipeline()
+    pipeline = pipeline_cls()
     loaded = pipeline.load(pipeline_id)
     return loaded if loaded is not None else pipeline
 
@@ -258,6 +331,77 @@ def _build_pipeline_env(pipeline: Any) -> None:
         built = pipeline.build_env()
     if built is not None and built is not pipeline:
         _save_pipeline(built)
+
+
+def _apply_pipeline_config(pipeline: Any, config: dict[str, Any]) -> None:
+    """Apply top-level Pipeline configuration that JARVIS persists to YAML."""
+    supported = {
+        "scheduler",
+        "hostfile",
+        "hostfile_entries",
+        "container_image",
+        "container_uri",
+        "container_engine",
+        "container_base",
+        "container_ssh_port",
+        "container_extensions",
+        "container_env",
+        "container_host_path",
+        "container_workspace",
+        "container_caps",
+        "container_binds",
+        "container_gpu",
+        "tmp_bind_root",
+        "base_deploy_mode",
+        "ssh_cmd",
+        "pssh_cmd",
+        "mpi_cmd",
+        "env",
+    }
+    unknown = sorted(set(config) - supported)
+    if unknown:
+        raise ValueError(f"unsupported pipeline config keys: {', '.join(unknown)}")
+    if "scheduler" in config:
+        scheduler = config["scheduler"]
+        if scheduler is not None and not isinstance(scheduler, dict):
+            raise ValueError("scheduler must be an object or null")
+        pipeline.scheduler = dict(scheduler) if scheduler is not None else None
+        if pipeline.scheduler and hasattr(pipeline, "_apply_scheduler_hostfile"):
+            pipeline._apply_scheduler_hostfile()
+    if "hostfile" in config:
+        hostfile_path = config["hostfile"]
+        if hostfile_path in (None, ""):
+            pipeline.hostfile = None
+        else:
+            from jarvis_cd.util.hostfile import Hostfile  # type: ignore[import-untyped]
+
+            pipeline.hostfile = Hostfile(path=str(hostfile_path))
+    if "hostfile_entries" in config:
+        hosts = config["hostfile_entries"]
+        if not isinstance(hosts, list) or not all(
+            isinstance(host, str) for host in hosts
+        ):
+            raise ValueError("hostfile_entries must be a list of host names")
+        shared_dir = pipeline.jarvis.get_pipeline_shared_dir(pipeline.name)
+        shared_dir.mkdir(parents=True, exist_ok=True)
+        hostfile_path = shared_dir / "mcp-hostfile.txt"
+        hostfile_path.write_text("\n".join(hosts) + "\n", encoding="utf-8")
+        from jarvis_cd.util.hostfile import Hostfile  # type: ignore[import-untyped]
+
+        pipeline.hostfile = Hostfile(path=str(hostfile_path))
+    if "env" in config:
+        env = config["env"]
+        if env is None:
+            pipeline.env = {}
+        elif isinstance(env, dict):
+            pipeline.env.update(env)
+        else:
+            raise ValueError("env must be an object or null")
+    for key in supported - {"scheduler", "hostfile", "hostfile_entries", "env"}:
+        if key in config:
+            setattr(pipeline, key, config[key])
+    if hasattr(pipeline, "_apply_launcher_overrides"):
+        pipeline._apply_launcher_overrides()
 
 
 def _is_legacy_pipeline(pipeline: Any) -> bool:
@@ -344,5 +488,16 @@ def _kwargs_to_config_args(kwargs: dict[str, Any]) -> list[str]:
 
 
 def _uses_current_pipeline_api() -> bool:
-    parameters = inspect.signature(Pipeline.load).parameters
+    pipeline_cls = _require_pipeline_class()
+    parameters = inspect.signature(pipeline_cls.load).parameters
     return "load_type" in parameters
+
+
+def _require_pipeline_class() -> Any:
+    if Pipeline is not None:
+        return Pipeline
+    detail = f": {_PIPELINE_IMPORT_ERROR}" if _PIPELINE_IMPORT_ERROR is not None else ""
+    raise RuntimeError(
+        "JARVIS-CD Pipeline API is not available. Install a JARVIS-CD version "
+        f"with jarvis_cd.core.pipeline or legacy jarvis_cd.basic.pkg{detail}"
+    )

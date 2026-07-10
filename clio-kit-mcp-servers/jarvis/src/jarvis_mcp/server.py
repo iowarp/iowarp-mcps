@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from typing import Any, Optional
 from .capabilities.jarvis_handler import (
     create_pipeline,
+    configure_pipeline,
     load_pipeline,
     export_pipeline,
     append_pkg,
@@ -429,7 +430,11 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
 
 @mcp.tool(
     name="jarvis_create_pipeline",
-    description="Create a JARVIS pipeline for normal agent-driven workflows.",
+    description=(
+        "Create a JARVIS pipeline. Optionally pass execution intent such as "
+        "local, cluster, or hostfile mode; backend details are resolved where "
+        "the MCP server runs."
+    ),
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -437,9 +442,17 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
     },
     tags={"jarvis", "pipeline", "user"},
 )
-async def jarvis_create_pipeline_tool(pipeline_id: str) -> dict:
-    """Create a new JARVIS pipeline."""
-    return await create_pipeline(pipeline_id)
+async def jarvis_create_pipeline_tool(
+    pipeline_id: str, execution: Optional[dict[str, Any]] = None
+) -> dict:
+    """Create a new JARVIS pipeline, optionally seeding execution intent."""
+    created = await create_pipeline(pipeline_id)
+    if execution:
+        configured = await configure_pipeline(
+            pipeline_id, _execution_intent_to_pipeline_config(execution)
+        )
+        return {"created": created, "configured": configured}
+    return created
 
 
 @mcp.tool(
@@ -489,7 +502,10 @@ async def jarvis_describe_tool(
 
 @mcp.tool(
     name="jarvis_add_step",
-    description="Add a package-backed step to a JARVIS pipeline and optionally configure it.",
+    description=(
+        "Add a package-backed step to a JARVIS pipeline and optionally configure "
+        "that step with package-owned settings."
+    ),
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -548,7 +564,10 @@ async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
 
 @mcp.tool(
     name="jarvis_run",
-    description="Run a configured JARVIS pipeline.",
+    description=(
+        "Run a configured JARVIS pipeline. Optional execution intent selects "
+        "local, cluster, or hostfile mode without exposing scheduler internals."
+    ),
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -556,9 +575,25 @@ async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
     },
     tags={"jarvis", "pipeline", "user"},
 )
-async def jarvis_run_tool(pipeline_id: str) -> dict:
-    """Run a configured JARVIS pipeline."""
-    return await run_pipeline(pipeline_id)
+async def jarvis_run_tool(
+    pipeline_id: str,
+    execution: Optional[dict[str, Any]] = None,
+    submit: bool = True,
+    wait: bool = False,
+) -> dict:
+    """Run or submit a configured JARVIS pipeline using native JARVIS semantics."""
+    mode = "auto"
+    if execution:
+        requested_mode = str(execution.get("mode", "auto")).strip().lower()
+        mode = {
+            "cluster": "scheduler",
+            "local": "direct",
+            "hostfile": "direct",
+        }.get(requested_mode, requested_mode)
+        await configure_pipeline(
+            pipeline_id, _execution_intent_to_pipeline_config(execution)
+        )
+    return await run_pipeline(pipeline_id, mode=mode, submit=submit, wait=wait)
 
 
 @mcp.tool(
@@ -591,8 +626,9 @@ def jm_create_config(
 ) -> list:
     """Initialize manager directories and persist configuration."""
     try:
-        manager.create(config_dir, private_dir, shared_dir)
-        manager.save()
+        with _protocol_stdout_to_stderr():
+            manager.create(config_dir, private_dir, shared_dir)
+            manager.save()
         return [{"type": "text", "text": "Jarvis configuration initialized."}]
     except Exception as e:
         raise ToolError(f"Error: {e}")
@@ -963,12 +999,18 @@ def _package_from_pkg_file(repo: Path, pkg_file: Path) -> dict[str, Any]:
     short_name = parts[-1] if parts else repo.name
     dotted = ".".join(parts) if parts else short_name
     description = _first_docstring_or_comment(pkg_file)
-    return {
+    package: dict[str, Any] = {
         "name": dotted,
         "short_name": short_name,
         "description": description,
         "path": str(pkg_file),
     }
+    menu = _package_settings(dotted)
+    if menu is None and dotted != short_name:
+        menu = _package_settings(short_name)
+    if menu is not None:
+        package["settings"] = menu
+    return package
 
 
 def _first_docstring_or_comment(path: Path) -> str | None:
@@ -1023,6 +1065,100 @@ def _step_snapshot(
         if step_id in identifiers:
             return package
     return None
+
+
+def _package_settings(package_name: str) -> list[dict[str, Any]] | None:
+    try:
+        from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
+
+        pkg = Pkg.load_standalone(package_name)
+        return [_setting_from_menu_item(item) for item in pkg.configure_menu()]
+    except Exception:
+        return None
+
+
+def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
+    setting: dict[str, Any] = {
+        "name": item.get("name"),
+        "description": item.get("msg"),
+    }
+    kind = item.get("type")
+    if isinstance(kind, type):
+        setting["type"] = kind.__name__
+    elif kind is not None:
+        setting["type"] = str(kind)
+    if "default" in item:
+        setting["default"] = item["default"]
+    return {key: value for key, value in setting.items() if value is not None}
+
+
+def _execution_intent_to_pipeline_config(execution: dict[str, Any]) -> dict[str, Any]:
+    mode = str(execution.get("mode", "auto")).strip().lower()
+    if mode not in {"auto", "local", "direct", "cluster", "scheduler", "hostfile"}:
+        raise ToolError(
+            "execution.mode must be one of: auto, local, direct, cluster, scheduler, hostfile"
+        )
+    if mode in {"local", "direct"}:
+        return {"scheduler": None, "hostfile": None}
+    if mode == "hostfile":
+        hostfile = execution.get("hostfile")
+        hosts = execution.get("hosts")
+        if hostfile:
+            return {"scheduler": None, "hostfile": str(hostfile)}
+        if isinstance(hosts, list) and hosts:
+            return {
+                "scheduler": None,
+                "hostfile_entries": [str(host) for host in hosts],
+            }
+        raise ToolError("execution.hostfile is required when execution.mode='hostfile'")
+    if mode in {"cluster", "scheduler", "auto"}:
+        scheduler_name = _detect_scheduler_name()
+        if scheduler_name is None:
+            if mode == "auto":
+                return {}
+            raise ToolError("no supported cluster scheduler detected on this machine")
+        if set(execution) <= {"mode"}:
+            return {}
+        scheduler: dict[str, Any] = {"name": scheduler_name}
+        mapping = {
+            "job_name": "job_name",
+            "nodes": "nodes",
+            "tasks": "ntasks",
+            "tasks_per_node": "ntasks_per_node",
+            "cpus_per_task": "cpus_per_task",
+            "walltime": "time",
+            "partition": "partition",
+            "account": "account",
+            "qos": "qos",
+            "output": "output",
+            "error": "error",
+            "exclusive": "exclusive",
+            "gpus": "gpus",
+            "gpus_per_node": "gpus_per_node",
+        }
+        for public_key, scheduler_key in mapping.items():
+            if public_key in execution and execution[public_key] is not None:
+                scheduler[scheduler_key] = execution[public_key]
+        return {"scheduler": scheduler}
+    return {}
+
+
+def _detect_scheduler_name() -> str | None:
+    configured = os.getenv("JARVIS_MCP_SCHEDULER") or os.getenv("JARVIS_SCHEDULER")
+    if configured:
+        return configured.strip().lower()
+    from shutil import which
+
+    if which("sbatch") is not None:
+        return "slurm"
+    return None
+
+
+def _protocol_stdout_to_stderr() -> Any:
+    from contextlib import redirect_stdout
+    import sys
+
+    return redirect_stdout(sys.stderr)
 
 
 def main() -> None:

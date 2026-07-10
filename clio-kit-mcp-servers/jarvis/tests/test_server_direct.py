@@ -268,6 +268,47 @@ class TestPipelineToolsDirect:
             mock_handler.assert_called_once_with("new")
 
     @pytest.mark.asyncio
+    async def test_jarvis_create_pipeline_with_cluster_execution(self):
+        """Cluster execution intent configures native scheduler state."""
+        with (
+            patch("jarvis_mcp.server.create_pipeline") as create_handler,
+            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
+            patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}),
+        ):
+            create_handler.return_value = {"pipeline_id": "new", "status": "created"}
+            configure_handler.return_value = {
+                "pipeline_id": "new",
+                "status": "configured",
+            }
+
+            from jarvis_mcp.server import jarvis_create_pipeline_tool
+
+            result = await jarvis_create_pipeline_tool(
+                "new",
+                execution={
+                    "mode": "cluster",
+                    "nodes": 4,
+                    "tasks_per_node": 20,
+                    "walltime": "00:30:00",
+                    "exclusive": True,
+                },
+            )
+
+            assert result["created"]["status"] == "created"
+            configure_handler.assert_called_once_with(
+                "new",
+                {
+                    "scheduler": {
+                        "name": "slurm",
+                        "nodes": 4,
+                        "ntasks_per_node": 20,
+                        "time": "00:30:00",
+                        "exclusive": True,
+                    }
+                },
+            )
+
+    @pytest.mark.asyncio
     async def test_jarvis_add_step_tool_direct(self):
         """Test user-facing step addition maps to package append."""
         with patch("jarvis_mcp.server.append_pkg") as mock_handler:
@@ -331,7 +372,73 @@ class TestPipelineToolsDirect:
             result = await jarvis_run_tool("test")
 
             assert result["status"] == "running"
-            mock_handler.assert_called_once_with("test")
+            mock_handler.assert_called_once_with(
+                "test", mode="auto", submit=True, wait=False
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_tool_maps_execution_intent(self):
+        """User execution intent maps to JARVIS-native configuration."""
+        with (
+            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
+            patch("jarvis_mcp.server.run_pipeline") as run_handler,
+            patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}),
+        ):
+            configure_handler.return_value = {"status": "configured"}
+            run_handler.return_value = {"pipeline_id": "test", "status": "submitted"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            result = await jarvis_run_tool(
+                "test",
+                execution={
+                    "mode": "cluster",
+                    "nodes": 2,
+                    "tasks": 40,
+                    "partition": "compute",
+                },
+            )
+
+            assert result["status"] == "submitted"
+            configure_handler.assert_called_once_with(
+                "test",
+                {
+                    "scheduler": {
+                        "name": "slurm",
+                        "nodes": 2,
+                        "ntasks": 40,
+                        "partition": "compute",
+                    }
+                },
+            )
+            run_handler.assert_called_once_with(
+                "test", mode="scheduler", submit=True, wait=False
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_tool_maps_hostfile_hosts(self):
+        """Hostfile intent can be supplied as semantic host names."""
+        with (
+            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
+            patch("jarvis_mcp.server.run_pipeline") as run_handler,
+        ):
+            configure_handler.return_value = {"status": "configured"}
+            run_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            await jarvis_run_tool(
+                "test",
+                execution={"mode": "hostfile", "hosts": ["node-a", "node-b"]},
+            )
+
+            configure_handler.assert_called_once_with(
+                "test",
+                {"scheduler": None, "hostfile_entries": ["node-a", "node-b"]},
+            )
+            run_handler.assert_called_once_with(
+                "test", mode="direct", submit=True, wait=False
+            )
 
     @pytest.mark.asyncio
     async def test_jarvis_describe_pipeline_tool_direct(self):
