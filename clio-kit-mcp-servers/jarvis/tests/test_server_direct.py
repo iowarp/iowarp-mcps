@@ -593,6 +593,97 @@ class TestPipelineToolsDirect:
         ):
             assert _detect_scheduler_name() == "slurm"
 
+    def test_execution_intent_cluster_mode_without_options_preserves_pipeline(self):
+        """Cluster auto-detection without resource options leaves pipeline config intact."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value="/usr/bin/sbatch"),
+        ):
+            assert _execution_intent_to_pipeline_config({"mode": "cluster"}) == {}
+
+    def test_execution_intent_hostfile_entries(self):
+        """Hostfile mode can materialize explicit host entries."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        assert _execution_intent_to_pipeline_config(
+            {"mode": "hostfile", "hosts": ["n1", "n2"]}
+        ) == {"scheduler": None, "hostfile_entries": ["n1", "n2"]}
+
+    def test_apply_tool_profile_rejects_unknown_profile(self):
+        """Unknown profile names fail explicitly."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        with pytest.raises(ValueError, match="profile must be one of"):
+            apply_tool_profile("operator")
+
+    def test_package_description_helpers_cover_docstrings_comments_and_settings(
+        self, tmp_path
+    ):
+        """Package helper functions extract descriptions and optional settings."""
+        from jarvis_mcp.server import (
+            _first_docstring_or_comment,
+            _package_from_pkg_file,
+            _setting_from_menu_item,
+        )
+
+        comment_pkg = tmp_path / "comment_pkg.py"
+        comment_pkg.write_text("\n# comment description\nclass Pkg: pass\n")
+        assert _first_docstring_or_comment(comment_pkg) == "comment description"
+
+        multiline_pkg = tmp_path / "multiline_pkg.py"
+        multiline_pkg.write_text('"""\nfirst line\nsecond line\n"""\nclass Pkg: pass\n')
+        assert _first_docstring_or_comment(multiline_pkg) == "first line second line"
+        assert _first_docstring_or_comment(tmp_path) is None
+        assert _setting_from_menu_item(
+            {"name": "nodes", "msg": "Node count", "type": int, "default": 1}
+        ) == {
+            "name": "nodes",
+            "description": "Node count",
+            "type": "int",
+            "default": 1,
+        }
+
+        repo = tmp_path / "repo"
+        pkg_dir = repo / "builtin" / "demo"
+        pkg_dir.mkdir(parents=True)
+        pkg_file = pkg_dir / "pkg.py"
+        pkg_file.write_text('"""Demo."""\n')
+        with patch(
+            "jarvis_mcp.server._package_settings",
+            side_effect=[[{"name": "x"}], None],
+        ):
+            assert _package_from_pkg_file(repo, pkg_file)["settings"] == [{"name": "x"}]
+
+    @pytest.mark.asyncio
+    async def test_package_lookup_and_step_snapshot_edge_cases(self, tmp_path):
+        """Package lookup handles duplicates/misses and step snapshots skip invalid rows."""
+        from jarvis_mcp.server import (
+            _find_package_description,
+            _step_snapshot,
+            jarvis_describe_tool,
+        )
+
+        assert (
+            _step_snapshot({"packages": ["bad", {"pkg_id": "ok"}]}, "missing") is None
+        )
+        assert _step_snapshot({"packages": ["bad", {"global_id": "ok"}]}, "ok") == {
+            "global_id": "ok"
+        }
+
+        repo = tmp_path / "repo"
+        for subdir in ("builtin/demo", "duplicate/demo"):
+            pkg_dir = repo / subdir
+            pkg_dir.mkdir(parents=True)
+            (pkg_dir / "pkg.py").write_text('"""Demo."""\n')
+        manager = Mock()
+        manager.list_repos.return_value = [repo]
+        with patch("jarvis_mcp.server.get_manager", return_value=manager):
+            assert _find_package_description("missing") is None
+            packages = await jarvis_describe_tool("packages")
+            assert packages["target"] == "packages"
+
     @pytest.mark.asyncio
     async def test_jarvis_describe_pipeline_tool_direct(self):
         """Test user-facing pipeline description uses pipeline export."""

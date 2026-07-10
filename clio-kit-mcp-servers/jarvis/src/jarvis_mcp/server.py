@@ -1063,6 +1063,14 @@ def _first_docstring_or_comment(path: Path) -> str | None:
             if comment:
                 return comment
             continue
+        if in_docstring and docstring_quote is not None:
+            if line.endswith(docstring_quote):
+                line = line[: -len(docstring_quote)]
+                if line:
+                    collected.append(line.strip())
+                return " ".join(collected).strip() or None
+            collected.append(line)
+            continue
         if line.startswith(('"""', "'''")):
             docstring_quote = line[:3]
             remainder = line[3:]
@@ -1072,14 +1080,6 @@ def _first_docstring_or_comment(path: Path) -> str | None:
             in_docstring = True
             if remainder:
                 collected.append(remainder.strip())
-            continue
-        if in_docstring and docstring_quote is not None:
-            if line.endswith(docstring_quote):
-                line = line[: -len(docstring_quote)]
-                if line:
-                    collected.append(line.strip())
-                return " ".join(collected).strip() or None
-            collected.append(line)
             continue
         return None
     return " ".join(collected).strip() or None
