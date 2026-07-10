@@ -3,7 +3,7 @@ Tests for the jarvis_handler module that contains pipeline operation logic.
 """
 
 import pytest
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from pathlib import Path
 from unittest.mock import Mock, patch
 from fastapi import HTTPException
@@ -138,6 +138,97 @@ class TestHandlerHelpers:
             _apply_pipeline_config(pipeline, {"hostfile_entries": "node1"})
         with pytest.raises(ValueError, match="env must be an object"):
             _apply_pipeline_config(pipeline, {"env": "OMP=4"})
+
+    def test_apply_pipeline_config_hostfiles_env_and_hooks(self, tmp_path):
+        """Hostfile, env, scheduler, and launcher hooks map to current Pipeline fields."""
+        from jarvis_mcp.capabilities.jarvis_handler import _apply_pipeline_config
+
+        class FakeHostfile:
+            def __init__(self, path: str):
+                self.path = path
+
+        hostfile_module = ModuleType("hostfile")
+        hostfile_module.Hostfile = FakeHostfile
+
+        pipeline = ModernPipeline("configured")
+        pipeline.jarvis.get_pipeline_shared_dir.return_value = tmp_path
+        pipeline._apply_scheduler_hostfile = Mock()
+        pipeline._apply_launcher_overrides = Mock()
+
+        with patch.dict(
+            "sys.modules",
+            {"jarvis_cd.util.hostfile": hostfile_module},
+        ):
+            _apply_pipeline_config(
+                pipeline,
+                {
+                    "scheduler": {"name": "slurm"},
+                    "hostfile": tmp_path / "hosts.txt",
+                    "hostfile_entries": ["n1", "n2"],
+                    "env": None,
+                    "container_image": "image.sif",
+                },
+            )
+
+        assert pipeline.scheduler == {"name": "slurm"}
+        pipeline._apply_scheduler_hostfile.assert_called_once_with()
+        pipeline._apply_launcher_overrides.assert_called_once_with()
+        assert pipeline.env == {}
+        assert pipeline.container_image == "image.sif"
+        assert pipeline.hostfile.path == str(tmp_path / "mcp-hostfile.txt")
+        assert (tmp_path / "mcp-hostfile.txt").read_text(encoding="utf-8") == "n1\nn2\n"
+
+    def test_load_and_env_helpers_cover_current_api_branches(self):
+        """Current Pipeline load and environment helpers handle optional APIs."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        class LoadedPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.build_calls = 0
+
+            def load(self, load_type: str | None = None):
+                self.loaded_type = load_type
+                return self
+
+            def build_env(self, env_track_dict=None):
+                self.build_calls += 1
+                if env_track_dict is not None:
+                    raise TypeError("old signature")
+                built = ModernPipeline("built")
+                built.saved = False
+                return built
+
+        with patch.object(jarvis_handler, "Pipeline", LoadedPipeline):
+            loaded = jarvis_handler._load_pipeline(None)
+            assert isinstance(loaded, LoadedPipeline)
+            jarvis_handler._build_pipeline_env(loaded)
+
+        assert loaded.build_calls == 2
+        assert ModernPipeline.instances[-1].saved is True
+
+        no_env = SimpleNamespace()
+        jarvis_handler._build_pipeline_env(no_env)
+
+    def test_package_lookup_object_and_missing_path_fallbacks(self):
+        """Package and path helpers handle object packages and missing Jarvis paths."""
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _get_package,
+            _package_config,
+            _pipeline_config_path,
+            _pipeline_env_path,
+        )
+
+        pkg = SimpleNamespace(pkg_id="step1", config={"alpha": 1})
+        pipeline = SimpleNamespace(packages=[pkg], sub_pkgs=None)
+
+        assert _get_package(pipeline, "step1") is pkg
+        assert _package_config(pkg) == {"alpha": 1}
+        assert _get_package(pipeline, "missing") is None
+        assert (
+            _pipeline_config_path(SimpleNamespace(name="pipe", jarvis=object())) is None
+        )
+        assert _pipeline_env_path(SimpleNamespace(name="pipe", jarvis=object())) is None
 
 
 class TestPipelineOperations:
@@ -531,6 +622,52 @@ class TestPipelineExecutionOperations:
 
         assert exc_info.value.status_code == 500
         assert "unsupported pipeline config keys" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_modern_package_operations_use_current_pipeline_api(self):
+        """Append, configure, unlink, and remove use current Pipeline methods."""
+
+        class PackagePipeline(ModernPipeline):
+            instances = []
+
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                PackagePipeline.instances.append(self)
+
+            def append(self, pkg_type, package_alias=None, config_args=None):
+                self.appended = (pkg_type, package_alias, config_args)
+
+            def configure_package(self, pkg_id, config_args):
+                self.configured = (pkg_id, config_args)
+
+            def rm(self, pkg_id):
+                self.removed = pkg_id
+
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", PackagePipeline):
+            append_result = await append_pkg(
+                "pipe",
+                "builtin.echo",
+                pkg_id="echo",
+                do_configure=False,
+                message="hello",
+                enabled=True,
+            )
+            configure_result = await configure_pkg("pipe", "echo", message="updated")
+            unlink_result = await unlink_pkg("pipe", "echo")
+            remove_result = await remove_pkg("pipe", "echo")
+
+        assert append_result["appended"] == "builtin.echo"
+        assert PackagePipeline.instances[0].appended == (
+            "builtin.echo",
+            "echo",
+            ["message=hello", "enabled=true", "do_configure=false"],
+        )
+        assert configure_result["configured"] == "echo"
+        assert PackagePipeline.instances[1].configured == ("echo", ["message=updated"])
+        assert unlink_result["unlinked"] == "echo"
+        assert remove_result["removed"] == "echo"
+        assert PackagePipeline.instances[2].removed == "echo"
+        assert PackagePipeline.instances[3].removed == "echo"
 
     @pytest.mark.asyncio
     async def test_destroy_pipeline_success(self, mock_pipeline):
