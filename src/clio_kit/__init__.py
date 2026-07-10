@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import sys
 import subprocess
 from pathlib import Path
@@ -232,6 +233,17 @@ def subprocess_env_with_github_https_rewrite() -> dict[str, str]:
     return env
 
 
+def uvx_command() -> str:
+    """Return a usable uvx executable path for interactive and batch shells."""
+    found = shutil.which("uvx")
+    if found is not None:
+        return found
+    local_uvx = Path.home() / ".local" / "bin" / "uvx"
+    if local_uvx.exists():
+        return str(local_uvx)
+    return "uvx"
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx):
@@ -291,7 +303,7 @@ def mcp_server(server, branch, args):
     if branch:
         # Run from git branch
         cmd = [
-            "uvx",
+            uvx_command(),
             "--from",
             f"git+https://github.com/iowarp/clio-kit.git@{branch}#subdirectory=clio-kit-mcp-servers/{actual_dir}",
             entry_command,
@@ -303,7 +315,7 @@ def mcp_server(server, branch, args):
 
         if server_path.exists():
             # Development mode - run from local path
-            cmd = ["uvx", "--from", str(server_path), entry_command]
+            cmd = [uvx_command(), "--from", str(server_path), entry_command]
         else:
             # Not in development, try to run the command directly (if installed)
             cmd = [entry_command]
@@ -425,7 +437,7 @@ def search(args):
         click.echo("Install from: https://github.com/iowarp/clio-kit")
         sys.exit(1)
 
-    cmd = ["uvx", "--from", str(search_path), "clio"]
+    cmd = [uvx_command(), "--from", str(search_path), "clio"]
     cmd.extend(args)
 
     try:
