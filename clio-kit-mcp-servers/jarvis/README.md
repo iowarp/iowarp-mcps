@@ -80,32 +80,95 @@ package deletion semantics.
 ## Claude Code
 
 ```bash
-claude mcp add jarvis-mcp -- uvx clio-kit mcp-server jarvis
+claude mcp add clio-jarvis -- uvx clio-kit jarvis
 ```
 
-For admin work:
+Or install via the CLIO Kit plugin marketplace:
 
-```bash
-claude mcp add jarvis-admin-mcp -- uvx --from jarvis-mcp jarvis-admin-mcp
 ```
-
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-jarvis@iowarp-clio-kit
+```
 ## Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "jarvis-mcp": {
+    "clio-jarvis": {
       "command": "uvx",
-      "args": ["clio-kit", "mcp-server", "jarvis"]
+      "args": [
+        "clio-kit",
+        "jarvis"
+      ]
     }
   }
 }
 ```
-
 ## Local development
 
 ```bash
 uv --directory clio-kit-mcp-servers/jarvis run jarvis-mcp --help
 uv --directory clio-kit-mcp-servers/jarvis run jarvis-admin-mcp --help
 uv --directory clio-kit-mcp-servers/jarvis run pytest -q
+```
+
+## Capabilities
+
+### `jarvis_create_pipeline`
+**Description**: Create a JARVIS pipeline. Optionally pass execution intent such as local, cluster, or hostfile mode; backend details are resolved where the MCP server runs.
+**Tags**: jarvis, pipeline, user
+
+### `jarvis_describe`
+**Description**: Describe JARVIS packages, one package, a pipeline, or one pipeline step.
+**Hints**: read-only, idempotent
+**Tags**: jarvis, pipeline, user
+
+### `jarvis_add_step`
+**Description**: Add a package-backed step to a JARVIS pipeline and optionally configure that step with package-owned settings.
+**Tags**: jarvis, pipeline, user
+
+### `jarvis_edit_step`
+**Description**: Edit the configuration of a step in a JARVIS pipeline.
+**Tags**: jarvis, pipeline, user
+
+### `jarvis_remove_step`
+**Description**: Remove a step from a JARVIS pipeline without deleting package files.
+**Tags**: jarvis, pipeline, user
+
+### `jarvis_run`
+**Description**: Run a configured JARVIS pipeline. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals.
+**Tags**: jarvis, pipeline, user
+
+### Resources
+
+- `jarvis://capabilities` - JARVIS data pipeline capabilities.
+
+### Prompts
+
+- **create_pipeline_workflow**: Guided workflow for creating and deploying a JARVIS pipeline.
+
+## Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "clio-jarvis": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "jarvis"
+      ]
+    }
+  }
+}
+```
+
+Or install the CLIO Kit extension:
+
+```bash
+gemini extensions install https://github.com/iowarp/clio-kit
 ```
