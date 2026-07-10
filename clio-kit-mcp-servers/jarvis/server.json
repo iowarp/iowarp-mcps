@@ -40,6 +40,10 @@
       "description": "Load an existing Jarvis-CD pipeline environment."
     },
     {
+      "name": "export_pipeline",
+      "description": "Export a structured snapshot of a Jarvis-CD pipeline."
+    },
+    {
       "name": "get_pkg_config",
       "description": "Retrieve the configuration of a specific package in a pipeline."
     },

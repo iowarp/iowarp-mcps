@@ -1,12 +1,15 @@
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+import asyncio
+import inspect
 import os
 from dotenv import load_dotenv
 from typing import Optional
 from .capabilities.jarvis_handler import (
     create_pipeline,
     load_pipeline,
+    export_pipeline,
     append_pkg,
     configure_pkg,
     unlink_pkg,
@@ -17,7 +20,7 @@ from .capabilities.jarvis_handler import (
     update_pipeline,
     build_pipeline_env,
 )
-from jarvis_cd.basic.jarvis_manager import JarvisManager
+from jarvis_cd.basic.jarvis_manager import JarvisManager  # type: ignore[import-untyped]
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,6 +37,42 @@ mcp: FastMCP = FastMCP(
 
 # Create a singleton instance of JarvisManager
 manager = JarvisManager.get_instance()
+
+USER_TOOLS = {
+    "update_pipeline",
+    "build_pipeline_env",
+    "create_pipeline",
+    "load_pipeline",
+    "export_pipeline",
+    "get_pkg_config",
+    "append_pkg",
+    "configure_pkg",
+    "unlink_pkg",
+    "remove_pkg",
+    "run_pipeline",
+    "jm_list_pipelines",
+    "jm_list_repos",
+    "jm_get_repo",
+}
+
+ADMIN_TOOLS = {
+    "jm_create_config",
+    "jm_load_config",
+    "jm_save_config",
+    "jm_set_hostfile",
+    "jm_bootstrap_from",
+    "jm_bootstrap_list",
+    "jm_reset",
+    "jm_cd",
+    "jm_add_repo",
+    "jm_remove_repo",
+    "jm_promote_repo",
+    "jm_construct_pkg",
+    "jm_graph_show",
+    "jm_graph_build",
+    "jm_graph_modify",
+    "destroy_pipeline",
+}
 
 
 # ─── RESOURCE ────────────────────────────────────────────────────────────────
@@ -124,6 +163,21 @@ async def create_pipeline_tool(pipeline_id: str) -> dict:
 async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
     """Load an existing pipeline environment by ID, or the current one if not specified."""
     return await load_pipeline(pipeline_id)
+
+
+@mcp.tool(
+    name="export_pipeline",
+    description="Export a structured snapshot of a Jarvis-CD pipeline.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline"},
+)
+async def export_pipeline_tool(pipeline_id: str, include_yaml: bool = True) -> dict:
+    """Export pipeline metadata, packages, configs, and optional source YAML."""
+    return await export_pipeline(pipeline_id, include_yaml=include_yaml)
 
 
 @mcp.tool(
@@ -597,14 +651,49 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+    parser.add_argument(
+        "--profile",
+        choices=["all", "user", "admin"],
+        default=None,
+        help=(
+            "Tool surface to expose. 'user' exposes pipeline authoring and read-only "
+            "discovery tools. 'admin' exposes manager and destructive operations. "
+            "'all' preserves the full legacy surface."
+        ),
+    )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "all")
+    apply_tool_profile(profile)
     if transport == "http":
         mcp.run(transport="http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")
+
+
+def apply_tool_profile(profile: str) -> None:
+    """Restrict the registered tool set for user or admin MCP modes."""
+    normalized = profile.strip().lower()
+    if normalized == "all":
+        return
+    if normalized == "user":
+        allowed = USER_TOOLS
+    elif normalized == "admin":
+        allowed = ADMIN_TOOLS
+    else:
+        raise ValueError("profile must be one of: all, user, admin")
+    for tool in _registered_tools():
+        if tool.name not in allowed:
+            mcp.remove_tool(tool.name)
+
+
+def _registered_tools() -> list:
+    tools = mcp.list_tools(run_middleware=False)
+    if inspect.isawaitable(tools):
+        return list(asyncio.run(tools))
+    return list(tools)
 
 
 if __name__ == "__main__":

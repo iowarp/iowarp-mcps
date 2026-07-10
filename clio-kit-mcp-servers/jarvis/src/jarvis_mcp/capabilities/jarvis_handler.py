@@ -1,6 +1,9 @@
+import json
+from pathlib import Path
+from typing import Any, Optional
+
 from fastapi import HTTPException
-from jarvis_cd.basic.pkg import Pipeline
-from typing import Optional
+from jarvis_cd.basic.pkg import Pipeline  # type: ignore[import-untyped]
 
 
 async def create_pipeline(pipeline_id: str) -> dict:
@@ -17,6 +20,29 @@ async def load_pipeline(pipeline_id: Optional[str] = None) -> dict:
         return {"pipeline_id": pipeline_id, "status": "loaded"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Load failed: {e}")
+
+
+async def export_pipeline(pipeline_id: str, include_yaml: bool = True) -> dict:
+    """Return a structured snapshot of a JARVIS pipeline."""
+    try:
+        pipeline = Pipeline().load(pipeline_id)
+        yaml_path = _optional_str(pipeline.config.get("JARVIS_YAML_PATH"))
+        payload: dict[str, Any] = {
+            "pipeline_id": pipeline.global_id,
+            "config_path": _optional_str(pipeline.config_path),
+            "env_path": _optional_str(pipeline.env_path),
+            "yaml_path": yaml_path,
+            "config": _jsonable(pipeline.config),
+            "env": _jsonable(pipeline.env),
+            "packages": [_package_snapshot(pkg) for pkg in pipeline.sub_pkgs],
+        }
+        if include_yaml and yaml_path is not None:
+            yaml_file = Path(yaml_path)
+            if yaml_file.exists():
+                payload["pipeline_yaml"] = yaml_file.read_text(encoding="utf-8")
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {e}")
 
 
 async def append_pkg(
@@ -142,3 +168,33 @@ async def destroy_pipeline(pipeline_id: str) -> dict:
         return {"pipeline_id": pipeline_id, "status": "destroyed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Destroy failed: {e}")
+
+
+def _package_snapshot(pkg: Any) -> dict[str, Any]:
+    return {
+        "pkg_id": _optional_str(getattr(pkg, "pkg_id", None)),
+        "pkg_type": _optional_str(getattr(pkg, "pkg_type", None)),
+        "global_id": _optional_str(getattr(pkg, "global_id", None)),
+        "config_path": _optional_str(getattr(pkg, "config_path", None)),
+        "config": _jsonable(getattr(pkg, "config", None)),
+    }
+
+
+def _jsonable(value: Any) -> Any:
+    try:
+        json.dumps(value)
+        return value
+    except TypeError:
+        if isinstance(value, dict):
+            return {str(key): _jsonable(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [_jsonable(item) for item in value]
+        if isinstance(value, tuple):
+            return [_jsonable(item) for item in value]
+        return repr(value)
+
+
+def _optional_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)

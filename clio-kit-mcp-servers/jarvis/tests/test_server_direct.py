@@ -9,6 +9,42 @@ from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 
 
+class TestServerProfiles:
+    """Test user/admin profile filtering."""
+
+    def test_apply_user_profile_removes_admin_tools(self):
+        """User profile keeps pipeline authoring tools and hides admin tools."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        class Tool:
+            def __init__(self, name):
+                self.name = name
+
+        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("export_pipeline")]
+        with patch("jarvis_mcp.server.mcp") as mock_mcp:
+            mock_mcp.list_tools.return_value = tools
+
+            apply_tool_profile("user")
+
+            mock_mcp.remove_tool.assert_called_once_with("jm_reset")
+
+    def test_apply_admin_profile_removes_user_tools(self):
+        """Admin profile keeps manager tools and hides user pipeline authoring."""
+        from jarvis_mcp.server import apply_tool_profile
+
+        class Tool:
+            def __init__(self, name):
+                self.name = name
+
+        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("jm_add_repo")]
+        with patch("jarvis_mcp.server.mcp") as mock_mcp:
+            mock_mcp.list_tools.return_value = tools
+
+            apply_tool_profile("admin")
+
+            mock_mcp.remove_tool.assert_called_once_with("create_pipeline")
+
+
 class TestPipelineToolsDirect:
     """Test pipeline tool implementations directly."""
 
@@ -80,6 +116,23 @@ class TestPipelineToolsDirect:
 
             assert result["status"] == "loaded"
             mock_handler.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_export_pipeline_tool_direct(self):
+        """Test export_pipeline_tool with mocked handler."""
+        with patch("jarvis_mcp.server.export_pipeline") as mock_handler:
+            mock_handler.return_value = {
+                "pipeline_id": "test",
+                "packages": [{"pkg_id": "lammps"}],
+            }
+
+            from jarvis_mcp.server import export_pipeline_tool
+
+            result = await export_pipeline_tool("test", include_yaml=False)
+
+            assert result["pipeline_id"] == "test"
+            assert result["packages"] == [{"pkg_id": "lammps"}]
+            mock_handler.assert_called_once_with("test", include_yaml=False)
 
     @pytest.mark.asyncio
     async def test_get_pkg_config_tool_direct(self):
