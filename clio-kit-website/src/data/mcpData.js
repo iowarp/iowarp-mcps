@@ -24,7 +24,8 @@ export const mcpData = {
       "cursor",
       "vscode"
     ],
-    "slug": "agentic_search"
+    "slug": "agentic_search",
+    "docPath": "/docs/agentic-search"
   },
   "adios": {
     "name": "Adios",

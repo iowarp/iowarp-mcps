@@ -31,7 +31,7 @@ class TestJarvisIntegration:
         # Mock all imports to avoid import errors
         with (
             patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             # Setup mocks
             mock_manager_instance = MockJarvisManager()
@@ -175,7 +175,7 @@ class TestJarvisIntegration:
 
         with (
             patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             # Setup error scenarios
             mock_manager = MockJarvisManager()
@@ -206,7 +206,7 @@ class TestJarvisIntegration:
 
         with (
             patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             mock_manager = MockJarvisManager()
             mock_jarvis.get_instance.return_value = mock_manager
@@ -247,7 +247,7 @@ class TestJarvisIntegration:
 
         with (
             patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
             patch("sys.path"),
             patch("importlib.import_module"),
         ):
@@ -345,7 +345,7 @@ class TestJarvisIntegration:
 
         with (
             patch("jarvis_mcp.server.JarvisManager") as mock_jarvis,
-            patch("jarvis_cd.basic.pkg.Pipeline") as mock_pipeline,
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline") as mock_pipeline,
         ):
             mock_manager = MockJarvisManager()
             mock_jarvis.get_instance.return_value = mock_manager

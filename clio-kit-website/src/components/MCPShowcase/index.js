@@ -3,6 +3,8 @@ import Link from '@docusaurus/Link';
 import { mcpData, categories, popularMcps, githubStats, categoryTypes, mcpEndorsement } from '../../data/mcpData';
 import styles from './styles.module.css';
 
+const getDocPath = (mcp) => mcp.docPath || `/docs/mcps/${mcp.slug}`;
+
 // Toast Notification Component
 const Toast = ({ message, show, onClose }) => {
   React.useEffect(() => {
@@ -75,7 +77,7 @@ const FeaturedMCPCard = ({ mcpId, mcp, onCopy }) => {
   const specialTag = getSpecialTag();
 
   return (
-    <Link to={`/docs/mcps/${mcp.slug}`} className={styles.featuredCard} data-category={mcp.category}>
+    <Link to={getDocPath(mcp)} className={styles.featuredCard} data-category={mcp.category}>
       {/* Top Tags Row - 4 tags now */}
       <div className={styles.featuredTags}>
         <span className={`${styles.featuredTag} ${styles.tagEndorsement}`}>
@@ -195,7 +197,7 @@ const MCPCard = ({ mcpId, mcp }) => {
       <h3 className={styles.mcpName}>{mcp.name}</h3>
       <p className={styles.mcpDescription}>{mcp.description}</p>
 
-      <Link to={`/docs/mcps/${mcp.slug}`} className={styles.mcpButton}>
+      <Link to={getDocPath(mcp)} className={styles.mcpButton}>
         View Details
       </Link>
     </div>
