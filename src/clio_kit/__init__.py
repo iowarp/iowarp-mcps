@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import subprocess
 from pathlib import Path
@@ -220,6 +221,17 @@ def list_available_prompts():
     return sorted(unique_prompts)
 
 
+def subprocess_env_with_github_https_rewrite() -> dict[str, str]:
+    """Return an environment that lets uv install GitHub deps without SSH keys."""
+    env = os.environ.copy()
+    if "GIT_CONFIG_COUNT" in env:
+        return env
+    env["GIT_CONFIG_COUNT"] = "1"
+    env["GIT_CONFIG_KEY_0"] = "url.https://github.com/.insteadOf"
+    env["GIT_CONFIG_VALUE_0"] = "git@github.com:"
+    return env
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx):
@@ -301,7 +313,7 @@ def mcp_server(server, branch, args):
 
     # Execute the command
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, env=subprocess_env_with_github_https_rewrite())
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except FileNotFoundError:
@@ -417,7 +429,7 @@ def search(args):
     cmd.extend(args)
 
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, env=subprocess_env_with_github_https_rewrite())
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except FileNotFoundError:
