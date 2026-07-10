@@ -3,6 +3,7 @@ Tests for the jarvis_handler module that contains pipeline operation logic.
 """
 
 import pytest
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import Mock, patch
 from fastapi import HTTPException
@@ -56,6 +57,87 @@ class ModernPipeline:
         self.submitted = submit
         self.waited = wait
         return Path("/tmp") / self.name / "submit.slurm"
+
+
+class TestHandlerHelpers:
+    """Test helper branches used by the semantic MCP contract."""
+
+    def test_jsonable_and_config_arg_helpers(self):
+        """Non-JSON values are normalized and config args preserve bool spelling."""
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _jsonable,
+            _kwargs_to_config_args,
+        )
+
+        assert _jsonable({"path": Path("/tmp/x"), "items": (Path("/tmp/y"),)}) == {
+            "path": repr(Path("/tmp/x")),
+            "items": [repr(Path("/tmp/y"))],
+        }
+        assert _kwargs_to_config_args(
+            {"enabled": True, "disabled": False, "skip": None, "count": 2}
+        ) == ["enabled=true", "disabled=false", "count=2"]
+
+    def test_pipeline_snapshot_helpers_fallback_to_current_api_fields(self, tmp_path):
+        """Current Pipeline objects expose config, package, and path fallbacks."""
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _get_package,
+            _package_config,
+            _package_snapshot,
+            _pipeline_config,
+            _pipeline_config_path,
+            _pipeline_env_path,
+            _pipeline_packages,
+        )
+
+        jarvis = Mock()
+        jarvis.get_pipeline_dir.return_value = tmp_path / "pipe"
+        pipeline = SimpleNamespace(
+            name="pipe",
+            config=None,
+            packages=[{"id": "step1", "type": "builtin.echo", "config": {"x": 1}}],
+            sub_pkgs=None,
+            scheduler={"name": "slurm"},
+            hostfile="hosts.txt",
+            interceptors=None,
+            jarvis=jarvis,
+        )
+
+        assert _pipeline_packages(pipeline) == pipeline.packages
+        assert _get_package(pipeline, "step1") == pipeline.packages[0]
+        assert _package_config(pipeline.packages[0]) == {"x": 1}
+        assert _package_snapshot(pipeline.packages[0])["pkg_type"] == "builtin.echo"
+        assert _pipeline_config(pipeline)["scheduler"] == {"name": "slurm"}
+        assert _pipeline_config_path(pipeline) == tmp_path / "pipe" / "pipeline.yaml"
+        assert _pipeline_env_path(pipeline) == tmp_path / "pipe" / "environment.yaml"
+
+    def test_pipeline_class_requirement_reports_missing_import(self):
+        """Missing JARVIS pipeline support fails with actionable detail."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        with (
+            patch.object(jarvis_handler, "Pipeline", None),
+            patch.object(
+                jarvis_handler,
+                "_PIPELINE_IMPORT_ERROR",
+                ModuleNotFoundError("jarvis_cd"),
+            ),
+            pytest.raises(
+                RuntimeError, match="JARVIS-CD Pipeline API is not available"
+            ),
+        ):
+            jarvis_handler._require_pipeline_class()
+
+    def test_apply_pipeline_config_validation_branches(self):
+        """Pipeline config validation rejects unsupported scheduler/env shapes."""
+        from jarvis_mcp.capabilities.jarvis_handler import _apply_pipeline_config
+
+        pipeline = ModernPipeline("configured")
+        with pytest.raises(ValueError, match="scheduler must be an object"):
+            _apply_pipeline_config(pipeline, {"scheduler": "slurm"})
+        with pytest.raises(ValueError, match="hostfile_entries must be"):
+            _apply_pipeline_config(pipeline, {"hostfile_entries": "node1"})
+        with pytest.raises(ValueError, match="env must be an object"):
+            _apply_pipeline_config(pipeline, {"env": "OMP=4"})
 
 
 class TestPipelineOperations:

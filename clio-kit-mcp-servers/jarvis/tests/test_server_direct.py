@@ -75,6 +75,79 @@ class TestServerProfiles:
             mock_mcp.local_provider.remove_tool.assert_not_called()
 
 
+class TestCurrentJarvisManagerAdapter:
+    """Test the compatibility adapter for current JARVIS-CD manager APIs."""
+
+    def test_adapter_delegates_stateful_manager_operations(self, tmp_path):
+        """The current manager adapter maps legacy manager calls to Jarvis APIs."""
+        from jarvis_mcp.server import _CurrentJarvisManager
+
+        pipelines_dir = tmp_path / "pipelines"
+        pipelines_dir.mkdir()
+        (pipelines_dir / "pipe-b").mkdir()
+        (pipelines_dir / "pipe-a").mkdir()
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        jarvis = Mock()
+        jarvis.config = {"loaded": True}
+        jarvis.repos = {"repos": [str(repo), "/missing/repo"]}
+        jarvis._config = {"loaded": True}
+        jarvis._repos = jarvis.repos
+        jarvis.get_pipelines_dir.return_value = pipelines_dir
+        jarvis.resource_graph = {"nodes": []}
+
+        adapter = _CurrentJarvisManager(jarvis)
+        assert adapter.create("cfg", "priv", "shared") is adapter
+        jarvis.initialize.assert_called_once_with(
+            config_dir="cfg", private_dir="priv", shared_dir="shared"
+        )
+        assert adapter.load() is adapter
+        assert adapter.save() is adapter
+        jarvis.save_config.assert_called_once_with(jarvis.config)
+        jarvis.save_repos.assert_called_once_with(jarvis.repos)
+        assert adapter.set_hostfile("/tmp/hosts") is adapter
+        jarvis.set_hostfile.assert_called_once_with("/tmp/hosts")
+        assert adapter.list_pipelines() == ["pipe-a", "pipe-b"]
+        assert adapter.cd("pipe-a") is adapter
+        jarvis.set_current_pipeline.assert_called_once_with("pipe-a")
+        assert adapter.list_repos() == [str(repo), "/missing/repo"]
+        assert adapter.get_repo(repo.name) == {
+            "index": 1,
+            "name": repo.name,
+            "path": str(repo),
+            "exists": True,
+        }
+        assert adapter.resource_graph_show() == {"nodes": []}
+
+    def test_adapter_handles_repo_mutation_and_unsupported_calls(self, tmp_path):
+        """Repo matching works by path or directory name and unsupported calls fail."""
+        from jarvis_mcp.server import _CurrentJarvisManager
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        jarvis = Mock()
+        jarvis.repos = {"repos": [str(repo), "/other/other-repo"]}
+        adapter = _CurrentJarvisManager(jarvis)
+
+        assert adapter.add_repo(str(repo), force=True) is adapter
+        jarvis.add_repo.assert_called_once_with(str(repo), force=True)
+        assert adapter.remove_repo(repo.name) is adapter
+        jarvis.remove_repo.assert_called_with(str(repo))
+        assert adapter.promote_repo("repo") is adapter
+        jarvis.save_repos.assert_called_with(
+            {"repos": [str(repo), "/other/other-repo"]}
+        )
+
+        with pytest.raises(ValueError, match="repository not found"):
+            adapter.promote_repo("missing")
+        with pytest.raises(NotImplementedError, match="bootstrap templates"):
+            adapter.bootstrap_from("ares")
+        with pytest.raises(NotImplementedError, match="reset"):
+            adapter.reset()
+        assert adapter.bootstrap_list() == []
+
+
 class TestPipelineToolsDirect:
     """Test pipeline tool implementations directly."""
 
