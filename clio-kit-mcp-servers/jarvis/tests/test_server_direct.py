@@ -20,13 +20,24 @@ class TestServerProfiles:
             def __init__(self, name):
                 self.name = name
 
-        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("export_pipeline")]
+        tools = [
+            Tool("jarvis_create_pipeline"),
+            Tool("jarvis_run"),
+            Tool("create_pipeline"),
+            Tool("jm_reset"),
+        ]
         with patch("jarvis_mcp.server.mcp") as mock_mcp:
-            mock_mcp.list_tools.return_value = tools
+            mock_mcp.local_provider._components = {
+                f"tool:{tool.name}@": tool for tool in tools
+            }
 
             apply_tool_profile("user")
 
-            mock_mcp.remove_tool.assert_called_once_with("jm_reset")
+            removed = [
+                call.args[0]
+                for call in mock_mcp.local_provider.remove_tool.call_args_list
+            ]
+            assert removed == ["create_pipeline", "jm_reset"]
 
     def test_apply_admin_profile_removes_user_tools(self):
         """Admin profile keeps manager tools and hides user pipeline authoring."""
@@ -36,13 +47,21 @@ class TestServerProfiles:
             def __init__(self, name):
                 self.name = name
 
-        tools = [Tool("create_pipeline"), Tool("jm_reset"), Tool("jm_add_repo")]
+        tools = [
+            Tool("jarvis_create_pipeline"),
+            Tool("create_pipeline"),
+            Tool("jm_reset"),
+        ]
         with patch("jarvis_mcp.server.mcp") as mock_mcp:
-            mock_mcp.list_tools.return_value = tools
+            mock_mcp.local_provider._components = {
+                f"tool:{tool.name}@": tool for tool in tools
+            }
 
             apply_tool_profile("admin")
 
-            mock_mcp.remove_tool.assert_called_once_with("create_pipeline")
+            mock_mcp.local_provider.remove_tool.assert_called_once_with(
+                "jarvis_create_pipeline"
+            )
 
 
 class TestPipelineToolsDirect:
@@ -234,6 +253,122 @@ class TestPipelineToolsDirect:
 
             assert result["status"] == "running"
             mock_handler.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_jarvis_create_pipeline_tool_direct(self):
+        """Test user-facing pipeline creation wrapper."""
+        with patch("jarvis_mcp.server.create_pipeline") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "new", "status": "created"}
+
+            from jarvis_mcp.server import jarvis_create_pipeline_tool
+
+            result = await jarvis_create_pipeline_tool("new")
+
+            assert result["status"] == "created"
+            mock_handler.assert_called_once_with("new")
+
+    @pytest.mark.asyncio
+    async def test_jarvis_add_step_tool_direct(self):
+        """Test user-facing step addition maps to package append."""
+        with patch("jarvis_mcp.server.append_pkg") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "appended": "lammps"}
+
+            from jarvis_mcp.server import jarvis_add_step_tool
+
+            result = await jarvis_add_step_tool(
+                "test",
+                "builtin.lammps",
+                step_id="lammps_1",
+                config={"nodes": 4},
+            )
+
+            assert result["appended"] == "lammps"
+            mock_handler.assert_called_once_with(
+                "test",
+                "builtin.lammps",
+                pkg_id="lammps_1",
+                do_configure=True,
+                nodes=4,
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_edit_step_tool_direct(self):
+        """Test user-facing step edit maps to package configuration."""
+        with patch("jarvis_mcp.server.configure_pkg") as mock_handler:
+            mock_handler.return_value = {
+                "pipeline_id": "test",
+                "configured": "lammps_1",
+            }
+
+            from jarvis_mcp.server import jarvis_edit_step_tool
+
+            result = await jarvis_edit_step_tool("test", "lammps_1", {"nodes": 2})
+
+            assert result["configured"] == "lammps_1"
+            mock_handler.assert_called_once_with("test", "lammps_1", nodes=2)
+
+    @pytest.mark.asyncio
+    async def test_jarvis_remove_step_tool_direct(self):
+        """Test user-facing step removal unlinks the package."""
+        with patch("jarvis_mcp.server.unlink_pkg") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "unlinked": "lammps_1"}
+
+            from jarvis_mcp.server import jarvis_remove_step_tool
+
+            result = await jarvis_remove_step_tool("test", "lammps_1")
+
+            assert result["unlinked"] == "lammps_1"
+            mock_handler.assert_called_once_with("test", "lammps_1")
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_tool_direct(self):
+        """Test user-facing run maps to pipeline execution."""
+        with patch("jarvis_mcp.server.run_pipeline") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            result = await jarvis_run_tool("test")
+
+            assert result["status"] == "running"
+            mock_handler.assert_called_once_with("test")
+
+    @pytest.mark.asyncio
+    async def test_jarvis_describe_pipeline_tool_direct(self):
+        """Test user-facing pipeline description uses pipeline export."""
+        with patch("jarvis_mcp.server.export_pipeline") as mock_handler:
+            mock_handler.return_value = {"pipeline_id": "test", "packages": []}
+
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool("pipeline", pipeline_id="test")
+
+            assert result["target"] == "pipeline"
+            assert result["pipeline"]["pipeline_id"] == "test"
+            mock_handler.assert_called_once_with("test", include_yaml=True)
+
+    @pytest.mark.asyncio
+    async def test_jarvis_describe_step_tool_direct(self):
+        """Test user-facing step description includes snapshot and config."""
+        with (
+            patch("jarvis_mcp.server.export_pipeline") as export_handler,
+            patch("jarvis_mcp.server.get_pkg_config") as config_handler,
+        ):
+            export_handler.return_value = {
+                "pipeline_id": "test",
+                "packages": [{"pkg_id": "lammps_1", "pkg_type": "builtin.lammps"}],
+            }
+            config_handler.return_value = {"pkg_id": "lammps_1", "config": {"nodes": 4}}
+
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool(
+                "step", pipeline_id="test", step_id="lammps_1"
+            )
+
+            assert result["target"] == "step"
+            assert result["step"]["pkg_id"] == "lammps_1"
+            assert result["config"]["config"]["nodes"] == 4
 
     @pytest.mark.asyncio
     async def test_destroy_pipeline_tool_direct(self):
@@ -677,13 +812,30 @@ class TestMainFunctionDirect:
         """Test main() with stdio transport."""
         with (
             patch("sys.argv", ["jarvis-mcp"]),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
             patch("jarvis_mcp.server.mcp.run") as mock_run,
         ):
             from jarvis_mcp.server import main
 
             main()
 
+            mock_profile.assert_called_once_with("user")
             # Should be called with stdio transport (default)
+            mock_run.assert_called_once_with(transport="stdio")
+
+    def test_admin_main_uses_admin_profile(self):
+        """Test admin entry point selects the admin profile."""
+        with (
+            patch("sys.argv", ["jarvis-admin-mcp"]),
+            patch.dict("os.environ", {}, clear=True),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            from jarvis_mcp.server import admin_main
+
+            admin_main()
+
+            mock_profile.assert_called_once_with("admin")
             mock_run.assert_called_once_with(transport="stdio")
 
 

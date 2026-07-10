@@ -1,9 +1,7 @@
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
-import asyncio
 import importlib
-import inspect
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -178,6 +176,15 @@ JarvisManager = _load_jarvis_manager_class()
 manager = JarvisManager.get_instance()
 
 USER_TOOLS = {
+    "jarvis_create_pipeline",
+    "jarvis_describe",
+    "jarvis_add_step",
+    "jarvis_edit_step",
+    "jarvis_remove_step",
+    "jarvis_run",
+}
+
+ADMIN_TOOLS = {
     "update_pipeline",
     "build_pipeline_env",
     "create_pipeline",
@@ -192,9 +199,6 @@ USER_TOOLS = {
     "jm_list_pipelines",
     "jm_list_repos",
     "jm_get_repo",
-}
-
-ADMIN_TOOLS = {
     "jm_create_config",
     "jm_load_config",
     "jm_save_config",
@@ -420,6 +424,140 @@ async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 )
 async def run_pipeline_tool(pipeline_id: str) -> dict:
     """Execute the pipeline, running all configured steps."""
+    return await run_pipeline(pipeline_id)
+
+
+@mcp.tool(
+    name="jarvis_create_pipeline",
+    description="Create a JARVIS pipeline for normal agent-driven workflows.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_create_pipeline_tool(pipeline_id: str) -> dict:
+    """Create a new JARVIS pipeline."""
+    return await create_pipeline(pipeline_id)
+
+
+@mcp.tool(
+    name="jarvis_describe",
+    description="Describe JARVIS packages, one package, a pipeline, or one pipeline step.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_describe_tool(
+    target: str,
+    pipeline_id: Optional[str] = None,
+    step_id: Optional[str] = None,
+    package_name: Optional[str] = None,
+    include_yaml: bool = True,
+) -> dict[str, Any]:
+    """Describe user-level JARVIS objects without exposing repository administration."""
+    normalized = target.strip().lower()
+    if normalized == "packages":
+        return {"target": "packages", "packages": _discover_packages()}
+    if normalized == "package":
+        if not package_name:
+            raise ToolError("package_name is required when target='package'")
+        package = _find_package_description(package_name)
+        if package is None:
+            raise ToolError(f"package not found: {package_name}")
+        return {"target": "package", "package": package}
+    if normalized == "pipeline":
+        if not pipeline_id:
+            raise ToolError("pipeline_id is required when target='pipeline'")
+        snapshot = await export_pipeline(pipeline_id, include_yaml=include_yaml)
+        return {"target": "pipeline", "pipeline": snapshot}
+    if normalized == "step":
+        if not pipeline_id or not step_id:
+            raise ToolError("pipeline_id and step_id are required when target='step'")
+        snapshot = await export_pipeline(pipeline_id, include_yaml=False)
+        step = _step_snapshot(snapshot, step_id)
+        if step is None:
+            raise ToolError(f"step not found in pipeline {pipeline_id}: {step_id}")
+        config = await get_pkg_config(pipeline_id, step_id)
+        return {"target": "step", "step": step, "config": config}
+    raise ToolError("target must be one of: packages, package, pipeline, step")
+
+
+@mcp.tool(
+    name="jarvis_add_step",
+    description="Add a package-backed step to a JARVIS pipeline and optionally configure it.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_add_step_tool(
+    pipeline_id: str,
+    package_name: str,
+    step_id: Optional[str] = None,
+    config: Optional[dict[str, Any]] = None,
+    do_configure: bool = True,
+) -> dict:
+    """Add a step to a pipeline."""
+    return await append_pkg(
+        pipeline_id,
+        package_name,
+        pkg_id=step_id,
+        do_configure=do_configure,
+        **(config or {}),
+    )
+
+
+@mcp.tool(
+    name="jarvis_edit_step",
+    description="Edit the configuration of a step in a JARVIS pipeline.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_edit_step_tool(
+    pipeline_id: str, step_id: str, config: dict[str, Any]
+) -> dict:
+    """Edit a step configuration in a pipeline."""
+    return await configure_pkg(pipeline_id, step_id, **config)
+
+
+@mcp.tool(
+    name="jarvis_remove_step",
+    description="Remove a step from a JARVIS pipeline without deleting package files.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
+    """Remove a step from a pipeline by unlinking its package."""
+    return await unlink_pkg(pipeline_id, step_id)
+
+
+@mcp.tool(
+    name="jarvis_run",
+    description="Run a configured JARVIS pipeline.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"jarvis", "pipeline", "user"},
+)
+async def jarvis_run_tool(pipeline_id: str) -> dict:
+    """Run a configured JARVIS pipeline."""
     return await run_pipeline(pipeline_id)
 
 
@@ -787,6 +925,106 @@ def jm_graph_modify(net_sleep: float) -> list:
         raise ToolError(f"Error: {e}")
 
 
+def _discover_packages() -> list[dict[str, Any]]:
+    packages: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    try:
+        repos = [Path(str(repo)) for repo in manager.list_repos()]
+    except Exception:
+        repos = []
+    for repo in repos:
+        if not repo.exists():
+            continue
+        for pkg_file in repo.rglob("pkg.py"):
+            package = _package_from_pkg_file(repo, pkg_file)
+            name = str(package.get("name", ""))
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            packages.append(package)
+    return sorted(packages, key=lambda package: str(package.get("name", "")))
+
+
+def _find_package_description(package_name: str) -> dict[str, Any] | None:
+    normalized = package_name.strip().lower()
+    for package in _discover_packages():
+        names = {
+            str(package.get("name", "")).lower(),
+            str(package.get("short_name", "")).lower(),
+        }
+        if normalized in names:
+            return package
+    return None
+
+
+def _package_from_pkg_file(repo: Path, pkg_file: Path) -> dict[str, Any]:
+    relative = pkg_file.relative_to(repo)
+    parts = list(relative.parts[:-1])
+    short_name = parts[-1] if parts else repo.name
+    dotted = ".".join(parts) if parts else short_name
+    description = _first_docstring_or_comment(pkg_file)
+    return {
+        "name": dotted,
+        "short_name": short_name,
+        "description": description,
+        "path": str(pkg_file),
+    }
+
+
+def _first_docstring_or_comment(path: Path) -> str | None:
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    in_docstring = False
+    docstring_quote: str | None = None
+    collected: list[str] = []
+    for raw_line in lines[:80]:
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            comment = line.lstrip("#").strip()
+            if comment:
+                return comment
+            continue
+        if line.startswith(('"""', "'''")):
+            docstring_quote = line[:3]
+            remainder = line[3:]
+            if remainder.endswith(docstring_quote):
+                remainder = remainder[:-3]
+                return remainder.strip() or None
+            in_docstring = True
+            if remainder:
+                collected.append(remainder.strip())
+            continue
+        if in_docstring and docstring_quote is not None:
+            if line.endswith(docstring_quote):
+                line = line[: -len(docstring_quote)]
+                if line:
+                    collected.append(line.strip())
+                return " ".join(collected).strip() or None
+            collected.append(line)
+            continue
+        return None
+    return " ".join(collected).strip() or None
+
+
+def _step_snapshot(
+    pipeline_snapshot: dict[str, Any], step_id: str
+) -> dict[str, Any] | None:
+    for package in pipeline_snapshot.get("packages", []):
+        if not isinstance(package, dict):
+            continue
+        identifiers = {
+            str(package.get("pkg_id", "")),
+            str(package.get("global_id", "")),
+        }
+        if step_id in identifiers:
+            return package
+    return None
+
+
 def main() -> None:
     """Main entry point for the Jarvis MCP server."""
     import argparse
@@ -807,12 +1045,18 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
-    profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "all")
+    profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "user")
     apply_tool_profile(profile)
     if transport == "http":
         mcp.run(transport="http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")
+
+
+def admin_main() -> None:
+    """Main entry point for the Jarvis admin MCP server."""
+    os.environ.setdefault("JARVIS_MCP_PROFILE", "admin")
+    main()
 
 
 def apply_tool_profile(profile: str) -> None:
@@ -828,14 +1072,16 @@ def apply_tool_profile(profile: str) -> None:
         raise ValueError("profile must be one of: all, user, admin")
     for tool in _registered_tools():
         if tool.name not in allowed:
-            mcp.remove_tool(tool.name)
+            mcp.local_provider.remove_tool(tool.name)
 
 
 def _registered_tools() -> list:
-    tools = mcp.list_tools(run_middleware=False)
-    if inspect.isawaitable(tools):
-        return list(asyncio.run(tools))
-    return list(tools)
+    components = getattr(mcp.local_provider, "_components", {})
+    return [
+        component
+        for key, component in components.items()
+        if isinstance(key, str) and key.startswith("tool:")
+    ]
 
 
 if __name__ == "__main__":

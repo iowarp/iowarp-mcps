@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Jarvis-CD MCP - Pipeline Management for High-Performance Computing with comprehensive workflow operations"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,8 @@ Homepage = "https://docs.iowarp.ai/"
 Repository = "https://github.com/iowarp/clio-kit"
 
 [project.scripts]
-jarvis-mcp = "jarvis_mcp.server:main"
+jarvis-mcp = "jarvis_mcp.user_server:main"
+jarvis-admin-mcp = "jarvis_mcp.admin_server:main"
 
 [tool.uv]
 dev-dependencies = [
