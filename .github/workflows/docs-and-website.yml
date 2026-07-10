@@ -57,25 +57,6 @@ jobs:
           fi
         done
 
-    # Update README files (for PRs to main branch)
-    - name: Update MCP README files
-      if: github.event_name == 'pull_request' && github.base_ref == 'main'
-      run: python3 scripts/readme_filler.py clio-kit-mcp-servers
-
-    - name: Commit README updates
-      if: github.event_name == 'pull_request' && github.base_ref == 'main'
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-
-        if [[ -n $(git status --porcelain -- 'clio-kit-mcp-servers/*/README.md') ]]; then
-          git add clio-kit-mcp-servers/*/README.md
-          git commit -m "Auto-update MCP README files"
-          git push
-        else
-          echo "No README changes to commit"
-        fi
-
     # Generate and build documentation
     - name: Generate Docusaurus documentation
       run: |

@@ -194,47 +194,118 @@ $PARAVIEW_GUI
 
 ### `save_contour_as_stl`
 **Description**: Save the active contour or surface as an STL file in the data directory.
+
+Args:
+    stl_filename: The STL file name to use, defaults to 'contour.stl'.
+
+Returns:
+    Status message.
 **Tags**: paraview, pipeline
 
 ### `create_geometric_shape`
 **Description**: Create a geometric source (Sphere, Cone, Cylinder, Plane, or Box).
+
+Args:
+    source_type: Type of source to create.
+
+Returns:
+    Status message with source name.
 **Tags**: paraview, pipeline
 
 ### `generate_isosurface`
 **Description**: Create an isosurface visualization of the active source at the given isovalue.
+
+Args:
+    value: Isovalue.
+    field: Optional field name to contour by.
+
+Returns:
+    Status message with filter name.
 **Tags**: paraview, pipeline
 
 ### `create_data_slice`
 **Description**: Create a slice plane through the loaded volume data.
+
+Args:
+    origin_x, origin_y, origin_z: Slice origin coordinates (defaults to data center).
+    normal_x, normal_y, normal_z: Normal vector for the slice plane (default [0, 0, 1]).
+
+Returns:
+    Status message with pipeline name.
 **Tags**: paraview, pipeline
 
 ### `configure_volume_display`
 **Description**: Toggle volume rendering visibility for the active source.
+
+Args:
+    enable: Whether to show (True) or hide (False) volume rendering.
+
+Returns:
+    Status message with source name.
 **Tags**: paraview, rendering
 
 ### `toggle_visibility`
 **Description**: Toggle visibility for the active source.
+
+Args:
+    enable: Whether to show (True) or hide (False) the active source.
+
+Returns:
+    Status message with source name.
 **Tags**: paraview, rendering
 
 ### `set_active_source`
 **Description**: Set the active pipeline object by its registered name.
+
+Args:
+    name: The pipeline source name (e.g., 'Contour1').
+
+Returns:
+    Status message.
 **Tags**: paraview, pipeline
 
 ### `get_active_source_names_by_type`
 **Description**: List pipeline source names, optionally filtered by type.
+
+Args:
+    source_type: Filter by type (e.g., 'Sphere', 'Contour'). None returns all.
+
+Returns:
+    Formatted list of source names.
 **Hints**: read-only, idempotent
 **Tags**: paraview, pipeline
 
 ### `edit_volume_opacity`
 **Description**: Edit the opacity transfer function for a scalar field.
+
+Args:
+    field_name: The scalar field to modify.
+    opacity_points: List of dicts like [{"value": 0.0, "alpha": 0.0}, ...].
+
+Returns:
+    Status message.
 **Tags**: paraview, rendering
 
 ### `set_color_map`
 **Description**: Set a custom color transfer function for volume rendering.
+
+Args:
+    field_name: The field/array name in ParaView.
+    color_points: List of dicts: {"value": float, "rgb": [r, g, b]}.
+
+Returns:
+    Status message.
 **Tags**: paraview, rendering
 
 ### `apply_field_coloring`
 **Description**: Color the active visualization by a specific data field.
+
+Args:
+    field: Field name to color by.
+    component: Component index (-1 for magnitude).
+
+Returns:
+    Status message.
 **Tags**: paraview, rendering
 
 ### `compute_surface_area`
@@ -247,10 +318,22 @@ Returns:
 
 ### `set_color_map_preset`
 **Description**: Apply a predefined color map preset (e.g., Viridis, Plasma, Cool to Warm).
+
+Args:
+    preset_name: Name of the color map preset.
+
+Returns:
+    Status message.
 **Tags**: paraview, rendering
 
 ### `set_representation_type`
 **Description**: Set the representation type for the active source (Surface, Wireframe, Points, etc.).
+
+Args:
+    rep_type: Representation type.
+
+Returns:
+    Status message.
 **Tags**: paraview, rendering
 
 ### `get_pipeline`
@@ -271,11 +354,30 @@ Returns:
 
 ### `get_histogram`
 **Description**: Compute histogram data for a field in the active source.
+
+Args:
+    field: Field name (auto-selected if only one exists).
+    num_bins: Number of bins (default: 256).
+    data_location: 'POINTS' or 'CELLS'.
+
+Returns:
+    Formatted histogram data.
 **Hints**: read-only, idempotent
 **Tags**: paraview, visualization
 
 ### `generate_flow_streamlines`
 **Description**: Create streamlines from a vector volume using the StreamTracer filter.
+
+Args:
+    seed_point_number: Number of seed points to generate.
+    vector_field: Vector field name (auto-detected if None).
+    integration_direction: 'FORWARD', 'BACKWARD', or 'BOTH'.
+    max_steps: Maximum integration steps.
+    initial_step: Initial step length.
+    maximum_step: Maximum streamline length.
+
+Returns:
+    Status message with tube name.
 **Tags**: paraview, pipeline
 
 ### `take_viewport_screenshot`
@@ -290,6 +392,13 @@ Returns:
 
 ### `rotate_camera`
 **Description**: Rotate the camera by azimuth and elevation angles in degrees.
+
+Args:
+    azimuth: Rotation around vertical axis.
+    elevation: Rotation around horizontal axis.
+
+Returns:
+    Status message.
 **Tags**: paraview, rendering
 
 ### `reset_camera`
@@ -302,10 +411,25 @@ Returns:
 
 ### `plot_over_line`
 **Description**: Create a 'Plot Over Line' filter to sample data between two points.
+
+Args:
+    point1: Start [x, y, z] coordinates (defaults to data bounds).
+    point2: End [x, y, z] coordinates (defaults to data bounds).
+    resolution: Number of sample points (default: 100).
+
+Returns:
+    Status message.
 **Tags**: paraview, pipeline
 
 ### `warp_by_vector`
 **Description**: Apply a 'Warp By Vector' filter to the active source.
+
+Args:
+    vector_field: Vector field name (auto-detected if None).
+    scale_factor: Scale factor for the warp.
+
+Returns:
+    Status message.
 **Tags**: paraview, pipeline
 
 ### `list_commands`
