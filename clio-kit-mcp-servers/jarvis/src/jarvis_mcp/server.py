@@ -172,9 +172,23 @@ mcp: FastMCP = FastMCP(
     list_page_size=10,
 )
 
-# Create a singleton instance of JarvisManager
+# Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
+# functional JARVIS-CD installation. Admin tools still fail clearly at call time
+# if the installed JARVIS version lacks the needed manager API.
 JarvisManager = _load_jarvis_manager_class()
-manager = JarvisManager.get_instance()
+manager: Any | None = None
+_manager: Any | None = None
+
+
+def get_manager() -> Any:
+    """Return the process-local JARVIS manager singleton."""
+    global _manager
+    if manager is not None:
+        return manager
+    if _manager is None:
+        _manager = JarvisManager.get_instance()
+    return _manager
+
 
 USER_TOOLS = {
     "jarvis_create_pipeline",
@@ -627,6 +641,7 @@ def jm_create_config(
     """Initialize manager directories and persist configuration."""
     try:
         with _protocol_stdout_to_stderr():
+            manager = get_manager()
             manager.create(config_dir, private_dir, shared_dir)
             manager.save()
         return [{"type": "text", "text": "Jarvis configuration initialized."}]
@@ -647,6 +662,7 @@ def jm_create_config(
 def jm_load_config() -> list:
     """Load manager configuration from saved state."""
     try:
+        manager = get_manager()
         manager.load()
         return [{"type": "text", "text": "Configuration loaded."}]
     except Exception as e:
@@ -666,6 +682,7 @@ def jm_load_config() -> list:
 def jm_save_config() -> list:
     """Save current configuration state to disk."""
     try:
+        manager = get_manager()
         manager.save()
         return [{"type": "text", "text": "Configuration saved."}]
     except Exception as e:
@@ -685,6 +702,7 @@ def jm_save_config() -> list:
 def jm_set_hostfile(path: str) -> list:
     """Set and save the path to the hostfile for deployments."""
     try:
+        manager = get_manager()
         manager.set_hostfile(path)
         manager.save()
         return [{"type": "text", "text": f"Hostfile set to '{path}'"}]
@@ -705,6 +723,7 @@ def jm_set_hostfile(path: str) -> list:
 def jm_bootstrap_from(machine: str) -> list:
     """Bootstrap configuration based on a predefined machine template."""
     try:
+        manager = get_manager()
         manager.bootstrap_from(machine)
         return [{"type": "text", "text": f"Bootstrapped from '{machine}'"}]
     except Exception as e:
@@ -724,6 +743,7 @@ def jm_bootstrap_from(machine: str) -> list:
 def jm_bootstrap_list() -> list:
     """List all bootstrap templates available."""
     try:
+        manager = get_manager()
         return [{"type": "text", "text": m} for m in manager.bootstrap_list()]
     except Exception as e:
         raise ToolError(f"Error: {e}")
@@ -742,6 +762,7 @@ def jm_bootstrap_list() -> list:
 def jm_reset() -> list:
     """Reset manager to a clean state by destroying all pipelines and config."""
     try:
+        manager = get_manager()
         manager.reset()
         return [{"type": "text", "text": "All pipelines and data reset."}]
     except Exception as e:
@@ -761,6 +782,7 @@ def jm_reset() -> list:
 async def jm_list_pipelines() -> dict[str, Any]:
     """List all current pipelines under management."""
     try:
+        manager = get_manager()
         pipelines = [str(pipeline) for pipeline in manager.list_pipelines()]
         return {"pipelines": pipelines, "count": len(pipelines)}
     except Exception as e:
@@ -780,6 +802,7 @@ async def jm_list_pipelines() -> dict[str, Any]:
 def jm_cd(pipeline_id: str) -> list:
     """Set the working pipeline context."""
     try:
+        manager = get_manager()
         manager.cd(pipeline_id)
         manager.save()
         return [{"type": "text", "text": f"Current pipeline set to '{pipeline_id}'"}]
@@ -800,6 +823,7 @@ def jm_cd(pipeline_id: str) -> list:
 async def jm_list_repos() -> dict[str, Any]:
     """List all registered repositories."""
     try:
+        manager = get_manager()
         repos = [str(repo) for repo in manager.list_repos()]
         return {"repos": repos, "count": len(repos)}
     except Exception as e:
@@ -819,6 +843,7 @@ async def jm_list_repos() -> dict[str, Any]:
 def jm_add_repo(path: str, force: bool = False) -> list:
     """Add a repository path to the manager."""
     try:
+        manager = get_manager()
         manager.add_repo(path, force)
         manager.save()
         return [{"type": "text", "text": f"Repo added: {path}"}]
@@ -839,6 +864,7 @@ def jm_add_repo(path: str, force: bool = False) -> list:
 def jm_remove_repo(repo_name: str) -> list:
     """Remove a repository from configuration."""
     try:
+        manager = get_manager()
         manager.remove_repo(repo_name)
         manager.save()
         return [{"type": "text", "text": f"Repo removed: {repo_name}"}]
@@ -859,6 +885,7 @@ def jm_remove_repo(repo_name: str) -> list:
 def jm_promote_repo(repo_name: str) -> list:
     """Promote a repository to higher priority."""
     try:
+        manager = get_manager()
         manager.promote_repo(repo_name)
         manager.save()
         return [{"type": "text", "text": f"Repo promoted: {repo_name}"}]
@@ -879,6 +906,7 @@ def jm_promote_repo(repo_name: str) -> list:
 async def jm_get_repo(repo_name: str) -> dict[str, Any]:
     """Get detailed information about a repository."""
     try:
+        manager = get_manager()
         repo = manager.get_repo(repo_name)
         return {"repo": repo if isinstance(repo, dict) else str(repo)}
     except Exception as e:
@@ -898,6 +926,7 @@ async def jm_get_repo(repo_name: str) -> dict[str, Any]:
 def jm_construct_pkg(pkg_type: str) -> list:
     """Generate a new package skeleton by type."""
     try:
+        manager = get_manager()
         obj = manager.construct_pkg(pkg_type)
         return [{"type": "text", "text": f"Constructed pkg: {obj.__class__.__name__}"}]
     except Exception as e:
@@ -917,6 +946,7 @@ def jm_construct_pkg(pkg_type: str) -> list:
 def jm_graph_show() -> list:
     """Print the resource graph to the console."""
     try:
+        manager = get_manager()
         manager.resource_graph_show()
         return [{"type": "text", "text": "Resource graph printed to console."}]
     except Exception as e:
@@ -936,6 +966,7 @@ def jm_graph_show() -> list:
 def jm_graph_build(net_sleep: float) -> list:
     """Construct or rebuild the graph with a given sleep delay."""
     try:
+        manager = get_manager()
         manager.resource_graph_build(net_sleep)
         return [{"type": "text", "text": "Resource graph built."}]
     except Exception as e:
@@ -955,6 +986,7 @@ def jm_graph_build(net_sleep: float) -> list:
 def jm_graph_modify(net_sleep: float) -> list:
     """Modify the current resource graph with a delay between operations."""
     try:
+        manager = get_manager()
         manager.resource_graph_modify(net_sleep)
         return [{"type": "text", "text": "Resource graph modified."}]
     except Exception as e:
@@ -965,6 +997,7 @@ def _discover_packages() -> list[dict[str, Any]]:
     packages: list[dict[str, Any]] = []
     seen: set[str] = set()
     try:
+        manager = get_manager()
         repos = [Path(str(repo)) for repo in manager.list_repos()]
     except Exception:
         repos = []
