@@ -11,7 +11,7 @@ Part of [**CLIO Kit**](https://github.com/iowarp/clio-kit) — the IoWarp platfo
 
 ---
 
-Hybrid retrieval engine for scientific computing corpora. Indexes documents into namespace-specific backends and supports lexical (BM25), vector, graph, metadata, and scientific-operator retrieval in one pipeline. DuckDB storage, FastAPI server, async job queue, OpenTelemetry tracing, Prometheus metrics.
+Agentic hybrid retrieval engine for scientific computing corpora. Indexes documents into namespace-specific backends and supports lexical (BM25), vector, graph, metadata, and scientific-operator retrieval in one pipeline, with an optional multi-hop agentic loop that rewrites queries and adapts to each corpus. DuckDB storage, FastAPI server, async job queue, OpenTelemetry tracing, Prometheus metrics.
 
 ## Quick start
 
@@ -33,14 +33,67 @@ uv run clio query --namespace local_fs --q "pressure > 200 kPa"
 uv run clio index --namespace local_fs
 ```
 
+### Optional extras
+
+The core install is lightweight; heavier or backend-specific dependencies ship as extras (`uv sync --extra <name>`):
+
+| Extra | Pulls in | Enables |
+|-------|----------|---------|
+| `semantic` | sentence-transformers | Transformer embeddings (otherwise a hash embedder is used) |
+| `ann` | numpy, hnswlib | Approximate nearest-neighbour vector backend (`CLIO_ANN_BACKEND=hnsw`) |
+| `hdf5` | h5py | HDF5 connector (`hdf5_data` namespace) |
+| `netcdf` | xarray, netCDF4 | NetCDF connector (`netcdf_data` namespace) |
+| `llm` | anthropic, openai | LLM-based query rewriting (`--llm-rewrite`); without it, a rule-based fallback is used |
+| `telemetry` | opentelemetry, prometheus-client | Tracing + `/metrics` exposition |
+| `eval` | claude-agent-sdk, anthropic | SC26 evaluation harness |
+
 ## Features
 
 - **Multi-namespace registry** with runtime/auth config bundles
-- **Connectors**: filesystem + DuckDB (`local_fs`), S3 object store, Qdrant vector store, Neo4j graph, Redis KV log
+- **Hybrid retrieval** across lexical (BM25), vector, graph and metadata branches in one pipeline
 - **Scientific retrieval operators**: numeric range (`unit`, `min`, `max`), unit matching, formula targeting (normalized signatures)
+- **Agentic retrieval**: optional multi-hop loop with LLM query rewriting (with a no-LLM fallback) and SI-unit variant inference
+- **Corpus-adaptive strategy**: schema/metadata profiling drives per-query branch selection and content-quality filtering
+- **Structured ingestion**: CSV/tabular detection and table-aware chunking alongside text
+- **Nine connectors** spanning POSIX, object, vector, graph, KV and science formats — see [Connectors](#connectors)
 - **Background indexing** job API with cancellation tokens and per-namespace serialized execution
 - **Retry/backoff** wrappers for connect/index operations
 - **Telemetry**: OpenTelemetry tracing (opt-in), Prometheus metrics at `/metrics`
+
+## Retrieval pipeline
+
+```
+Query → Namespace registry → Retrieval coordinator → parallel branches
+          ├── Lexical (BM25)
+          ├── Vector (embeddings; hash or transformer)
+          ├── Graph (BFS)
+          ├── Metadata (schema-aware filters)
+          └── Scientific (SI unit conversion + formula normalization)
+        → Merge + rerank → Citations + trace events
+```
+
+With `--agentic`, the coordinator runs inside an observe–decide–act loop: it
+inspects results, rewrites the query (LLM or rule-based), and re-runs branches
+until it converges or hits `--max-hops`. A corpus profiler inspects what
+metadata each namespace actually provides and adapts branch selection and
+quality filtering per query.
+
+## Connectors
+
+| Connector | Namespace | Default registry | Extra required |
+|-----------|-----------|:---------------:|----------------|
+| Filesystem + DuckDB | `local_fs` | ✅ | — |
+| S3 object store | `object_s3` | ✅ | — |
+| Qdrant vector store | `vector_qdrant` | ✅ | — |
+| HDF5 | `hdf5_data` | ✅ | `hdf5` (h5py is also a core dep) |
+| NetCDF | `netcdf_data` | ✅ | `netcdf` |
+| Neo4j graph | (configurable) | — | — |
+| Redis KV log | (configurable) | — | — |
+| IOWarp content store | (configurable) | — | `iowarp_core` wheel |
+| NDP datasets | (configurable) | — | `mcp` (for MCP-backed discovery) |
+
+`build_default_registry()` provisions the first five namespaces; the remaining
+connectors are available to register explicitly.
 
 ## API endpoints
 
@@ -59,11 +112,75 @@ uv run clio index --namespace local_fs
 
 | Command | Description |
 |---------|-------------|
-| `clio query` | Run retrieval queries against a namespace |
+| `clio query` | Run retrieval queries against a namespace (add `--agentic --max-hops N` for the multi-hop loop, `--llm-rewrite` for LLM query rewriting) |
 | `clio index` | Index documents into a namespace |
 | `clio list` | List indexed documents |
 | `clio seed` | Seed sample data for testing |
 | `clio serve` | Start the FastAPI server |
+
+Agentic retrieval is opt-in — a plain `clio query` behaves exactly as before:
+
+```bash
+# Single-shot (default)
+clio query --namespace local_fs --q "pressure 200 kPa"
+
+# Multi-hop agentic loop (max 3 hops), with LLM query rewriting
+clio query --namespace local_fs --q "pressure 200 kPa" --agentic --max-hops 3 --llm-rewrite
+```
+
+## Examples
+
+Point the filesystem connector at a folder, index it, then run the queries below.
+
+```bash
+export CLIO_LOCAL_ROOT=./docs            # folder of .txt/.md/.csv files
+export CLIO_STORAGE_PATH=./clio.duckdb
+clio index --namespace local_fs          # build the index
+clio list  --namespace local_fs          # show indexed docs + chunk counts
+```
+
+**Scientific numeric-range** — match by real unit math, not keywords. Only
+documents whose measurements fall in the range are returned:
+
+```bash
+# "pressure between 300 and 400 kPa"
+clio query --namespace local_fs --q "pressure" --numeric-range "300:400:kPa"
+
+# Same physical range expressed in Pa — finds the same 320 kPa document,
+# because values are canonicalized to SI base units before matching.
+clio query --namespace local_fs --q "pressure" --numeric-range "300000:400000:Pa"
+```
+
+**Formula targeting** — match normalized equation signatures:
+
+```bash
+clio query --namespace local_fs --q "newton law" --formula "F=ma"
+```
+
+**Agentic multi-hop** — the loop rewrites/expands the query between hops
+(here, `kPa` is auto-expanded to its SI variants):
+
+```bash
+clio query --namespace local_fs --q "pressure 320 kPa" --agentic --max-hops 3
+```
+
+**Science-format connectors** — index HDF5 / NetCDF datasets:
+
+```bash
+CLIO_HDF5_ROOT=./h5_files     clio index --namespace hdf5_data
+CLIO_NETCDF_ROOT=./nc_files   clio index --namespace netcdf_data   # needs the `netcdf` extra
+clio query --namespace hdf5_data --q "compressor pressure"
+```
+
+**HTTP API** — start the server and query over HTTP:
+
+```bash
+clio serve &                                         # FastAPI on :8000
+curl -s localhost:8000/health
+curl -s -X POST localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"namespace":"local_fs","query":"turbine pressure","top_k":3}'
+```
 
 ## Environment variables
 

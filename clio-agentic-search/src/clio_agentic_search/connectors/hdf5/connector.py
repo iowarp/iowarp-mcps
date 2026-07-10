@@ -1,4 +1,4 @@
-"""S3-compatible object store connector."""
+"""HDF5 namespace connector with incremental indexing."""
 
 from __future__ import annotations
 
@@ -8,10 +8,8 @@ import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from clio_agentic_search.connectors.filesystem.connector import (
-    DEFAULT_EXCLUDE_SUFFIXES,
-)
 from clio_agentic_search.core.connectors import (
     IndexReport,
     NamespaceAuthConfig,
@@ -47,64 +45,77 @@ from clio_agentic_search.retrieval.scientific import (
     ScientificQueryOperators,
     score_scientific_metadata,
 )
-from clio_agentic_search.storage import DocumentBundle, FileIndexState, StorageAdapter
+from clio_agentic_search.storage.contracts import DocumentBundle, FileIndexState, StorageAdapter
+
+try:
+    import h5py
+
+    HAS_H5PY = True
+except ImportError:
+    HAS_H5PY = False
+
+HDF5_SUFFIXES: frozenset[str] = frozenset({".h5", ".hdf5", ".hdf", ".he5", ".nc"})
 
 
-def _should_skip_key(key: str, exclude_suffixes: frozenset[str]) -> bool:
-    key_lower = key.lower()
-    for suffix in exclude_suffixes:
-        if key_lower.endswith(suffix):
-            return True
-    return False
+def _extract_hdf5_text(file_path: Path) -> str:
+    """Walk an HDF5 file and produce a text representation of its structure.
 
+    For each group and dataset the output includes the path, shape, dtype,
+    and any HDF5 attributes (especially ``units``, ``long_name``, and
+    ``description``).
+    """
+    sections: list[str] = []
 
-@dataclass(frozen=True, slots=True)
-class S3Object:
-    key: str
-    body: bytes
-    last_modified_ns: int
-    metadata: dict[str, str] = field(default_factory=dict)
+    def _visitor(name: str, obj: h5py.Dataset | h5py.Group) -> None:
+        lines: list[str] = []
+        if isinstance(obj, h5py.Dataset):
+            lines.append(f"Dataset: /{name}")
+            lines.append(f"Shape: {obj.shape}")
+            lines.append(f"Dtype: {obj.dtype}")
+        else:
+            lines.append(f"Group: /{name}")
 
+        if obj.attrs:
+            lines.append("Attributes:")
+            for attr_name in sorted(obj.attrs):
+                attr_value = obj.attrs[attr_name]
+                # Decode bytes-like attribute values when possible.
+                if isinstance(attr_value, bytes):
+                    attr_value = attr_value.decode("utf-8", errors="replace")
+                lines.append(f"  {attr_name}: {attr_value}")
+        sections.append("\n".join(lines))
 
-class S3CompatibleClient:
-    def list_objects(self, bucket: str, prefix: str) -> list[S3Object]:
-        raise NotImplementedError
+    with h5py.File(file_path, "r") as f:
+        # Emit root-level attributes first.
+        if f.attrs:
+            root_lines = ["Group: /", "Attributes:"]
+            for attr_name in sorted(f.attrs):
+                attr_value = f.attrs[attr_name]
+                if isinstance(attr_value, bytes):
+                    attr_value = attr_value.decode("utf-8", errors="replace")
+                root_lines.append(f"  {attr_name}: {attr_value}")
+            sections.append("\n".join(root_lines))
+        f.visititems(_visitor)
+
+    return "\n\n".join(sections)
 
 
 @dataclass(slots=True)
-class InMemoryS3Client(S3CompatibleClient):
-    _buckets: dict[str, dict[str, S3Object]] = field(default_factory=dict)
+class HDF5Connector:
+    """Connector that indexes HDF5 files with hybrid search capabilities.
 
-    def put_object(
-        self, *, bucket: str, key: str, body: bytes, metadata: dict[str, str] | None = None
-    ) -> None:
-        bucket_records = self._buckets.setdefault(bucket, {})
-        object_record = S3Object(
-            key=key,
-            body=body,
-            last_modified_ns=time.time_ns(),
-            metadata=dict(metadata or {}),
-        )
-        bucket_records[key] = object_record
+    Walks a directory tree for HDF5 files, extracts group/dataset hierarchy,
+    shapes, dtypes, and attributes, then indexes the resulting text through
+    the scientific chunk pipeline.
+    """
 
-    def list_objects(self, bucket: str, prefix: str) -> list[S3Object]:
-        records = self._buckets.get(bucket, {})
-        return sorted(
-            [record for key, record in records.items() if key.startswith(prefix)],
-            key=lambda record: record.key,
-        )
-
-
-@dataclass(slots=True)
-class S3ObjectStoreConnector:
     namespace: str
-    bucket: str
-    prefix: str
+    root: Path
     storage: StorageAdapter
-    client: S3CompatibleClient
     embedder: Embedder = field(default_factory=HashEmbedder)
     embedding_model: str = "hash16-v1"
-    exclude_suffixes: frozenset[str] = DEFAULT_EXCLUDE_SUFFIXES
+    chunk_size: int = 400
+    reindex_delay_seconds: float = 0.0
     _runtime_config: NamespaceRuntimeConfig = field(
         default_factory=lambda: NamespaceRuntimeConfig(options={})
     )
@@ -126,6 +137,10 @@ class S3ObjectStoreConnector:
     _warmup_future: Future[None] | None = field(default=None, init=False, repr=False)
     _runtime_lock: threading.RLock = field(default_factory=threading.RLock, init=False, repr=False)
 
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
     def configure(
         self,
         *,
@@ -134,8 +149,8 @@ class S3ObjectStoreConnector:
     ) -> None:
         self._runtime_config = runtime_config
         self._auth_config = auth_config
-        self.bucket = runtime_config.options.get("bucket", self.bucket)
-        self.prefix = runtime_config.options.get("prefix", self.prefix)
+        if "root" in runtime_config.options:
+            self.root = Path(runtime_config.options["root"])
         ann_backend = runtime_config.options.get("ann_backend")
         if ann_backend:
             self.ann_backend = ann_backend
@@ -180,15 +195,23 @@ class S3ObjectStoreConnector:
                 os.environ["CLIO_LEXICAL_POSTINGS_COMPRESSION"]
             )
 
+    # ------------------------------------------------------------------
+    # NamespaceConnector protocol
+    # ------------------------------------------------------------------
+
     def descriptor(self) -> NamespaceDescriptor:
-        endpoint = self._runtime_config.options.get("endpoint_url", "s3://")
         return NamespaceDescriptor(
             name=self.namespace,
-            connector_type="object_store",
-            root_uri=f"{endpoint.rstrip('/')}/{self.bucket}/{self.prefix}".rstrip("/"),
+            connector_type="hdf5",
+            root_uri=str(self.root.resolve()),
         )
 
     def connect(self) -> None:
+        if not HAS_H5PY:
+            raise RuntimeError(
+                "h5py is required for HDF5Connector but is not installed. "
+                "Install it with: pip install h5py"
+            )
         self.storage.connect()
         self._connected = True
         self._schedule_warmup()
@@ -203,6 +226,7 @@ class S3ObjectStoreConnector:
     def index(self, *, full_rebuild: bool = False) -> IndexReport:
         self._ensure_connected()
         start = time.perf_counter()
+
         if full_rebuild:
             self.storage.clear_namespace(self.namespace)
 
@@ -224,32 +248,45 @@ class S3ObjectStoreConnector:
         )
 
         try:
-            for object_record in self.client.list_objects(self.bucket, self.prefix):
-                if _should_skip_key(object_record.key, self.exclude_suffixes):
-                    continue
+            for file_path in sorted(
+                path
+                for path in self.root.rglob("*")
+                if path.is_file() and path.suffix.lower() in HDF5_SUFFIXES
+            ):
+                relative_path = file_path.relative_to(self.root).as_posix()
+                existing_paths.add(relative_path)
                 scanned_files += 1
-                existing_paths.add(object_record.key)
-                content_hash = hashlib.sha256(object_record.body).hexdigest()
+
+                content_bytes = file_path.read_bytes()
+                content_hash = hashlib.sha256(content_bytes).hexdigest()
+                mtime_ns = file_path.stat().st_mtime_ns
+
                 if not full_rebuild:
-                    previous = self.storage.get_file_state(self.namespace, object_record.key)
+                    previous = self.storage.get_file_state(self.namespace, relative_path)
                     if (
                         previous is not None
-                        and previous.mtime_ns == object_record.last_modified_ns
+                        and previous.mtime_ns == mtime_ns
                         and previous.content_hash == content_hash
                     ):
                         skipped_files += 1
                         continue
 
-                text = object_record.body.decode("utf-8", errors="ignore")
-                document_id = hashlib.sha1(
-                    f"{self.namespace}:{object_record.key}".encode()
-                ).hexdigest()
+                if self.reindex_delay_seconds > 0:
+                    time.sleep(self.reindex_delay_seconds)
+
+                document_id = hashlib.sha1(f"{self.namespace}:{relative_path}".encode()).hexdigest()
+
+                text = _extract_hdf5_text(file_path)
+                if not text.strip():
+                    skipped_files += 1
+                    continue
+
                 document = DocumentRecord(
                     namespace=self.namespace,
                     document_id=document_id,
-                    uri=f"s3://{self.bucket}/{object_record.key}",
+                    uri=relative_path,
                     checksum=content_hash,
-                    modified_at_ns=object_record.last_modified_ns,
+                    modified_at_ns=mtime_ns,
                 )
                 chunk_plan = self._build_chunks(document_id=document_id, text=text)
                 chunks = chunk_plan.chunks
@@ -263,18 +300,19 @@ class S3ObjectStoreConnector:
                     for chunk in chunks
                 ]
                 metadata = self._build_metadata(
-                    object_record=object_record,
+                    relative_path=relative_path,
                     document_id=document_id,
                     chunks=chunks,
                     chunk_metadata=chunk_plan.metadata_by_chunk_id,
                 )
                 file_state = FileIndexState(
                     namespace=self.namespace,
-                    path=object_record.key,
+                    path=relative_path,
                     document_id=document_id,
-                    mtime_ns=object_record.last_modified_ns,
+                    mtime_ns=mtime_ns,
                     content_hash=content_hash,
                 )
+
                 pending_bundles.append(
                     DocumentBundle(
                         document=document,
@@ -308,17 +346,24 @@ class S3ObjectStoreConnector:
             lexical_ingestor.flush(namespace=self.namespace, storage=self.storage)
         finally:
             lexical_ingestor.close()
+
         if full_rebuild or indexed_files > 0 or removed_files > 0:
             self._refresh_vector_index()
         elif self._ann_index is None:
             self._schedule_warmup()
+
+        elapsed_seconds = time.perf_counter() - start
         return IndexReport(
             scanned_files=scanned_files,
             indexed_files=indexed_files,
             skipped_files=skipped_files,
             removed_files=removed_files,
-            elapsed_seconds=time.perf_counter() - start,
+            elapsed_seconds=elapsed_seconds,
         )
+
+    # ------------------------------------------------------------------
+    # LexicalSearchCapable
+    # ------------------------------------------------------------------
 
     def search_lexical(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
@@ -340,6 +385,10 @@ class S3ObjectStoreConnector:
             )
             for match in matches
         ]
+
+    # ------------------------------------------------------------------
+    # VectorSearchCapable
+    # ------------------------------------------------------------------
 
     def search_vector(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
@@ -372,22 +421,14 @@ class S3ObjectStoreConnector:
         )
         return self._neighbors_to_scored_chunks(neighbors)
 
-    def _neighbors_to_scored_chunks(self, neighbors: list[AnnResult]) -> list[ScoredChunk]:
-        scored: list[ScoredChunk] = []
-        for neighbor in neighbors:
-            chunk = self.storage.get_chunk(self.namespace, neighbor.chunk_id)
-            scored.append(
-                ScoredChunk(
-                    chunk_id=neighbor.chunk_id,
-                    document_id=chunk.document_id,
-                    text=chunk.text,
-                    vector_score=neighbor.score,
-                )
-            )
-        return scored
+    # ------------------------------------------------------------------
+    # MetadataFilterCapable
+    # ------------------------------------------------------------------
 
     def filter_metadata(
-        self, candidates: list[ScoredChunk], required: dict[str, str]
+        self,
+        candidates: list[ScoredChunk],
+        required: dict[str, str],
     ) -> list[ScoredChunk]:
         self._ensure_connected()
         if not required:
@@ -409,6 +450,10 @@ class S3ObjectStoreConnector:
                 )
         return filtered
 
+    # ------------------------------------------------------------------
+    # ScientificSearchCapable
+    # ------------------------------------------------------------------
+
     def search_scientific(
         self,
         query: str,
@@ -429,11 +474,13 @@ class S3ObjectStoreConnector:
                 canonical_unit = canonicalize_measurement(0.0, operators.numeric_range.unit)[1]
                 if operators.numeric_range.minimum is not None:
                     canonical_min = canonicalize_measurement(
-                        operators.numeric_range.minimum, operators.numeric_range.unit
+                        operators.numeric_range.minimum,
+                        operators.numeric_range.unit,
                     )[0]
                 if operators.numeric_range.maximum is not None:
                     canonical_max = canonicalize_measurement(
-                        operators.numeric_range.maximum, operators.numeric_range.unit
+                        operators.numeric_range.maximum,
+                        operators.numeric_range.unit,
                     )[0]
             except ValueError:
                 return []
@@ -472,6 +519,10 @@ class S3ObjectStoreConnector:
         scored.sort(key=lambda candidate: (-candidate.metadata_score, candidate.chunk_id))
         return scored[:top_k]
 
+    # ------------------------------------------------------------------
+    # Citation
+    # ------------------------------------------------------------------
+
     def build_citation(self, chunk: ScoredChunk) -> CitationRecord:
         stored_chunk = self.storage.get_chunk(self.namespace, chunk.chunk_id)
         metadata = self.storage.get_chunk_metadata(self.namespace, stored_chunk.chunk_id)
@@ -479,90 +530,88 @@ class S3ObjectStoreConnector:
         fragment = metadata.get("citation.fragment", "")
         if fragment:
             uri = f"{uri}#{fragment}"
+        snippet = stored_chunk.text.strip()[:160]
         return CitationRecord(
             namespace=self.namespace,
             document_id=stored_chunk.document_id,
             chunk_id=stored_chunk.chunk_id,
             uri=uri,
-            snippet=stored_chunk.text.strip()[:160],
+            snippet=snippet,
             score=round(chunk.combined_score, 6),
         )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
     def _build_chunks(self, *, document_id: str, text: str) -> ScientificChunkPlan:
         return build_structure_aware_chunk_plan(
             namespace=self.namespace,
             document_id=document_id,
             text=text,
-            chunk_size=400,
+            chunk_size=self.chunk_size,
         )
 
     def _build_metadata(
         self,
         *,
-        object_record: S3Object,
+        relative_path: str,
         document_id: str,
         chunks: list[ChunkRecord],
         chunk_metadata: dict[str, dict[str, str]],
     ) -> list[MetadataRecord]:
-        suffix = object_record.key.rsplit(".", maxsplit=1)[-1] if "." in object_record.key else ""
+        suffix = Path(relative_path).suffix.lower()
         records: list[MetadataRecord] = [
             MetadataRecord(
                 namespace=self.namespace,
                 record_id=document_id,
                 scope="document",
-                key="bucket",
-                value=self.bucket,
-            ),
-            MetadataRecord(
-                namespace=self.namespace,
-                record_id=document_id,
-                scope="document",
-                key="key",
-                value=object_record.key,
+                key="path",
+                value=relative_path,
             ),
             MetadataRecord(
                 namespace=self.namespace,
                 record_id=document_id,
                 scope="document",
                 key="suffix",
-                value=suffix.lower(),
+                value=suffix,
+            ),
+            MetadataRecord(
+                namespace=self.namespace,
+                record_id=document_id,
+                scope="document",
+                key="format",
+                value="hdf5",
             ),
         ]
-        for key, value in object_record.metadata.items():
+
+        for chunk in chunks:
             records.append(
                 MetadataRecord(
                     namespace=self.namespace,
-                    record_id=document_id,
-                    scope="document",
-                    key=f"object.{key}",
-                    value=value,
+                    record_id=chunk.chunk_id,
+                    scope="chunk",
+                    key="path",
+                    value=relative_path,
                 )
             )
-        for chunk in chunks:
-            records.extend(
-                [
-                    MetadataRecord(
-                        namespace=self.namespace,
-                        record_id=chunk.chunk_id,
-                        scope="chunk",
-                        key="bucket",
-                        value=self.bucket,
-                    ),
-                    MetadataRecord(
-                        namespace=self.namespace,
-                        record_id=chunk.chunk_id,
-                        scope="chunk",
-                        key="key",
-                        value=object_record.key,
-                    ),
-                    MetadataRecord(
-                        namespace=self.namespace,
-                        record_id=chunk.chunk_id,
-                        scope="chunk",
-                        key="suffix",
-                        value=suffix.lower(),
-                    ),
-                ]
+            records.append(
+                MetadataRecord(
+                    namespace=self.namespace,
+                    record_id=chunk.chunk_id,
+                    scope="chunk",
+                    key="suffix",
+                    value=suffix,
+                )
+            )
+            records.append(
+                MetadataRecord(
+                    namespace=self.namespace,
+                    record_id=chunk.chunk_id,
+                    scope="chunk",
+                    key="format",
+                    value="hdf5",
+                )
             )
             for key, value in sorted(chunk_metadata.get(chunk.chunk_id, {}).items()):
                 records.append(
@@ -629,6 +678,20 @@ class S3ObjectStoreConnector:
             self._warmup_future = None
         if executor is not None:
             executor.shutdown(wait=True, cancel_futures=True)
+
+    def _neighbors_to_scored_chunks(self, neighbors: list[AnnResult]) -> list[ScoredChunk]:
+        scored: list[ScoredChunk] = []
+        for neighbor in neighbors:
+            chunk = self.storage.get_chunk(self.namespace, neighbor.chunk_id)
+            scored.append(
+                ScoredChunk(
+                    chunk_id=neighbor.chunk_id,
+                    document_id=chunk.document_id,
+                    text=chunk.text,
+                    vector_score=neighbor.score,
+                )
+            )
+        return scored
 
 
 def _parse_bool(value: str) -> bool:

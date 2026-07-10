@@ -41,6 +41,7 @@ from clio_agentic_search.models.contracts import (
 )
 from clio_agentic_search.retrieval.ann import ANNAdapter, AnnResult, build_ann_adapter
 from clio_agentic_search.retrieval.capabilities import ScoredChunk
+from clio_agentic_search.retrieval.corpus_profile import CorpusProfile, build_corpus_profile
 from clio_agentic_search.retrieval.scientific import (
     ScientificQueryOperators,
     score_scientific_metadata,
@@ -365,7 +366,7 @@ class FilesystemConnector:
                 chunk_id=match.chunk.chunk_id,
                 document_id=match.chunk.document_id,
                 text=match.chunk.text,
-                lexical_score=match.overlap_count / len(query_tokens),
+                lexical_score=match.bm25_score,
             )
             for match in matches
         ]
@@ -453,6 +454,12 @@ class FilesystemConnector:
 
         candidate_ids: set[str] | None = None
 
+        # When a quality filter is active, push the acceptable-flag list down
+        # to the SQL layer so we skip bad/missing rows without loading them.
+        acceptable_quality: tuple[str, ...] | None = None
+        if operators.quality_filter is not None:
+            acceptable_quality = operators.quality_filter.acceptable_strings()
+
         if operators.numeric_range is not None:
             try:
                 canonical_min = None
@@ -469,7 +476,11 @@ class FilesystemConnector:
             except ValueError:
                 return []
             range_chunks = self.storage.query_chunks_by_measurement_range(
-                self.namespace, canonical_unit, canonical_min, canonical_max
+                self.namespace,
+                canonical_unit,
+                canonical_min,
+                canonical_max,
+                acceptable_quality=acceptable_quality,
             )
             range_ids = {c.chunk_id for c in range_chunks}
             candidate_ids = range_ids if candidate_ids is None else candidate_ids & range_ids
@@ -519,6 +530,11 @@ class FilesystemConnector:
             snippet=snippet,
             score=round(chunk.combined_score, 6),
         )
+
+    def corpus_profile(self) -> CorpusProfile:
+        """Return a statistical profile of the indexed namespace."""
+        self._ensure_connected()
+        return build_corpus_profile(self.storage, self.namespace)
 
     def _build_chunks(self, *, document_id: str, text: str) -> ScientificChunkPlan:
         return build_structure_aware_chunk_plan(

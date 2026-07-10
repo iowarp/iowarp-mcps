@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -171,6 +172,9 @@ class TestEmptyResultsDiagnostics:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        # Force the deterministic hash embedder so the nonsense query yields no
+        # results regardless of whether the optional `semantic` extra is present.
+        monkeypatch.setitem(sys.modules, "sentence_transformers", None)
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir()
         (docs_dir / "data.txt").write_text("alpha beta gamma", encoding="utf-8")

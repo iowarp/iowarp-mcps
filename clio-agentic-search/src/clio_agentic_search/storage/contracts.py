@@ -28,6 +28,7 @@ class FileIndexState:
 class LexicalChunkMatch:
     chunk: ChunkRecord
     overlap_count: int
+    bm25_score: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +114,7 @@ class StorageAdapter(Protocol):
         canonical_unit: str,
         minimum: float | None,
         maximum: float | None,
+        acceptable_quality: tuple[str, ...] | None = None,
     ) -> list[ChunkRecord]:
         """Query chunks by canonical measurement range."""
 

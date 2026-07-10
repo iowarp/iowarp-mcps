@@ -105,7 +105,7 @@ def test_mixed_corpus_generic_and_numeric_queries_are_grounded(tmp_path: Path) -
             metadata = connector.storage.get_chunk_metadata("local_science", citation.chunk_id)
             measurements = decode_measurements(metadata.get("scientific.measurements", ""))
             assert any(
-                measurement.canonical_unit == "pa"
+                measurement.canonical_unit == "1,-1,-2,0,0,0,0"
                 and 140000.0 <= measurement.canonical_value <= 155000.0
                 for measurement in measurements
             )

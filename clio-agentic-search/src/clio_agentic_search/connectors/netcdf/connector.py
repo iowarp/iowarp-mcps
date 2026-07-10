@@ -1,4 +1,4 @@
-"""S3-compatible object store connector."""
+"""NetCDF namespace connector with incremental indexing."""
 
 from __future__ import annotations
 
@@ -8,10 +8,8 @@ import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from clio_agentic_search.connectors.filesystem.connector import (
-    DEFAULT_EXCLUDE_SUFFIXES,
-)
 from clio_agentic_search.core.connectors import (
     IndexReport,
     NamespaceAuthConfig,
@@ -47,64 +45,145 @@ from clio_agentic_search.retrieval.scientific import (
     ScientificQueryOperators,
     score_scientific_metadata,
 )
-from clio_agentic_search.storage import DocumentBundle, FileIndexState, StorageAdapter
+from clio_agentic_search.storage.contracts import (
+    DocumentBundle,
+    FileIndexState,
+    StorageAdapter,
+)
+
+try:
+    import xarray as xr
+
+    HAS_XARRAY = True
+except ImportError:
+    xr = None  # type: ignore[assignment]
+    HAS_XARRAY = False
+
+NETCDF_SUFFIXES: frozenset[str] = frozenset({".nc", ".nc4", ".netcdf", ".cdf"})
+
+_GLOBAL_ATTR_KEYS: tuple[str, ...] = (
+    "title",
+    "history",
+    "Conventions",
+    "conventions",
+    "institution",
+    "source",
+    "references",
+    "comment",
+)
 
 
-def _should_skip_key(key: str, exclude_suffixes: frozenset[str]) -> bool:
-    key_lower = key.lower()
-    for suffix in exclude_suffixes:
-        if key_lower.endswith(suffix):
-            return True
-    return False
+def _format_coord_range(coord_values: object) -> str:
+    """Return a human-readable summary of a coordinate's range."""
+    import numpy as np
+
+    arr = np.asarray(coord_values)
+    if arr.size == 0:
+        return "(empty)"
+    first = arr.flat[0]
+    last = arr.flat[-1]
+    steps = arr.size
+    # numpy datetime64 prints nicely via str(); scalars too
+    return f"{first} to {last} ({steps} steps)"
 
 
-@dataclass(frozen=True, slots=True)
-class S3Object:
-    key: str
-    body: bytes
-    last_modified_ns: int
-    metadata: dict[str, str] = field(default_factory=dict)
+def _extract_netcdf_text(file_path: Path) -> str:
+    """Open a NetCDF file with xarray and build a textual metadata summary."""
+    if not HAS_XARRAY:
+        raise RuntimeError(
+            "xarray is required for the NetCDF connector. "
+            "Install it with: pip install xarray netCDF4"
+        )
+
+    ds = xr.open_dataset(file_path, engine="netcdf4")
+    try:
+        return _dataset_to_text(ds, file_path.name)
+    finally:
+        ds.close()
 
 
-class S3CompatibleClient:
-    def list_objects(self, bucket: str, prefix: str) -> list[S3Object]:
-        raise NotImplementedError
+def _dataset_to_text(ds: object, filename: str) -> str:
+    """Convert an xarray Dataset into a structured text description."""
+    lines: list[str] = [f"NetCDF Dataset: {filename}"]
+
+    # Global attributes
+    attrs: dict[str, object] = dict(getattr(ds, "attrs", {}))
+    for key in _GLOBAL_ATTR_KEYS:
+        value = attrs.get(key)
+        if value is not None:
+            lines.append(f"{key.title()}: {value}")
+
+    # Remaining global attributes not in the standard list
+    seen = {k.lower() for k in _GLOBAL_ATTR_KEYS}
+    for key, value in sorted(attrs.items()):
+        if key.lower() not in seen:
+            lines.append(f"{key}: {value}")
+
+    lines.append("")
+
+    # Data variables (non-coordinate)
+    data_vars = getattr(ds, "data_vars", {})
+    for var_name in sorted(data_vars):
+        var = data_vars[var_name]
+        lines.append(f"Variable: {var_name}")
+        var_attrs: dict[str, object] = dict(getattr(var, "attrs", {}))
+        units = var_attrs.get("units")
+        if units is not None:
+            lines.append(f"  Units: {units}")
+        long_name = var_attrs.get("long_name")
+        if long_name is not None:
+            lines.append(f"  Long Name: {long_name}")
+        standard_name = var_attrs.get("standard_name")
+        if standard_name is not None:
+            lines.append(f"  Standard Name: {standard_name}")
+        dims = getattr(var, "dims", ())
+        shape = getattr(var, "shape", ())
+        dtype = getattr(var, "dtype", "unknown")
+        lines.append(f"  Dimensions: {dims}")
+        lines.append(f"  Shape: {shape}")
+        lines.append(f"  Dtype: {dtype}")
+        # Additional CF attributes
+        for cf_key in ("cell_methods", "coordinates", "grid_mapping", "ancillary_variables"):
+            cf_val = var_attrs.get(cf_key)
+            if cf_val is not None:
+                lines.append(f"  {cf_key}: {cf_val}")
+        lines.append("")
+
+    # Coordinates
+    coords = getattr(ds, "coords", {})
+    if coords:
+        lines.append("Coordinates:")
+        for coord_name in sorted(coords):
+            coord = coords[coord_name]
+            try:
+                range_str = _format_coord_range(coord.values)
+            except Exception:
+                range_str = f"({getattr(coord, 'size', '?')} values)"
+            lines.append(f"  {coord_name}: {range_str}")
+        lines.append("")
+
+    # Dimensions summary
+    dims = getattr(ds, "dims", {})
+    if dims:
+        lines.append("Dimensions:")
+        for dim_name in sorted(dims):
+            lines.append(f"  {dim_name}: {dims[dim_name]}")
+
+    return "\n".join(lines)
 
 
 @dataclass(slots=True)
-class InMemoryS3Client(S3CompatibleClient):
-    _buckets: dict[str, dict[str, S3Object]] = field(default_factory=dict)
+class NetCDFConnector:
+    """Connector that indexes NetCDF files for hybrid scientific search."""
 
-    def put_object(
-        self, *, bucket: str, key: str, body: bytes, metadata: dict[str, str] | None = None
-    ) -> None:
-        bucket_records = self._buckets.setdefault(bucket, {})
-        object_record = S3Object(
-            key=key,
-            body=body,
-            last_modified_ns=time.time_ns(),
-            metadata=dict(metadata or {}),
-        )
-        bucket_records[key] = object_record
-
-    def list_objects(self, bucket: str, prefix: str) -> list[S3Object]:
-        records = self._buckets.get(bucket, {})
-        return sorted(
-            [record for key, record in records.items() if key.startswith(prefix)],
-            key=lambda record: record.key,
-        )
-
-
-@dataclass(slots=True)
-class S3ObjectStoreConnector:
     namespace: str
-    bucket: str
-    prefix: str
+    root: Path
     storage: StorageAdapter
-    client: S3CompatibleClient
     embedder: Embedder = field(default_factory=HashEmbedder)
     embedding_model: str = "hash16-v1"
-    exclude_suffixes: frozenset[str] = DEFAULT_EXCLUDE_SUFFIXES
+    chunk_size: int = 400
+    reindex_delay_seconds: float = 0.0
+    netcdf_suffixes: frozenset[str] = NETCDF_SUFFIXES
     _runtime_config: NamespaceRuntimeConfig = field(
         default_factory=lambda: NamespaceRuntimeConfig(options={})
     )
@@ -126,6 +205,10 @@ class S3ObjectStoreConnector:
     _warmup_future: Future[None] | None = field(default=None, init=False, repr=False)
     _runtime_lock: threading.RLock = field(default_factory=threading.RLock, init=False, repr=False)
 
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
     def configure(
         self,
         *,
@@ -134,8 +217,8 @@ class S3ObjectStoreConnector:
     ) -> None:
         self._runtime_config = runtime_config
         self._auth_config = auth_config
-        self.bucket = runtime_config.options.get("bucket", self.bucket)
-        self.prefix = runtime_config.options.get("prefix", self.prefix)
+        if "root" in runtime_config.options:
+            self.root = Path(runtime_config.options["root"])
         ann_backend = runtime_config.options.get("ann_backend")
         if ann_backend:
             self.ann_backend = ann_backend
@@ -162,13 +245,11 @@ class S3ObjectStoreConnector:
             self.lexical_df_prune_threshold = float(os.environ["CLIO_LEXICAL_DF_PRUNE_THRESHOLD"])
         if os.environ.get("CLIO_LEXICAL_DF_PRUNE_MIN_CHUNKS"):
             self.lexical_df_prune_min_chunks = max(
-                1,
-                int(os.environ["CLIO_LEXICAL_DF_PRUNE_MIN_CHUNKS"]),
+                1, int(os.environ["CLIO_LEXICAL_DF_PRUNE_MIN_CHUNKS"])
             )
         if os.environ.get("CLIO_LEXICAL_MAX_TOKENS_PER_CHUNK"):
             self.lexical_max_tokens_per_chunk = max(
-                0,
-                int(os.environ["CLIO_LEXICAL_MAX_TOKENS_PER_CHUNK"]),
+                0, int(os.environ["CLIO_LEXICAL_MAX_TOKENS_PER_CHUNK"])
             )
         if os.environ.get("CLIO_LEXICAL_PRUNE_STOPWORDS"):
             self.lexical_prune_stopwords = _parse_bool(os.environ["CLIO_LEXICAL_PRUNE_STOPWORDS"])
@@ -180,12 +261,15 @@ class S3ObjectStoreConnector:
                 os.environ["CLIO_LEXICAL_POSTINGS_COMPRESSION"]
             )
 
+    # ------------------------------------------------------------------
+    # NamespaceConnector protocol
+    # ------------------------------------------------------------------
+
     def descriptor(self) -> NamespaceDescriptor:
-        endpoint = self._runtime_config.options.get("endpoint_url", "s3://")
         return NamespaceDescriptor(
             name=self.namespace,
-            connector_type="object_store",
-            root_uri=f"{endpoint.rstrip('/')}/{self.bucket}/{self.prefix}".rstrip("/"),
+            connector_type="netcdf",
+            root_uri=str(self.root.resolve()),
         )
 
     def connect(self) -> None:
@@ -203,6 +287,7 @@ class S3ObjectStoreConnector:
     def index(self, *, full_rebuild: bool = False) -> IndexReport:
         self._ensure_connected()
         start = time.perf_counter()
+
         if full_rebuild:
             self.storage.clear_namespace(self.namespace)
 
@@ -224,32 +309,45 @@ class S3ObjectStoreConnector:
         )
 
         try:
-            for object_record in self.client.list_objects(self.bucket, self.prefix):
-                if _should_skip_key(object_record.key, self.exclude_suffixes):
-                    continue
+            for file_path in sorted(
+                path
+                for path in self.root.rglob("*")
+                if path.is_file() and path.suffix.lower() in self.netcdf_suffixes
+            ):
+                relative_path = file_path.relative_to(self.root).as_posix()
+                existing_paths.add(relative_path)
                 scanned_files += 1
-                existing_paths.add(object_record.key)
-                content_hash = hashlib.sha256(object_record.body).hexdigest()
+
+                content_bytes = file_path.read_bytes()
+                content_hash = hashlib.sha256(content_bytes).hexdigest()
+                mtime_ns = file_path.stat().st_mtime_ns
+
                 if not full_rebuild:
-                    previous = self.storage.get_file_state(self.namespace, object_record.key)
+                    previous = self.storage.get_file_state(self.namespace, relative_path)
                     if (
                         previous is not None
-                        and previous.mtime_ns == object_record.last_modified_ns
+                        and previous.mtime_ns == mtime_ns
                         and previous.content_hash == content_hash
                     ):
                         skipped_files += 1
                         continue
 
-                text = object_record.body.decode("utf-8", errors="ignore")
-                document_id = hashlib.sha1(
-                    f"{self.namespace}:{object_record.key}".encode()
-                ).hexdigest()
+                if self.reindex_delay_seconds > 0:
+                    time.sleep(self.reindex_delay_seconds)
+
+                try:
+                    text = _extract_netcdf_text(file_path)
+                except Exception:
+                    skipped_files += 1
+                    continue
+
+                document_id = hashlib.sha1(f"{self.namespace}:{relative_path}".encode()).hexdigest()
                 document = DocumentRecord(
                     namespace=self.namespace,
                     document_id=document_id,
-                    uri=f"s3://{self.bucket}/{object_record.key}",
+                    uri=relative_path,
                     checksum=content_hash,
-                    modified_at_ns=object_record.last_modified_ns,
+                    modified_at_ns=mtime_ns,
                 )
                 chunk_plan = self._build_chunks(document_id=document_id, text=text)
                 chunks = chunk_plan.chunks
@@ -263,18 +361,20 @@ class S3ObjectStoreConnector:
                     for chunk in chunks
                 ]
                 metadata = self._build_metadata(
-                    object_record=object_record,
+                    relative_path=relative_path,
                     document_id=document_id,
                     chunks=chunks,
                     chunk_metadata=chunk_plan.metadata_by_chunk_id,
+                    file_path=file_path,
                 )
                 file_state = FileIndexState(
                     namespace=self.namespace,
-                    path=object_record.key,
+                    path=relative_path,
                     document_id=document_id,
-                    mtime_ns=object_record.last_modified_ns,
+                    mtime_ns=mtime_ns,
                     content_hash=content_hash,
                 )
+
                 pending_bundles.append(
                     DocumentBundle(
                         document=document,
@@ -308,17 +408,41 @@ class S3ObjectStoreConnector:
             lexical_ingestor.flush(namespace=self.namespace, storage=self.storage)
         finally:
             lexical_ingestor.close()
+
         if full_rebuild or indexed_files > 0 or removed_files > 0:
             self._refresh_vector_index()
         elif self._ann_index is None:
             self._schedule_warmup()
+
+        elapsed_seconds = time.perf_counter() - start
         return IndexReport(
             scanned_files=scanned_files,
             indexed_files=indexed_files,
             skipped_files=skipped_files,
             removed_files=removed_files,
-            elapsed_seconds=time.perf_counter() - start,
+            elapsed_seconds=elapsed_seconds,
         )
+
+    def build_citation(self, chunk: ScoredChunk) -> CitationRecord:
+        stored_chunk = self.storage.get_chunk(self.namespace, chunk.chunk_id)
+        metadata = self.storage.get_chunk_metadata(self.namespace, stored_chunk.chunk_id)
+        uri = self.storage.get_document_uri(self.namespace, stored_chunk.document_id)
+        fragment = metadata.get("citation.fragment", "")
+        if fragment:
+            uri = f"{uri}#{fragment}"
+        snippet = stored_chunk.text.strip()[:160]
+        return CitationRecord(
+            namespace=self.namespace,
+            document_id=stored_chunk.document_id,
+            chunk_id=stored_chunk.chunk_id,
+            uri=uri,
+            snippet=snippet,
+            score=round(chunk.combined_score, 6),
+        )
+
+    # ------------------------------------------------------------------
+    # LexicalSearchCapable
+    # ------------------------------------------------------------------
 
     def search_lexical(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
@@ -340,6 +464,10 @@ class S3ObjectStoreConnector:
             )
             for match in matches
         ]
+
+    # ------------------------------------------------------------------
+    # VectorSearchCapable
+    # ------------------------------------------------------------------
 
     def search_vector(self, query: str, top_k: int) -> list[ScoredChunk]:
         self._ensure_connected()
@@ -372,22 +500,14 @@ class S3ObjectStoreConnector:
         )
         return self._neighbors_to_scored_chunks(neighbors)
 
-    def _neighbors_to_scored_chunks(self, neighbors: list[AnnResult]) -> list[ScoredChunk]:
-        scored: list[ScoredChunk] = []
-        for neighbor in neighbors:
-            chunk = self.storage.get_chunk(self.namespace, neighbor.chunk_id)
-            scored.append(
-                ScoredChunk(
-                    chunk_id=neighbor.chunk_id,
-                    document_id=chunk.document_id,
-                    text=chunk.text,
-                    vector_score=neighbor.score,
-                )
-            )
-        return scored
+    # ------------------------------------------------------------------
+    # MetadataFilterCapable
+    # ------------------------------------------------------------------
 
     def filter_metadata(
-        self, candidates: list[ScoredChunk], required: dict[str, str]
+        self,
+        candidates: list[ScoredChunk],
+        required: dict[str, str],
     ) -> list[ScoredChunk]:
         self._ensure_connected()
         if not required:
@@ -409,6 +529,10 @@ class S3ObjectStoreConnector:
                 )
         return filtered
 
+    # ------------------------------------------------------------------
+    # ScientificSearchCapable
+    # ------------------------------------------------------------------
+
     def search_scientific(
         self,
         query: str,
@@ -429,11 +553,13 @@ class S3ObjectStoreConnector:
                 canonical_unit = canonicalize_measurement(0.0, operators.numeric_range.unit)[1]
                 if operators.numeric_range.minimum is not None:
                     canonical_min = canonicalize_measurement(
-                        operators.numeric_range.minimum, operators.numeric_range.unit
+                        operators.numeric_range.minimum,
+                        operators.numeric_range.unit,
                     )[0]
                 if operators.numeric_range.maximum is not None:
                     canonical_max = canonicalize_measurement(
-                        operators.numeric_range.maximum, operators.numeric_range.unit
+                        operators.numeric_range.maximum,
+                        operators.numeric_range.unit,
                     )[0]
             except ValueError:
                 return []
@@ -472,97 +598,115 @@ class S3ObjectStoreConnector:
         scored.sort(key=lambda candidate: (-candidate.metadata_score, candidate.chunk_id))
         return scored[:top_k]
 
-    def build_citation(self, chunk: ScoredChunk) -> CitationRecord:
-        stored_chunk = self.storage.get_chunk(self.namespace, chunk.chunk_id)
-        metadata = self.storage.get_chunk_metadata(self.namespace, stored_chunk.chunk_id)
-        uri = self.storage.get_document_uri(self.namespace, stored_chunk.document_id)
-        fragment = metadata.get("citation.fragment", "")
-        if fragment:
-            uri = f"{uri}#{fragment}"
-        return CitationRecord(
-            namespace=self.namespace,
-            document_id=stored_chunk.document_id,
-            chunk_id=stored_chunk.chunk_id,
-            uri=uri,
-            snippet=stored_chunk.text.strip()[:160],
-            score=round(chunk.combined_score, 6),
-        )
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
     def _build_chunks(self, *, document_id: str, text: str) -> ScientificChunkPlan:
         return build_structure_aware_chunk_plan(
             namespace=self.namespace,
             document_id=document_id,
             text=text,
-            chunk_size=400,
+            chunk_size=self.chunk_size,
         )
 
     def _build_metadata(
         self,
         *,
-        object_record: S3Object,
+        relative_path: str,
         document_id: str,
         chunks: list[ChunkRecord],
         chunk_metadata: dict[str, dict[str, str]],
+        file_path: Path,
     ) -> list[MetadataRecord]:
-        suffix = object_record.key.rsplit(".", maxsplit=1)[-1] if "." in object_record.key else ""
+        suffix = Path(relative_path).suffix.lower()
         records: list[MetadataRecord] = [
             MetadataRecord(
                 namespace=self.namespace,
                 record_id=document_id,
                 scope="document",
-                key="bucket",
-                value=self.bucket,
-            ),
-            MetadataRecord(
-                namespace=self.namespace,
-                record_id=document_id,
-                scope="document",
-                key="key",
-                value=object_record.key,
+                key="path",
+                value=relative_path,
             ),
             MetadataRecord(
                 namespace=self.namespace,
                 record_id=document_id,
                 scope="document",
                 key="suffix",
-                value=suffix.lower(),
+                value=suffix,
+            ),
+            MetadataRecord(
+                namespace=self.namespace,
+                record_id=document_id,
+                scope="document",
+                key="connector_type",
+                value="netcdf",
             ),
         ]
-        for key, value in object_record.metadata.items():
+
+        # Extract NetCDF-specific document-level metadata
+        if HAS_XARRAY:
+            try:
+                ds = xr.open_dataset(file_path, engine="netcdf4")
+                try:
+                    attrs = dict(ds.attrs)
+                    for attr_key in _GLOBAL_ATTR_KEYS:
+                        val = attrs.get(attr_key)
+                        if val is not None:
+                            records.append(
+                                MetadataRecord(
+                                    namespace=self.namespace,
+                                    record_id=document_id,
+                                    scope="document",
+                                    key=f"netcdf.{attr_key.lower()}",
+                                    value=str(val),
+                                )
+                            )
+                    var_names = sorted(str(v) for v in ds.data_vars)
+                    if var_names:
+                        records.append(
+                            MetadataRecord(
+                                namespace=self.namespace,
+                                record_id=document_id,
+                                scope="document",
+                                key="netcdf.variables",
+                                value=",".join(var_names),
+                            )
+                        )
+                    coord_names = sorted(str(c) for c in ds.coords)
+                    if coord_names:
+                        records.append(
+                            MetadataRecord(
+                                namespace=self.namespace,
+                                record_id=document_id,
+                                scope="document",
+                                key="netcdf.coordinates",
+                                value=",".join(coord_names),
+                            )
+                        )
+                finally:
+                    ds.close()
+            except Exception:
+                pass
+
+        for chunk in chunks:
             records.append(
                 MetadataRecord(
                     namespace=self.namespace,
-                    record_id=document_id,
-                    scope="document",
-                    key=f"object.{key}",
-                    value=value,
+                    record_id=chunk.chunk_id,
+                    scope="chunk",
+                    key="path",
+                    value=relative_path,
                 )
             )
-        for chunk in chunks:
-            records.extend(
-                [
-                    MetadataRecord(
-                        namespace=self.namespace,
-                        record_id=chunk.chunk_id,
-                        scope="chunk",
-                        key="bucket",
-                        value=self.bucket,
-                    ),
-                    MetadataRecord(
-                        namespace=self.namespace,
-                        record_id=chunk.chunk_id,
-                        scope="chunk",
-                        key="key",
-                        value=object_record.key,
-                    ),
-                    MetadataRecord(
-                        namespace=self.namespace,
-                        record_id=chunk.chunk_id,
-                        scope="chunk",
-                        key="suffix",
-                        value=suffix.lower(),
-                    ),
-                ]
+            records.append(
+                MetadataRecord(
+                    namespace=self.namespace,
+                    record_id=chunk.chunk_id,
+                    scope="chunk",
+                    key="suffix",
+                    value=suffix,
+                )
             )
             for key, value in sorted(chunk_metadata.get(chunk.chunk_id, {}).items()):
                 records.append(
@@ -575,6 +719,20 @@ class S3ObjectStoreConnector:
                     )
                 )
         return records
+
+    def _neighbors_to_scored_chunks(self, neighbors: list[AnnResult]) -> list[ScoredChunk]:
+        scored: list[ScoredChunk] = []
+        for neighbor in neighbors:
+            chunk = self.storage.get_chunk(self.namespace, neighbor.chunk_id)
+            scored.append(
+                ScoredChunk(
+                    chunk_id=neighbor.chunk_id,
+                    document_id=chunk.document_id,
+                    text=chunk.text,
+                    vector_score=neighbor.score,
+                )
+            )
+        return scored
 
     def _ensure_connected(self) -> None:
         if not self._connected:

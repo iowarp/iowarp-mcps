@@ -77,6 +77,22 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Formula-targeted retrieval expression.",
     )
+    query_parser.add_argument(
+        "--agentic",
+        action="store_true",
+        help="Enable multi-hop agentic retrieval with query rewriting.",
+    )
+    query_parser.add_argument(
+        "--max-hops",
+        type=int,
+        default=3,
+        help="Maximum retrieval hops in agentic mode (default: 3).",
+    )
+    query_parser.add_argument(
+        "--llm-rewrite",
+        action="store_true",
+        help="Use LLM-based query rewriting (requires anthropic). Falls back to SI expansion.",
+    )
 
     seed_parser = subparsers.add_parser("seed", help="Seed explicit demo/test records.")
     seed_parser.add_argument(
@@ -138,6 +154,9 @@ def _run_query(
     numeric_range: str,
     unit_match: str,
     formula: str,
+    agentic: bool = False,
+    max_hops: int = 3,
+    llm_rewrite: bool = False,
 ) -> int:
     registry = build_default_registry()
     filters = _parse_filters(filter_pairs)
@@ -175,7 +194,54 @@ def _run_query(
                 )
 
         coordinator = RetrievalCoordinator()
-        if len(connectors) == 1:
+
+        if agentic:
+            from clio_agentic_search.retrieval.agentic import AgenticRetriever
+            from clio_agentic_search.retrieval.query_rewriter import (
+                FallbackQueryRewriter,
+                QueryRewriter,
+            )
+
+            if llm_rewrite:
+                try:
+                    rewriter: QueryRewriter | FallbackQueryRewriter = QueryRewriter()
+                except RuntimeError:
+                    print(
+                        "Warning: anthropic not installed, falling back to SI expansion",
+                        file=sys.stderr,
+                    )
+                    rewriter = FallbackQueryRewriter()
+            else:
+                rewriter = FallbackQueryRewriter()
+
+            agentic_retriever = AgenticRetriever(
+                coordinator=coordinator,
+                rewriter=rewriter,
+                max_hops=max_hops,
+            )
+            if len(connectors) == 1:
+                agentic_result = agentic_retriever.query(
+                    connector=connectors[0],
+                    query=text,
+                    top_k=top_k,
+                    metadata_filters=filters,
+                    scientific_operators=scientific_operators,
+                )
+            else:
+                agentic_result = agentic_retriever.query_namespaces(
+                    connectors=connectors,
+                    query=text,
+                    top_k=top_k,
+                    metadata_filters=filters,
+                    scientific_operators=scientific_operators,
+                )
+            result_namespaces = agentic_result.namespace.split(",")
+            citations = agentic_result.citations
+            trace = agentic_result.trace
+            print(
+                f"agentic_hops={agentic_result.total_hops},final_query={agentic_result.final_query}"
+            )
+        elif len(connectors) == 1:
             result = coordinator.query(
                 connector=connectors[0],
                 query=text,
@@ -407,6 +473,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 numeric_range=args.numeric_range,
                 unit_match=args.unit_match,
                 formula=args.formula,
+                agentic=args.agentic,
+                max_hops=args.max_hops,
+                llm_rewrite=args.llm_rewrite,
             )
         except ValueError as error:
             print(str(error), file=sys.stderr)

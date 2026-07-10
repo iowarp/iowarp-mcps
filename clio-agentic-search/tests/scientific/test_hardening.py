@@ -149,7 +149,7 @@ def test_numeric_range_filters_noisy_corpus_correctly(tmp_path: Path) -> None:
             metadata = connector.storage.get_chunk_metadata("test_ns", citation.chunk_id)
             measurements = decode_measurements(metadata.get("scientific.measurements", ""))
             in_range = any(
-                m.canonical_unit == "pa" and 200000.0 <= m.canonical_value <= 310000.0
+                m.canonical_unit == "1,-1,-2,0,0,0,0" and 200000.0 <= m.canonical_value <= 310000.0
                 for m in measurements
             )
             assert in_range, (
@@ -182,7 +182,7 @@ def test_misleading_pressure_mention_excluded_by_tight_range(tmp_path: Path) -> 
             metadata = connector.storage.get_chunk_metadata("test_ns", citation.chunk_id)
             measurements = decode_measurements(metadata.get("scientific.measurements", ""))
             in_range = any(
-                m.canonical_unit == "pa" and 340000.0 <= m.canonical_value <= 360000.0
+                m.canonical_unit == "1,-1,-2,0,0,0,0" and 340000.0 <= m.canonical_value <= 360000.0
                 for m in measurements
             )
             assert in_range, f"Citation {citation.uri} outside [340,360] kPa"
@@ -274,7 +274,7 @@ def test_object_store_noisy_corpus_numeric_precision(tmp_path: Path) -> None:
         # At least 101000 and 102000 Pa should be present
         exactness = numeric_exactness(
             retrieved_measurements,
-            expected=[(101000.0, "pa"), (102000.0, "pa")],
+            expected=[(101000.0, "1,-1,-2,0,0,0,0"), (102000.0, "1,-1,-2,0,0,0,0")],
             tolerance=1.0,
         )
         assert exactness >= 1.0

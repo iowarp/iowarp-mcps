@@ -77,15 +77,16 @@ def test_structure_aware_chunking_indexes_sections_tables_equations_and_captions
             )
 
         assert any(
-            measurement.canonical_unit == "pa" and measurement.canonical_value == 120000.0
+            measurement.canonical_unit == "1,-1,-2,0,0,0,0"
+            and measurement.canonical_value == 120000.0
             for measurement in all_measurements
         )
         assert any(
-            measurement.canonical_unit == "m/s" and measurement.canonical_value == 10.0
+            measurement.canonical_unit == "0,1,-1,0,0,0,0" and measurement.canonical_value == 10.0
             for measurement in all_measurements
         )
         assert any(
-            measurement.canonical_unit == "kg" and measurement.canonical_value == 0.5
+            measurement.canonical_unit == "1,0,0,0,0,0,0" and measurement.canonical_value == 0.5
             for measurement in all_measurements
         )
         assert any(
@@ -200,7 +201,7 @@ def test_scientific_benchmark_metrics_are_reproducible_on_same_corpus(tmp_path: 
         assert (
             numeric_exactness(
                 retrieved_measurements,
-                expected=[(120000.0, "pa"), (150000.0, "pa")],
+                expected=[(120000.0, "1,-1,-2,0,0,0,0"), (150000.0, "1,-1,-2,0,0,0,0")],
                 tolerance=1e-9,
             )
             == 1.0

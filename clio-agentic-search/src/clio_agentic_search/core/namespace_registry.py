@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from clio_agentic_search.connectors.filesystem import FilesystemConnector
+from clio_agentic_search.connectors.hdf5.connector import HDF5Connector
+from clio_agentic_search.connectors.netcdf.connector import NetCDFConnector
 from clio_agentic_search.connectors.object_store import InMemoryS3Client, S3ObjectStoreConnector
 from clio_agentic_search.connectors.vector_store import (
     InMemoryQdrantClient,
@@ -143,6 +145,36 @@ def build_default_registry() -> NamespaceRegistry:
         object_connector,
         runtime_config=object_bundle.runtime,
         auth_config=object_bundle.auth,
+    )
+
+    hdf5_bundle = bundles["hdf5_data"]
+    hdf5_connector = HDF5Connector(
+        namespace="hdf5_data",
+        root=Path(hdf5_bundle.runtime.options["root"]),
+        storage=DuckDBStorage(database_path=_namespaced_storage_path(storage_path, "hdf5_data")),
+        embedder=embedder,
+        embedding_model=embedder.model_name,
+    )
+    registry.register(
+        "hdf5_data",
+        hdf5_connector,
+        runtime_config=hdf5_bundle.runtime,
+        auth_config=hdf5_bundle.auth,
+    )
+
+    netcdf_bundle = bundles["netcdf_data"]
+    netcdf_connector = NetCDFConnector(
+        namespace="netcdf_data",
+        root=Path(netcdf_bundle.runtime.options["root"]),
+        storage=DuckDBStorage(database_path=_namespaced_storage_path(storage_path, "netcdf_data")),
+        embedder=embedder,
+        embedding_model=embedder.model_name,
+    )
+    registry.register(
+        "netcdf_data",
+        netcdf_connector,
+        runtime_config=netcdf_bundle.runtime,
+        auth_config=netcdf_bundle.auth,
     )
 
     vector_bundle = bundles["vector_qdrant"]
