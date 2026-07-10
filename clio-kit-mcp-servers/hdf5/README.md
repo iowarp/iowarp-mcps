@@ -313,13 +313,6 @@ The HDF5 server is the flagship implementation, showcasing the full power of Fas
 
 ### `open_file`
 **Description**: Open an HDF5 file for operations.
-
-Args:
-    path: Path to HDF5 file
-    mode: File access mode ('r', 'r+', 'w', 'a')
-
-Returns:
-    Success message with file info
 **Tags**: core, file
 
 ### `close_file`
@@ -347,239 +340,101 @@ Returns:
 
 ### `get_by_path`
 **Description**: Get a dataset or group by path.
-
-Args:
-    path: Path to object within file
-
-Returns:
-    Object information
 **Hints**: read-only, idempotent
 **Tags**: dataset, navigation
 
 ### `list_keys`
 **Description**: List keys in a group.
-
-Args:
-    path: Path to group (default: root)
-
-Returns:
-    JSON array of keys
 **Hints**: read-only, idempotent
 **Tags**: dataset, navigation
 
 ### `visit`
 **Description**: Visit all nodes recursively.
-
-Args:
-    callback_fn: Callback function name (currently collects all paths)
-
-Returns:
-    JSON array of all paths and types
 **Hints**: read-only, idempotent
 **Tags**: dataset, navigation
 
 ### `read_full_dataset`
 **Description**: Read an entire dataset with efficient chunked reading for large datasets.
-
-Args:
-    path: Path to dataset within file
-
-Returns:
-    Dataset description
 **Hints**: read-only, idempotent
 **Tags**: dataset, read
 
 ### `read_partial_dataset`
 **Description**: Read a portion of a dataset with slicing.
-
-Args:
-    path: Path to dataset within file
-    start: Starting indices as comma-separated string (e.g., "0,0,0")
-    count: Number of elements as comma-separated string (e.g., "10,10,10")
-
-Returns:
-    Partial dataset description
 **Hints**: read-only, idempotent
 **Tags**: dataset, read
 
 ### `get_shape`
 **Description**: Get the shape of a dataset.
-
-Args:
-    path: Path to dataset
-
-Returns:
-    Dataset shape
 **Hints**: read-only, idempotent
 **Tags**: dataset, metadata
 
 ### `get_dtype`
 **Description**: Get the data type of a dataset.
-
-Args:
-    path: Path to dataset
-
-Returns:
-    Dataset dtype
 **Hints**: read-only, idempotent
 **Tags**: dataset, metadata
 
 ### `get_size`
 **Description**: Get the size of a dataset.
-
-Args:
-    path: Path to dataset
-
-Returns:
-    Dataset size
 **Hints**: read-only, idempotent
 **Tags**: dataset, metadata
 
 ### `get_chunks`
 **Description**: Get chunk information for a dataset.
-
-Args:
-    path: Path to dataset
-
-Returns:
-    Chunk configuration
 **Hints**: read-only, idempotent
 **Tags**: dataset, metadata, performance
 
 ### `read_attribute`
 **Description**: Read an attribute from an object.
-
-Args:
-    path: Path to object
-    name: Attribute name
-
-Returns:
-    Attribute value
 **Hints**: read-only, idempotent
 **Tags**: attribute, metadata
 
 ### `list_attributes`
 **Description**: List all attributes of an object.
-
-Args:
-    path: Path to object
-
-Returns:
-    JSON dict of attributes
 **Hints**: read-only, idempotent
 **Tags**: attribute, metadata
 
 ### `hdf5_parallel_scan`
 **Description**: Fast multi-file scanning with parallel processing.
-
-Args:
-    directory: Directory to scan
-    pattern: File pattern (default: *.h5)
-    ctx: Context for progress reporting
-
-Returns:
-    Scan summary with file metadata
 **Hints**: read-only, idempotent
 **Tags**: parallel, performance, scan
 
 ### `hdf5_batch_read`
 **Description**: Read multiple datasets in parallel.
-
-Args:
-    paths: Comma-separated dataset paths or JSON array
-    slice_spec: Optional slice specification
-    ctx: Context for progress reporting
-
-Returns:
-    Batch read summary
 **Hints**: read-only, idempotent
 **Tags**: parallel, performance, read
 
 ### `hdf5_stream_data`
 **Description**: Stream large datasets efficiently with memory management.
-
-Args:
-    path: Path to dataset
-    chunk_size: Number of elements per chunk
-    max_chunks: Maximum number of chunks to process
-    ctx: Context for progress reporting
-
-Returns:
-    Stream processing summary with statistics
 **Hints**: read-only, idempotent
 **Tags**: performance, streaming
 
 ### `hdf5_aggregate_stats`
 **Description**: Parallel statistics computation across multiple datasets.
-
-Args:
-    paths: Comma-separated dataset paths or JSON array
-    stats: Comma-separated stats to compute (default: mean,std,min,max,sum,count)
-    ctx: Context for progress reporting
-
-Returns:
-    Aggregate statistics summary
 **Hints**: read-only, idempotent
 **Tags**: analysis, parallel, performance
 
 ### `analyze_dataset_structure`
 **Description**: Analyze and understand file organization and data patterns with AI insights.
-
-Args:
-    path: Path to analyze (default: root)
-    ctx: Context for LLM sampling
-
-Returns:
-    Structure analysis with AI insights
 **Hints**: read-only, idempotent
 **Tags**: ai-powered, analysis, discovery
 
 ### `find_similar_datasets`
 **Description**: Find datasets with similar characteristics to a reference dataset with AI analysis.
-
-Args:
-    reference_path: Path to reference dataset
-    similarity_threshold: Similarity threshold (0.0 to 1.0)
-    ctx: Context for LLM sampling
-
-Returns:
-    List of similar datasets with similarity scores and AI insights
 **Hints**: read-only, idempotent
 **Tags**: ai-powered, discovery, similarity
 
 ### `suggest_next_exploration`
 **Description**: Suggest interesting data to explore next based on current location with AI recommendations.
-
-Args:
-    current_path: Current path (default: root)
-    ctx: Context for LLM sampling
-
-Returns:
-    Exploration suggestions with interest scores and AI recommendations
 **Hints**: read-only, idempotent
 **Tags**: ai-powered, discovery, recommendation
 
 ### `identify_io_bottlenecks`
 **Description**: Identify potential I/O bottlenecks and performance issues with AI recommendations.
-
-Args:
-    analysis_paths: Optional list of paths to analyze (auto-discovers if None)
-    ctx: Context for LLM sampling
-
-Returns:
-    Bottleneck analysis report with AI recommendations
 **Hints**: read-only, idempotent
 **Tags**: ai-powered, discovery, performance
 
 ### `optimize_access_pattern`
 **Description**: Suggest better approaches for data access based on usage patterns.
-
-Args:
-    dataset_path: Path to dataset
-    access_pattern: Access pattern (sequential, random, batch)
-
-Returns:
-    Optimization recommendations
 **Hints**: read-only, idempotent
 **Tags**: discovery, optimization, performance
 
@@ -602,14 +457,6 @@ Returns:
 
 ### `export_dataset`
 **Description**: Export dataset to various formats with user format selection.
-
-Args:
-    path: Path to dataset within file
-    output_path: Optional output file path
-    ctx: Context for elicitation
-
-Returns:
-    Export summary
 **Tags**: dataset, export, interactive
 
 ### Resources
@@ -640,37 +487,9 @@ Returns:
 ### Prompts
 
 - **explore_hdf5_file**: Generate workflow for exploring an HDF5 file.
-
-Args:
-    file_path: Path to HDF5 file
-
-Returns:
-    Exploration workflow prompt
 - **optimize_hdf5_access**: Generate optimization workflow for HDF5 I/O.
-
-Args:
-    file_path: Path to HDF5 file
-    access_pattern: Access pattern (sequential, random, batch)
-
-Returns:
-    Optimization workflow prompt
 - **compare_hdf5_datasets**: Generate comparison workflow for two datasets.
-
-Args:
-    file_path: Path to HDF5 file
-    dataset1: First dataset path
-    dataset2: Second dataset path
-
-Returns:
-    Comparison workflow prompt
 - **batch_process_hdf5**: Generate batch processing workflow for multiple HDF5 files.
-
-Args:
-    directory: Directory containing HDF5 files
-    operation: Operation to perform (statistics, scan, export)
-
-Returns:
-    Batch processing workflow prompt
 ## Claude Code
 
 ```bash
