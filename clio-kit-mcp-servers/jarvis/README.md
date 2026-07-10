@@ -148,7 +148,6 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 ### Prompts
 
 - **create_pipeline_workflow**: Guided workflow for creating and deploying a JARVIS pipeline.
-
 ## Gemini CLI
 
 Add to `~/.gemini/settings.json`:
