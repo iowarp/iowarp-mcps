@@ -12,11 +12,19 @@ authors = [
 keywords = ["jarvis", "pipeline-management", "high-performance-computing", "hpc", "workflow", "data-pipelines", "scientific-computing", "mcp", "package-management"]
 
 dependencies = [
-  "fastmcp>=3.0.1",
+  "fastmcp>=3.2.0",
   "fastapi",
-  "python-dotenv>=1.0.0",
+  "python-dotenv>=1.2.2",
   "jarvis-cd @ git+https://github.com/grc-iit/jarvis-cd.git@main#egg=jarvis-cd",
-  "starlette>=0.49.1"
+  "starlette>=1.3.1",
+  "authlib>=1.6.12",
+  "cryptography>=48.0.1",
+  "idna>=3.15",
+  "pydantic-settings>=2.14.2",
+  "pygments>=2.20.0",
+  "pyjwt>=2.13.0",
+  "python-multipart>=0.0.31",
+  "urllib3>=2.7.0",
 ]
 
 [project.urls]
@@ -29,7 +37,7 @@ jarvis-admin-mcp = "jarvis_mcp.admin_server:main"
 
 [tool.uv]
 dev-dependencies = [
-    "pytest>=8.4.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=6.2.1",
     "pytest-timeout>=2.4.0",
