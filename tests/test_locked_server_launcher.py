@@ -13,6 +13,9 @@ from clio_kit import (
 )
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
 def test_locked_server_command_uses_immutable_frozen_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -27,6 +30,7 @@ def test_locked_server_command_uses_immutable_frozen_project(
     assert command == [
         "/opt/uv/bin/uv",
         "run",
+        "--no-dev",
         "--no-editable",
         "--frozen",
         "--project",
@@ -42,6 +46,19 @@ def test_locked_server_command_rejects_missing_lock(tmp_path: Path) -> None:
 
     with pytest.raises(click.ClickException, match="refusing an unpinned"):
         locked_server_command(server_path, "spack-mcp")
+
+
+def test_every_embedded_server_ships_a_lock() -> None:
+    """A clean source checkout must contain every lock required by the launcher."""
+    servers_root = REPOSITORY_ROOT / "clio-kit-mcp-servers"
+    projects = sorted(
+        path.parent for path in servers_root.glob("*/pyproject.toml") if path.is_file()
+    )
+
+    assert projects
+    assert [
+        project.name for project in projects if not (project / "uv.lock").is_file()
+    ] == []
 
 
 def test_locked_server_environment_is_source_and_lock_addressed(

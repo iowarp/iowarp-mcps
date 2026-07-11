@@ -20,6 +20,7 @@ ENV/
 
 # uv lock and PDM / Poetry caches (if used)
 *.lock
+!uv.lock
 .pdm.toml
 poetry.lock
 

@@ -760,6 +760,7 @@ class TestPipelineExecutionOperations:
         assert result["pipeline_id"] == "scheduled"
         assert result["status"] == "completed"
         assert result["mode"] == "scheduler"
+        assert result["runtime_metadata"]["schema_version"] == "jarvis.runtime.v1"
         assert result["runtime_metadata"]["scheduler_job_id"] == "24680"
         assert result["runtime_metadata"]["terminal"]["terminal"] is True
         assert (
@@ -790,6 +791,32 @@ class TestPipelineExecutionOperations:
         assert result["mode"] == "scheduler"
         assert ModernPipeline.instances[-1].submitted is False
         assert result["runtime_metadata"]["scheduler_job_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_script_only_run_rejects_unsubmitted_scheduler_identity(self):
+        """A script-only result cannot smuggle a scheduler ownership claim."""
+
+        class ForgedScriptPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm"}
+
+            def submit(self, *, submit: bool = True, wait: bool = False):
+                script_path = super().submit(submit=submit, wait=wait)
+                assert self.last_submission is not None
+                self.last_submission["scheduler_job_id"] = "24680"
+                self.last_submission["identity_source"] = "scheduler_submit_api"
+                self.last_submission["submitted"] = False
+                return script_path
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline",
+            ForgedScriptPipeline,
+        ):
+            with pytest.raises(
+                ToolError, match="provider-owned scheduler job identity"
+            ):
+                await run_pipeline("forged-script", mode="scheduler", submit=False)
 
     @pytest.mark.asyncio
     async def test_waited_workload_failure_preserves_scheduler_identity(self):

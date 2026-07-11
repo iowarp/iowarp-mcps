@@ -99,9 +99,10 @@ uvx clio-kit prompt code-coverage-prompt # Use a prompt
 
 Released `clio-kit` wheels execute each embedded MCP server from that server's
 shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
-under the user cache and refuses to resolve an embedded server whose lock is
-missing. The `--branch` launcher option is an explicit development path and is
-not an immutable release-artifact path.
+under the user cache, installs only production dependencies, and refuses to
+resolve an embedded server whose lock is missing. The `--branch` launcher
+option is an explicit development path and is not an immutable
+release-artifact path.
 
 <details>
 <summary><b>Install in Cursor</b></summary>

@@ -381,7 +381,7 @@ class TestMCPHandlers100Coverage:
 
             # Test successful SSH connection
             with patch(
-                "node_hardware_mcp.capabilities.remote_node_info.get_node_info"
+                "node_hardware_mcp.mcp_handlers.get_remote_node_info"
             ) as mock_remote:
                 mock_remote.return_value = {
                     "hostname": "remote.server.com",
@@ -398,7 +398,7 @@ class TestMCPHandlers100Coverage:
 
             # Test SSH connection failure
             with patch(
-                "node_hardware_mcp.capabilities.remote_node_info.get_node_info"
+                "node_hardware_mcp.mcp_handlers.get_remote_node_info"
             ) as mock_remote:
                 mock_remote.side_effect = Exception("SSH connection failed")
 
@@ -410,7 +410,7 @@ class TestMCPHandlers100Coverage:
 
             # Test with default parameters
             with patch(
-                "node_hardware_mcp.capabilities.remote_node_info.get_node_info"
+                "node_hardware_mcp.mcp_handlers.get_remote_node_info"
             ) as mock_remote:
                 mock_remote.return_value = {"status": "connected"}
 

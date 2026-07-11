@@ -100,6 +100,33 @@ scheduler execution. Scheduler runs return a JARVIS-owned
 `runtime_metadata.scheduler_job_id` parsed from the scheduler's structured
 submission API. The relay must not infer that identity from application stdout.
 
+### Runtime and progress contracts
+
+Every authoritative `jarvis_run` result carries producer schema
+`jarvis.runtime.v1`. A claimed scheduler identity is accompanied by
+`details.scheduler_submission` using `jarvis.scheduler.submission.v1`; its
+provider and job id match the runtime record, `submitted` is true, and
+`identity_source` is `scheduler_submit_api`. Consumers must treat a missing or
+different schema as compatibility data, not scheduler ownership proof.
+
+When the MCP client supplies a standard progress token, `jarvis_run` binds the
+selected package provider from the
+`clio_relay.package_progress_adapters` entry-point group and emits
+`clio-kit.jarvis-package-progress.v1` envelopes through MCP
+`notifications/progress`. Each envelope identifies the JARVIS execution,
+pipeline, provider entry point and distribution, monotonic notification
+sequence, selected source authority, and bounded JSON progress record.
+The entry-point group is the generic relay-consumer extension protocol, not an
+application-ownership claim. The recorded entry-point value and distribution
+identity provide runtime provenance, not a cryptographic attestation; the
+built-in LAMMPS provider is
+`jarvis_cd.progress.lammps:adapter_from_package` from `jarvis-cd`. Package logs
+are authoritative when the provider declares one; otherwise the server
+uses its serialized JARVIS-stdout fallback. Notifications are capped at 64 KiB
+each, 10,000 per run, and 4 MiB total. Provider or reporter failure does not
+orphan the underlying JARVIS operation: the operation remains owned and is
+awaited before the error is returned.
+
 ## Claude Code
 
 ```bash

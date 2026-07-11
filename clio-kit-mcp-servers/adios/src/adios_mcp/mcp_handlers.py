@@ -1,5 +1,6 @@
 # mcp_handlers.py
 import importlib
+from collections.abc import Callable
 from typing import Any, Dict, Optional
 
 from fastmcp.exceptions import ToolError
@@ -11,7 +12,11 @@ class _LazyImplementation:
     def __init__(self, module_name: str, export_name: str) -> None:
         self._module_name = module_name
         self._export_name = export_name
-        setattr(self, export_name, self._invoke)
+
+    def __getattr__(self, name: str) -> Callable[..., Any]:
+        if name != self._export_name:
+            raise AttributeError(name)
+        return self._invoke
 
     def _invoke(self, *args: Any, **kwargs: Any) -> Any:
         module = importlib.import_module(self._module_name)

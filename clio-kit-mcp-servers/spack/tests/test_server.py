@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -147,7 +148,7 @@ def test_main_sets_validated_spack_command(
 
         fresh_server.main()
 
-        assert Path(server.os.environ["SPACK_MCP_COMMAND"]) == command.resolve()
+        assert Path(os.environ["SPACK_MCP_COMMAND"]) == command.resolve()
     finally:
         importlib.reload(server)
 

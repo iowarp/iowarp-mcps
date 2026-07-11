@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Final, Literal, cast
@@ -495,7 +496,9 @@ def _run_bounded_command(
             stderr=subprocess.PIPE,
             env=env,
             start_new_session=os.name != "nt",
-            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0),
+            creationflags=(
+                int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) if os.name == "nt" else 0
+            ),
         )
     except OSError:
         if owned_stdin is not None:
@@ -776,9 +779,7 @@ def _terminate_process_tree(
     if process.poll() is not None and not include_exited_group:
         return
     try:
-        # Windows type stubs omit this POSIX API even though this branch is
-        # guarded by ``os.name`` and only runs on POSIX hosts.
-        kill_process_group = os.killpg  # type: ignore[attr-defined]
+        kill_process_group = cast(Callable[[int, int], None], vars(os)["killpg"])
         kill_process_group(process.pid, signal.SIGTERM)
     except ProcessLookupError:
         return

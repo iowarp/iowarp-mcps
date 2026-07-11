@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 from dotenv import load_dotenv
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 from pydantic import (
@@ -698,6 +698,7 @@ async def jarvis_run_tool(
     submit: bool = True,
     wait: bool = False,
     spack_specs: Optional[list[str]] = None,
+    ctx: Context | None = None,
 ) -> dict:
     """Run or submit a pipeline after persisting any requested Spack environment."""
     mode = "auto"
@@ -712,12 +713,35 @@ async def jarvis_run_tool(
         await configure_pipeline(
             pipeline_id, _execution_intent_to_pipeline_config(intent)
         )
-    return await run_pipeline(
-        pipeline_id,
-        mode=mode,
-        submit=submit,
-        wait=wait,
-        spack_specs=spack_specs,
+
+    async def report_progress(
+        current: float,
+        total: float | None,
+        message: str,
+    ) -> None:
+        if ctx is not None:
+            await ctx.report_progress(current, total, message)
+
+    run_arguments: dict[str, Any] = {
+        "mode": mode,
+        "submit": submit,
+        "wait": wait,
+        "spack_specs": spack_specs,
+    }
+    if _context_has_progress_token(ctx):
+        run_arguments["progress_reporter"] = report_progress
+    return await run_pipeline(pipeline_id, **run_arguments)
+
+
+def _context_has_progress_token(ctx: Context | None) -> bool:
+    """Return whether this MCP request explicitly negotiated live progress."""
+    if ctx is None:
+        return False
+    request_context = ctx.request_context
+    return (
+        request_context is not None
+        and request_context.meta is not None
+        and request_context.meta.progressToken is not None
     )
 
 

@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 from collections import deque
+from collections.abc import Callable
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -19,6 +20,13 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
+
+from jarvis_mcp.progress import (
+    PackageProgressBinding,
+    PackageProgressExecution,
+    ProgressReporter,
+    bind_package_progress_provider,
+)
 
 
 RUNTIME_METADATA_SCHEMA = "jarvis.runtime.v1"
@@ -342,6 +350,7 @@ async def run_pipeline(
     submit: bool = True,
     wait: bool = False,
     spack_specs: Optional[list[str]] = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict:
     """Run a pipeline and return JARVIS-owned structured runtime metadata."""
     started_at = datetime.now(timezone.utc)
@@ -362,103 +371,125 @@ async def run_pipeline(
                 raise ValueError(
                     "scheduler mode requires a configured pipeline scheduler"
                 )
-            if normalized == "scheduler" or (normalized == "auto" and has_scheduler):
-                if submit and not hasattr(pipeline, "last_submission"):
-                    raise RuntimeError(
-                        "installed JARVIS-CD does not expose the structured "
-                        "scheduler submission API required by jarvis_run"
-                    )
-                prior_submission = _jsonable(getattr(pipeline, "last_submission", None))
-                try:
-                    script_path = pipeline.submit(submit=submit, wait=wait)
-                except Exception as exc:
-                    failure = _waited_workload_failure_metadata(
-                        pipeline,
-                        scheduler=scheduler,
-                        prior_submission=prior_submission,
-                        submit=submit,
-                        wait=wait,
-                    )
-                    if failure is None:
-                        raise
-                    (
-                        failed_submission_metadata,
-                        failed_script_path,
-                        returncode,
-                    ) = failure
-                    failed_result = _runtime_result(
-                        pipeline,
-                        pipeline_id=pipeline_id,
-                        execution_id=execution_id,
-                        mode="scheduler",
-                        status="failed",
-                        terminal=True,
-                        scheduler=scheduler,
-                        scheduler_phase="workload_failed",
-                        script_path=failed_script_path,
-                        submit=True,
-                        wait=True,
-                        started_at=started_at,
-                        environment_metadata=environment_metadata,
-                        submission_metadata=failed_submission_metadata,
-                        terminal_returncode=returncode,
-                        terminal_reason=str(exc),
-                    )
-                    raise ToolError(
-                        _structured_runtime_error(
-                            code="jarvis_workload_failed",
-                            message=f"Run failed: {exc}",
-                            pipeline_id=pipeline_id,
-                            execution_id=execution_id,
-                            runtime_metadata=failed_result["runtime_metadata"],
-                        )
-                    ) from exc
-                submission_metadata = _scheduler_submission_metadata(
+            progress_binding = (
+                bind_package_progress_provider(
+                    _pipeline_packages(pipeline),
+                    execution_id=execution_id,
+                    base_deploy_mode=getattr(pipeline, "base_deploy_mode", None),
+                )
+                if progress_reporter is not None
+                else None
+            )
+        resolved_pipeline_id = _pipeline_id(pipeline) or pipeline_id
+        if normalized == "scheduler" or (normalized == "auto" and has_scheduler):
+            if submit and not hasattr(pipeline, "last_submission"):
+                raise RuntimeError(
+                    "installed JARVIS-CD does not expose the structured "
+                    "scheduler submission API required by jarvis_run"
+                )
+            prior_submission = _jsonable(getattr(pipeline, "last_submission", None))
+            try:
+                script_path = await _run_pipeline_operation(
+                    lambda: pipeline.submit(submit=submit, wait=wait),
+                    progress_binding=progress_binding,
+                    progress_reporter=progress_reporter,
+                    execution_id=execution_id,
+                    pipeline_id=resolved_pipeline_id,
+                )
+            except Exception as exc:
+                failure = _waited_workload_failure_metadata(
                     pipeline,
                     scheduler=scheduler,
-                    script_path=str(script_path),
-                    require_identity=submit,
+                    prior_submission=prior_submission,
+                    submit=submit,
+                    wait=wait,
                 )
-                status = (
-                    "completed"
-                    if submit and wait
-                    else "submitted"
-                    if submit
-                    else "scripted"
-                )
-                return _runtime_result(
+                if failure is None:
+                    raise
+                (
+                    failed_submission_metadata,
+                    failed_script_path,
+                    returncode,
+                ) = failure
+                failed_result = _runtime_result(
                     pipeline,
                     pipeline_id=pipeline_id,
                     execution_id=execution_id,
                     mode="scheduler",
-                    status=status,
-                    terminal=submit and wait,
+                    status="failed",
+                    terminal=True,
                     scheduler=scheduler,
-                    scheduler_phase=status,
-                    script_path=str(script_path),
-                    submit=submit,
-                    wait=wait,
+                    scheduler_phase="workload_failed",
+                    script_path=failed_script_path,
+                    submit=True,
+                    wait=True,
                     started_at=started_at,
                     environment_metadata=environment_metadata,
-                    submission_metadata=submission_metadata,
+                    submission_metadata=failed_submission_metadata,
+                    terminal_returncode=returncode,
+                    terminal_reason=str(exc),
                 )
-            pipeline.run()
+                raise ToolError(
+                    _structured_runtime_error(
+                        code="jarvis_workload_failed",
+                        message=f"Run failed: {exc}",
+                        pipeline_id=pipeline_id,
+                        execution_id=execution_id,
+                        runtime_metadata=failed_result["runtime_metadata"],
+                    )
+                ) from exc
+            submission_metadata = _scheduler_submission_metadata(
+                pipeline,
+                scheduler=scheduler,
+                script_path=str(script_path),
+                require_identity=submit,
+            )
+            status = (
+                "completed"
+                if submit and wait
+                else "submitted"
+                if submit
+                else "scripted"
+            )
             return _runtime_result(
                 pipeline,
                 pipeline_id=pipeline_id,
                 execution_id=execution_id,
-                mode="direct",
-                status="completed",
-                terminal=True,
-                scheduler=None,
-                scheduler_phase=None,
-                script_path=None,
-                submit=True,
-                wait=True,
+                mode="scheduler",
+                status=status,
+                terminal=submit and wait,
+                scheduler=scheduler,
+                scheduler_phase=status,
+                script_path=str(script_path),
+                submit=submit,
+                wait=wait,
                 started_at=started_at,
                 environment_metadata=environment_metadata,
-                submission_metadata=None,
+                submission_metadata=submission_metadata,
             )
+        await _run_pipeline_operation(
+            pipeline.run,
+            progress_binding=progress_binding,
+            progress_reporter=progress_reporter,
+            execution_id=execution_id,
+            pipeline_id=resolved_pipeline_id,
+        )
+        return _runtime_result(
+            pipeline,
+            pipeline_id=pipeline_id,
+            execution_id=execution_id,
+            mode="direct",
+            status="completed",
+            terminal=True,
+            scheduler=None,
+            scheduler_phase=None,
+            script_path=None,
+            submit=True,
+            wait=True,
+            started_at=started_at,
+            environment_metadata=environment_metadata,
+            submission_metadata=None,
+        )
     except ToolError:
         raise
     except Exception as e:
@@ -470,6 +501,25 @@ async def run_pipeline(
                 execution_id=execution_id,
             )
         ) from e
+
+
+async def _run_pipeline_operation(
+    operation: Any,
+    *,
+    progress_binding: PackageProgressBinding | None,
+    progress_reporter: ProgressReporter | None,
+    execution_id: str,
+    pipeline_id: str,
+) -> Any:
+    """Run one JARVIS operation with optional package-provider observations."""
+    if progress_binding is None or progress_reporter is None:
+        with _protocol_stdout_to_stderr():
+            return operation()
+    return await PackageProgressExecution(
+        progress_binding,
+        execution_id=execution_id,
+        pipeline_id=pipeline_id,
+    ).run(operation, progress_reporter)
 
 
 async def destroy_pipeline(pipeline_id: str) -> dict:
@@ -804,7 +854,9 @@ def _run_bounded_process(
             env=env,
             start_new_session=os.name != "nt",
             creationflags=(
-                subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+                int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+                if os.name == "nt"
+                else 0
             ),
         )
     except OSError:
@@ -913,7 +965,7 @@ def _terminate_spack_process_tree(
     if process.poll() is not None and not include_exited_group:
         return
     try:
-        kill_process_group = os.killpg  # type: ignore[attr-defined]
+        kill_process_group = cast(Callable[[int, int], None], vars(os)["killpg"])
         kill_process_group(process.pid, signal.SIGTERM)
     except ProcessLookupError:
         return
@@ -1156,14 +1208,21 @@ def _scheduler_submission_metadata(
         raise RuntimeError("JARVIS-CD scheduler submission provider did not match")
     if _optional_str(document.get("script_path")) != script_path:
         raise RuntimeError("JARVIS-CD scheduler submission did not match this script")
-    if not require_identity:
-        return document
     job_id = _optional_str(document.get("scheduler_job_id"))
-    if (
+    if job_id is not None and (
         document.get("submitted") is not True
         or document.get("identity_source") != "scheduler_submit_api"
-        or job_id is None
     ):
+        raise RuntimeError(
+            "JARVIS-CD did not return a provider-owned scheduler job identity"
+        )
+    if not require_identity and job_id is not None:
+        raise RuntimeError(
+            "JARVIS-CD returned a scheduler identity for a script-only run"
+        )
+    if not require_identity and job_id is None:
+        return document
+    if job_id is None:
         raise RuntimeError(
             "JARVIS-CD did not return a provider-owned scheduler job identity"
         )

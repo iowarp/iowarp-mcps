@@ -36,8 +36,8 @@ Repository = "https://github.com/iowarp/clio-kit"
 jarvis-mcp = "jarvis_mcp.server:main"
 jarvis-admin-mcp = "jarvis_mcp.admin_server:main"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=6.2.1",

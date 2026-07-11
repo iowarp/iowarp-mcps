@@ -9,7 +9,8 @@ import click
 
 # Determine if we're running from development or installed package
 MODULE_DIR = Path(__file__).parent
-LOCKED_SERVER_LAUNCH_SCHEMA = "clio-kit.locked-server.v1"
+LOCKED_SERVER_LAUNCH_SCHEMA = "clio-kit.locked-server.v2"
+_LOCKED_SERVER_RUNTIME_POLICY = "uv-run:frozen:no-editable:no-dev:v1"
 LOCKED_SERVER_SCHEMA_ENV = "CLIO_KIT_LOCKED_SERVER_SCHEMA"
 LOCKED_SERVER_PROJECT_SHA_ENV = "CLIO_KIT_LOCKED_SERVER_PROJECT_SHA256"
 LOCKED_SERVER_LOCK_SHA_ENV = "CLIO_KIT_LOCKED_SERVER_LOCK_SHA256"
@@ -271,6 +272,7 @@ def locked_server_command(server_path: Path, entry_command: str) -> list[str]:
     return [
         uv_command(),
         "run",
+        "--no-dev",
         "--no-editable",
         "--frozen",
         "--project",
@@ -291,6 +293,9 @@ def locked_server_environment(server_path: Path) -> Path:
 def locked_server_project_identity(server_path: Path) -> dict[str, str]:
     """Hash the embedded server source and lock that define its child runtime."""
     digest = hashlib.sha256()
+    policy = _LOCKED_SERVER_RUNTIME_POLICY.encode("utf-8")
+    digest.update(len(policy).to_bytes(8, "big"))
+    digest.update(policy)
     inputs = [server_path / "pyproject.toml", server_path / "uv.lock"]
     source_path = server_path / "src"
     if source_path.is_dir():

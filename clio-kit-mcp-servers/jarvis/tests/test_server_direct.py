@@ -475,6 +475,70 @@ class TestPipelineToolsDirect:
             )
 
     @pytest.mark.asyncio
+    async def test_jarvis_run_only_enables_progress_for_an_explicit_token(self):
+        """A Context without a negotiated progress token keeps execution unchanged."""
+        from types import SimpleNamespace
+        from typing import cast
+
+        from fastmcp import Context
+
+        from jarvis_mcp.server import jarvis_run_tool
+
+        class FakeContext:
+            request_context = SimpleNamespace(meta=SimpleNamespace(progressToken=None))
+
+            async def report_progress(self, *_args: object, **_kwargs: object) -> None:
+                raise AssertionError("progress must not be reported without a token")
+
+        with patch("jarvis_mcp.server.run_pipeline") as run_handler:
+            run_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            await jarvis_run_tool("test", ctx=cast(Context, FakeContext()))
+
+        run_handler.assert_called_once_with(
+            "test", mode="auto", submit=True, wait=False, spack_specs=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_forwards_progress_for_an_explicit_token(self):
+        """A negotiated token attaches a reporter to the JARVIS operation."""
+        from types import SimpleNamespace
+        from typing import cast
+
+        from fastmcp import Context
+
+        from jarvis_mcp.server import jarvis_run_tool
+
+        reports: list[tuple[float, float | None, str]] = []
+
+        class FakeContext:
+            request_context = SimpleNamespace(
+                meta=SimpleNamespace(progressToken="live-token")
+            )
+
+            async def report_progress(
+                self, current: float, total: float | None, message: str
+            ) -> None:
+                reports.append((current, total, message))
+
+        with patch("jarvis_mcp.server.run_pipeline") as run_handler:
+            run_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            await jarvis_run_tool("test", ctx=cast(Context, FakeContext()))
+
+        arguments = dict(run_handler.call_args.kwargs)
+        reporter = arguments.pop("progress_reporter")
+        await reporter(1.0, 2.0, "live")
+        assert run_handler.call_args.args == ("test",)
+        assert arguments == {
+            "mode": "auto",
+            "submit": True,
+            "wait": False,
+            "spack_specs": None,
+        }
+        assert reports == [(1.0, 2.0, "live")]
+
+    @pytest.mark.asyncio
     async def test_jarvis_run_tool_maps_execution_intent(self):
         """User execution intent maps to JARVIS-native configuration."""
         with (
