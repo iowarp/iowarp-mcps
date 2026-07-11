@@ -20,6 +20,7 @@
 <!-- mcp-name: io.github.iowarp/sac-mcp -->
 <!-- mcp-name: io.github.iowarp/seismic-mcp -->
 <!-- mcp-name: io.github.iowarp/slurm-mcp -->
+<!-- mcp-name: io.github.iowarp/spack-mcp -->
 <!-- mcp-name: io.github.iowarp/terrain-mcp -->
 
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
@@ -29,13 +30,13 @@
 [![CI](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml/badge.svg)](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml)
 [![Coverage](https://codecov.io/gh/iowarp/clio-kit/branch/main/graph/badge.svg)](https://codecov.io/gh/iowarp/clio-kit)
 
-[![MCP Servers](https://img.shields.io/badge/MCP%20Servers-16-green)](https://github.com/iowarp/clio-kit/tree/main/clio-kit-mcp-servers)
+[![MCP Servers](https://img.shields.io/badge/MCP%20Servers-22-green)](https://github.com/iowarp/clio-kit/tree/main/clio-kit-mcp-servers)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-type%20checked-blue)](http://mypy-lang.org/)
 [![Package Manager](https://img.shields.io/badge/uv-package%20manager-orange)](https://github.com/astral-sh/uv)
 [![Security Audit](https://img.shields.io/badge/pip--audit-security%20scanned-green)](https://github.com/pypa/pip-audit)
 
-**CLIO Kit** - Part of the IoWarp platform's tooling layer for AI agents. A comprehensive collection of tools, skills, plugins, and extensions. Currently featuring 15+ Model Context Protocol (MCP) servers for scientific computing, with plans to expand to additional agent capabilities. Enables AI agents to interact with HPC resources, scientific data formats, and research datasets.
+**CLIO Kit** - Part of the IoWarp platform's tooling layer for AI agents. A comprehensive collection of tools, skills, plugins, and extensions. It ships 22 Model Context Protocol (MCP) servers for scientific computing and enables AI agents to interact with HPC resources, scientific data formats, and research datasets.
 
 [**Website**](https://docs.iowarp.ai/) | [**IOWarp**](https://iowarp.ai)
 
@@ -66,20 +67,20 @@ AI agents handle scientific computing tasks through natural language:
 - ✅ **"Optimize memory usage for this pandas DataFrame"** - Pandas MCP optimizes
 - ✅ **"Find all documents where pressure exceeds 200 kPa"** - Agentic Search retrieves
 
-**One unified interface. 16 MCP servers. Hybrid search engine. 150+ specialized tools. Built for research.**
+**One unified interface. 22 MCP servers. Hybrid search engine. 150+ specialized tools. Built for research.**
 
 CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI agents. It brings AI assistance to your scientific computing workflow—whether you're analyzing terabytes of HDF5 data, managing Slurm jobs across clusters, or exploring research papers. Built by researchers, for researchers, at Illinois Institute of Technology with NSF support.
 
 > **Part of IoWarp Platform**: CLIO Kit is the tooling layer of the IoWarp platform, providing skills, plugins, and extensions for AI agents working in scientific computing environments.
 
-> **One simple command.** Production-ready, fully typed, MIT licensed, and beta-tested in real HPC environments.
+> **One simple command.** Production-ready, fully typed, BSD-3-Clause licensed, and live-tested in real HPC environments.
 
 ## 🚀 Quick Installation
 
 ### One Command for Any Server
 
 ```bash
-# List all 16 available MCP servers
+# List all 22 available MCP servers
 uvx clio-kit mcp-servers
 
 # Run any server instantly
@@ -95,6 +96,12 @@ uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"
 uvx clio-kit prompts                    # List all prompts
 uvx clio-kit prompt code-coverage-prompt # Use a prompt
 ```
+
+Released `clio-kit` wheels execute each embedded MCP server from that server's
+shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
+under the user cache and refuses to resolve an embedded server whose lock is
+missing. The `--branch` launcher option is an explicit development path and is
+not an immutable release-artifact path.
 
 <details>
 <summary><b>Install in Cursor</b></summary>
@@ -198,22 +205,28 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 
 | 📦 **Package** | 📌 **Ver** | 🔧 **System** | 📋 **Description** | ⚡ **Install Command** |
 |:---|:---:|:---:|:---|:---|
-| **`adios`** | 2.0.1 | Data I/O | Read data using ADIOS2 engine | `uvx clio-kit mcp-server adios` |
-| **`arxiv`** | 2.0.1 | Research | Fetch research papers from ArXiv | `uvx clio-kit mcp-server arxiv` |
-| **`chronolog`** | 2.0.1 | Logging | Log and retrieve data from ChronoLog | `uvx clio-kit mcp-server chronolog` |
-| **`compression`** | 2.0.1 | Utilities | File compression with gzip | `uvx clio-kit mcp-server compression` |
-| **`darshan`** | 2.0.1 | Performance | I/O performance trace analysis | `uvx clio-kit mcp-server darshan` |
-| **`hdf5`** | 2.0.1 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `uvx clio-kit mcp-server hdf5` |
-| **`jarvis`** | 2.0.1 | Workflow | Data pipeline lifecycle management | `uvx clio-kit mcp-server jarvis` |
-| **`lmod`** | 2.0.1 | Environment | Environment module management | `uvx clio-kit mcp-server lmod` |
-| **`ndp`** | 2.0.1 | Data Protocol | Search and discover datasets across CKAN instances | `uvx clio-kit mcp-server ndp` |
-| **`node-hardware`** | 2.0.1 | System | System hardware information | `uvx clio-kit mcp-server node-hardware` |
-| **`pandas`** | 2.0.1 | Data Analysis | CSV data loading and filtering | `uvx clio-kit mcp-server pandas` |
-| **`parallel-sort`** | 2.0.1 | Computing | Large file sorting | `uvx clio-kit mcp-server parallel-sort` |
-| **`paraview`** | 2.0.1 | Visualization | Scientific 3D visualization and analysis | `uvx clio-kit mcp-server paraview` |
-| **`parquet`** | 2.0.1 | Data I/O | Read Parquet file columns | `uvx clio-kit mcp-server parquet` |
-| **`plot`** | 2.0.1 | Visualization | Generate plots from CSV data | `uvx clio-kit mcp-server plot` |
-| **`slurm`** | 2.0.1 | HPC | Job submission and management | `uvx clio-kit mcp-server slurm` |
+| **`adios`** | 3.0.0 | Data I/O | Read data using ADIOS2 engine | `uvx clio-kit mcp-server adios` |
+| **`arxiv`** | 3.0.0 | Research | Fetch research papers from ArXiv | `uvx clio-kit mcp-server arxiv` |
+| **`chronolog`** | 3.0.0 | Logging | Log and retrieve data from ChronoLog | `uvx clio-kit mcp-server chronolog` |
+| **`compression`** | 3.0.0 | Utilities | File compression with gzip | `uvx clio-kit mcp-server compression` |
+| **`darshan`** | 3.0.0 | Performance | I/O performance trace analysis | `uvx clio-kit mcp-server darshan` |
+| **`geo`** | 3.0.0 | Geospatial | Render GeoJSON vector layers with basemaps | `uvx clio-kit mcp-server geo` |
+| **`geojson`** | 3.0.0 | Geospatial | Inspect, validate, and summarize GeoJSON | `uvx clio-kit mcp-server geojson` |
+| **`hdf5`** | 3.0.0 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `uvx clio-kit mcp-server hdf5` |
+| **`jarvis`** | 3.0.0 | Workflow | Data pipeline lifecycle management | `uvx clio-kit mcp-server jarvis` |
+| **`lmod`** | 3.0.0 | Environment | Environment module management | `uvx clio-kit mcp-server lmod` |
+| **`ndp`** | 3.0.0 | Data Protocol | Search and discover datasets across CKAN instances | `uvx clio-kit mcp-server ndp` |
+| **`node-hardware`** | 3.0.0 | System | System hardware information | `uvx clio-kit mcp-server node-hardware` |
+| **`pandas`** | 3.0.0 | Data Analysis | CSV data loading and filtering | `uvx clio-kit mcp-server pandas` |
+| **`parallel-sort`** | 3.0.0 | Computing | Large file sorting | `uvx clio-kit mcp-server parallel-sort` |
+| **`paraview`** | 3.0.0 | Visualization | Scientific 3D visualization and analysis | `uvx clio-kit mcp-server paraview` |
+| **`parquet`** | 3.0.0 | Data I/O | Read Parquet file columns | `uvx clio-kit mcp-server parquet` |
+| **`plot`** | 3.0.0 | Visualization | Generate plots from CSV data | `uvx clio-kit mcp-server plot` |
+| **`sac`** | 3.0.0 | Seismology | Analyze SAC waveforms and archives | `uvx clio-kit mcp-server sac` |
+| **`seismic`** | 3.0.0 | Seismology | Analyze earthquake catalogs and sequences | `uvx clio-kit mcp-server seismic` |
+| **`slurm`** | 3.0.0 | HPC | Job submission and management | `uvx clio-kit mcp-server slurm` |
+| **`spack`** | 3.0.0 | Package Management | Structured package discovery, installation, and location | `uvx clio-kit mcp-server spack` |
+| **`terrain`** | 3.0.0 | Geospatial | Analyze DEMs and terrain point clouds | `uvx clio-kit mcp-server terrain` |
 
 </div>
 

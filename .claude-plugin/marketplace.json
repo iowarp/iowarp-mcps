@@ -124,8 +124,8 @@
     {
       "name": "clio-jarvis",
       "source": "./clio-kit-mcp-servers/jarvis",
-      "description": "Jarvis-CD MCP - Pipeline Management for High-Performance Computing with comprehensive workflow operations",
-      "version": "1.0.0",
+      "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
+      "version": "2.0.0",
       "category": "development",
       "keywords": [
         "pipeline-management",
@@ -285,6 +285,20 @@
         "slurm",
         "job-scheduling",
         "cluster-management"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-spack",
+      "source": "./clio-kit-mcp-servers/spack",
+      "description": "Structured Spack discovery and installation tools for scientific agents",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "package-management",
+        "hpc",
+        "scientific-computing"
       ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"

@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/ndp-mcp",
   "title": "CLIO Ndp",
   "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple...",
-  "version": "2.2.3",
+  "version": "3.0.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,12 +12,13 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.3",
+      "version": "3.0.0",
       "transport": {
         "type": "stdio"
       },
       "arguments": [
         "clio-kit",
+        "mcp-server",
         "ndp"
       ]
     }

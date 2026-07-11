@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clio-kit"
-version = "2.2.6"
+version = "3.0.0"
 description = "CLIO Kit - MCP Servers, Clients, and Tools for AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,6 +42,13 @@ Issues = "https://github.com/iowarp/clio-kit/issues"
 [project.scripts]
 # Only the unified launcher entry point
 clio-kit = "clio_kit:cli"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.17.0",
+  "pytest>=8.3",
+  "ruff>=0.12.5",
+]
 
 [tool.hatch.build]
 # NB: do NOT set a global `sources = ["src"]` — it strips `src/` from the sdist

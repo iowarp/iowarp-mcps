@@ -1,0 +1,58 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/spack-mcp",
+  "title": "CLIO Spack",
+  "description": "Structured Spack discovery and installation tools for scientific agents",
+  "version": "3.0.0",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "3.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "arguments": [
+        "clio-kit",
+        "mcp-server",
+        "spack"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "spack_find",
+      "description": "List installed Spack packages matching an optional constraint."
+    },
+    {
+      "name": "spack_locate",
+      "description": "Resolve one unique installed Spack spec and return its exact prefix."
+    },
+    {
+      "name": "spack_install",
+      "description": "Install one Spack spec and verify that a matching install is observable."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "spack://capabilities",
+      "name": "spack_capabilities",
+      "description": "Describe the stateless Spack contract exposed by this server."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "prepare_spack_package",
+      "description": "Guide an agent through deterministic package preparation."
+    }
+  ],
+  "tags": [
+    "package-management",
+    "hpc",
+    "scientific-computing"
+  ]
+}

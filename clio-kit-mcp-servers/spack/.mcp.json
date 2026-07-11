@@ -1,10 +1,10 @@
 {
-  "clio-parallel-sort": {
+  "clio-spack": {
     "command": "uvx",
     "args": [
       "clio-kit",
       "mcp-server",
-      "parallel-sort"
+      "spack"
     ]
   }
 }

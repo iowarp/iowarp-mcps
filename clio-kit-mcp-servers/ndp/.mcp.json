@@ -3,6 +3,7 @@
     "command": "uvx",
     "args": [
       "clio-kit",
+      "mcp-server",
       "ndp"
     ]
   }

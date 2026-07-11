@@ -6,6 +6,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "adios"
       ]
     },
@@ -13,6 +14,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "arxiv"
       ]
     },
@@ -20,6 +22,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "chronolog"
       ]
     },
@@ -27,6 +30,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "compression"
       ]
     },
@@ -34,6 +38,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "darshan"
       ]
     },
@@ -41,6 +46,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "geo"
       ]
     },
@@ -48,6 +54,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "geojson"
       ]
     },
@@ -55,6 +62,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "hdf5"
       ]
     },
@@ -62,6 +70,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "jarvis"
       ]
     },
@@ -69,6 +78,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "lmod"
       ]
     },
@@ -76,6 +86,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "ndp"
       ]
     },
@@ -83,6 +94,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "node-hardware"
       ]
     },
@@ -90,6 +102,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "pandas"
       ]
     },
@@ -97,6 +110,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "parallel-sort"
       ]
     },
@@ -104,6 +118,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "paraview"
       ]
     },
@@ -111,6 +126,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "parquet"
       ]
     },
@@ -118,6 +134,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "plot"
       ]
     },
@@ -125,6 +142,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "sac"
       ]
     },
@@ -132,6 +150,7 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "seismic"
       ]
     },
@@ -139,13 +158,23 @@
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "slurm"
+      ]
+    },
+    "clio-spack": {
+      "command": "uvx",
+      "args": [
+        "clio-kit",
+        "mcp-server",
+        "spack"
       ]
     },
     "clio-terrain": {
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "terrain"
       ]
     }
