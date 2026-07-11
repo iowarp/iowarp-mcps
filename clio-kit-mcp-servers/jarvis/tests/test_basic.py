@@ -97,6 +97,7 @@ class TestJarvisBasics:
         # Check for key sections
         assert "[project]" in content
         assert 'name = "jarvis-mcp"' in content
+        assert 'jarvis-mcp = "jarvis_mcp.server:main"' in content
         assert "fastmcp" in content
         assert "pytest" in content
 

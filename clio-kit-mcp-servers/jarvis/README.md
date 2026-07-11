@@ -1,7 +1,8 @@
 # Jarvis MCP
 
 Jarvis MCP exposes JARVIS-CD pipeline work to agents through a small user
-surface and a separate admin surface.
+surface and a separate admin surface. This server requires Python 3.11 or newer;
+the root CLIO Kit launcher resolves that requirement from the shipped lock.
 
 ## User server
 
@@ -17,6 +18,19 @@ or run the package entry point directly:
 uvx --from jarvis-mcp jarvis-mcp
 ```
 
+When Spack is outside the service PATH, pass its audited executable explicitly:
+
+```bash
+uvx clio-kit mcp-server jarvis -- --spack-command /path/to/spack
+# Equivalent standalone package entry point:
+uvx --from jarvis-mcp jarvis-mcp --spack-command /path/to/spack
+```
+
+The path must resolve to an executable file and is used only when
+`jarvis_run(spack_specs=[...])` materializes the runtime environment.
+`JARVIS_MCP_SPACK_COMMAND` is the equivalent site-level override; the explicit
+CLI argument takes precedence.
+
 The default user server exposes only:
 
 ```text
@@ -24,12 +38,13 @@ jarvis_create_pipeline
 jarvis_describe
 jarvis_add_step
 jarvis_edit_step
-jarvis_remove_step
 jarvis_run
 ```
 
-`jarvis_remove_step` unlinks a package step from a pipeline while preserving
-package files. It is normal pipeline editing, not package deletion.
+`jarvis_edit_step(operation="edit", config={...})` updates a step.
+`jarvis_edit_step(operation="remove")` unlinks it while preserving package
+files. Removal intentionally updates only pipeline membership: it does not invoke
+package cleanup or delete installed or generated package files.
 
 `jarvis_describe` supports:
 
@@ -58,8 +73,8 @@ pipeline destruction, and other maintenance commands.
 The compatibility form is also available:
 
 ```bash
-uvx clio-kit mcp-server jarvis --profile admin
-uvx clio-kit mcp-server jarvis --profile all
+uvx clio-kit mcp-server jarvis -- --profile admin
+uvx clio-kit mcp-server jarvis -- --profile all
 ```
 
 ## Agent workflow
@@ -73,14 +88,22 @@ A normal agent should work at the pipeline level:
 5. `jarvis_describe(target="pipeline")`
 6. `jarvis_run`
 
-If the agent needs to remove a pipeline step, call `jarvis_remove_step`. Do not
-use raw `remove_pkg` from the admin server unless the operator explicitly wants
-package deletion semantics.
+If the agent needs to remove a pipeline step, call
+`jarvis_edit_step(operation="remove")`. Do not use raw `remove_pkg` from the
+admin server unless the operator explicitly wants package deletion semantics.
+`remove_pkg` fails rather than silently unlinking when the installed JARVIS-CD
+does not provide a destructive removal API.
+
+`jarvis_run(spack_specs=[...])` asks JARVIS to resolve a filtered Spack
+environment, merge it into the named pipeline, and persist it before direct or
+scheduler execution. Scheduler runs return a JARVIS-owned
+`runtime_metadata.scheduler_job_id` parsed from the scheduler's structured
+submission API. The relay must not infer that identity from application stdout.
 
 ## Claude Code
 
 ```bash
-claude mcp add clio-jarvis -- uvx clio-kit jarvis
+claude mcp add clio-jarvis -- uvx clio-kit mcp-server jarvis
 ```
 
 Or install via the CLIO Kit plugin marketplace:
@@ -100,6 +123,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "jarvis"
       ]
     }
@@ -130,15 +154,11 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_edit_step`
-**Description**: Edit the configuration of a step in a JARVIS pipeline.
-**Tags**: jarvis, pipeline, user
-
-### `jarvis_remove_step`
-**Description**: Remove a step from a JARVIS pipeline without deleting package files.
+**Description**: Edit or remove a step. `config` is required only for `operation="edit"`.
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_run`
-**Description**: Run a configured JARVIS pipeline. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals.
+**Description**: Run a configured JARVIS pipeline, optionally persisting the runtime environment for `spack_specs`, and return structured execution metadata.
 **Tags**: jarvis, pipeline, user
 
 ### Resources
@@ -159,6 +179,7 @@ Add to `~/.gemini/settings.json`:
       "command": "uvx",
       "args": [
         "clio-kit",
+        "mcp-server",
         "jarvis"
       ]
     }

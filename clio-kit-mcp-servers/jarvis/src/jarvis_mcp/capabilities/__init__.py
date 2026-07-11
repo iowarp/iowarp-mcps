@@ -3,15 +3,15 @@ Jarvis MCP Server
 
 Jarvis-CD MCP - Pipeline Management for High-Performance Computing with comprehensive workflow operations
 
-Version: 1.0.0
+Version: 2.0.0
 Author: IoWarp Team - Gnosis Research Center
-License: MIT
+License: BSD-3-Clause
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "IoWarp Team - Gnosis Research Center"
 __email__ = "grc@illinoistech.edu"
-__license__ = "MIT"
+__license__ = "BSD-3-Clause"
 
 __all__ = [
     "__version__",

@@ -1,11 +1,22 @@
-from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
-from fastmcp.prompts import Message
+import argparse
 import importlib
 import os
 from pathlib import Path
+from typing import Any, Literal, Optional
+
 from dotenv import load_dotenv
-from typing import Any, Optional
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
 from .capabilities.jarvis_handler import (
     create_pipeline,
     configure_pipeline,
@@ -171,6 +182,7 @@ mcp: FastMCP = FastMCP(
     ),
     list_page_size=10,
 )
+MCP_METADATA_PROFILE = "user"
 
 # Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
 # functional JARVIS-CD installation. Admin tools still fail clearly at call time
@@ -195,7 +207,6 @@ USER_TOOLS = {
     "jarvis_describe",
     "jarvis_add_step",
     "jarvis_edit_step",
-    "jarvis_remove_step",
     "jarvis_run",
 }
 
@@ -231,6 +242,96 @@ ADMIN_TOOLS = {
     "jm_graph_modify",
     "destroy_pipeline",
 }
+
+
+_EXECUTION_MODES = {
+    "auto",
+    "local",
+    "direct",
+    "cluster",
+    "scheduler",
+    "hostfile",
+}
+_SCHEDULER_EXECUTION_FIELDS = {
+    "job_name",
+    "nodes",
+    "tasks",
+    "tasks_per_node",
+    "cpus_per_task",
+    "walltime",
+    "partition",
+    "account",
+    "qos",
+    "output",
+    "error",
+    "exclusive",
+    "gpus",
+    "gpus_per_node",
+}
+
+
+class ExecutionIntent(BaseModel):
+    """Validated, backend-neutral execution request for a JARVIS pipeline."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    mode: Literal["auto", "local", "direct", "cluster", "scheduler", "hostfile"] = (
+        "auto"
+    )
+    hostfile: str | None = None
+    hosts: list[str] | None = Field(default=None, min_length=1)
+    job_name: str | None = None
+    nodes: int | None = Field(default=None, gt=0)
+    tasks: int | None = Field(default=None, gt=0)
+    tasks_per_node: int | None = Field(default=None, gt=0)
+    cpus_per_task: int | None = Field(default=None, gt=0)
+    walltime: str | None = None
+    partition: str | None = None
+    account: str | None = None
+    qos: str | None = None
+    output: str | None = None
+    error: str | None = None
+    exclusive: bool | None = None
+    gpus: int | None = Field(default=None, gt=0)
+    gpus_per_node: int | None = Field(default=None, gt=0)
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def normalize_mode(cls, value: object) -> object:
+        """Normalize a textual mode while preserving strict rejection of other types."""
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @model_validator(mode="after")
+    def validate_mode_fields(self) -> "ExecutionIntent":
+        """Reject fields that cannot be represented by the selected execution mode."""
+        populated = self.model_fields_set
+        scheduler_fields = sorted(populated & _SCHEDULER_EXECUTION_FIELDS)
+        host_fields = sorted(populated & {"hostfile", "hosts"})
+
+        if self.mode in {"local", "direct"} and (scheduler_fields or host_fields):
+            incompatible = ", ".join(scheduler_fields + host_fields)
+            raise ValueError(
+                f"execution.mode='{self.mode}' does not accept fields: {incompatible}"
+            )
+        if self.mode == "hostfile":
+            if scheduler_fields:
+                raise ValueError(
+                    "execution.mode='hostfile' does not accept scheduler fields: "
+                    + ", ".join(scheduler_fields)
+                )
+            if (self.hostfile is None) == (self.hosts is None):
+                raise ValueError(
+                    "execution.hostfile requires exactly one of hostfile or hosts "
+                    "when execution.mode='hostfile'"
+                )
+        elif host_fields:
+            raise ValueError(
+                f"execution.mode='{self.mode}' does not accept fields: "
+                + ", ".join(host_fields)
+            )
+        return self
 
 
 # ─── RESOURCE ────────────────────────────────────────────────────────────────
@@ -414,7 +515,10 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 
 @mcp.tool(
     name="remove_pkg",
-    description="Remove a package entirely from a pipeline.",
+    description=(
+        "Delete a package through JARVIS-CD's destructive removal API. Fails "
+        "explicitly when the installed JARVIS-CD only supports non-destructive unlinking."
+    ),
     annotations={
         "readOnlyHint": False,
         "destructiveHint": True,
@@ -423,7 +527,7 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
     tags={"jarvis", "pipeline"},
 )
 async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
-    """Remove a package and its files from a pipeline."""
+    """Delete a package only when JARVIS-CD provides destructive removal semantics."""
     return await remove_pkg(pipeline_id, pkg_id)
 
 
@@ -457,11 +561,11 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_create_pipeline_tool(
-    pipeline_id: str, execution: Optional[dict[str, Any]] = None
+    pipeline_id: str, execution: ExecutionIntent | None = None
 ) -> dict:
     """Create a new JARVIS pipeline, optionally seeding execution intent."""
     created = await create_pipeline(pipeline_id)
-    if execution:
+    if execution is not None:
         configured = await configure_pipeline(
             pipeline_id, _execution_intent_to_pipeline_config(execution)
         )
@@ -480,7 +584,7 @@ async def jarvis_create_pipeline_tool(
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_describe_tool(
-    target: str,
+    target: Literal["packages", "package", "pipeline", "step"],
     pipeline_id: Optional[str] = None,
     step_id: Optional[str] = None,
     package_name: Optional[str] = None,
@@ -546,33 +650,30 @@ async def jarvis_add_step_tool(
 
 @mcp.tool(
     name="jarvis_edit_step",
-    description="Edit the configuration of a step in a JARVIS pipeline.",
+    description=(
+        "Edit or remove a step in a JARVIS pipeline. Use operation='edit' with "
+        "config, or operation='remove' without config."
+    ),
     annotations={
         "readOnlyHint": False,
-        "destructiveHint": False,
+        "destructiveHint": True,
         "idempotentHint": False,
     },
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_edit_step_tool(
-    pipeline_id: str, step_id: str, config: dict[str, Any]
+    pipeline_id: str,
+    step_id: str,
+    config: Optional[dict[str, Any]] = None,
+    operation: Literal["edit", "remove"] = "edit",
 ) -> dict:
-    """Edit a step configuration in a pipeline."""
-    return await configure_pkg(pipeline_id, step_id, **config)
-
-
-@mcp.tool(
-    name="jarvis_remove_step",
-    description="Remove a step from a JARVIS pipeline without deleting package files.",
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-    },
-    tags={"jarvis", "pipeline", "user"},
-)
-async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
-    """Remove a step from a pipeline by unlinking its package."""
+    """Edit or remove one pipeline step with explicit conditional arguments."""
+    if operation == "edit":
+        if config is None:
+            raise ToolError("config is required when operation='edit'")
+        return await configure_pkg(pipeline_id, step_id, **config)
+    if config not in (None, {}):
+        raise ToolError("config is not accepted when operation='remove'")
     return await unlink_pkg(pipeline_id, step_id)
 
 
@@ -580,7 +681,9 @@ async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
     name="jarvis_run",
     description=(
         "Run a configured JARVIS pipeline. Optional execution intent selects "
-        "local, cluster, or hostfile mode without exposing scheduler internals."
+        "local, cluster, or hostfile mode without exposing scheduler internals. "
+        "Optional spack_specs are resolved into a filtered environment that JARVIS "
+        "persists before direct or scheduler execution."
     ),
     annotations={
         "readOnlyHint": False,
@@ -591,23 +694,31 @@ async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
 )
 async def jarvis_run_tool(
     pipeline_id: str,
-    execution: Optional[dict[str, Any]] = None,
+    execution: ExecutionIntent | None = None,
     submit: bool = True,
     wait: bool = False,
+    spack_specs: Optional[list[str]] = None,
 ) -> dict:
-    """Run or submit a configured JARVIS pipeline using native JARVIS semantics."""
+    """Run or submit a pipeline after persisting any requested Spack environment."""
     mode = "auto"
-    if execution:
-        requested_mode = str(execution.get("mode", "auto")).strip().lower()
+    if execution is not None:
+        intent = _validated_execution_intent(execution)
+        requested_mode = intent.mode
         mode = {
             "cluster": "scheduler",
             "local": "direct",
             "hostfile": "direct",
         }.get(requested_mode, requested_mode)
         await configure_pipeline(
-            pipeline_id, _execution_intent_to_pipeline_config(execution)
+            pipeline_id, _execution_intent_to_pipeline_config(intent)
         )
-    return await run_pipeline(pipeline_id, mode=mode, submit=submit, wait=wait)
+    return await run_pipeline(
+        pipeline_id,
+        mode=mode,
+        submit=submit,
+        wait=wait,
+        spack_specs=spack_specs,
+    )
 
 
 @mcp.tool(
@@ -1004,7 +1115,11 @@ def _discover_packages() -> list[dict[str, Any]]:
     for repo in repos:
         if not repo.exists():
             continue
-        for pkg_file in repo.rglob("pkg.py"):
+        package_files = sorted(
+            (*repo.rglob("pkg.py"), *repo.rglob("package.py")),
+            key=lambda path: (path.parent.as_posix(), path.name != "pkg.py"),
+        )
+        for pkg_file in package_files:
             package = _package_from_pkg_file(repo, pkg_file)
             name = str(package.get("name", ""))
             if not name or name in seen:
@@ -1125,32 +1240,54 @@ def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in setting.items() if value is not None}
 
 
-def _execution_intent_to_pipeline_config(execution: dict[str, Any]) -> dict[str, Any]:
-    mode = str(execution.get("mode", "auto")).strip().lower()
-    if mode not in {"auto", "local", "direct", "cluster", "scheduler", "hostfile"}:
+def _validated_execution_intent(
+    execution: ExecutionIntent | dict[str, Any],
+) -> ExecutionIntent:
+    if isinstance(execution, ExecutionIntent):
+        return execution
+    raw_mode = execution.get("mode", "auto")
+    if (
+        not isinstance(raw_mode, str)
+        or raw_mode.strip().lower() not in _EXECUTION_MODES
+    ):
         raise ToolError(
             "execution.mode must be one of: auto, local, direct, cluster, scheduler, hostfile"
         )
+    try:
+        return ExecutionIntent.model_validate(execution)
+    except ValidationError as error:
+        details = []
+        for item in error.errors(include_url=False, include_context=False):
+            location = ".".join(str(part) for part in item["loc"])
+            prefix = f"{location}: " if location else ""
+            details.append(f"{prefix}{item['msg']}")
+        raise ToolError("invalid execution intent: " + "; ".join(details)) from error
+
+
+def _execution_intent_to_pipeline_config(
+    execution: ExecutionIntent | dict[str, Any],
+) -> dict[str, Any]:
+    intent = _validated_execution_intent(execution)
+    values = intent.model_dump(exclude_none=True)
+    mode = intent.mode
     if mode in {"local", "direct"}:
         return {"scheduler": None, "hostfile": None}
     if mode == "hostfile":
-        hostfile = execution.get("hostfile")
-        hosts = execution.get("hosts")
-        if hostfile:
-            return {"scheduler": None, "hostfile": str(hostfile)}
-        if isinstance(hosts, list) and hosts:
+        if intent.hostfile is not None:
+            return {"scheduler": None, "hostfile": intent.hostfile}
+        if intent.hosts is not None:
             return {
                 "scheduler": None,
-                "hostfile_entries": [str(host) for host in hosts],
+                "hostfile_entries": intent.hosts,
             }
-        raise ToolError("execution.hostfile is required when execution.mode='hostfile'")
+        raise AssertionError("validated hostfile intent has no target")
     if mode in {"cluster", "scheduler", "auto"}:
         scheduler_name = _detect_scheduler_name()
         if scheduler_name is None:
-            if mode == "auto":
+            if mode == "auto" and set(values) <= {"mode"}:
                 return {}
             raise ToolError("no supported cluster scheduler detected on this machine")
-        if set(execution) <= {"mode"}:
+        if set(values) <= {"mode"}:
             return {}
         scheduler: dict[str, Any] = {"name": scheduler_name}
         mapping = {
@@ -1170,10 +1307,10 @@ def _execution_intent_to_pipeline_config(execution: dict[str, Any]) -> dict[str,
             "gpus_per_node": "gpus_per_node",
         }
         for public_key, scheduler_key in mapping.items():
-            if public_key in execution and execution[public_key] is not None:
-                scheduler[scheduler_key] = execution[public_key]
+            if public_key in values:
+                scheduler[scheduler_key] = values[public_key]
         return {"scheduler": scheduler}
-    return {}
+    raise AssertionError(f"validated execution intent has unsupported mode: {mode}")
 
 
 def _detect_scheduler_name() -> str | None:
@@ -1194,10 +1331,40 @@ def _protocol_stdout_to_stderr() -> Any:
     return redirect_stdout(sys.stderr)
 
 
+def add_spack_command_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the shared validated Spack executable option to a CLI parser."""
+    parser.add_argument(
+        "--spack-command",
+        type=_spack_command_path,
+        default=None,
+        help="Absolute or user-relative path to the audited Spack executable.",
+    )
+
+
+def configure_spack_command(spack_command: str | None) -> None:
+    """Apply an explicitly validated Spack command for later JARVIS runs."""
+    if spack_command is not None:
+        os.environ["JARVIS_MCP_SPACK_COMMAND"] = spack_command
+
+
+def _spack_command_path(value: str) -> str:
+    """Resolve and validate an operator-supplied Spack executable path."""
+    candidate = Path(value).expanduser()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"Spack command does not exist: {candidate}"
+        ) from exc
+    if not resolved.is_file():
+        raise argparse.ArgumentTypeError(f"Spack command is not a file: {resolved}")
+    if os.name != "nt" and not os.access(resolved, os.X_OK):
+        raise argparse.ArgumentTypeError(f"Spack command is not executable: {resolved}")
+    return str(resolved)
+
+
 def main() -> None:
     """Main entry point for the Jarvis MCP server."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http"], default=None)
     parser.add_argument(
@@ -1212,7 +1379,9 @@ def main() -> None:
     )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
+    add_spack_command_argument(parser)
     args = parser.parse_args()
+    configure_spack_command(args.spack_command)
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "user")
     apply_tool_profile(profile)

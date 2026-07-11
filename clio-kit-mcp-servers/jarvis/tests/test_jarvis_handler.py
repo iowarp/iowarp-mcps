@@ -2,11 +2,17 @@
 Tests for the jarvis_handler module that contains pipeline operation logic.
 """
 
+import json
+import os
+import subprocess
+import sys
+
 import pytest
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
 from unittest.mock import Mock, patch
 from fastapi import HTTPException
+from fastmcp.exceptions import ToolError
 
 from jarvis_mcp.capabilities.jarvis_handler import (
     create_pipeline,
@@ -40,6 +46,8 @@ class ModernPipeline:
         self.saved = False
         self.ran = False
         self.submitted = False
+        self.last_loaded_file = None
+        self.last_submission = None
         self.jarvis = Mock()
         self.jarvis.get_pipeline_shared_dir.return_value = Path("/tmp") / self.name
         ModernPipeline.instances.append(self)
@@ -56,7 +64,28 @@ class ModernPipeline:
     def submit(self, *, submit: bool = True, wait: bool = False):
         self.submitted = submit
         self.waited = wait
-        return Path("/tmp") / self.name / "submit.slurm"
+        script_path = Path("/tmp") / self.name / "submit.slurm"
+        provider = (
+            self.scheduler.get("name") if isinstance(self.scheduler, dict) else None
+        )
+        self.last_submission = {
+            "schema_version": "jarvis.scheduler.submission.v1",
+            "provider": provider,
+            "script_path": str(script_path),
+            "scheduler_job_id": "24680" if submit else None,
+            "scheduler_cluster": "ares" if submit else None,
+            "identity_source": "scheduler_submit_api" if submit else None,
+            "state": "completed"
+            if submit and wait
+            else "submitted"
+            if submit
+            else "scripted",
+            "submitted": submit,
+            "wait": wait,
+            "terminal": submit and wait,
+            "submission_returncode": 0 if submit else None,
+        }
+        return script_path
 
 
 class TestHandlerHelpers:
@@ -138,6 +167,161 @@ class TestHandlerHelpers:
             _apply_pipeline_config(pipeline, {"hostfile_entries": "node1"})
         with pytest.raises(ValueError, match="env must be an object"):
             _apply_pipeline_config(pipeline, {"env": "OMP=4"})
+
+    def test_spack_environment_is_merged_and_persisted_for_scheduler_reload(
+        self, tmp_path
+    ):
+        """Spack state becomes durable pipeline state, not process-local state."""
+        from jarvis_mcp.capabilities.jarvis_handler import _apply_spack_environment
+
+        pipeline = ModernPipeline("spack-runtime")
+        pipeline.jarvis.get_pipeline_dir.return_value = tmp_path / pipeline.name
+        pipeline.env = {"UNCHANGED": "value"}
+        pipeline.last_loaded_file = "/tmp/source.yaml"
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._capture_spack_environment",
+            return_value={"PATH": "/spack/bin", "SPACK_ROOT": "/opt/spack"},
+        ) as capture:
+            metadata = _apply_spack_environment(pipeline, ["lammps@2025 +mpi"])
+
+        capture.assert_called_once_with(["lammps@2025 +mpi"])
+        assert pipeline.env == {
+            "UNCHANGED": "value",
+            "PATH": "/spack/bin",
+            "SPACK_ROOT": "/opt/spack",
+        }
+        assert pipeline.last_loaded_file is None
+        assert pipeline.saved is True
+        assert metadata is not None
+        assert metadata["persisted"] is True
+        assert metadata["scheduler_reload"] == "saved_pipeline_environment"
+        assert metadata["variable_names"] == ["PATH", "SPACK_ROOT"]
+        assert metadata["removed_variable_names"] == []
+
+    def test_spack_environment_replaces_prior_owned_variables_across_reloads(
+        self, tmp_path
+    ):
+        """A later spec set cannot retain variables owned only by an earlier set."""
+        from jarvis_mcp.capabilities.jarvis_handler import _apply_spack_environment
+
+        pipeline_dir = tmp_path / "spack-runtime"
+        first = ModernPipeline("spack-runtime")
+        first.jarvis.get_pipeline_dir.return_value = pipeline_dir
+        first.env = {"SITE_SETTING": "preserved", "PATH": "/site/bin"}
+        second = ModernPipeline("spack-runtime")
+        second.jarvis.get_pipeline_dir.return_value = pipeline_dir
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._capture_spack_environment",
+            side_effect=[
+                {"PATH": "/spack/old/bin", "OLD_SPEC_ONLY": "old"},
+                {"NEW_SPEC_ONLY": "new"},
+            ],
+        ):
+            _apply_spack_environment(first, ["old-spec"])
+            second.env = dict(first.env)
+            metadata = _apply_spack_environment(second, ["new-spec"])
+
+        assert second.env == {
+            "SITE_SETTING": "preserved",
+            "PATH": "/site/bin",
+            "NEW_SPEC_ONLY": "new",
+        }
+        assert metadata is not None
+        assert metadata["removed_variable_names"] == ["OLD_SPEC_ONLY", "PATH"]
+
+    def test_jarvis_spack_specs_reject_option_injection(self):
+        """Spack specs cannot be reinterpreted as Spack command options."""
+        from jarvis_mcp.capabilities.jarvis_handler import _validate_spack_specs
+
+        with pytest.raises(ValueError, match="cannot begin"):
+            _validate_spack_specs(["--help"])
+
+    def test_spack_capture_is_bounded_while_draining_both_streams(self):
+        """Large child output retains a bounded tail without a pipe deadlock."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        with patch.object(jarvis_handler, "_MAX_SPACK_CAPTURE_BYTES", 64):
+            result = jarvis_handler._run_bounded_process(
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys; sys.stdout.buffer.write(b'a' * 4096 + b'TAIL'); "
+                    "sys.stderr.buffer.write(b'b' * 4096 + b'ERR')",
+                ],
+                env=os.environ.copy(),
+                timeout_seconds=10,
+            )
+
+        assert result.stdout_truncated is True
+        assert result.stderr_truncated is True
+        assert len(result.stdout) == 64
+        assert len(result.stderr) == 64
+        assert result.stdout.endswith(b"TAIL")
+        assert result.stderr.endswith(b"ERR")
+
+    def test_spack_capture_timeout_terminates_child(self):
+        """A timed-out environment child is explicitly terminated."""
+        from jarvis_mcp.capabilities.jarvis_handler import _run_bounded_process
+
+        with pytest.raises(subprocess.TimeoutExpired):
+            _run_bounded_process(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                env=os.environ.copy(),
+                timeout_seconds=1,
+            )
+
+    def test_spack_environment_rejects_truncated_script(self):
+        """JARVIS never evaluates an incomplete Spack-generated shell script."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        truncated = jarvis_handler._BoundedProcessResult(
+            returncode=0,
+            stdout=b"export PATH=/spack/bin",
+            stderr=b"",
+            stdout_truncated=True,
+        )
+        with (
+            patch.object(jarvis_handler, "_spack_executable", return_value="spack"),
+            patch.object(
+                jarvis_handler,
+                "_run_bounded_process",
+                return_value=truncated,
+            ),
+            pytest.raises(RuntimeError, match="script exceeded the output limit"),
+        ):
+            jarvis_handler._capture_spack_environment(["lammps"])
+
+    def test_spack_environment_uses_integrity_marker_and_filters_secrets(self):
+        """Only marker-delimited, filtered environment values become pipeline state."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        loaded = jarvis_handler._BoundedProcessResult(
+            returncode=0,
+            stdout=b"export PATH=/spack/bin:$PATH",
+            stderr=b"",
+        )
+        captured = jarvis_handler._BoundedProcessResult(
+            returncode=0,
+            stdout=(
+                b"ignored warning\n"
+                + jarvis_handler._SPACK_ENVIRONMENT_MARKER
+                + b"SPACK_ROOT=/spack\0PATH=/spack/bin\0API_TOKEN=secret\0"
+            ),
+            stderr=b"",
+        )
+        with (
+            patch.object(jarvis_handler, "_spack_executable", return_value="spack"),
+            patch.object(
+                jarvis_handler,
+                "_run_bounded_process",
+                side_effect=[loaded, captured],
+            ),
+        ):
+            environment = jarvis_handler._capture_spack_environment(["lammps"])
+
+        assert environment == {"PATH": "/spack/bin", "SPACK_ROOT": "/spack"}
 
     def test_apply_pipeline_config_hostfiles_env_and_hooks(self, tmp_path):
         """Hostfile, env, scheduler, and launcher hooks map to current Pipeline fields."""
@@ -481,6 +665,18 @@ class TestPackageOperations:
         assert "Unlink failed" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
+    async def test_unlink_pkg_rejects_unknown_package(self, mock_pipeline):
+        """Unlink never reports success when the requested package is absent."""
+        mock_pipeline.get_pkg.return_value = None
+
+        with pytest.raises(HTTPException) as exc_info:
+            await unlink_pkg("test_pipeline", "missing")
+
+        assert exc_info.value.status_code == 404
+        mock_pipeline.unlink.assert_not_called()
+        mock_pipeline.save.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_remove_pkg_success(self, mock_pipeline):
         """Test successful package removal."""
         result = await remove_pkg("test_pipeline", "test_pkg")
@@ -503,6 +699,18 @@ class TestPackageOperations:
         assert exc_info.value.status_code == 500
         assert "Remove failed" in str(exc_info.value.detail)
 
+    @pytest.mark.asyncio
+    async def test_remove_pkg_rejects_unknown_package(self, mock_pipeline):
+        """Destructive removal distinguishes an absent package from success."""
+        mock_pipeline.get_pkg.return_value = None
+
+        with pytest.raises(HTTPException) as exc_info:
+            await remove_pkg("test_pipeline", "missing")
+
+        assert exc_info.value.status_code == 404
+        mock_pipeline.remove.assert_not_called()
+        mock_pipeline.save.assert_not_called()
+
 
 class TestPipelineExecutionOperations:
     """Test pipeline execution and lifecycle operations."""
@@ -513,7 +721,8 @@ class TestPipelineExecutionOperations:
         result = await run_pipeline("test_pipeline")
 
         assert result["pipeline_id"] == "test_pipeline"
-        assert result["status"] == "running"
+        assert result["status"] == "completed"
+        assert result["runtime_metadata"]["terminal"]["terminal"] is True
 
         mock_pipeline.load.assert_called_once_with("test_pipeline")
         mock_pipeline.run.assert_called_once()
@@ -523,38 +732,56 @@ class TestPipelineExecutionOperations:
         """Test pipeline execution failure."""
         mock_pipeline.run.side_effect = Exception("Run failed")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ToolError) as exc_info:
             await run_pipeline("test_pipeline")
 
-        assert exc_info.value.status_code == 500
-        assert "Run failed" in str(exc_info.value.detail)
+        error = json.loads(str(exc_info.value))
+        assert error["schema_version"] == "jarvis.error.v1"
+        assert "Run failed" in error["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_run_pipeline_scheduler_mode_submits_modern_pipeline(self):
         """Scheduler mode delegates to native Pipeline.submit."""
+
+        class ScheduledPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm", "nodes": 1}
+
         ModernPipeline.instances = []
-        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline", ScheduledPipeline
+        ):
             result = await run_pipeline(
                 "scheduled", mode="scheduler", submit=True, wait=True
             )
 
         pipeline = ModernPipeline.instances[-1]
-        assert result == {
-            "pipeline_id": "scheduled",
-            "status": "submitted",
-            "mode": "scheduler",
-            "scheduler": None,
-            "script_path": str(Path("/tmp") / "scheduled" / "submit.slurm"),
-            "wait": True,
-        }
+        assert result["pipeline_id"] == "scheduled"
+        assert result["status"] == "completed"
+        assert result["mode"] == "scheduler"
+        assert result["runtime_metadata"]["scheduler_job_id"] == "24680"
+        assert result["runtime_metadata"]["terminal"]["terminal"] is True
+        assert (
+            result["runtime_metadata"]["details"]["scheduler_submission"]
+            == pipeline.last_submission
+        )
         assert pipeline.submitted is True
         assert pipeline.waited is True
 
     @pytest.mark.asyncio
     async def test_run_pipeline_scheduler_script_only(self):
         """Scheduler mode can render the scheduler script without submitting it."""
+
+        class ScheduledPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm"}
+
         ModernPipeline.instances = []
-        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline", ScheduledPipeline
+        ):
             result = await run_pipeline(
                 "scripted", mode="scheduler", submit=False, wait=False
             )
@@ -562,6 +789,72 @@ class TestPipelineExecutionOperations:
         assert result["status"] == "scripted"
         assert result["mode"] == "scheduler"
         assert ModernPipeline.instances[-1].submitted is False
+        assert result["runtime_metadata"]["scheduler_job_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_waited_workload_failure_preserves_scheduler_identity(self):
+        """A failed waited job remains a structured, attributable terminal result."""
+
+        class FailedWaitPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {
+                    "name": "slurm",
+                    "output": "/tmp/job-%j.out",
+                    "error": "/tmp/job-%j.err",
+                }
+
+            def submit(self, *, submit: bool = True, wait: bool = False):
+                assert submit is True
+                assert wait is True
+                script_path = Path("/tmp") / self.name / "submit.slurm"
+                self.last_submission = {
+                    "schema_version": "jarvis.scheduler.submission.v1",
+                    "provider": "slurm",
+                    "script_path": str(script_path),
+                    "scheduler_job_id": "97531",
+                    "scheduler_cluster": "ares",
+                    "identity_source": "scheduler_submit_api",
+                    "state": "workload_failed",
+                    "submitted": True,
+                    "wait": True,
+                    "terminal": True,
+                    "submission_returncode": 42,
+                    "terminal_returncode": 42,
+                }
+                raise RuntimeError("scheduler workload exited 42")
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline", FailedWaitPipeline
+        ):
+            with pytest.raises(ToolError) as exc_info:
+                await run_pipeline(
+                    "failed-wait",
+                    mode="scheduler",
+                    submit=True,
+                    wait=True,
+                )
+
+        error = json.loads(str(exc_info.value))
+        assert error["error"]["code"] == "jarvis_workload_failed"
+        metadata = error["runtime_metadata"]
+        assert metadata["scheduler_provider"] == "slurm"
+        assert metadata["scheduler_job_id"] == "97531"
+        assert metadata["scheduler_phase"] == "workload_failed"
+        assert metadata["terminal"] == {
+            "state": "failed",
+            "terminal": True,
+            "returncode": 42,
+            "reason": "scheduler workload exited 42",
+            "started_at": metadata["terminal"]["started_at"],
+            "finished_at": metadata["terminal"]["finished_at"],
+        }
+        assert metadata["details"]["scheduler_submission"]["state"] == (
+            "workload_failed"
+        )
+        assert metadata["details"]["scheduler_submission"]["scheduler_cluster"] == (
+            "ares"
+        )
 
     @pytest.mark.asyncio
     async def test_run_pipeline_auto_uses_scheduler_when_configured(self):
@@ -584,11 +877,58 @@ class TestPipelineExecutionOperations:
     async def test_run_pipeline_rejects_unknown_mode(self):
         """Invalid execution modes fail explicitly."""
         with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(ToolError) as exc_info:
                 await run_pipeline("bad", mode="unknown")
 
-        assert exc_info.value.status_code == 500
-        assert "mode must be one of" in str(exc_info.value.detail)
+        assert "mode must be one of" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_rejects_scheduler_without_owned_identity(self):
+        """A successful submit cannot fall back to parsing arbitrary stdout."""
+
+        class LegacySubmissionPipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm"}
+
+            def submit(self, *, submit: bool = True, wait: bool = False):
+                del submit, wait
+                self.last_submission = None
+                return Path("/tmp") / self.name / "submit.slurm"
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler.Pipeline",
+            LegacySubmissionPipeline,
+        ):
+            with pytest.raises(
+                ToolError, match="provider-owned scheduler job identity"
+            ):
+                await run_pipeline("legacy", mode="scheduler")
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_rejects_baseline_jarvis_cd_before_submission(self):
+        """The pinned baseline cannot silently submit without the new API."""
+
+        class BaselinePipeline(ModernPipeline):
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.scheduler = {"name": "slurm"}
+                del self.last_submission
+
+            def submit(self, *, submit: bool = True, wait: bool = False):
+                self.submitted = submit
+                self.waited = wait
+                return Path("/tmp") / self.name / "submit.slurm"
+
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", BaselinePipeline):
+            with pytest.raises(
+                ToolError,
+                match="does not expose the structured scheduler submission API",
+            ):
+                await run_pipeline("baseline", mode="scheduler")
+
+        assert ModernPipeline.instances[-1].submitted is False
 
     @pytest.mark.asyncio
     async def test_configure_pipeline_applies_scheduler_env_and_launcher(self):
@@ -625,13 +965,20 @@ class TestPipelineExecutionOperations:
 
     @pytest.mark.asyncio
     async def test_modern_package_operations_use_current_pipeline_api(self):
-        """Append, configure, unlink, and remove use current Pipeline methods."""
+        """Current JARVIS unlinks explicitly and rejects fake destructive removal."""
 
         class PackagePipeline(ModernPipeline):
             instances = []
 
             def __init__(self, name: str | None = None):
                 super().__init__(name)
+                self.packages = [
+                    {
+                        "pkg_id": "echo",
+                        "pkg_type": "builtin.echo",
+                        "config": {},
+                    }
+                ]
                 PackagePipeline.instances.append(self)
 
             def append(self, pkg_type, package_alias=None, config_args=None):
@@ -654,7 +1001,8 @@ class TestPipelineExecutionOperations:
             )
             configure_result = await configure_pkg("pipe", "echo", message="updated")
             unlink_result = await unlink_pkg("pipe", "echo")
-            remove_result = await remove_pkg("pipe", "echo")
+            with pytest.raises(HTTPException) as remove_error:
+                await remove_pkg("pipe", "echo")
 
         assert append_result["appended"] == "builtin.echo"
         assert PackagePipeline.instances[0].appended == (
@@ -665,9 +1013,11 @@ class TestPipelineExecutionOperations:
         assert configure_result["configured"] == "echo"
         assert PackagePipeline.instances[1].configured == ("echo", ["message=updated"])
         assert unlink_result["unlinked"] == "echo"
-        assert remove_result["removed"] == "echo"
         assert PackagePipeline.instances[2].removed == "echo"
-        assert PackagePipeline.instances[3].removed == "echo"
+        assert remove_error.value.status_code == 501
+        assert "does not provide destructive package removal" in str(
+            remove_error.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_destroy_pipeline_success(self, mock_pipeline):
@@ -770,7 +1120,7 @@ class TestIntegrationScenarios:
 
         # Run pipeline
         run_result = await run_pipeline("workflow_test")
-        assert run_result["status"] == "running"
+        assert run_result["status"] == "completed"
 
         # Destroy pipeline
         destroy_result = await destroy_pipeline("workflow_test")
