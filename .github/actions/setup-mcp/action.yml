@@ -16,9 +16,10 @@ runs:
   using: composite
   steps:
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
+      uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
       with:
-        version: "latest"
+        version: "0.11.28"
+        enable-cache: false
 
     - name: Set up Python ${{ inputs.python-version }}
       shell: bash
@@ -27,8 +28,9 @@ runs:
     - name: Install dependencies for ${{ inputs.mcp }}
       shell: bash
       run: |
+        git config --global url.https://github.com/.insteadOf git@github.com:
         cd clio-kit-mcp-servers/${{ inputs.mcp }}
-        uv sync --all-extras --dev
+        uv sync --frozen --all-extras --dev
         if [ -n "${{ inputs.dev-packages }}" ]; then
-          uv add --dev ${{ inputs.dev-packages }}
+          uv pip install ${{ inputs.dev-packages }}
         fi

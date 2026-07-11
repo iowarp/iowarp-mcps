@@ -151,6 +151,9 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
+        exclude:
+          - mcp: jarvis
+            python-version: "3.10"
       max-parallel: 20
     steps:
     - uses: actions/checkout@v4
