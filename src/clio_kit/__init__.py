@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import os
 import shutil
 import sys
@@ -8,6 +9,10 @@ import click
 
 # Determine if we're running from development or installed package
 MODULE_DIR = Path(__file__).parent
+LOCKED_SERVER_LAUNCH_SCHEMA = "clio-kit.locked-server.v1"
+LOCKED_SERVER_SCHEMA_ENV = "CLIO_KIT_LOCKED_SERVER_SCHEMA"
+LOCKED_SERVER_PROJECT_SHA_ENV = "CLIO_KIT_LOCKED_SERVER_PROJECT_SHA256"
+LOCKED_SERVER_LOCK_SHA_ENV = "CLIO_KIT_LOCKED_SERVER_LOCK_SHA256"
 
 
 def get_servers_path():
@@ -244,6 +249,92 @@ def uvx_command() -> str:
     return "uvx"
 
 
+def uv_command() -> str:
+    """Return a usable uv executable path for locked embedded projects."""
+    found = shutil.which("uv")
+    if found is not None:
+        return found
+    local_uv = Path.home() / ".local" / "bin" / "uv"
+    if local_uv.exists():
+        return str(local_uv)
+    return "uv"
+
+
+def locked_server_command(server_path: Path, entry_command: str) -> list[str]:
+    """Build a command that executes an embedded server from its exact lock."""
+    lock_path = server_path / "uv.lock"
+    if not lock_path.is_file():
+        raise click.ClickException(
+            f"Embedded MCP server '{server_path.name}' has no uv.lock; "
+            "refusing an unpinned runtime dependency resolution."
+        )
+    return [
+        uv_command(),
+        "run",
+        "--no-editable",
+        "--frozen",
+        "--project",
+        str(server_path),
+        entry_command,
+    ]
+
+
+def locked_server_environment(server_path: Path) -> Path:
+    """Return a reusable environment path keyed by locked server source bytes."""
+    identity = locked_server_project_identity(server_path)
+    return _locked_server_environment_path(
+        server_path,
+        project_sha256=identity["project_sha256"],
+    )
+
+
+def locked_server_project_identity(server_path: Path) -> dict[str, str]:
+    """Hash the embedded server source and lock that define its child runtime."""
+    digest = hashlib.sha256()
+    inputs = [server_path / "pyproject.toml", server_path / "uv.lock"]
+    source_path = server_path / "src"
+    if source_path.is_dir():
+        inputs.extend(path for path in source_path.rglob("*") if path.is_file())
+    for path in sorted(inputs, key=lambda item: item.as_posix()):
+        if not path.is_file():
+            raise click.ClickException(
+                f"Embedded MCP server '{server_path.name}' is incomplete: "
+                f"missing {path.name}."
+            )
+        relative_path = path.relative_to(server_path).as_posix().encode("utf-8")
+        digest.update(len(relative_path).to_bytes(8, "big"))
+        digest.update(relative_path)
+        with path.open("rb") as stream:
+            while chunk := stream.read(1024 * 1024):
+                digest.update(chunk)
+    lock_sha256 = hashlib.sha256((server_path / "uv.lock").read_bytes()).hexdigest()
+    return {
+        "schema_version": LOCKED_SERVER_LAUNCH_SCHEMA,
+        "server_name": server_path.name,
+        "project_sha256": digest.hexdigest(),
+        "lock_sha256": lock_sha256,
+    }
+
+
+def _locked_server_environment_path(
+    server_path: Path,
+    *,
+    project_sha256: str,
+) -> Path:
+    """Resolve one source-addressed child environment without mutating it."""
+    configured_cache = os.getenv("CLIO_KIT_CACHE_DIR")
+    if configured_cache:
+        cache_root = Path(configured_cache).expanduser()
+    else:
+        cache_root = (
+            Path(os.getenv("XDG_CACHE_HOME", str(Path.home() / ".cache"))).expanduser()
+            / "clio-kit"
+        )
+    return (
+        cache_root / "mcp-environments" / f"{server_path.name}-{project_sha256[:24]}"
+    ).resolve()
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx):
@@ -299,7 +390,9 @@ def mcp_server(server, branch, args):
     entry_command = server_command_map[server_lower]
     actual_dir = dir_name_map[server_lower]
 
-    # Build uvx command
+    child_environment = subprocess_env_with_github_https_rewrite()
+
+    # Build the child launcher command.
     if branch:
         # Run from git branch
         cmd = [
@@ -314,8 +407,27 @@ def mcp_server(server, branch, args):
         server_path = servers_path / actual_dir
 
         if server_path.exists():
-            # Development mode - run from local path
-            cmd = [uvx_command(), "--from", str(server_path), entry_command]
+            # The root wheel includes each server's project and uv.lock. Use an
+            # immutable install in a source-and-lock-keyed cache so the exact
+            # outer wheel also binds the child dependency closure.
+            cmd = locked_server_command(server_path, entry_command)
+            runtime_identity = locked_server_project_identity(server_path)
+            child_environment["UV_PROJECT_ENVIRONMENT"] = str(
+                _locked_server_environment_path(
+                    server_path,
+                    project_sha256=runtime_identity["project_sha256"],
+                )
+            )
+            child_environment[LOCKED_SERVER_SCHEMA_ENV] = runtime_identity[
+                "schema_version"
+            ]
+            child_environment[LOCKED_SERVER_PROJECT_SHA_ENV] = runtime_identity[
+                "project_sha256"
+            ]
+            child_environment[LOCKED_SERVER_LOCK_SHA_ENV] = runtime_identity[
+                "lock_sha256"
+            ]
+            child_environment.pop("VIRTUAL_ENV", None)
         else:
             # Not in development, try to run the command directly (if installed)
             cmd = [entry_command]
@@ -325,7 +437,7 @@ def mcp_server(server, branch, args):
 
     # Execute the command
     try:
-        subprocess.run(cmd, check=True, env=subprocess_env_with_github_https_rewrite())
+        subprocess.run(cmd, check=True, env=child_environment)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except FileNotFoundError:

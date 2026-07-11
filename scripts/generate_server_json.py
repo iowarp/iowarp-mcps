@@ -23,7 +23,7 @@ from typing import Any
 try:
     import tomllib
 except ImportError:
-    import tomli as tomllib  # type: ignore[no-redef]
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 REPO_URL = "https://github.com/iowarp/clio-kit"
 MAX_DESCRIPTION_LENGTH = 100
@@ -46,6 +46,7 @@ SERVER_TAGS: dict[str, list[str]] = {
     "parquet": ["parquet", "apache-arrow", "columnar-data", "data-analysis"],
     "plot": ["data-visualization", "matplotlib", "plotting", "charts"],
     "slurm": ["hpc", "slurm", "job-scheduling", "cluster-management"],
+    "spack": ["package-management", "hpc", "scientific-computing"],
 }
 
 
@@ -105,10 +106,11 @@ def build_server_json(
     pypi_version: str = "1.0.0",
 ) -> dict[str, Any]:
     """Build the server.json manifest for the official MCP registry."""
-    version = project.get("version", "1.0.0")
     description = project.get("description", "")
     if len(description) > MAX_DESCRIPTION_LENGTH:
-        description = description[: MAX_DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0] + "..."
+        description = (
+            description[: MAX_DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0] + "..."
+        )
 
     tools = [
         {"name": t["name"], "description": t["description"]}
@@ -144,7 +146,7 @@ def build_server_json(
                 "identifier": "clio-kit",
                 "version": pypi_version,
                 "transport": {"type": "stdio"},
-                "arguments": ["clio-kit", server_name],
+                "arguments": ["clio-kit", "mcp-server", server_name],
             }
         ],
         "tools": tools,
@@ -183,7 +185,7 @@ def write_claude_plugin_files(
     mcp_json = {
         f"clio-{server_name}": {
             "command": "uvx",
-            "args": ["clio-kit", server_name],
+            "args": ["clio-kit", "mcp-server", server_name],
         }
     }
     _write_json(server_dir / ".mcp.json", mcp_json)
@@ -217,7 +219,7 @@ def build_claude_desktop_config(server_names: list[str]) -> dict[str, Any]:
     for name in sorted(server_names):
         servers[f"clio-{name}"] = {
             "command": "uvx",
-            "args": ["clio-kit", name],
+            "args": ["clio-kit", "mcp-server", name],
         }
     return {"mcpServers": servers}
 
@@ -231,7 +233,7 @@ def build_gemini_extension(server_names: list[str]) -> dict[str, Any]:
     for name in sorted(server_names):
         mcp_servers[f"clio-{name}"] = {
             "command": "uvx",
-            "args": ["clio-kit", name],
+            "args": ["clio-kit", "mcp-server", name],
         }
     return {
         "name": "clio-kit",

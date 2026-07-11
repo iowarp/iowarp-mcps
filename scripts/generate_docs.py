@@ -4,13 +4,12 @@ Script to automatically generate Docusaurus markdown files for MCP documentation
 Creates 4 simple sections: General Info, Installation, Available Tools, Examples
 """
 
-import os
 import sys
 import subprocess
 import re
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from datetime import datetime
 
 try:
@@ -206,7 +205,9 @@ class MCPDataExtractor:
                 timeout=30,
             )
             if result.returncode != 0:
-                print(f"Warning: metadata extraction failed for {mcp_dir.name}: {result.stderr.strip()}")
+                print(
+                    f"Warning: metadata extraction failed for {mcp_dir.name}: {result.stderr.strip()}"
+                )
                 return []
 
             metadata = json.loads(result.stdout)
@@ -218,7 +219,11 @@ class MCPDataExtractor:
                 }
                 for tool in metadata.get("tools", [])
             ]
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+        except (
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+            FileNotFoundError,
+        ) as e:
             print(f"Warning: could not extract metadata for {mcp_dir.name}: {e}")
             return []
 
@@ -567,7 +572,7 @@ final_result = finalize_output(processed)
                         try:
                             json_str = match.group(1)
                             existing_mcps = json.loads(json_str)
-                        except:
+                        except json.JSONDecodeError:
                             pass
             except Exception as e:
                 print(f"Warning: Could not load existing mcpData: {e}")
