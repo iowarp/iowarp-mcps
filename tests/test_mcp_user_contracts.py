@@ -287,3 +287,23 @@ def test_contract_probe_reports_line_count_overflow_immediately(
     assert time.monotonic() - started < 5
     time.sleep(0.1)
     assert not sentinel.exists()
+
+
+def test_contract_probe_reports_bounded_stderr_when_child_exits_early() -> None:
+    """A startup failure retains its exit status and useful stderr diagnostic."""
+    script = (
+        "import sys; "
+        "sys.stderr.write('locked server startup failed\\n'); "
+        "sys.stderr.flush(); "
+        "raise SystemExit(23)"
+    )
+
+    with pytest.raises(
+        ContractGenerationError,
+        match=r"child exit=23; stderr: locked server startup failed",
+    ):
+        exchange_mcp_tools_list(
+            [sys.executable, "-c", script],
+            contract_id="early-exit",
+            timeout_seconds=5,
+        )

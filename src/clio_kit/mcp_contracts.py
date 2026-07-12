@@ -369,24 +369,40 @@ def exchange_mcp_tools_list(
     )
     stdout_reader.start()
     stderr_reader.start()
+
+    def wait_for_response(response_id: str) -> JSON:
+        """Wait for one response and retain a failed child's bounded stderr."""
+        try:
+            return _wait_for_response(
+                output_lines,
+                response_id=response_id,
+                deadline=deadline,
+                contract_id=contract_id,
+            )
+        except ContractGenerationError as exc:
+            if "closed stdout before response" not in str(exc):
+                raise
+            returncode: int | None
+            try:
+                returncode = process.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                returncode = process.poll()
+            stderr_reader.join(timeout=1.0)
+            diagnostic = bytes(stderr_tail).decode("utf-8", errors="replace").strip()
+            rendered_exit = "still running" if returncode is None else str(returncode)
+            rendered_stderr = diagnostic or "<empty>"
+            raise ContractGenerationError(
+                f"{exc}; child exit={rendered_exit}; stderr: {rendered_stderr}"
+            ) from exc
+
     try:
         stdin.write(canonical_json_bytes(requests[0]) + b"\n")
         stdin.flush()
-        initialize = _wait_for_response(
-            output_lines,
-            response_id="initialize",
-            deadline=deadline,
-            contract_id=contract_id,
-        )
+        initialize = wait_for_response("initialize")
         for request in requests[1:]:
             stdin.write(canonical_json_bytes(request) + b"\n")
         stdin.flush()
-        tools_list = _wait_for_response(
-            output_lines,
-            response_id="tools-list",
-            deadline=deadline,
-            contract_id=contract_id,
-        )
+        tools_list = wait_for_response("tools-list")
         stdin.close()
         remaining = max(0.1, deadline - time.monotonic())
         returncode = process.wait(timeout=remaining)
