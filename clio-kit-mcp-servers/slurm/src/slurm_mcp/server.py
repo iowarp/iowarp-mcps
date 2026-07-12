@@ -8,7 +8,7 @@ enabling job submission, queue monitoring, cancellation, and node allocation on 
 import os
 import sys
 import logging
-from typing import Optional
+from typing import Any, Literal, Optional
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -39,6 +39,27 @@ from .implementation.node_allocation import (
     deallocate_nodes,
     get_allocation_status,
 )
+from .agent_contract import (
+    ArraySpec,
+    CoreCount,
+    MemoryRequest,
+    OutputLimit,
+    RecordLimit,
+    ResourceToken,
+    SchedulerNativeJobId,
+    ScriptPath,
+    SlurmCancellation,
+    SlurmClusterSnapshot,
+    SlurmJobDescription,
+    SlurmJobList,
+    SlurmSubmission,
+    TimeLimit,
+    cluster_snapshot,
+    describe_job,
+    list_jobs,
+    request_cancellation,
+    submit,
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -53,13 +74,184 @@ mcp: FastMCP = FastMCP(
     ),
     list_page_size=10,
 )
+MCP_METADATA_PROFILE = "user"
 
 
 # Custom exception for Slurm MCP errors
 class SlurmMCPError(Exception):
-    """Custom exception for Slurm MCP-related errors"""
+    """Custom exception for Slurm MCP-related errors."""
 
-    pass
+
+# -----------------------------------------------------------------------
+# COMPACT AGENT-FACING V3 TOOLS
+# -----------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="slurm_submit",
+    description=(
+        "Submit one Slurm job or array and return its scheduler-native job ID. "
+        "Set array only for an array submission."
+    ),
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+    },
+    tags={"slurm", "jobs", "user"},
+)
+async def slurm_submit_tool(
+    script_path: ScriptPath,
+    cores: CoreCount = 1,
+    memory: MemoryRequest = "1G",
+    time_limit: TimeLimit = "01:00:00",
+    job_name: ResourceToken | None = None,
+    partition: ResourceToken | None = None,
+    array: ArraySpec | None = None,
+) -> SlurmSubmission:
+    """Submit a job or array through the compact Slurm user contract."""
+    try:
+        return submit(
+            script_path,
+            cores=cores,
+            memory=memory,
+            time_limit=time_limit,
+            job_name=job_name,
+            partition=partition,
+            array=array,
+        )
+    except ToolError:
+        raise
+    except Exception as exc:
+        logger.exception("Slurm submission failed")
+        raise ToolError(f"Slurm submission failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="slurm_list",
+    description=(
+        "List a bounded number of Slurm jobs with optional user, state, and "
+        "partition filters. Returns native IDs and explicit truncation state."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"slurm", "jobs", "user"},
+)
+async def slurm_list_tool(
+    user: ResourceToken | None = None,
+    state: ResourceToken | None = None,
+    partition: ResourceToken | None = None,
+    limit: RecordLimit = 100,
+) -> SlurmJobList:
+    """List Slurm jobs through a stable, normalized result schema."""
+    try:
+        return list_jobs(user=user, state=state, partition=partition, limit=limit)
+    except ToolError:
+        raise
+    except Exception as exc:
+        logger.exception("Slurm job listing failed")
+        raise ToolError(f"Slurm job listing failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="slurm_describe",
+    description=(
+        "Describe one scheduler-native Slurm job: lifecycle state, terminality, "
+        "scheduler properties, and optional bounded stdout/stderr tails."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"slurm", "jobs", "user"},
+)
+async def slurm_describe_tool(
+    job_id: SchedulerNativeJobId,
+    output: Literal["none", "stdout", "stderr", "both"] = "none",
+    max_output_chars: OutputLimit = 20_000,
+) -> SlurmJobDescription:
+    """Return a unified description of one scheduler-native Slurm job."""
+    try:
+        return describe_job(
+            job_id,
+            output=output,
+            max_output_chars=max_output_chars,
+        )
+    except ToolError:
+        raise
+    except Exception as exc:
+        logger.exception("Slurm job description failed")
+        raise ToolError(f"Slurm job description failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="slurm_cluster",
+    description=(
+        "Inspect bounded Slurm partition and queue records in one snapshot. "
+        "Node details are excluded by default and bounded when requested."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"slurm", "cluster", "user"},
+)
+async def slurm_cluster_tool(
+    partition: ResourceToken | None = None,
+    include_nodes: bool = False,
+    queue_limit: RecordLimit = 100,
+    node_limit: RecordLimit = 100,
+) -> SlurmClusterSnapshot:
+    """Return a coherent Slurm partition, queue, and optional node snapshot."""
+    try:
+        return cluster_snapshot(
+            partition=partition,
+            include_nodes=include_nodes,
+            queue_limit=queue_limit,
+            node_limit=node_limit,
+        )
+    except ToolError:
+        raise
+    except Exception as exc:
+        logger.exception("Slurm cluster query failed")
+        raise ToolError(f"Slurm cluster query failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="slurm_cancel",
+    description=(
+        "Request destructive cancellation of one Slurm job. confirm_job_id must "
+        "exactly repeat job_id; omission or mismatch is rejected without calling scancel."
+    ),
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": False,
+    },
+    tags={"slurm", "jobs", "user", "destructive"},
+)
+async def slurm_cancel_tool(
+    job_id: SchedulerNativeJobId,
+    confirm_job_id: SchedulerNativeJobId,
+    reason: str | None = None,
+) -> SlurmCancellation:
+    """Request cancellation after exact scheduler-native ID confirmation."""
+    try:
+        return request_cancellation(
+            job_id,
+            confirm_job_id=confirm_job_id,
+            reason=reason,
+        )
+    except ToolError:
+        raise
+    except Exception as exc:
+        logger.exception("Slurm cancellation failed")
+        raise ToolError(f"Slurm cancellation failed: {exc}") from exc
 
 
 # -----------------------------------------------------------------------
@@ -504,14 +696,79 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Slurm MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http"], default=None)
+    parser.add_argument(
+        "--profile",
+        choices=["user", "admin", "legacy", "all"],
+        default=None,
+        help=(
+            "Tool surface to expose. 'user' is the compact agent contract; "
+            "'admin' includes compact and granular operations; 'legacy' exposes "
+            "only the original granular tools; 'all' is an alias for admin."
+        ),
+    )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
+    profile = args.profile or os.getenv("SLURM_MCP_PROFILE", "user")
+    apply_tool_profile(profile)
     if transport == "http":
         mcp.run(transport="http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")
+
+
+USER_TOOL_NAMES = (
+    "slurm_submit",
+    "slurm_list",
+    "slurm_describe",
+    "slurm_cluster",
+    "slurm_cancel",
+)
+LEGACY_TOOL_NAMES = (
+    "submit_slurm_job",
+    "check_job_status",
+    "cancel_slurm_job",
+    "list_slurm_jobs",
+    "get_slurm_info",
+    "get_job_details",
+    "get_job_output",
+    "get_queue_info",
+    "submit_array_job",
+    "get_node_info",
+    "allocate_slurm_nodes",
+    "deallocate_slurm_nodes",
+    "get_allocation_status",
+)
+USER_TOOLS = frozenset(USER_TOOL_NAMES)
+LEGACY_TOOLS = frozenset(LEGACY_TOOL_NAMES)
+ADMIN_TOOLS = USER_TOOLS | LEGACY_TOOLS
+
+
+def apply_tool_profile(profile: str) -> None:
+    """Restrict tools to the deterministic user, admin, or legacy surface."""
+    normalized = profile.strip().lower()
+    if normalized == "user":
+        allowed = USER_TOOLS
+    elif normalized == "legacy":
+        allowed = LEGACY_TOOLS
+    elif normalized in {"admin", "all"}:
+        allowed = ADMIN_TOOLS
+    else:
+        raise ValueError("profile must be one of: user, admin, legacy, all")
+    for tool in _registered_tools():
+        if tool.name not in allowed:
+            mcp.local_provider.remove_tool(tool.name)
+
+
+def _registered_tools() -> list[Any]:
+    """Return locally registered FastMCP tool components."""
+    components = getattr(mcp.local_provider, "_components", {})
+    return [
+        component
+        for key, component in components.items()
+        if isinstance(key, str) and key.startswith("tool:")
+    ]
 
 
 if __name__ == "__main__":

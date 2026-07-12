@@ -27,7 +27,8 @@ except ImportError:
 class MCPDataExtractor:
     """Extract MCP data from project files."""
 
-    def __init__(self):
+    def __init__(self, server_versions: Dict[str, str]):
+        self.server_versions = server_versions
         self.icon_mapping = {
             "adios": "📊",
             "arxiv": "📄",
@@ -85,7 +86,7 @@ class MCPDataExtractor:
             .title()
         )
         description = project_info.get("description", f"{name} MCP server")
-        version = project_info.get("version", "1.0.0")
+        version = self.server_versions[mcp_dir.name]
         keywords = project_info.get("keywords", [])
         license_info = project_info.get("license", "MIT")
 
@@ -93,20 +94,6 @@ class MCPDataExtractor:
         slug = mcp_dir.name.lower().replace("_", "_").replace("-", "_")
         category = self._determine_category(name, description, keywords)
         icon = self.icon_mapping.get(slug, "🔧")
-
-        # Read README.md for enhanced description
-        readme_file = mcp_dir / "README.md"
-        enhanced_description = description
-
-        if readme_file.exists():
-            try:
-                with open(readme_file, "r", encoding="utf-8") as f:
-                    readme_content = f.read()
-                enhanced_description = (
-                    self._extract_description_from_readme(readme_content) or description
-                )
-            except Exception as e:
-                print(f"Error reading README.md in {mcp_dir.name}: {e}")
 
         # Extract tools from server.py
         tools = self._extract_tools_from_server(mcp_dir)
@@ -116,7 +103,7 @@ class MCPDataExtractor:
             "name": name,
             "slug": slug,
             "category": category,
-            "description": enhanced_description,
+            "description": description,
             "icon": icon,
             "version": version,
             "actions": actions,
@@ -253,29 +240,8 @@ class DocusaurusGenerator:
 
     def _generate_mcp_markdown(self, mcp_data: Dict):
         """Generate markdown file for a single MCP with 4 sections."""
-        # Try to load old description from existing file
         output_file = self.mcps_output_dir / f"{mcp_data['slug']}.md"
-        old_jsx_description = None
-
-        if output_file.exists():
-            try:
-                with open(output_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    # Extract description from JSX prop
-                    import re
-
-                    match = re.search(r'description="([^"]*)"', content)
-                    if match:
-                        old_jsx_description = match.group(1)
-            except Exception as e:
-                print(
-                    f"Warning: Could not load old description for {mcp_data['slug']}: {e}"
-                )
-
-        # Use old description if available, otherwise use new one
-        base_description = (
-            old_jsx_description if old_jsx_description else mcp_data["description"]
-        )
+        base_description = mcp_data["description"]
 
         # Escape YAML special characters in description
         description = base_description.replace('"', '\\"').replace("\n", " ")
@@ -396,8 +362,8 @@ Add this to your MCP client configuration:
 {{
   "mcpServers": {{
     "{mcp_data["name"].lower()}-mcp": {{
-      "command": "uvx",
-      "args": ["clio-kit", "{mcp_data["slug"].replace("_", "-")}"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "{mcp_data["slug"].replace("_", "-")}"]
     }}
   }}
 }}
@@ -701,8 +667,21 @@ def main():
         sys.exit(1)
 
     try:
-        # Extract MCP data
-        extractor = MCPDataExtractor()
+        versions_path = mcps_dir.parent / "mcp-server-versions.toml"
+        with open(versions_path, "rb") as stream:
+            server_versions = tomllib.load(stream)["servers"]
+        discovered_servers = {
+            path.name
+            for path in mcps_dir.iterdir()
+            if (path / "pyproject.toml").is_file()
+        }
+        if set(server_versions) != discovered_servers:
+            raise ValueError(
+                "MCP documentation inventory differs from mcp-server-versions.toml"
+            )
+
+        # Extract MCP data using each public agent-contract version.
+        extractor = MCPDataExtractor(server_versions)
         mcps_data = extractor.extract_mcp_data(mcps_dir)
 
         if not mcps_data:

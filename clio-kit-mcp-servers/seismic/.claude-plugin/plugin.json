@@ -1,5 +1,5 @@
 {
   "name": "clio-seismic",
   "description": "MCP server for earthquake-sequence analysis on saved catalogs: completeness magnitude, Gutenberg-Richter b-value, Bath gap, Omori decay, and a three-panel figure",
-  "version": "1.0.0"
+  "version": "2.2.3"
 }

@@ -4,10 +4,17 @@ Handles cluster configuration and information retrieval.
 """
 
 import subprocess
-from .utils import check_slurm_available
+from typing import Optional
+from .utils import (
+    SLURM_FIELD_SEPARATOR,
+    check_slurm_available,
+    complete_stdout_lines,
+    run_slurm_command,
+    split_slurm_fields,
+)
 
 
-def get_slurm_info() -> dict:
+def get_slurm_info(*, max_records: Optional[int] = None) -> dict:
     """
     Get information about the Slurm cluster.
 
@@ -18,18 +25,36 @@ def get_slurm_info() -> dict:
         raise RuntimeError(
             "Slurm is not available on this system. Please install Slurm."
         )
+    if max_records is not None and max_records < 1:
+        raise ValueError("max_records must be positive")
 
     try:
         # Get cluster info using sinfo
-        cmd = ["sinfo", "--format=%P,%A,%l,%D,%T,%N", "--noheader"]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        delimiter = SLURM_FIELD_SEPARATOR
+        cmd = [
+            "sinfo",
+            f"--format=%P{delimiter}%A{delimiter}%l{delimiter}%D{delimiter}%T{delimiter}%N",
+            "--noheader",
+        ]
+        max_bytes = (
+            2 * 1024 * 1024 if max_records is None else max_records * 4096 + 4096
+        )
+        result = run_slurm_command(
+            cmd,
+            max_stdout_bytes=max_bytes,
+            test_runner=subprocess.run,
+        )
 
-        partitions = []
+        partitions: list[dict[str, str]] = []
+        truncated = result.stdout_truncated
         if result.returncode == 0:
-            for line in result.stdout.strip().split("\n"):
+            for line in complete_stdout_lines(result):
                 if line.strip():
-                    parts = line.split(",")
+                    parts = split_slurm_fields(line)
                     if len(parts) >= 6:
+                        if max_records is not None and len(partitions) >= max_records:
+                            truncated = True
+                            break
                         partitions.append(
                             {
                                 "partition": parts[0].rstrip("*"),
@@ -45,13 +70,18 @@ def get_slurm_info() -> dict:
         cluster_info = {
             "cluster_name": "slurm-cluster",
             "partitions": partitions,
+            "truncated": truncated,
             "real_slurm": True,
         }
 
         # Try to get Slurm version
         try:
             version_cmd = ["sinfo", "--version"]
-            version_result = subprocess.run(version_cmd, capture_output=True, text=True)
+            version_result = run_slurm_command(
+                version_cmd,
+                max_stdout_bytes=4096,
+                test_runner=subprocess.run,
+            )
             if version_result.returncode == 0:
                 cluster_info["version"] = version_result.stdout.strip()
         except Exception:

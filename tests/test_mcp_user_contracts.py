@@ -56,7 +56,17 @@ def test_committed_contracts_match_real_locked_stdio_tools_list() -> None:
             },
         ),
         (
-            "clio-kit-spack-user-v3",
+            "clio-kit-slurm-user-v3",
+            {
+                "slurm_submit",
+                "slurm_list",
+                "slurm_describe",
+                "slurm_cluster",
+                "slurm_cancel",
+            },
+        ),
+        (
+            "clio-kit-spack-user-v2",
             {"spack_find", "spack_install", "spack_locate"},
         ),
     ],
@@ -81,7 +91,7 @@ def test_shipped_contract_digest_covers_exact_user_surface(
 
 def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     """Spack locate returns JARVIS's reload input without a fake load operation."""
-    artifact = load_mcp_user_contract("clio-kit-spack-user-v3")
+    artifact = load_mcp_user_contract("clio-kit-spack-user-v2")
     tools = {
         cast(str, tool["name"]): cast(JSON, tool)
         for tool in cast(list[JSON], artifact["tools"])
@@ -204,13 +214,14 @@ def test_contract_cli_lists_and_prints_verified_artifacts() -> None:
     runner = CliRunner()
 
     listed = runner.invoke(main, ["mcp-contracts"])
-    shown = runner.invoke(main, ["mcp-contract", "clio-kit-spack-user-v3"])
+    shown = runner.invoke(main, ["mcp-contract", "clio-kit-spack-user-v2"])
 
     assert listed.exit_code == 0, listed.output
     assert "clio-kit-jarvis-user-v3" in listed.output
-    assert "clio-kit-spack-user-v3" in listed.output
+    assert "clio-kit-slurm-user-v3" in listed.output
+    assert "clio-kit-spack-user-v2" in listed.output
     assert shown.exit_code == 0, shown.output
-    assert json.loads(shown.output)["contract_id"] == "clio-kit-spack-user-v3"
+    assert json.loads(shown.output)["contract_id"] == "clio-kit-spack-user-v2"
 
 
 @pytest.mark.parametrize(

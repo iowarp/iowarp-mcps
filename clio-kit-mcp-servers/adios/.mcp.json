@@ -1,8 +1,7 @@
 {
   "clio-adios": {
-    "command": "uvx",
+    "command": "clio-kit",
     "args": [
-      "clio-kit",
       "mcp-server",
       "adios"
     ]

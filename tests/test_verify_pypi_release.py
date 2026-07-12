@@ -58,7 +58,7 @@ class _Response:
 
 def _release_document(artifacts: dict[str, bytes]) -> dict[str, Any]:
     return {
-        "info": {"name": "clio-kit", "version": "3.0.0"},
+        "info": {"name": "clio-kit", "version": "2.3.0"},
         "urls": [
             {
                 "filename": name,
@@ -73,8 +73,8 @@ def _release_document(artifacts: dict[str, bytes]) -> dict[str, Any]:
 
 def test_verify_release_downloads_and_matches_exact_bytes(tmp_path: Path) -> None:
     local = {
-        "clio_kit-3.0.0-py3-none-any.whl": b"exact-wheel-bytes",
-        "clio_kit-3.0.0.tar.gz": b"exact-sdist-bytes",
+        "clio_kit-2.3.0-py3-none-any.whl": b"exact-wheel-bytes",
+        "clio_kit-2.3.0.tar.gz": b"exact-sdist-bytes",
     }
     for name, payload in local.items():
         (tmp_path / name).write_bytes(payload)
@@ -90,21 +90,21 @@ def test_verify_release_downloads_and_matches_exact_bytes(tmp_path: Path) -> Non
     with patch.object(_RELEASE_MODULE.urllib.request, "urlopen", urlopen):
         verified = verify_release(
             project="clio-kit",
-            version="3.0.0",
+            version="2.3.0",
             dist_dir=tmp_path,
             timeout_seconds=3.0,
         )
 
     assert set(verified) == {
-        "clio_kit-3.0.0-py3-none-any.whl",
-        "clio_kit-3.0.0.tar.gz",
+        "clio_kit-2.3.0-py3-none-any.whl",
+        "clio_kit-2.3.0.tar.gz",
     }
 
 
 def test_verify_release_rejects_downloaded_byte_mismatch(tmp_path: Path) -> None:
     local = {
-        "clio_kit-3.0.0-py3-none-any.whl": b"expected-wheel",
-        "clio_kit-3.0.0.tar.gz": b"expected-sdist",
+        "clio_kit-2.3.0-py3-none-any.whl": b"expected-wheel",
+        "clio_kit-2.3.0.tar.gz": b"expected-sdist",
     }
     for name, payload in local.items():
         (tmp_path / name).write_bytes(payload)
@@ -125,20 +125,20 @@ def test_verify_release_rejects_downloaded_byte_mismatch(tmp_path: Path) -> None
         patch.object(_RELEASE_MODULE.urllib.request, "urlopen", urlopen),
         pytest.raises(ReleaseVerificationError, match="differ"),
     ):
-        verify_release(project="clio-kit", version="3.0.0", dist_dir=tmp_path)
+        verify_release(project="clio-kit", version="2.3.0", dist_dir=tmp_path)
 
 
 def test_verify_release_rejects_unexpected_remote_artifacts(tmp_path: Path) -> None:
     local = {
-        "clio_kit-3.0.0-py3-none-any.whl": b"expected-wheel",
-        "clio_kit-3.0.0.tar.gz": b"expected-sdist",
+        "clio_kit-2.3.0-py3-none-any.whl": b"expected-wheel",
+        "clio_kit-2.3.0.tar.gz": b"expected-sdist",
     }
     for name, payload in local.items():
         (tmp_path / name).write_bytes(payload)
     document = _release_document(local)
     document["urls"].append(
         {
-            "filename": "clio_kit-3.0.0-extra.whl",
+            "filename": "clio_kit-2.3.0-extra.whl",
             "size": 1,
             "digests": {"sha256": hashlib.sha256(b"x").hexdigest()},
             "url": "https://files.pythonhosted.org/packages/extra.whl",
@@ -153,11 +153,11 @@ def test_verify_release_rejects_unexpected_remote_artifacts(tmp_path: Path) -> N
         patch.object(_RELEASE_MODULE.urllib.request, "urlopen", urlopen),
         pytest.raises(ReleaseVerificationError, match="unexpected"),
     ):
-        verify_release(project="clio-kit", version="3.0.0", dist_dir=tmp_path)
+        verify_release(project="clio-kit", version="2.3.0", dist_dir=tmp_path)
 
 
 def test_verify_release_requires_one_wheel_and_one_sdist(tmp_path: Path) -> None:
-    (tmp_path / "clio_kit-3.0.0-py3-none-any.whl").write_bytes(b"wheel")
+    (tmp_path / "clio_kit-2.3.0-py3-none-any.whl").write_bytes(b"wheel")
 
     with pytest.raises(ReleaseVerificationError, match="one wheel and one sdist"):
-        verify_release(project="clio-kit", version="3.0.0", dist_dir=tmp_path)
+        verify_release(project="clio-kit", version="2.3.0", dist_dir=tmp_path)

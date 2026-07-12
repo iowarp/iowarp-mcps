@@ -1,8 +1,7 @@
 {
   "clio-paraview": {
-    "command": "uvx",
+    "command": "clio-kit",
     "args": [
-      "clio-kit",
       "mcp-server",
       "paraview"
     ]

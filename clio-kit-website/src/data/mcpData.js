@@ -34,7 +34,7 @@ export const mcpData = {
     "icon": "\ud83d\udcca",
     "actions": [],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -65,7 +65,7 @@ export const mcpData = {
       "download_multiple_pdfs"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -82,7 +82,7 @@ export const mcpData = {
     "icon": "\u23f0",
     "actions": [],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.0.1",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -102,7 +102,7 @@ export const mcpData = {
       "decompress_file_tool"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -130,7 +130,7 @@ export const mcpData = {
       "generate_io_summary_report"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -175,7 +175,7 @@ export const mcpData = {
       "export_dataset"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -222,7 +222,7 @@ export const mcpData = {
       "jm_graph_modify"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "3.0.0",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -250,7 +250,7 @@ export const mcpData = {
       "module_savelist"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -271,7 +271,7 @@ export const mcpData = {
       "get_dataset_details"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -300,7 +300,7 @@ export const mcpData = {
       "health_check"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -333,7 +333,7 @@ export const mcpData = {
       "profile_data"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -364,7 +364,7 @@ export const mcpData = {
       "generate_summary_report"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -408,7 +408,7 @@ export const mcpData = {
       "list_commands"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -430,7 +430,7 @@ export const mcpData = {
       "aggregate_column_tool"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -454,7 +454,7 @@ export const mcpData = {
       "data_info"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "2.2.3",
       "updated": "2026-02-19"
     },
     "platforms": [
@@ -485,7 +485,7 @@ export const mcpData = {
       "get_allocation_status"
     ],
     "stats": {
-      "version": "1.0.0",
+      "version": "3.0.0",
       "updated": "2026-02-19"
     },
     "platforms": [

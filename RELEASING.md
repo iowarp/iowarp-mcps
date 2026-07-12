@@ -1,10 +1,18 @@
 # Release procedure
 
 CLIO Kit publishes from version tags on `main`. The workflow validates every
-embedded lock, runs the root, JARVIS, Spack, and ChronoLog release suites, builds
-every server package, tests an isolated installed root wheel, attests the root
+embedded lock including the agentic-search lock, runs the root, JARVIS, SLURM,
+Spack, ChronoLog, and ADIOS release suites with zero skipped tests, builds every
+server package, tests an isolated installed root wheel, attests the root
 distributions, publishes to PyPI, and creates a verified immutable GitHub
-release.
+release. Pull requests and `main` commits build and validate release artifacts
+but do not publish advisory development packages to TestPyPI; only a qualifying
+production tag publishes package bytes.
+
+The quality workflow treats MyPy and every supported Python test lane as
+required. Changes to the root lock, agentic-search lock, server-version map, or
+workflow infrastructure trigger the full applicable matrix. Pytest JUnit
+reports are rejected when they contain any skipped test.
 
 Before creating a tag, an administrator must verify immutable releases. This
 endpoint requires administration read access, which the Actions `GITHUB_TOKEN`
@@ -87,7 +95,11 @@ The release workflow rejects a tag that is not on `main` or differs from the
 wheel version. After publication, verify both channels independently:
 
 ```bash
-uvx --isolated --no-cache --from "clio-kit==${version}" clio-kit --help
+tool_dir="$(mktemp -d)"
+tool_bin="$(mktemp -d)"
+UV_TOOL_DIR="$tool_dir" UV_TOOL_BIN_DIR="$tool_bin" \
+  uv tool install --no-cache "clio-kit==${version}"
+"$tool_bin/clio-kit" --help
 gh release verify "v${version}" --repo iowarp/clio-kit
 gh release view "v${version}" --repo iowarp/clio-kit \
   --json tagName,targetCommitish,isDraft,isImmutable,assets

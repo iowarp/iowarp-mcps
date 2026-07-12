@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate or verify locked JARVIS and Spack MCP user-contract artifacts."""
+"""Generate or verify locked JARVIS, SLURM, and Spack user-contract artifacts."""
 
 from __future__ import annotations
 

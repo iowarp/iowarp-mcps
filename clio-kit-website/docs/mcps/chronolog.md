@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="⏰"
   category="Data Processing"
   description="Chronolog MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 4 tools for distributed logging: start sessions, record interactions, retrieve history. Enables AI agents to log and track interactions on HPC systems."
-  version="1.0.0"
+  version="2.0.1"
   actions={[]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["distributed logging", "chronolog", "event logging", "session management", "context sharing", "real-time", "model context protocol", "scientific data", "conversational ai", "high-performance", "shared log", "multi-client", "historical retrieval", "enterprise logging"]}

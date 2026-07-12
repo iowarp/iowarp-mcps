@@ -1,8 +1,7 @@
 {
   "clio-node-hardware": {
-    "command": "uvx",
+    "command": "clio-kit",
     "args": [
-      "clio-kit",
       "mcp-server",
       "node-hardware"
     ]

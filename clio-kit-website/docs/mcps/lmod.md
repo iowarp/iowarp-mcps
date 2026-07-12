@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="📦"
   category="System Management"
   description="Lmod MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 10 tools for environment module management: load/unload modules, search available modules, save/restore configurations. Enables AI agents to manage HPC software environments."
-  version="1.0.0"
+  version="2.2.3"
   actions={["module_list", "module_avail", "module_show", "module_load", "module_unload", "module_swap", "module_spider", "module_save", "module_restore", "module_savelist"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["lmod", "environment-modules", "module-management", "hpc", "scientific-computing", "supercomputing", "cluster-computing", "module-system"]}

@@ -1,8 +1,7 @@
 {
   "clio-geo": {
-    "command": "uvx",
+    "command": "clio-kit",
     "args": [
-      "clio-kit",
       "mcp-server",
       "geo"
     ]

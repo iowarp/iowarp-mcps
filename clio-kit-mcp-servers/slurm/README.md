@@ -1,18 +1,25 @@
 # Slurm MCP Server
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](../../LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/slurm-mcp.svg)](https://pypi.org/project/slurm-mcp/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 
 **Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
 
-Slurm MCP is a Model Context Protocol server that enables LLMs to manage HPC workloads on Slurm-managed clusters with comprehensive job submission, monitoring, and resource management capabilities, featuring intelligent job scheduling, cluster monitoring, array job support, and interactive node a...
+Slurm MCP gives agents a compact, typed interface for submitting, inspecting,
+and explicitly cancelling workloads on Slurm-managed clusters. Granular
+scheduler and interactive-allocation operations remain available to operators.
 
 ## Quick Start
 
 ```bash
-uvx clio-kit mcp-server slurm
+uv tool install "clio-kit==2.3.0"
+clio-kit mcp-server slurm
 ```
+
+`uv tool install` is the supported setup for a permanent MCP server. It gives
+CLIO Kit a persistent, isolated environment instead of recreating a temporary
+`uvx` environment on agent startup.
 
 ## Documentation
 
@@ -24,15 +31,28 @@ uvx clio-kit mcp-server slurm
 
 ## Description
 
-Slurm MCP is a Model Context Protocol server that enables LLMs to manage HPC workloads on Slurm-managed clusters with comprehensive job submission, monitoring, and resource management capabilities, featuring intelligent job scheduling, cluster monitoring, array job support, and interactive node allocation for seamless high-performance computing workflows.
+The default surface is organized around scheduling intent rather than exposing a
+one-to-one copy of the Slurm command API. It supports single and array jobs,
+scheduler-native identifiers, unified lifecycle inspection, bounded output, and
+closed machine-readable contracts.
 
 
-## 🛠️ Installation
+## Installation
 
 ### Requirements
 
 - Python 3.10 or higher
 - [uv](https://docs.astral.sh/uv/) package manager (recommended)
+
+Install the released CLIO Kit command once:
+
+```bash
+uv tool install "clio-kit==2.3.0"
+clio-kit mcp-server slurm --help
+```
+
+For a one-shot probe or development check only, the equivalent temporary command
+is `uvx --from "clio-kit==2.3.0" clio-kit mcp-server slurm`.
 
 <details>
 <summary><b>Install in Cursor</b></summary>
@@ -45,8 +65,8 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
 {
   "mcpServers": {
     "slurm-mcp": {
-      "command": "uvx",
-      "args": ["clio-kit", "mcp-server", "slurm"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "slurm"]
     }
   }
 }
@@ -64,8 +84,8 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
   "servers": {
     "slurm-mcp": {
       "type": "stdio",
-      "command": "uvx",
-      "args": ["clio-kit", "mcp-server", "slurm"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "slurm"]
     }
   }
 }
@@ -79,7 +99,7 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
 Run this command. See [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#set-up-model-context-protocol-mcp) for more info.
 
 ```sh
-claude mcp add slurm-mcp -- uvx clio-kit mcp-server slurm
+claude mcp add slurm-mcp -- clio-kit mcp-server slurm
 ```
 
 </details>
@@ -93,8 +113,8 @@ Add this to your Claude Desktop `claude_desktop_config.json` file. See [Claude D
 {
   "mcpServers": {
     "slurm-mcp": {
-      "command": "uvx",
-      "args": ["clio-kit", "mcp-server", "slurm"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "slurm"]
     }
   }
 }
@@ -130,67 +150,22 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\slurm run slurm-mcp 
 
 ## Capabilities
 
-### `submit_slurm_job`
-**Description**: Submit a job script to the Slurm scheduler with resource requirements.
-**Tags**: jobs, submission
+The default `user` profile exposes a compact, agent-facing contract:
 
-### `check_job_status`
-**Description**: Check the status of a Slurm job by its ID.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
+- `slurm_submit`: submit one job or array and receive its scheduler-native ID.
+- `slurm_list`: find jobs using optional user, state, and partition filters.
+- `slurm_describe`: combine status, scheduler details, and optional bounded output.
+- `slurm_cluster`: inspect partitions and queue state, with node detail opt-in.
+- `slurm_cancel`: request destructive cancellation only after an exact
+  `confirm_job_id` match.
 
-### `cancel_slurm_job`
-**Description**: Cancel a running or pending Slurm job.
-**Hints**: destructive, idempotent
-**Tags**: jobs, management
+All five tools have closed input and output schemas. See
+[the v3 contract and transformation table](docs/agent-contract-v3.md) for the
+stable result envelopes and exact mapping from the original tools.
 
-### `list_slurm_jobs`
-**Description**: List Slurm jobs with optional filtering by user and state.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
-
-### `get_slurm_info`
-**Description**: Get Slurm cluster configuration, partitions, and resource availability.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
-
-### `get_job_details`
-**Description**: Get detailed information about a specific Slurm job.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
-
-### `get_job_output`
-**Description**: Retrieve stdout or stderr output from a Slurm job.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
-
-### `get_queue_info`
-**Description**: Get Slurm queue status and partition information.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
-
-### `submit_array_job`
-**Description**: Submit a Slurm array job for parallel task execution.
-**Tags**: jobs, submission
-
-### `get_node_info`
-**Description**: Get information about Slurm cluster nodes and their resources.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
-
-### `allocate_slurm_nodes`
-**Description**: Allocate Slurm nodes for an interactive session using salloc.
-**Tags**: jobs, submission
-
-### `deallocate_slurm_nodes`
-**Description**: Release a Slurm node allocation by canceling it.
-**Hints**: destructive, idempotent
-**Tags**: jobs, management
-
-### `get_allocation_status`
-**Description**: Check the status of a Slurm node allocation.
-**Hints**: read-only, idempotent
-**Tags**: jobs, monitoring
+The original 13 granular operations remain available with `--profile legacy`.
+Use `--profile admin` to expose compact and granular tools together. Unknown
+profiles fail closed.
 
 ### Resources
 
@@ -202,7 +177,7 @@ uv --directory=$env:CLONE_DIR\clio-kit\clio-kit-mcp-servers\slurm run slurm-mcp 
 ## Claude Code
 
 ```bash
-claude mcp add clio-slurm -- uvx clio-kit slurm
+claude mcp add clio-slurm -- clio-kit mcp-server slurm
 ```
 
 Or install via the CLIO Kit plugin marketplace:
@@ -219,9 +194,9 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 {
   "mcpServers": {
     "clio-slurm": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
+        "mcp-server",
         "slurm"
       ]
     }
@@ -236,9 +211,9 @@ Add to `~/.gemini/settings.json`:
 {
   "mcpServers": {
     "clio-slurm": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
+        "mcp-server",
         "slurm"
       ]
     }
@@ -259,8 +234,8 @@ I need to submit a Python simulation script to Slurm with 16 cores and 32GB memo
 ```
 
 **Tools called:**
-- `submit_slurm_job` - Submit job with resource specification
-- `check_job_status` - Monitor job progress and performance
+- `slurm_submit` - Submit the job with its resource request
+- `slurm_describe` - Query lifecycle state and scheduler details
 
 ### 2. Array Job Management
 ```
@@ -268,16 +243,16 @@ Submit an array job for parameter sweep analysis with 100 tasks, each requiring 
 ```
 
 **Tools called:**
-- `submit_array_job` - Submit parallel array job
-- `list_slurm_jobs` - Monitor array job progress
-- `get_job_details` - Get detailed array job information
+- `slurm_submit` with `array` - Submit the parallel array
+- `slurm_list` - Find its scheduler-native job ID
+- `slurm_describe` - Query array state and details
 
 ### 3. Interactive Session Management
 ```
 Allocate 2 compute nodes with 8 cores each for an interactive analysis session, then deallocate when finished.
 ```
 
-**Tools called:**
+**Admin/legacy tools called:**
 - `allocate_slurm_nodes` - Allocate interactive nodes
 - `get_node_info` - Check node status and resources
 - `deallocate_slurm_nodes` - Clean up allocated resources
@@ -288,16 +263,15 @@ I have a long-running job that needs to be cancelled, and I want to retrieve the
 ```
 
 **Tools called:**
-- `cancel_slurm_job` - Cancel running job with cleanup
-- `get_job_output` - Retrieve completed job outputs
-- `get_job_details` - Get final job performance metrics
+- `slurm_describe` with bounded output - Review job state and logs
+- `slurm_cancel` with exact ID confirmation - Request cancellation
 
 ### 5. Allocation Status and Monitoring
 ```
 Check the status of my current interactive allocation and monitor its resource usage efficiency.
 ```
 
-**Tools called:**
+**Admin/legacy tools called:**
 - `get_allocation_status` - Monitor allocation efficiency
 - `get_node_info` - Check node resource usage
 - `deallocate_slurm_nodes` - Clean up when finished
@@ -308,6 +282,5 @@ Analyze the current cluster queue status, identify bottlenecks, and suggest opti
 ```
 
 **Tools called:**
-- `get_slurm_info` - Get cluster status and capacity
-- `get_queue_info` - Analyze queue performance and bottlenecks
-- `list_slurm_jobs` - Review pending job queue and priorities
+- `slurm_cluster` - Inspect partitions, queue state, and capacity
+- `slurm_list` - Review the user's pending jobs and scheduler-native IDs

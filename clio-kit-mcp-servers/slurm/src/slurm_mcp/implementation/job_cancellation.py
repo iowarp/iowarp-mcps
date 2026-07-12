@@ -4,7 +4,7 @@ Handles job cancellation and termination.
 """
 
 import subprocess
-from .utils import check_slurm_available
+from .utils import check_slurm_available, run_slurm_command
 
 
 def cancel_slurm_job(job_id: str) -> dict:
@@ -24,7 +24,11 @@ def cancel_slurm_job(job_id: str) -> dict:
 
     try:
         cmd = ["scancel", job_id]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = run_slurm_command(
+            cmd,
+            max_stdout_bytes=4096,
+            test_runner=subprocess.run,
+        )
 
         if result.returncode == 0:
             return {

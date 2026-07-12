@@ -27,8 +27,8 @@ const MCPDetail = ({
       code: `{
   "mcpServers": {
     "${name.toLowerCase()}-mcp": {
-      "command": "uvx",
-      "args": ["clio-kit", "${name.toLowerCase()}"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "${name.toLowerCase()}"]
     }
   }
 }`
@@ -40,8 +40,8 @@ const MCPDetail = ({
   "servers": {
     "${name.toLowerCase()}-mcp": {
       "type": "stdio",
-      "command": "uvx",
-      "args": ["clio-kit", "${name.toLowerCase()}"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "${name.toLowerCase()}"]
     }
   }
 }`
@@ -49,7 +49,7 @@ const MCPDetail = ({
     claude_code: {
       title: 'Claude Code',
       language: 'bash',
-      code: `claude mcp add ${name.toLowerCase()}-mcp -- uvx clio-kit ${name.toLowerCase()}`
+      code: `claude mcp add ${name.toLowerCase()}-mcp -- clio-kit mcp-server ${name.toLowerCase()}`
     },
     claude_desktop: {
       title: 'Claude Desktop',
@@ -57,8 +57,8 @@ const MCPDetail = ({
       code: `{
   "mcpServers": {
     "${name.toLowerCase()}-mcp": {
-      "command": "uvx",
-      "args": ["clio-kit", "${name.toLowerCase()}"]
+      "command": "clio-kit",
+      "args": ["mcp-server", "${name.toLowerCase()}"]
     }
   }
 }`

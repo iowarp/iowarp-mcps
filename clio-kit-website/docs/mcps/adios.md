@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="📊"
   category="Data Processing"
   description="ADIOS MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 5 tools for ADIOS2 BP5 file access: list files, inspect variables, read data at specific steps, extract attributes. Enables AI agents to work with high-performance scientific data formats."
-  version="1.0.0"
+  version="2.2.3"
   actions={[]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["mcp", "adios2", "bp5", "scientific data", "data access", "variable inspection", "attribute extraction", "iowarp", "grc"]}

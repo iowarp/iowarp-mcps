@@ -518,10 +518,10 @@ def main(ctx):
         click.echo("  prompt       Print a prompt to stdout")
         click.echo("  prompts      List all available prompts")
         click.echo("\nUsage:")
-        click.echo("  uvx clio-kit mcp-server <server-name>")
-        click.echo("  uvx clio-kit search <subcommand>")
-        click.echo("  uvx clio-kit prompt <prompt-name>")
-        click.echo("\nFor more help: uvx clio-kit <command> --help")
+        click.echo("  clio-kit mcp-server <server-name>")
+        click.echo("  clio-kit search <subcommand>")
+        click.echo("  clio-kit prompt <prompt-name>")
+        click.echo("\nFor more help: clio-kit <command> --help")
 
 
 @main.command(
@@ -540,8 +540,7 @@ def mcp_server(server, branch, args):
         click.echo("Available MCP servers:")
         for s in sorted(server_command_map.keys()):
             click.echo(f"  - {s}")
-        click.echo("\nUsage: uvx clio-kit mcp-server <server-name>")
-        click.echo("   or: clio-kit mcp-server <server-name> (if installed)")
+        click.echo("\nUsage: clio-kit mcp-server <server-name>")
         return
 
     # Normalize server name to lowercase
@@ -669,8 +668,7 @@ def prompt(prompt_name):
                 click.echo(f"  - {p}")
         else:
             click.echo("No prompts found.")
-        click.echo("\nUsage: uvx clio-kit prompt <prompt-name>")
-        click.echo("   or: clio-kit prompt <prompt-name> (if installed)")
+        click.echo("\nUsage: clio-kit prompt <prompt-name>")
         return
 
     # Normalize prompt name (support both dash and underscore)
@@ -723,13 +721,13 @@ def search(args):
         click.echo("  serve   Start the FastAPI server")
         click.echo("  list    List indexed documents")
         click.echo("  seed    Seed sample data")
-        click.echo("\nUsage: uvx clio-kit search <subcommand> [options]")
+        click.echo("\nUsage: clio-kit search <subcommand> [options]")
         click.echo("\nExamples:")
         click.echo(
-            '  uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"'
+            '  clio-kit search query --namespace local_fs --q "pressure > 200 kPa"'
         )
-        click.echo("  uvx clio-kit search index --namespace local_fs")
-        click.echo("  uvx clio-kit search serve --port 8080")
+        click.echo("  clio-kit search index --namespace local_fs")
+        click.echo("  clio-kit search serve --port 8080")
         return
 
     search_path = get_search_path()

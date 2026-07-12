@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/paraview-mcp",
   "title": "CLIO Paraview",
   "description": "MCP server for ParaView scientific visualization",
-  "version": "3.0.0",
+  "version": "2.2.3",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "3.0.0",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },

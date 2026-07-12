@@ -9,22 +9,28 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'mcp-server-versions.toml'
       - 'pyproject.toml'
+      - 'uv.lock'
       - 'clio-kit-mcp-servers/**'
       - 'clio-agentic-search/src/**'
       - 'clio-agentic-search/pyproject.toml'
+      - 'clio-agentic-search/uv.lock'
       - 'prompts/**'
   push:
     branches:
-      - main  # Publish dev versions to TestPyPI on main commits
+      - main  # Validate release artifacts on main commits
     paths:
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'mcp-server-versions.toml'
       - 'pyproject.toml'
+      - 'uv.lock'
       - 'clio-kit-mcp-servers/**'
       - 'clio-agentic-search/src/**'
       - 'clio-agentic-search/pyproject.toml'
+      - 'clio-agentic-search/uv.lock'
       - 'prompts/**'
     tags:
       - 'v*.*.*'  # Publish releases to PyPI on version tags (paths don't apply to tags)
@@ -61,6 +67,7 @@ jobs:
       shell: bash
       run: |
         uv lock --check
+        uv lock --check --directory clio-agentic-search
         uv run --with ruff ruff check scripts src tests
         uv run --with ruff ruff format --check scripts src tests
         uv run --with mypy mypy scripts/generate_server_json.py \
@@ -68,13 +75,17 @@ jobs:
           scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py \
           scripts/release_authorization.py \
           scripts/verify_mcp_registry_release.py src
-        uv run pytest -q tests
-        for server in jarvis spack; do
+        uv run pytest -q tests --junitxml="$RUNNER_TEMP/root-junit.xml"
+        python scripts/assert_no_skipped_tests.py "$RUNNER_TEMP/root-junit.xml"
+        for server in jarvis slurm spack; do
           uv lock --check --directory "clio-kit-mcp-servers/$server"
           uv run --directory "clio-kit-mcp-servers/$server" ruff check .
           uv run --directory "clio-kit-mcp-servers/$server" ruff format --check .
           uv run --directory "clio-kit-mcp-servers/$server" mypy src
-          uv run --directory "clio-kit-mcp-servers/$server" pytest -q
+          uv run --directory "clio-kit-mcp-servers/$server" pytest -q \
+            --junitxml="$RUNNER_TEMP/$server-junit.xml"
+          python scripts/assert_no_skipped_tests.py \
+            "$RUNNER_TEMP/$server-junit.xml"
           uv run --directory "clio-kit-mcp-servers/$server" pip-audit
         done
         uv run --directory clio-kit-mcp-servers/chronolog \
@@ -82,14 +93,20 @@ jobs:
         uv run --directory clio-kit-mcp-servers/chronolog \
           ruff format --check src tests/test_lazy_client.py
         uv run --directory clio-kit-mcp-servers/chronolog \
-          pytest -q tests/test_lazy_client.py
+          pytest -q tests/test_lazy_client.py \
+          --junitxml="$RUNNER_TEMP/chronolog-junit.xml"
+        python scripts/assert_no_skipped_tests.py \
+          "$RUNNER_TEMP/chronolog-junit.xml"
         uv lock --check --directory clio-kit-mcp-servers/adios
         uv run --directory clio-kit-mcp-servers/adios \
           ruff check src tests/test_lazy_import.py
         uv run --directory clio-kit-mcp-servers/adios \
           ruff format --check src tests/test_lazy_import.py
         uv run --directory clio-kit-mcp-servers/adios \
-          pytest -q tests/test_lazy_import.py tests/test_mcp_handlers.py tests/test_server.py
+          pytest -q tests/test_lazy_import.py tests/test_mcp_handlers.py tests/test_server.py \
+          --junitxml="$RUNNER_TEMP/adios-junit.xml"
+        python scripts/assert_no_skipped_tests.py \
+          "$RUNNER_TEMP/adios-junit.xml"
 
     - name: Regenerate and verify deterministic publishing manifests
       shell: bash
@@ -214,19 +231,31 @@ jobs:
       shell: bash
       run: |
         child_cache="$(mktemp -d)"
-        trap 'rm -rf "$child_cache"' EXIT
+        tool_dir="$(mktemp -d)"
+        tool_bin="$(mktemp -d)"
+        trap 'rm -rf "$child_cache" "$tool_dir" "$tool_bin"' EXIT
         export CLIO_KIT_CACHE_DIR="$child_cache"
+        export UV_TOOL_DIR="$tool_dir"
+        export UV_TOOL_BIN_DIR="$tool_bin"
         mapfile -t wheels < <(find dist -maxdepth 1 -type f -name '*.whl' -print | sort)
         test "${#wheels[@]}" -eq 1
         wheel="$(realpath "${wheels[0]}")"
-        uvx --isolated --from "$wheel" clio-kit --help >/dev/null
-        listed_servers="$(uvx --isolated --from "$wheel" clio-kit mcp-servers)"
-        listed_contracts="$(uvx --isolated --from "$wheel" clio-kit mcp-contracts)"
+        uv tool install --no-cache "$wheel"
+        clio_kit="$tool_bin/clio-kit"
+        test -x "$clio_kit"
+        "$clio_kit" --help >/dev/null
+        listed_servers="$("$clio_kit" mcp-servers)"
+        listed_contracts="$("$clio_kit" mcp-contracts)"
         grep -Fq 'clio-kit-jarvis-user-v3' <<< "$listed_contracts"
-        grep -Fq 'clio-kit-spack-user-v3' <<< "$listed_contracts"
-        spack_contract="$(uvx --isolated --from "$wheel" \
-          clio-kit mcp-contract clio-kit-spack-user-v3)"
-        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v3"' \
+        grep -Fq 'clio-kit-slurm-user-v3' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-spack-user-v2' <<< "$listed_contracts"
+        slurm_contract="$("$clio_kit" \
+          mcp-contract clio-kit-slurm-user-v3)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-slurm-user-v3"' \
+          <<< "$slurm_contract"
+        spack_contract="$("$clio_kit" \
+          mcp-contract clio-kit-spack-user-v2)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v2"' \
           <<< "$spack_contract"
         server_count=0
         for server_dir in clio-kit-mcp-servers/*/; do
@@ -238,15 +267,58 @@ jobs:
           server_count=$((server_count + 1))
         done
         test "$server_count" -gt 0
-        child_help="$(uvx --isolated --from "$wheel" \
-          clio-kit mcp-server spack -- --help)"
+        child_help="$("$clio_kit" mcp-server spack -- --help)"
         grep -Fq 'Spack MCP Server' <<< "$child_help"
-        jarvis_help="$(uvx --isolated --from "$wheel" \
-          clio-kit mcp-server jarvis -- --help)"
+        tool_python="$tool_dir/clio-kit/bin/python"
+        test -x "$tool_python"
+        spack_environment="$("$tool_python" - <<'PY'
+        from clio_kit import (
+            LOCKED_SERVER_LAUNCH_SCHEMA,
+            get_servers_path,
+            locked_server_environment,
+            locked_server_project_identity,
+        )
+
+        server = get_servers_path() / "spack"
+        identity = locked_server_project_identity(server)
+        environment = locked_server_environment(server)
+        assert identity["schema_version"] == LOCKED_SERVER_LAUNCH_SCHEMA
+        assert len(identity["project_sha256"]) == 64
+        assert len(identity["lock_sha256"]) == 64
+        assert environment.name == f"spack-{identity['project_sha256'][:24]}"
+        print(environment)
+        PY
+        )"
+        test -x "$spack_environment/bin/python"
+        first_child_identity="$(python - "$spack_environment/bin/python" <<'PY'
+        import os
+        import sys
+
+        status = os.stat(sys.argv[1])
+        print(f"{status.st_dev}:{status.st_ino}")
+        PY
+        )"
+        reused_child_help="$("$clio_kit" mcp-server spack -- --help)"
+        grep -Fq 'Spack MCP Server' <<< "$reused_child_help"
+        reused_spack_environment="$("$tool_python" -c \
+          'from clio_kit import get_servers_path,locked_server_environment; print(locked_server_environment(get_servers_path() / "spack"))')"
+        test "$reused_spack_environment" = "$spack_environment"
+        second_child_identity="$(python - "$spack_environment/bin/python" <<'PY'
+        import os
+        import sys
+
+        status = os.stat(sys.argv[1])
+        print(f"{status.st_dev}:{status.st_ino}")
+        PY
+        )"
+        test "$second_child_identity" = "$first_child_identity"
+        jarvis_help="$("$clio_kit" mcp-server jarvis -- --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_help"
-        jarvis_admin_help="$(uvx --isolated --from "$wheel" \
-          clio-kit mcp-server jarvis -- --profile admin --help)"
+        jarvis_admin_help="$("$clio_kit" \
+          mcp-server jarvis -- --profile admin --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_admin_help"
+        slurm_help="$("$clio_kit" mcp-server slurm -- --help)"
+        grep -Fq 'Slurm MCP Server' <<< "$slurm_help"
 
     - name: Attest release distributions
       if: steps.version.outputs.is_release == 'true'
@@ -265,34 +337,6 @@ jobs:
           dist/*.tar.gz
         if-no-files-found: error
         include-hidden-files: false
-
-  publish-to-testpypi:
-    name: Publish to TestPyPI
-    if: github.ref == 'refs/heads/main'  # Only publish dev versions on main
-    needs:
-    - build
-    runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/clio-kit
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
-    steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    
-    - name: Publish to TestPyPI
-      uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
-      continue-on-error: true  # Don't fail the workflow if TestPyPI upload fails
-      with:
-        repository-url: https://test.pypi.org/legacy/
-        skip-existing: true
-        verbose: true
-        attestations: false  # Disable attestations for TestPyPI to avoid issues
 
   publish-to-pypi:
     name: Publish to PyPI
@@ -536,14 +580,26 @@ jobs:
     - name: Authenticate with GitHub OIDC
       run: ./mcp-publisher login github-oidc
 
-    - name: Publish each server to MCP registry
+    - name: Publish versioned servers to MCP registry
       run: |
         FAILURES=0
         PUBLISHED=0
         SKIPPED=0
-        for server_dir in clio-kit-mcp-servers/*/; do
-          if [ ! -f "$server_dir/server.json" ]; then continue; fi
-          server_name=$(basename "$server_dir")
+        mapfile -t release_servers < <(python3 - <<'PY'
+        import tomllib
+        from pathlib import Path
+
+        data = tomllib.loads(
+            Path("mcp-server-versions.toml").read_text(encoding="utf-8")
+        )
+        for server in data["mcp-registry-release"]["publish"]:
+            print(server)
+        PY
+        )
+        test "${#release_servers[@]}" -gt 0
+        for server_name in "${release_servers[@]}"; do
+          server_dir="clio-kit-mcp-servers/$server_name"
+          test -f "$server_dir/server.json"
           echo "Publishing $server_name to MCP registry..."
           if OUTPUT=$(cd "$server_dir" && ../../mcp-publisher publish 2>&1); then
             publish_result=published

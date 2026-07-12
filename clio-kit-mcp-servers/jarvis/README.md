@@ -9,13 +9,14 @@ the root CLIO Kit launcher resolves that requirement from the shipped lock.
 Use this for normal agent workflows:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis
+uv tool install 'clio-kit==2.3.0'
+clio-kit mcp-server jarvis
 ```
 
 When Spack is outside the service PATH, pass its audited executable explicitly:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis -- \
+clio-kit mcp-server jarvis -- \
   --spack-command /path/to/spack
 ```
 
@@ -68,7 +69,7 @@ surface.
 Use this only for operator or maintenance workflows:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis -- --profile admin
+clio-kit mcp-server jarvis -- --profile admin
 ```
 
 The admin server exposes the lower-level JARVIS and JarvisManager operations,
@@ -78,7 +79,7 @@ pipeline destruction, and other maintenance commands.
 The compatibility profile that combines user and admin tools is also available:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis -- --profile all
+clio-kit mcp-server jarvis -- --profile all
 ```
 
 ## Agent workflow
@@ -151,7 +152,7 @@ current exact JARVIS `progress` snapshot and use
 ## Claude Code
 
 ```bash
-claude mcp add clio-jarvis -- uvx clio-kit mcp-server jarvis
+claude mcp add clio-jarvis -- clio-kit mcp-server jarvis
 ```
 
 Or install via the CLIO Kit plugin marketplace:
@@ -168,9 +169,8 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 {
   "mcpServers": {
     "clio-jarvis": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "jarvis"
       ]
@@ -224,9 +224,8 @@ Add to `~/.gemini/settings.json`:
 {
   "mcpServers": {
     "clio-jarvis": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "jarvis"
       ]

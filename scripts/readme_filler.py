@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update README files for all MCP servers using FastMCP 3.0 metadata.
+"""Update README files for all MCP servers using live FastMCP metadata.
 
 Imports each server via extract_mcp_metadata.py and updates the Capabilities,
 Claude Code, Claude Desktop, and Gemini CLI sections in each server's README.md.
@@ -89,8 +89,8 @@ def format_claude_desktop_section(server_name: str) -> str:
         {
             "mcpServers": {
                 f"clio-{server_name}": {
-                    "command": "uvx",
-                    "args": ["clio-kit", server_name],
+                    "command": "clio-kit",
+                    "args": ["mcp-server", server_name],
                 }
             }
         },
@@ -112,7 +112,7 @@ def format_claude_code_section(server_name: str) -> str:
     lines = [
         "## Claude Code\n",
         "```bash",
-        f"claude mcp add clio-{server_name} -- uvx clio-kit {server_name}",
+        f"claude mcp add clio-{server_name} -- clio-kit mcp-server {server_name}",
         "```\n",
         "Or install via the CLIO Kit plugin marketplace:\n",
         "```",
@@ -130,8 +130,8 @@ def format_gemini_section(server_name: str) -> str:
         {
             "mcpServers": {
                 f"clio-{server_name}": {
-                    "command": "uvx",
-                    "args": ["clio-kit", server_name],
+                    "command": "clio-kit",
+                    "args": ["mcp-server", server_name],
                 }
             }
         },

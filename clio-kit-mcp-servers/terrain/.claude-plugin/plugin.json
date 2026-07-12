@@ -1,5 +1,5 @@
 {
   "name": "clio-terrain",
   "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
-  "version": "1.0.0"
+  "version": "2.2.3"
 }

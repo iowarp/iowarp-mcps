@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "3.0.0",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },
@@ -30,56 +30,24 @@
   ],
   "tools": [
     {
-      "name": "submit_slurm_job",
-      "description": "Submit a job script to the Slurm scheduler with resource requirements."
+      "name": "slurm_submit",
+      "description": "Submit one Slurm job or array and return its scheduler-native job ID. Set array only for an array submission."
     },
     {
-      "name": "check_job_status",
-      "description": "Check the status of a Slurm job by its ID."
+      "name": "slurm_list",
+      "description": "List a bounded number of Slurm jobs with optional user, state, and partition filters. Returns native IDs and explicit truncation state."
     },
     {
-      "name": "cancel_slurm_job",
-      "description": "Cancel a running or pending Slurm job."
+      "name": "slurm_describe",
+      "description": "Describe one scheduler-native Slurm job: lifecycle state, terminality, scheduler properties, and optional bounded stdout/stderr tails."
     },
     {
-      "name": "list_slurm_jobs",
-      "description": "List Slurm jobs with optional filtering by user and state."
+      "name": "slurm_cluster",
+      "description": "Inspect bounded Slurm partition and queue records in one snapshot. Node details are excluded by default and bounded when requested."
     },
     {
-      "name": "get_slurm_info",
-      "description": "Get Slurm cluster configuration, partitions, and resource availability."
-    },
-    {
-      "name": "get_job_details",
-      "description": "Get detailed information about a specific Slurm job."
-    },
-    {
-      "name": "get_job_output",
-      "description": "Retrieve stdout or stderr output from a Slurm job."
-    },
-    {
-      "name": "get_queue_info",
-      "description": "Get Slurm queue status and partition information."
-    },
-    {
-      "name": "submit_array_job",
-      "description": "Submit a Slurm array job for parallel task execution."
-    },
-    {
-      "name": "get_node_info",
-      "description": "Get information about Slurm cluster nodes and their resources."
-    },
-    {
-      "name": "allocate_slurm_nodes",
-      "description": "Allocate Slurm nodes for an interactive session using salloc."
-    },
-    {
-      "name": "deallocate_slurm_nodes",
-      "description": "Release a Slurm node allocation by canceling it."
-    },
-    {
-      "name": "get_allocation_status",
-      "description": "Check the status of a Slurm node allocation."
+      "name": "slurm_cancel",
+      "description": "Request destructive cancellation of one Slurm job. confirm_job_id must exactly repeat job_id; omission or mismatch is rejected without calling scancel."
     }
   ],
   "resources": [

@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="⚡"
   category="Analysis & Visualization"
   description="Darshan MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 10 tools for I/O performance analysis: load traces, analyze access patterns, identify bottlenecks, compare logs. Enables AI agents to analyze HPC application I/O performance."
-  version="1.0.0"
+  version="2.2.3"
   actions={["load_darshan_log", "get_job_summary", "analyze_file_access_patterns", "get_io_performance_metrics", "analyze_posix_operations", "analyze_mpiio_operations", "identify_io_bottlenecks", "get_timeline_analysis", "compare_darshan_logs", "generate_io_summary_report"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["darshan", "i/o profiling", "performance analysis", "hpc", "mcp", "iowarp", "grc"]}

@@ -20,14 +20,15 @@ ambiguous.
 Run the default server with:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server spack
+uv tool install 'clio-kit==2.3.0'
+clio-kit mcp-server spack
 ```
 
 When Spack is not on the service PATH, configure the audited executable
 explicitly instead of modifying the worker environment:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server spack -- \
+clio-kit mcp-server spack -- \
   --spack-command /path/to/spack
 ```
 
@@ -43,7 +44,7 @@ An operator-only diagnostic can return the structured environment without
 claiming to mutate future processes:
 
 ```bash
-uvx --from clio-kit==3.0.0 clio-kit mcp-server spack -- --profile admin
+clio-kit mcp-server spack -- --profile admin
 ```
 
 Every successful tool returns a versioned Pydantic result. Command failures are

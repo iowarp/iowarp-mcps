@@ -8,7 +8,16 @@ import subprocess
 import re
 import tempfile
 from typing import Optional
-from .utils import check_slurm_available, ensure_logs_directory
+from .utils import (
+    check_slurm_available,
+    ensure_logs_directory,
+    read_regular_job_script,
+    run_slurm_command,
+    validate_sbatch_array,
+    validate_sbatch_memory,
+    validate_sbatch_time_limit,
+    validate_sbatch_token,
+)
 
 
 def submit_array_job(
@@ -35,16 +44,21 @@ def submit_array_job(
     Returns:
         Dictionary with array job submission results
     """
+    if cores <= 0:
+        raise ValueError("Core count must be positive")
+    array_range = validate_sbatch_array(array_range)
+    memory = validate_sbatch_memory(memory)
+    time_limit = validate_sbatch_time_limit(time_limit)
+    job_name = validate_sbatch_token(job_name, field="job_name")
+    partition = validate_sbatch_token(partition, field="partition")
     if not check_slurm_available():
         raise RuntimeError(
             "Slurm is not available on this system. Please install Slurm."
         )
 
     try:
+        content = read_regular_job_script(script_path)
         # Create SBATCH script with array directive
-        with open(script_path, "r") as f:
-            content = f.read()
-
         fd, temp_script = tempfile.mkstemp(suffix=".sh", prefix="slurm_array_")
 
         # Ensure logs directory exists
@@ -83,7 +97,7 @@ def submit_array_job(
 
         # Submit the array job
         cmd = ["sbatch", temp_script]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = run_slurm_command(cmd, test_runner=subprocess.run)
 
         if result.returncode != 0:
             raise RuntimeError(f"sbatch failed: {result.stderr}")

@@ -1,177 +1,155 @@
 {
   "mcpServers": {
     "clio-adios": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "adios"
       ]
     },
     "clio-arxiv": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "arxiv"
       ]
     },
     "clio-chronolog": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "chronolog"
       ]
     },
     "clio-compression": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "compression"
       ]
     },
     "clio-darshan": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "darshan"
       ]
     },
     "clio-geo": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "geo"
       ]
     },
     "clio-geojson": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "geojson"
       ]
     },
     "clio-hdf5": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "hdf5"
       ]
     },
     "clio-jarvis": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "jarvis"
       ]
     },
     "clio-lmod": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "lmod"
       ]
     },
     "clio-ndp": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "ndp"
       ]
     },
     "clio-node-hardware": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "node-hardware"
       ]
     },
     "clio-pandas": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "pandas"
       ]
     },
     "clio-parallel-sort": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "parallel-sort"
       ]
     },
     "clio-paraview": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "paraview"
       ]
     },
     "clio-parquet": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "parquet"
       ]
     },
     "clio-plot": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "plot"
       ]
     },
     "clio-sac": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "sac"
       ]
     },
     "clio-seismic": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "seismic"
       ]
     },
     "clio-slurm": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "slurm"
       ]
     },
     "clio-spack": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "spack"
       ]
     },
     "clio-terrain": {
-      "command": "uvx",
+      "command": "clio-kit",
       "args": [
-        "clio-kit",
         "mcp-server",
         "terrain"
       ]

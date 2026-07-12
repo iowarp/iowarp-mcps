@@ -10,9 +10,18 @@
       "wire_sha256": "2bd6d7a701fbe86db6caa8bdf3d7bf2adeda7456a2c9c5895405a9955a9c53f3"
     },
     {
-      "artifact": "spack-user-v3.json",
-      "artifact_sha256": "cb916f0c4daef449de5066909d0aabdeae5658ac5b2a6432848fbcfdb187be0a",
-      "contract_id": "clio-kit-spack-user-v3",
+      "artifact": "slurm-user-v3.json",
+      "artifact_sha256": "2c4cd927a1e4959cd751dbdb72f949efeaa83495c2996ed108a12c6595c6f995",
+      "contract_id": "clio-kit-slurm-user-v3",
+      "contract_sha256": "c5e62e4dd4b8622ae15d515ffcb3e2ecf5756841ec8b384f12ba7d220b39cb10",
+      "profile": "user",
+      "server_name": "slurm",
+      "wire_sha256": "a8794cef814904ad64f0da0c0157aea4cb48000480ce816be50376979fdfa617"
+    },
+    {
+      "artifact": "spack-user-v2.json",
+      "artifact_sha256": "acaa5347c2f672d00d149e82db3affa1c40e0f585fd3064a9e896c431614c3d0",
+      "contract_id": "clio-kit-spack-user-v2",
       "contract_sha256": "d0709c552f6042ce4143d49706ddfbd8d05a80e4425412fbc3393d1eb00a216c",
       "profile": "user",
       "server_name": "spack",

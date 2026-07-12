@@ -5,13 +5,21 @@ Handles job queue listing and filtering.
 
 import subprocess
 from typing import Optional
-from .utils import check_slurm_available
+from .utils import (
+    SLURM_FIELD_SEPARATOR,
+    check_slurm_available,
+    complete_stdout_lines,
+    run_slurm_command,
+    split_slurm_fields,
+)
 
 
 def list_slurm_jobs(
     user: Optional[str] = None,
     state: Optional[str] = None,
     partition: Optional[str] = None,
+    *,
+    max_records: Optional[int] = None,
 ) -> dict:
     """
     List Slurm jobs with optional filtering.
@@ -28,10 +36,18 @@ def list_slurm_jobs(
         raise RuntimeError(
             "Slurm is not available on this system. Please install Slurm."
         )
+    if max_records is not None and max_records < 1:
+        raise ValueError("max_records must be positive")
 
     try:
         # Build squeue command
-        cmd = ["squeue", "--format=%i,%T,%j,%u,%M,%l,%D,%C", "--noheader"]
+        delimiter = SLURM_FIELD_SEPARATOR
+        cmd = [
+            "squeue",
+            f"--format=%i{delimiter}%T{delimiter}%j{delimiter}%u{delimiter}"
+            f"%M{delimiter}%l{delimiter}%D{delimiter}%C",
+            "--noheader",
+        ]
 
         if user:
             cmd.extend(["--user", user])
@@ -40,14 +56,25 @@ def list_slurm_jobs(
         if partition:
             cmd.extend(["--partition", partition])
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        max_bytes = (
+            2 * 1024 * 1024 if max_records is None else max_records * 2048 + 2048
+        )
+        result = run_slurm_command(
+            cmd,
+            max_stdout_bytes=max_bytes,
+            test_runner=subprocess.run,
+        )
 
         if result.returncode == 0:
-            jobs = []
-            for line in result.stdout.strip().split("\n"):
+            jobs: list[dict[str, str]] = []
+            truncated = result.stdout_truncated
+            for line in complete_stdout_lines(result):
                 if line.strip():
-                    parts = line.split(",")
+                    parts = split_slurm_fields(line)
                     if len(parts) >= 8:
+                        if max_records is not None and len(jobs) >= max_records:
+                            truncated = True
+                            break
                         jobs.append(
                             {
                                 "job_id": parts[0],
@@ -66,6 +93,8 @@ def list_slurm_jobs(
                 "count": len(jobs),
                 "user_filter": user,
                 "state_filter": state,
+                "partition_filter": partition,
+                "truncated": truncated,
                 "real_slurm": True,
             }
         else:

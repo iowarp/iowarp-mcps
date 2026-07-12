@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="🤖"
   category="Data Processing"
   description="Jarvis MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 27 tools for data pipeline lifecycle management: create pipelines, configure packages, manage repositories, execute workflows. Enables AI agents to orchestrate HPC data pipelines."
-  version="1.0.0"
+  version="3.0.0"
   actions={["update_pipeline", "build_pipeline_env", "create_pipeline", "load_pipeline", "get_pkg_config", "append_pkg", "configure_pkg", "unlink_pkg", "remove_pkg", "run_pipeline", "destroy_pipeline", "jm_create_config", "jm_load_config", "jm_save_config", "jm_set_hostfile", "jm_bootstrap_from", "jm_bootstrap_list", "jm_reset", "jm_list_pipelines", "jm_cd", "jm_list_repos", "jm_add_repo", "jm_remove_repo", "jm_promote_repo", "jm_get_repo", "jm_construct_pkg", "jm_graph_show", "jm_graph_build", "jm_graph_modify"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["jarvis", "pipeline-management", "high-performance-computing", "hpc", "workflow", "data-pipelines", "scientific-computing", "mcp", "package-management"]}

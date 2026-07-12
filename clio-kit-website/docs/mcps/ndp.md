@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="🔧"
   category="Data Processing"
   description="NDP MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 3 tools for dataset discovery: list organizations, search datasets, get details. Enables AI agents to discover and access datasets across CKAN instances."
-  version="1.0.0"
+  version="2.2.3"
   actions={["list_organizations", "search_datasets", "get_dataset_details"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["ndp", "dataset-search", "ckan", "mcp", "llm-integration", "scientific-data"]}

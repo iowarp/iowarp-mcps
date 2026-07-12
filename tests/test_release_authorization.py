@@ -35,7 +35,7 @@ canonical_release_authorization = _AUTHORIZATION_MODULE.canonical_release_author
 validate_release_authorization = _AUTHORIZATION_MODULE.validate_release_authorization
 
 REPOSITORY = "iowarp/clio-kit"
-TAG = "v3.0.0"
+TAG = "v2.3.0"
 COMMIT = "a" * 40
 NOW = 1_800_000_000
 
@@ -94,7 +94,7 @@ def test_valid_authorization_is_canonicalized() -> None:
         (lambda value: value.update(schema_version="other"), "schema"),
         (lambda value: value.update(repository="other/repo"), "repository"),
         (lambda value: value.update(repository=1), "repository"),
-        (lambda value: value.update(tag="v3.0.1"), "tag"),
+        (lambda value: value.update(tag="v2.3.1"), "tag"),
         (lambda value: value.update(commit="b" * 40), "commit"),
         (
             lambda value: value.update(immutable_releases=False),
@@ -138,7 +138,7 @@ def test_authorization_accepts_exact_one_hour_boundary() -> None:
     assert _validate(boundary) == boundary
 
 
-@pytest.mark.parametrize("tag", ["3.0.0", "v3.0", "v3.0.0rc1", "v03.0.0"])
+@pytest.mark.parametrize("tag", ["2.3.0", "v2.3", "v2.3.0rc1", "v02.3.0"])
 def test_authorization_rejects_nonstable_expected_tag(tag: str) -> None:
     with pytest.raises(ReleaseAuthorizationError, match="stable"):
         _validate(_record(), tag=tag)

@@ -129,8 +129,24 @@ USER_CONTRACT_SPECS: Final = (
         ),
     ),
     UserContractSpec(
-        contract_id="clio-kit-spack-user-v3",
-        artifact_name="spack-user-v3.json",
+        contract_id="clio-kit-slurm-user-v3",
+        artifact_name="slurm-user-v3.json",
+        server_name="slurm",
+        entry_command="slurm-mcp",
+        profile_environment="SLURM_MCP_PROFILE",
+        expected_tools=frozenset(
+            {
+                "slurm_submit",
+                "slurm_list",
+                "slurm_describe",
+                "slurm_cluster",
+                "slurm_cancel",
+            }
+        ),
+    ),
+    UserContractSpec(
+        contract_id="clio-kit-spack-user-v2",
+        artifact_name="spack-user-v2.json",
         server_name="spack",
         entry_command="spack-mcp",
         profile_environment="SPACK_MCP_PROFILE",

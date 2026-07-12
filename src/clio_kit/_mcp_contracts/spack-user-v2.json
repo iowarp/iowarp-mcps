@@ -1,6 +1,6 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
-  "contract_id": "clio-kit-spack-user-v3",
+  "contract_id": "clio-kit-spack-user-v2",
   "contract_sha256": "d0709c552f6042ce4143d49706ddfbd8d05a80e4425412fbc3393d1eb00a216c",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",

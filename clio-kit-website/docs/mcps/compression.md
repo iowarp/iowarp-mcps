@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="🗜️"
   category="Utilities"
   description="Compression MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). GZIP file compression tool for storage optimization, archival, and network transfer. Enables AI agents to compress files efficiently."
-  version="1.0.0"
+  version="2.2.3"
   actions={["compress_file_tool", "decompress_file_tool"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["compression", "gzip", "storage", "archival", "backup", "analytics", "statistics"]}

@@ -51,14 +51,16 @@ def test_pypi_manifest_uses_standard_fixed_package_arguments() -> None:
         "spack",
         {"description": "Spack MCP"},
         {"tools": []},
-        pypi_version="3.0.0",
+        server_version="2.0.0",
+        pypi_version="2.3.0",
     )
 
+    assert manifest["version"] == "2.0.0"
     assert manifest["packages"] == [
         {
             "registryType": "pypi",
             "identifier": "clio-kit",
-            "version": "3.0.0",
+            "version": "2.3.0",
             "transport": {"type": "stdio"},
             "packageArguments": [
                 {"type": "positional", "value": "mcp-server"},
@@ -75,11 +77,46 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     projects = sorted(path.parent for path in servers_root.glob("*/pyproject.toml"))
     manifests = sorted(servers_root.glob("*/server.json"))
     expected_version = GENERATOR.read_root_version(repository_root)
+    expected_server_versions = GENERATOR.read_server_versions(repository_root)
+    publish_servers = GENERATOR.read_registry_publish_servers(repository_root)
+    marketplace = json.loads(
+        (repository_root / ".claude-plugin" / "marketplace.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    marketplace_plugins = {
+        plugin["name"].removeprefix("clio-"): plugin
+        for plugin in marketplace["plugins"]
+    }
+    gemini_extension = json.loads(
+        (repository_root / "gemini-extension.json").read_text(encoding="utf-8")
+    )
+    readme = (repository_root / "README.md").read_text(encoding="utf-8")
 
     assert projects
     assert manifests == [project / "server.json" for project in projects]
+    assert list(expected_server_versions) == sorted(expected_server_versions)
+    assert set(expected_server_versions) == {project.name for project in projects}
+    assert publish_servers == ("jarvis", "slurm", "spack")
+    assert marketplace["metadata"]["version"] == expected_version
+    assert set(marketplace_plugins) == set(expected_server_versions)
+    assert gemini_extension["version"] == expected_version
     for path in manifests:
+        server_name = path.parent.name
         manifest = json.loads(path.read_text(encoding="utf-8"))
+        plugin = json.loads(
+            (path.parent / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+        )
+        assert manifest["version"] == expected_server_versions[server_name]
+        assert plugin["version"] == expected_server_versions[server_name]
+        assert (
+            marketplace_plugins[server_name]["version"]
+            == expected_server_versions[server_name]
+        )
+        assert (
+            f"| **`{server_name}`** | {expected_server_versions[server_name]} |"
+            in readme
+        )
         assert manifest["packages"] == [
             {
                 "registryType": "pypi",
@@ -92,3 +129,49 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
                 ],
             }
         ]
+
+
+def test_persistent_configs_use_the_installed_tool() -> None:
+    """Long-lived MCP client configurations must not depend on uvx caches."""
+    assert GENERATOR.build_claude_desktop_config(["jarvis"]) == {
+        "mcpServers": {
+            "clio-jarvis": {
+                "command": "clio-kit",
+                "args": ["mcp-server", "jarvis"],
+            }
+        }
+    }
+    extension = GENERATOR.build_gemini_extension(
+        ["jarvis"],
+        pypi_version="2.3.0",
+    )
+    assert extension["version"] == "2.3.0"
+    assert extension["mcpServers"] == {
+        "clio-jarvis": {
+            "command": "clio-kit",
+            "args": ["mcp-server", "jarvis"],
+        }
+    }
+
+
+def test_plugin_versions_distinguish_contracts_from_the_root_wheel(
+    tmp_path: Path,
+) -> None:
+    """Per-server plugins use contract versions while bundles use the wheel version."""
+    GENERATOR.write_claude_plugin_files(
+        tmp_path,
+        "spack",
+        {"description": "Spack MCP", "version": "9.9.9"},
+        server_version="2.0.0",
+    )
+    plugin = json.loads(
+        (tmp_path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )
+    marketplace = GENERATOR.build_marketplace_json(
+        [{"name": "clio-spack", "version": "2.0.0"}],
+        pypi_version="2.3.0",
+    )
+
+    assert plugin["version"] == "2.0.0"
+    assert marketplace["metadata"]["version"] == "2.3.0"
+    assert marketplace["plugins"][0]["version"] == "2.0.0"
