@@ -26,6 +26,7 @@ dependencies = [
   "pyjwt>=2.13.0",
   "python-multipart>=0.0.31",
   "urllib3>=2.7.0",
+  "typing-extensions>=4.15.0",
 ]
 
 [project.urls]

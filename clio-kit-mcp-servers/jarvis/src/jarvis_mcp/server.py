@@ -3,7 +3,9 @@ import importlib
 import os
 import re
 from pathlib import Path
-from typing import Any, Literal, Optional, TypedDict, cast
+from typing import Any, Literal, Optional, cast
+
+from typing_extensions import TypedDict
 
 from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
