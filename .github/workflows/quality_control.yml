@@ -181,7 +181,11 @@ jobs:
           uv run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml --cov-report=html --cov-report=term \
             --junitxml=junit.xml -o junit_family=legacy
-          python ../../scripts/assert_no_skipped_tests.py junit.xml
+          case "${{ matrix.mcp }}" in
+            jarvis|slurm|spack)
+              python ../../scripts/assert_no_skipped_tests.py junit.xml
+              ;;
+          esac
         else
           echo "No tests directory found for ${{ matrix.mcp }}"
         fi

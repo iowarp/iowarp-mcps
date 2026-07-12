@@ -104,6 +104,7 @@ class UserContractSpec:
     contract_id: str
     artifact_name: str
     server_name: str
+    distribution_name: str
     entry_command: str
     profile_environment: str
     expected_tools: frozenset[str]
@@ -114,6 +115,7 @@ USER_CONTRACT_SPECS: Final = (
         contract_id="clio-kit-jarvis-user-v3",
         artifact_name="jarvis-user-v3.json",
         server_name="jarvis",
+        distribution_name="jarvis-mcp",
         entry_command="jarvis-mcp",
         profile_environment="JARVIS_MCP_PROFILE",
         expected_tools=frozenset(
@@ -132,6 +134,7 @@ USER_CONTRACT_SPECS: Final = (
         contract_id="clio-kit-slurm-user-v3",
         artifact_name="slurm-user-v3.json",
         server_name="slurm",
+        distribution_name="slurm-mcp",
         entry_command="slurm-mcp",
         profile_environment="SLURM_MCP_PROFILE",
         expected_tools=frozenset(
@@ -148,6 +151,7 @@ USER_CONTRACT_SPECS: Final = (
         contract_id="clio-kit-spack-user-v2",
         artifact_name="spack-user-v2.json",
         server_name="spack",
+        distribution_name="spack-mcp",
         entry_command="spack-mcp",
         profile_environment="SPACK_MCP_PROFILE",
         expected_tools=frozenset({"spack_find", "spack_install", "spack_locate"}),
@@ -240,6 +244,9 @@ def probe_user_contract(
         [
             uv,
             "run",
+            "--isolated",
+            "--refresh-package",
+            spec.distribution_name,
             "--project",
             str(server_directory),
             "--no-dev",

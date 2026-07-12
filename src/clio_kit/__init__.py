@@ -50,11 +50,15 @@ def get_servers_path() -> Path:
     shared_name = "clio-kit-mcp-servers"
     dev_path = MODULE_DIR.parent.parent / shared_name
     candidates = [
+        # In an editable source checkout, the repository copy is authoritative.
+        # The active environment may still contain shared data from an older
+        # wheel build, so consulting distribution records first can silently
+        # launch stale server code during contract generation and development.
+        dev_path,
         *_distribution_shared_data_roots(shared_name),
         Path(sysconfig.get_path("data")) / shared_name,
         MODULE_DIR.parent / shared_name,
         MODULE_DIR / shared_name,
-        dev_path,
         Path(sys.prefix) / "share" / "clio-kit" / shared_name,
         Path(sys.executable).parent.parent / shared_name,
         Path(sys.executable).parent.parent / "share" / shared_name,

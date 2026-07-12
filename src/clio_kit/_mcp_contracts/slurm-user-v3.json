@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-slurm-user-v3",
-  "contract_sha256": "c5e62e4dd4b8622ae15d515ffcb3e2ecf5756841ec8b384f12ba7d220b39cb10",
+  "contract_sha256": "8557f6dbbf5d88ca0a617e06581056d61a363e21ec7fac01f8e31f65e66736a8",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -130,13 +130,20 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "Inspect Slurm partitions and queue in one snapshot. Node details are excluded by default and can be requested explicitly.",
+      "description": "Inspect bounded Slurm partition and queue records in one snapshot. Node details are excluded by default and bounded when requested.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "include_nodes": {
             "default": false,
             "type": "boolean"
+          },
+          "node_limit": {
+            "default": 100,
+            "description": "Maximum number of scheduler records returned by this call.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
           },
           "partition": {
             "anyOf": [
@@ -152,6 +159,13 @@
               }
             ],
             "default": null
+          },
+          "queue_limit": {
+            "default": 100,
+            "description": "Maximum number of scheduler records returned by this call.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -163,6 +177,11 @@
         "properties": {
           "cluster_name": {
             "type": "string"
+          },
+          "node_limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
           },
           "nodes": {
             "items": {
@@ -203,6 +222,9 @@
           "nodes_included": {
             "type": "boolean"
           },
+          "nodes_truncated": {
+            "type": "boolean"
+          },
           "partition_filter": {
             "anyOf": [
               {
@@ -212,6 +234,10 @@
                 "type": "null"
               }
             ]
+          },
+          "partition_limit": {
+            "minimum": 1,
+            "type": "integer"
           },
           "partitions": {
             "items": {
@@ -248,6 +274,9 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "partitions_truncated": {
+            "type": "boolean"
           },
           "queue": {
             "items": {
@@ -305,6 +334,14 @@
             "minimum": 0,
             "type": "integer"
           },
+          "queue_limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "queue_truncated": {
+            "type": "boolean"
+          },
           "scheduler": {
             "const": "slurm",
             "default": "slurm",
@@ -336,6 +373,9 @@
             },
             "type": "array"
           },
+          "state_counts_complete": {
+            "type": "boolean"
+          },
           "version": {
             "anyOf": [
               {
@@ -352,11 +392,18 @@
           "version",
           "partition_filter",
           "partitions",
+          "partition_limit",
+          "partitions_truncated",
           "queue",
           "queue_count",
+          "queue_limit",
+          "queue_truncated",
           "state_counts",
+          "state_counts_complete",
           "nodes_included",
-          "nodes"
+          "nodes",
+          "node_limit",
+          "nodes_truncated"
         ],
         "type": "object"
       }
@@ -529,10 +576,17 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "List Slurm jobs with optional user, state, and partition filters. Returns scheduler-native job IDs for later describe or cancel calls.",
+      "description": "List a bounded number of Slurm jobs with optional user, state, and partition filters. Returns native IDs and explicit truncation state.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of scheduler records returned by this call.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
           "partition": {
             "anyOf": [
               {
@@ -676,6 +730,11 @@
             },
             "type": "array"
           },
+          "limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
           "scheduler": {
             "const": "slurm",
             "default": "slurm",
@@ -685,12 +744,17 @@
             "const": "clio-kit.slurm-job-list.v1",
             "default": "clio-kit.slurm-job-list.v1",
             "type": "string"
+          },
+          "truncated": {
+            "type": "boolean"
           }
         },
         "required": [
           "filters",
           "jobs",
-          "count"
+          "count",
+          "limit",
+          "truncated"
         ],
         "type": "object"
       }
@@ -891,5 +955,5 @@
       }
     }
   ],
-  "wire_sha256": "a8794cef814904ad64f0da0c0157aea4cb48000480ce816be50376979fdfa617"
+  "wire_sha256": "ca778ab69178009c8ca56e9d1be52b23fff95833fdb30e1ef47b818aaa335bcf"
 }

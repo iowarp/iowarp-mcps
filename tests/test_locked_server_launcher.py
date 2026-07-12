@@ -6,8 +6,10 @@ from pathlib import Path
 import click
 import pytest
 
+import clio_kit
 from clio_kit import (
     LOCKED_SERVER_LAUNCH_SCHEMA,
+    get_servers_path,
     locked_server_command,
     locked_server_environment,
     locked_server_project_identity,
@@ -16,6 +18,36 @@ from clio_kit import (
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_source_checkout_precedes_stale_installed_shared_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Editable development must launch repository server bytes, not stale data."""
+    repository_root = tmp_path / "checkout"
+    module_dir = repository_root / "src" / "clio_kit"
+    source_servers = repository_root / "clio-kit-mcp-servers"
+    installed_servers = tmp_path / "environment" / "clio-kit-mcp-servers"
+    module_dir.mkdir(parents=True)
+    for root, name in (
+        (source_servers, "current-mcp"),
+        (installed_servers, "stale-mcp"),
+    ):
+        project = root / name
+        project.mkdir(parents=True)
+        (project / "pyproject.toml").write_text(
+            f"[project]\nname = '{name}'\nversion = '1.0.0'\n",
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr(clio_kit, "MODULE_DIR", module_dir)
+    monkeypatch.setattr(
+        clio_kit,
+        "_distribution_shared_data_roots",
+        lambda _shared_name: [installed_servers],
+    )
+
+    assert get_servers_path().resolve() == source_servers.resolve()
 
 
 def test_locked_server_command_uses_immutable_frozen_project(

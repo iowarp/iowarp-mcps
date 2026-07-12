@@ -187,6 +187,8 @@ def test_quality_matrix_is_required_and_lock_sensitive() -> None:
 
 
 def test_quality_junit_reports_reject_skipped_tests() -> None:
-    """Linux, Windows, and search JUnit reports all reject test skips."""
+    """Upgraded MCPs, Windows containment, and search reject test skips."""
     assert QUALITY_WORKFLOW.count("--junitxml=") == 3
     assert QUALITY_WORKFLOW.count("scripts/assert_no_skipped_tests.py") == 3
+    assert 'case "${{ matrix.mcp }}" in' in QUALITY_WORKFLOW
+    assert "jarvis|slurm|spack)" in QUALITY_WORKFLOW

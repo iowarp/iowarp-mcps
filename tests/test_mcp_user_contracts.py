@@ -12,6 +12,7 @@ from typing import Any, cast
 import pytest
 from click.testing import CliRunner
 
+from clio_kit import mcp_contracts
 from clio_kit import main
 from clio_kit.mcp_contracts import (
     ContractGenerationError,
@@ -38,6 +39,28 @@ def test_committed_contracts_match_real_locked_stdio_tools_list() -> None:
     assert [artifact["contract_id"] for artifact in observed] == [
         spec.contract_id for spec in USER_CONTRACT_SPECS
     ]
+
+
+def test_contract_probe_uses_a_fresh_isolated_child_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stale project venv must never define the committed live contract."""
+    captured: list[str] = []
+
+    def fake_exchange(command: list[str], **_: object) -> tuple[dict, dict]:
+        captured.extend(command)
+        raise RuntimeError("stop after capturing the child command")
+
+    monkeypatch.setattr(mcp_contracts, "exchange_mcp_tools_list", fake_exchange)
+    with pytest.raises(RuntimeError, match="stop after capturing"):
+        mcp_contracts.probe_user_contract(
+            REPOSITORY_ROOT,
+            USER_CONTRACT_SPECS[0],
+        )
+
+    assert "--isolated" in captured
+    assert captured[captured.index("--refresh-package") + 1] == "jarvis-mcp"
+    assert captured.index("--isolated") < captured.index("--project")
 
 
 @pytest.mark.parametrize(

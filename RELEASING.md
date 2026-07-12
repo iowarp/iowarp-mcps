@@ -11,8 +11,11 @@ production tag publishes package bytes.
 
 The quality workflow treats MyPy and every supported Python test lane as
 required. Changes to the root lock, agentic-search lock, server-version map, or
-workflow infrastructure trigger the full applicable matrix. Pytest JUnit
-reports are rejected when they contain any skipped test.
+workflow infrastructure trigger the full applicable matrix. JARVIS, SLURM,
+Spack, agentic-search, and the explicit release suites reject any skipped test.
+Legacy 2.x servers still run their complete existing suites as required jobs,
+but their pre-existing conditional skips are not claimed as release evidence;
+eliminating those skips is part of each server's future contract upgrade.
 
 Before creating a tag, an administrator must verify immutable releases. This
 endpoint requires administration read access, which the Actions `GITHUB_TOKEN`

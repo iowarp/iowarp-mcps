@@ -61,13 +61,18 @@ def read_regular_job_script(path: str, *, max_bytes: int = MAX_JOB_SCRIPT_BYTES)
         raise FileNotFoundError(f"Script file '{path}' not found") from exc
     except (IsADirectoryError, PermissionError) as exc:
         raise ValueError(f"Script path '{path}' is not a regular file") from exc
-    with os.fdopen(descriptor, "rb") as stream:
-        metadata = os.fstat(stream.fileno())
+    try:
+        metadata = os.fstat(descriptor)
         if not stat.S_ISREG(metadata.st_mode):
             raise ValueError(f"Script path '{path}' is not a regular file")
         if metadata.st_size > max_bytes:
             raise ValueError(f"Script file '{path}' exceeds the {max_bytes}-byte limit")
-        payload = stream.read(max_bytes + 1)
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = -1
+            payload = stream.read(max_bytes + 1)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
     if len(payload) > max_bytes:
         raise ValueError(f"Script file '{path}' exceeds the {max_bytes}-byte limit")
     try:
