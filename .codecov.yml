@@ -25,6 +25,7 @@ coverage:
           - parquet
           - plot
           - slurm
+          - spack
     patch:
       default:
         target: auto
@@ -80,6 +81,9 @@ flags:
   slurm:
     paths:
       - clio-kit-mcp-servers/slurm/
+  spack:
+    paths:
+      - clio-kit-mcp-servers/spack/
 
 # Comment configuration
 comment:

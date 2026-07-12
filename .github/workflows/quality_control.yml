@@ -15,6 +15,7 @@ jobs:
     outputs:
       mcps: ${{ steps.discover.outputs.mcps }}
       any_mcp_changed: ${{ steps.discover.outputs.any_mcp_changed }}
+      containment_changed: ${{ steps.discover.outputs.containment_changed }}
       search_changed: ${{ steps.discover.outputs.search_changed }}
     steps:
     - uses: actions/checkout@v4
@@ -45,7 +46,7 @@ jobs:
         echo "$CHANGED"
 
         # ── Check for infrastructure changes (triggers full run) ──
-        if [ "$RUN_ALL" = "false" ] && echo "$CHANGED" | grep -qE '^(scripts/|\.github/|pyproject\.toml$)'; then
+        if [ "$RUN_ALL" = "false" ] && echo "$CHANGED" | grep -qE '^(scripts/|\.github/|\.codecov\.yml$|pyproject\.toml$)'; then
           RUN_ALL=true
         fi
         echo "Run all: $RUN_ALL"
@@ -72,6 +73,15 @@ jobs:
           echo "any_mcp_changed=true" >> $GITHUB_OUTPUT
         fi
         echo "MCPs to test: $(cat $GITHUB_OUTPUT | grep mcps=)"
+
+        # Windows Job Object ownership is shared by the JARVIS and Spack
+        # execution boundaries. Exercise both implementations whenever either
+        # server is in the discovered change set.
+        if echo "$mcps_list" | grep -qE '^(jarvis|spack)$'; then
+          echo "containment_changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "containment_changed=false" >> $GITHUB_OUTPUT
+        fi
 
         # ── Determine if agentic-search needs testing ──
         if [ "$RUN_ALL" = "true" ] || echo "$CHANGED" | grep -q "^clio-agentic-search/"; then
@@ -201,6 +211,56 @@ jobs:
         name: coverage-html-${{ matrix.mcp }}
         path: clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/
         if-no-files-found: ignore
+
+  windows-containment:
+    name: Windows containment - ${{ matrix.mcp }}
+    runs-on: windows-latest
+    needs: discover-mcps
+    if: needs.discover-mcps.outputs.containment_changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        mcp: [jarvis, spack]
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        submodules: 'recursive'
+
+    - uses: ./.github/actions/setup-mcp
+      with:
+        python-version: '3.12'
+        mcp: ${{ matrix.mcp }}
+        dev-packages: "pytest pytest-cov"
+
+    - name: Run real Windows process-containment tests for ${{ matrix.mcp }}
+      shell: pwsh
+      run: |
+        uv run --directory "clio-kit-mcp-servers/${{ matrix.mcp }}" `
+          python -c "import os; assert os.name == 'nt', os.name"
+        uv run --directory "clio-kit-mcp-servers/${{ matrix.mcp }}" `
+          pytest tests/ -v --tb=short `
+          --cov=src --cov-report=xml --cov-report=html --cov-report=term `
+          --junitxml=junit-windows.xml -o junit_family=legacy
+
+    - name: Upload Windows coverage to Codecov
+      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+      with:
+        file: clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml
+        flags: ${{ matrix.mcp }}
+        name: codecov-${{ matrix.mcp }}-windows
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload Windows containment evidence
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: windows-containment-${{ matrix.mcp }}-evidence
+        path: |
+          clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml
+          clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/
+          clio-kit-mcp-servers/${{ matrix.mcp }}/junit-windows.xml
+        if-no-files-found: warn
 
   security:
     name: Security Audit - ${{ matrix.mcp }}

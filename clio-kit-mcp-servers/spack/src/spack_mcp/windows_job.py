@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import json
 import os
 import subprocess
@@ -9,13 +10,55 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, cast
 
 _JOB_EMPTY_TIMEOUT_SECONDS = 10.0
 _NATURAL_EXIT_GRACE_SECONDS = 1.0
 _WRITER_TIMEOUT_SECONDS = 5.0
 _POLL_SECONDS = 0.02
 _MAX_BROKER_MESSAGE_BYTES = 1024 * 1024
+
+
+class _WindowsFunction(Protocol):
+    """Typed surface shared by the dynamically loaded Win32 functions."""
+
+    argtypes: list[Any] | None
+    restype: Any
+
+    def __call__(self, *args: Any) -> Any:
+        """Invoke the underlying Win32 function."""
+        ...
+
+
+class _Kernel32(Protocol):
+    """Win32 functions used by the retained Job Object implementation."""
+
+    OpenProcess: _WindowsFunction
+    GetExitCodeProcess: _WindowsFunction
+    GetProcessTimes: _WindowsFunction
+    CloseHandle: _WindowsFunction
+    CreateJobObjectW: _WindowsFunction
+    SetInformationJobObject: _WindowsFunction
+    AssignProcessToJobObject: _WindowsFunction
+    TerminateJobObject: _WindowsFunction
+    QueryInformationJobObject: _WindowsFunction
+
+
+def _load_kernel32() -> _Kernel32:
+    """Load kernel32 through a checked platform-specific ctypes boundary."""
+    loader = getattr(ctypes, "WinDLL", None)
+    if not callable(loader):
+        raise RuntimeError("Win32 ctypes APIs are unavailable on this platform")
+    return cast(_Kernel32, loader("kernel32", use_last_error=True))
+
+
+def _last_error() -> int:
+    """Return the calling thread's Win32 last-error value."""
+    getter = getattr(ctypes, "get_last_error", None)
+    if not callable(getter):
+        raise RuntimeError("Win32 ctypes error APIs are unavailable on this platform")
+    return int(getter())
+
 
 _BROKER_SCRIPT = r"""
 import json
@@ -229,14 +272,13 @@ def process_start_identity(process_id: int) -> str | None:
         raise RuntimeError("Windows process identities are unavailable")
     if process_id <= 0:
         raise ValueError("process_id must be positive")
-    import ctypes
     from ctypes import wintypes
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_kernel32()
     kernel32.OpenProcess.restype = wintypes.HANDLE
     process_handle = kernel32.OpenProcess(0x1000, False, process_id)
     if not process_handle:
-        error = ctypes.get_last_error()
+        error = _last_error()
         if error in {87, 1168}:
             return None
         raise RuntimeError(f"OpenProcess failed for {process_id}: {error}")
@@ -247,9 +289,7 @@ def process_start_identity(process_id: int) -> str | None:
     try:
         exit_code = wintypes.DWORD()
         if not kernel32.GetExitCodeProcess(process_handle, ctypes.byref(exit_code)):
-            raise RuntimeError(
-                f"GetExitCodeProcess failed for {process_id}: {ctypes.get_last_error()}"
-            )
+            raise RuntimeError(f"GetExitCodeProcess failed for {process_id}: {_last_error()}")
         if exit_code.value != 259:
             return None
         if not kernel32.GetProcessTimes(
@@ -259,9 +299,7 @@ def process_start_identity(process_id: int) -> str | None:
             ctypes.byref(kernel),
             ctypes.byref(user),
         ):
-            raise RuntimeError(
-                f"GetProcessTimes failed for {process_id}: {ctypes.get_last_error()}"
-            )
+            raise RuntimeError(f"GetProcessTimes failed for {process_id}: {_last_error()}")
         value = (int(creation.dwHighDateTime) << 32) | int(creation.dwLowDateTime)
         return f"windows-filetime:{value}"
     finally:
@@ -269,7 +307,6 @@ def process_start_identity(process_id: int) -> str | None:
 
 
 def _create_job() -> int:
-    import ctypes
     from ctypes import wintypes
 
     class BasicLimitInformation(ctypes.Structure):
@@ -308,11 +345,11 @@ def _create_job() -> int:
             ("PeakJobMemoryUsed", ctypes.c_size_t),
         ]
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_kernel32()
     kernel32.CreateJobObjectW.restype = wintypes.HANDLE
     handle = kernel32.CreateJobObjectW(None, None)
     if not handle:
-        raise RuntimeError(f"CreateJobObjectW failed: {ctypes.get_last_error()}")
+        raise RuntimeError(f"CreateJobObjectW failed: {_last_error()}")
     information = ExtendedLimitInformation()
     information.BasicLimitInformation.LimitFlags = 0x00002000
     if not kernel32.SetInformationJobObject(
@@ -321,37 +358,34 @@ def _create_job() -> int:
         ctypes.byref(information),
         ctypes.sizeof(information),
     ):
-        error = ctypes.get_last_error()
+        error = _last_error()
         kernel32.CloseHandle(handle)
         raise RuntimeError(f"SetInformationJobObject failed: {error}")
     return int(handle)
 
 
 def _assign_process(handle: int, process: subprocess.Popen[Any]) -> None:
-    import ctypes
     from ctypes import wintypes
 
     process_handle = getattr(process, "_handle", None)
     if process_handle is None:
         raise RuntimeError("Popen did not expose a Windows process handle")
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_kernel32()
     kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
     if not kernel32.AssignProcessToJobObject(handle, int(process_handle)):
-        raise RuntimeError(f"AssignProcessToJobObject failed: {ctypes.get_last_error()}")
+        raise RuntimeError(f"AssignProcessToJobObject failed: {_last_error()}")
 
 
 def _terminate_job(handle: int) -> None:
-    import ctypes
     from ctypes import wintypes
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_kernel32()
     kernel32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
     if not kernel32.TerminateJobObject(handle, 1):
-        raise RuntimeError(f"TerminateJobObject failed: {ctypes.get_last_error()}")
+        raise RuntimeError(f"TerminateJobObject failed: {_last_error()}")
 
 
 def _active_processes(handle: int) -> int:
-    import ctypes
     from ctypes import wintypes
 
     class AccountingInformation(ctypes.Structure):
@@ -367,7 +401,7 @@ def _active_processes(handle: int) -> int:
         ]
 
     information = AccountingInformation()
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_kernel32()
     if not kernel32.QueryInformationJobObject(
         handle,
         1,
@@ -375,7 +409,7 @@ def _active_processes(handle: int) -> int:
         ctypes.sizeof(information),
         None,
     ):
-        raise RuntimeError(f"QueryInformationJobObject failed: {ctypes.get_last_error()}")
+        raise RuntimeError(f"QueryInformationJobObject failed: {_last_error()}")
     return int(information.ActiveProcesses)
 
 
@@ -396,8 +430,6 @@ def _active_after_wait(handle: int, *, timeout_seconds: float) -> int:
 
 
 def _close_handle(handle: int) -> None:
-    import ctypes
-
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_kernel32()
     if not kernel32.CloseHandle(handle):
-        raise RuntimeError(f"CloseHandle failed: {ctypes.get_last_error()}")
+        raise RuntimeError(f"CloseHandle failed: {_last_error()}")

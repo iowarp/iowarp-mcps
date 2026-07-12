@@ -61,15 +61,36 @@ def _os_exit_during_two_yaml_save(root: str) -> None:
     pipeline.last_loaded_file = "source.yaml"
     pipeline.save()
 
-    original_dump = pipeline_module._atomic_yaml_dump
+    atomic_dump = getattr(pipeline_module, "_atomic_yaml_dump", None)
+    if callable(atomic_dump):
 
-    def crash_before_environment(path: Path, value: object) -> None:
-        pending = handler._spack_environment_transaction_path(pipeline)
-        if path.name == "environment.yaml" and pending.exists():
-            os._exit(97)
-        original_dump(path, value)
+        def crash_before_atomic_environment(path: Path, value: object) -> None:
+            pending = handler._spack_environment_transaction_path(pipeline)
+            if path.name == "environment.yaml" and pending.exists():
+                os._exit(97)
+            atomic_dump(path, value)
 
-    pipeline_module._atomic_yaml_dump = crash_before_environment
+        setattr(
+            pipeline_module,
+            "_atomic_yaml_dump",
+            crash_before_atomic_environment,
+        )
+    else:
+        real_open = builtins.open
+
+        def crash_before_legacy_environment(
+            path: object, mode: str = "r", *args: Any, **kwargs: Any
+        ) -> Any:
+            pending = handler._spack_environment_transaction_path(pipeline)
+            if (
+                str(path).endswith("environment.yaml")
+                and "w" in mode
+                and pending.exists()
+            ):
+                os._exit(97)
+            return real_open(path, mode, *args, **kwargs)
+
+        builtins.open = crash_before_legacy_environment
     handler._capture_spack_environment = lambda _specs: {
         "PATH": "/spack/new/bin",
         "SPACK_ROOT": "/opt/spack",
@@ -693,6 +714,7 @@ def test_read_spack_state_rejects_size_parse_schema_and_values(
     path = tmp_path / handler._SPACK_ENVIRONMENT_STATE_FILENAME
     pipeline = SimpleNamespace(env_path=tmp_path / "environment.yaml")
     path.write_text("{}", encoding="utf-8")
+    path.chmod(0o600)
     monkeypatch.setattr(handler, "_MAX_SPACK_CAPTURE_BYTES", 1)
     with pytest.raises(RuntimeError, match="too large"):
         handler._read_spack_environment_state(pipeline)

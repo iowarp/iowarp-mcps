@@ -283,11 +283,9 @@ def _open_pipeline_lock(path: Path) -> _PipelineFileLock:
 def _try_acquire_pipeline_lock(lock: _PipelineFileLock) -> bool:
     """Attempt one non-blocking platform advisory lock acquisition."""
     if os.name == "nt":  # pragma: no cover - exercised by Windows integration.
-        import msvcrt
-
         os.lseek(lock.descriptor, 0, os.SEEK_SET)
         try:
-            msvcrt.locking(lock.descriptor, msvcrt.LK_NBLCK, 1)
+            _windows_descriptor_lock(lock.descriptor, unlock=False)
             return True
         except OSError as exc:
             if exc.errno in {errno.EACCES, errno.EAGAIN, errno.EDEADLK, errno.EPERM}:
@@ -306,16 +304,25 @@ def _release_pipeline_lock(lock: _PipelineFileLock) -> None:
     """Release and close one platform advisory lock descriptor."""
     try:
         if os.name == "nt":  # pragma: no cover - exercised by Windows integration.
-            import msvcrt
-
             os.lseek(lock.descriptor, 0, os.SEEK_SET)
-            msvcrt.locking(lock.descriptor, msvcrt.LK_UNLCK, 1)
+            _windows_descriptor_lock(lock.descriptor, unlock=True)
         else:
             fcntl = __import__("fcntl")  # pragma: no cover - POSIX only.
 
             fcntl.flock(lock.descriptor, fcntl.LOCK_UN)
     finally:
         os.close(lock.descriptor)
+
+
+def _windows_descriptor_lock(descriptor: int, *, unlock: bool) -> None:
+    """Invoke the Windows byte-range lock API through checked dynamic attributes."""
+    msvcrt = __import__("msvcrt")
+    locking = getattr(msvcrt, "locking", None)
+    operation_name = "LK_UNLCK" if unlock else "LK_NBLCK"
+    operation = getattr(msvcrt, operation_name, None)
+    if not callable(locking) or not isinstance(operation, int):
+        raise RuntimeError("Windows descriptor locking APIs are unavailable")
+    locking(descriptor, operation, 1)
 
 
 @asynccontextmanager
@@ -1347,10 +1354,11 @@ def _open_spack_path_descriptor(path: Path, *, nonblocking: bool = False) -> int
         return os.open(path, flags)
 
     import ctypes
-    import msvcrt
     from ctypes import wintypes
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    from jarvis_mcp.windows_job import _last_error, _load_kernel32
+
+    kernel32 = _load_kernel32()
     create_file = kernel32.CreateFileW
     create_file.argtypes = [
         wintypes.LPCWSTR,
@@ -1373,11 +1381,21 @@ def _open_spack_path_descriptor(path: Path, *, nonblocking: bool = False) -> int
     )
     invalid_handle = ctypes.c_void_p(-1).value
     if handle == invalid_handle:
-        raise ctypes.WinError(ctypes.get_last_error())
+        error = _last_error()
+        error_factory = getattr(ctypes, "WinError", None)
+        if not callable(error_factory):
+            raise OSError(error, f"Win32 CreateFileW failed with error {error}")
+        raise cast(OSError, error_factory(error))
     try:
-        return msvcrt.open_osfhandle(
-            int(handle),
-            os.O_RDONLY | getattr(os, "O_BINARY", 0),
+        msvcrt = __import__("msvcrt")
+        open_osfhandle = getattr(msvcrt, "open_osfhandle", None)
+        if not callable(open_osfhandle):
+            raise RuntimeError("Windows descriptor conversion APIs are unavailable")
+        return int(
+            open_osfhandle(
+                int(handle),
+                os.O_RDONLY | getattr(os, "O_BINARY", 0),
+            )
         )
     except BaseException:
         kernel32.CloseHandle(handle)
