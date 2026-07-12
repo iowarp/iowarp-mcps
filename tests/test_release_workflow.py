@@ -22,14 +22,25 @@ def test_external_actions_are_immutable_commit_pins() -> None:
         assert re.fullmatch(r"[^@]+@[0-9a-f]{40}", action), action
 
 
-def test_immutable_release_preflight_precedes_pypi() -> None:
-    """PyPI publication depends on the repository immutability capability check."""
-    preflight_index = WORKFLOW.index("  release-preflight:")
+def test_admin_release_authorization_gates_pypi() -> None:
+    """PyPI publication requires fresh admin-controlled authorization."""
     pypi_index = WORKFLOW.index("  publish-to-pypi:")
-    assert preflight_index < pypi_index
-    assert 'gh api "repos/$REPOSITORY/immutable-releases" --jq .enabled' in WORKFLOW
+    assert "CLIO_KIT_RELEASE_AUTHORIZATION" in WORKFLOW
+    assert "secrets.CLIO_KIT_RELEASE_AUTHORIZATION" in WORKFLOW
+    assert "vars.CLIO_KIT_RELEASE_AUTHORIZATION" not in WORKFLOW
+    assert "/immutable-releases" not in WORKFLOW
     publish_block = WORKFLOW[pypi_index : WORKFLOW.index("  github-release:")]
-    assert "    - release-preflight" in publish_block
+    authorization_index = publish_block.index(
+        "Require fresh exact admin authorization at publication"
+    )
+    upload_index = publish_block.index("pypa/gh-action-pypi-publish@")
+    assert "      name: pypi" in publish_block
+    assert "python scripts/release_authorization.py" in publish_block
+    assert '--repository "$REPOSITORY"' in publish_block
+    assert '--tag "$TAG_NAME"' in publish_block
+    assert '--commit "$GITHUB_SHA"' in publish_block
+    assert "--max-age-seconds 3600 >/dev/null" in publish_block
+    assert authorization_index < upload_index
 
 
 def test_release_recovery_is_exact_byte_and_fail_closed() -> None:
@@ -96,4 +107,4 @@ def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     smoke_block = WORKFLOW[smoke_start:smoke_end]
     assert "clio-kit mcp-contracts" in smoke_block
     assert "clio-kit mcp-contract clio-kit-spack-user-v3" in smoke_block
-    assert "clio-kit-jarvis-user-v2" in smoke_block
+    assert "clio-kit-jarvis-user-v3" in smoke_block

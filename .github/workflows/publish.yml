@@ -66,6 +66,7 @@ jobs:
         uv run --with mypy mypy scripts/generate_server_json.py \
           scripts/generate_mcp_user_contracts.py \
           scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py \
+          scripts/release_authorization.py \
           scripts/verify_mcp_registry_release.py src
         uv run pytest -q tests
         for server in jarvis spack; do
@@ -176,7 +177,7 @@ jobs:
         print(tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
         PY
         )
-        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
           VERSION=${GITHUB_REF#refs/tags/v}
           test "$VERSION" = "$BASE_VERSION"
           test "$GITHUB_REF_TYPE" = "tag"
@@ -185,15 +186,15 @@ jobs:
             +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main
           test "$GITHUB_SHA" = "$(git rev-parse refs/remotes/origin/main)"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "is_release=true" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_release=true" >> "$GITHUB_OUTPUT"
           echo "Building release version: $VERSION"
         else
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           SHORT_SHA=${GITHUB_SHA:0:7}
           VERSION="${BASE_VERSION}.dev${TIMESTAMP}+${SHORT_SHA}.${GITHUB_RUN_NUMBER}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "is_release=false" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_release=false" >> "$GITHUB_OUTPUT"
           echo "Building dev version: $VERSION"
         fi
     
@@ -221,7 +222,7 @@ jobs:
         uvx --isolated --from "$wheel" clio-kit --help >/dev/null
         listed_servers="$(uvx --isolated --from "$wheel" clio-kit mcp-servers)"
         listed_contracts="$(uvx --isolated --from "$wheel" clio-kit mcp-contracts)"
-        grep -Fq 'clio-kit-jarvis-user-v2' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-jarvis-user-v3' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v3' <<< "$listed_contracts"
         spack_contract="$(uvx --isolated --from "$wheel" \
           clio-kit mcp-contract clio-kit-spack-user-v3)"
@@ -265,22 +266,6 @@ jobs:
         if-no-files-found: error
         include-hidden-files: false
 
-  release-preflight:
-    name: Preflight immutable release enforcement
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-    - name: Require repository-enforced immutable releases
-      env:
-        GH_TOKEN: ${{ github.token }}
-        REPOSITORY: ${{ github.repository }}
-      shell: bash
-      run: |
-        test "$(gh api "repos/$REPOSITORY/immutable-releases" --jq .enabled)" = true
-
   publish-to-testpypi:
     name: Publish to TestPyPI
     if: github.ref == 'refs/heads/main'  # Only publish dev versions on main
@@ -314,7 +299,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')  # Only publish on tag pushes
     needs:
     - build
-    - release-preflight
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -335,7 +319,21 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    
+
+    - name: Require fresh exact admin authorization at publication
+      env:
+        RELEASE_AUTHORIZATION: ${{ secrets.CLIO_KIT_RELEASE_AUTHORIZATION }}
+        REPOSITORY: ${{ github.repository }}
+        TAG_NAME: ${{ github.ref_name }}
+      shell: bash
+      run: |
+        printf '%s\n' "$RELEASE_AUTHORIZATION" | \
+          python scripts/release_authorization.py \
+            --repository "$REPOSITORY" \
+            --tag "$TAG_NAME" \
+            --commit "$GITHUB_SHA" \
+            --max-age-seconds 3600 >/dev/null
+
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
       with:
@@ -391,7 +389,6 @@ jobs:
           printf '%s\n' "$sha"
         }
         test "$(resolve_remote_tag)" = "$GITHUB_SHA"
-        test "$(gh api "repos/$REPOSITORY/immutable-releases" --jq .enabled)" = true
 
         mapfile -t artifacts < <(find dist -maxdepth 1 -type f -printf '%f\n' | sort)
         test "${#artifacts[@]}" -eq 2
