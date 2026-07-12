@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-spack-mcp = "spack_mcp.user_server:main"
+spack-mcp = "spack_mcp.server:main"
 spack-admin-mcp = "spack_mcp.admin_server:main"
 
 [dependency-groups]

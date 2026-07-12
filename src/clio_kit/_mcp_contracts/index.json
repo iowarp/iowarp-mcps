@@ -1,0 +1,23 @@
+{
+  "contracts": [
+    {
+      "artifact": "jarvis-user-v2.json",
+      "artifact_sha256": "414574acc1c9068aa1264d839ff687a6d8b73d91025dda3d7e585cdd71a11e25",
+      "contract_id": "clio-kit-jarvis-user-v2",
+      "contract_sha256": "150159ffba27725d7cd7146cf0cec2e32e41834d213ab6043e0be43f99075120",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "db2ae1f73138e5c4f2607a34b7c7cba19171ff381b2e50eb2e0bc0413e760341"
+    },
+    {
+      "artifact": "spack-user-v3.json",
+      "artifact_sha256": "cb916f0c4daef449de5066909d0aabdeae5658ac5b2a6432848fbcfdb187be0a",
+      "contract_id": "clio-kit-spack-user-v3",
+      "contract_sha256": "d0709c552f6042ce4143d49706ddfbd8d05a80e4425412fbc3393d1eb00a216c",
+      "profile": "user",
+      "server_name": "spack",
+      "wire_sha256": "3e9c36866e10e68858b75cec140b6c759efc1e35bd2d45e9cb1f09d11d613d89"
+    }
+  ],
+  "schema_version": "clio-kit.mcp-user-contract-index.v1"
+}

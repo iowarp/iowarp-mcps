@@ -20,6 +20,8 @@ from typing import Any, BinaryIO, Final, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .windows_job import WindowsJob, spawn_windows_job_process
+
 SPACK_RESULT_SCHEMA: Final = "spack.mcp.result.v1"
 SPACK_ERROR_SCHEMA: Final = "spack.mcp.error.v1"
 _MAX_CAPTURE_BYTES = 8 * 1024 * 1024
@@ -33,6 +35,22 @@ _STREAM_CHUNK_BYTES = 64 * 1024
 _STREAM_JOIN_TIMEOUT_SECONDS = 5.0
 _ENVIRONMENT_MARKER = b"\0__SPACK_MCP_ENVIRONMENT_V1__\0"
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_DEFAULT_RUNTIME_ENVIRONMENT_ALLOWLIST = {
+    "ACLOCAL_PATH",
+    "CMAKE_PREFIX_PATH",
+    "CPATH",
+    "CPLUS_INCLUDE_PATH",
+    "C_INCLUDE_PATH",
+    "INFOPATH",
+    "LD_LIBRARY_PATH",
+    "LIBRARY_PATH",
+    "MANPATH",
+    "MODULEPATH",
+    "PATH",
+    "PKG_CONFIG_PATH",
+    "PYTHONPATH",
+    "SPACK_ROOT",
+}
 _TRANSIENT_ENVIRONMENT_NAMES = {
     "BASHOPTS",
     "BASHPID",
@@ -56,6 +74,18 @@ _SENSITIVE_ENVIRONMENT_FRAGMENTS = {
     "PRIVATE_KEY",
     "SECRET",
     "TOKEN",
+}
+_SENSITIVE_ENVIRONMENT_SUFFIXES = {
+    "_ACCESS_KEY_ID",
+    "_API_KEY",
+    "_DATABASE_URL",
+    "_PAT",
+}
+_SENSITIVE_ENVIRONMENT_EXACT_NAMES = {
+    "ACCESS_KEY_ID",
+    "API_KEY",
+    "DATABASE_URL",
+    "PAT",
 }
 
 
@@ -91,6 +121,7 @@ class SpackLocateResult(BaseModel):
     schema_version: Literal["spack.mcp.result.v1"] = SPACK_RESULT_SCHEMA
     operation: Literal["locate"] = "locate"
     requested_spec: str
+    load_spec: str
     package: SpackPackage
     prefix: str
 
@@ -261,7 +292,13 @@ def locate_installed(spec: str) -> SpackLocateResult:
             detail=json.dumps(choices, separators=(",", ":"), sort_keys=True),
         )
     package = found.packages[0]
-    exact = f"/{package.dag_hash}" if package.dag_hash else normalized
+    if not package.dag_hash:
+        raise SpackBackendError(
+            "missing_dag_hash",
+            "Spack did not return a canonical DAG hash for the installed package",
+            operation="locate",
+        )
+    exact = f"/{package.dag_hash}"
     result = _run_spack(
         ["location", "-i", exact],
         operation="locate",
@@ -276,6 +313,7 @@ def locate_installed(spec: str) -> SpackLocateResult:
         )
     return SpackLocateResult(
         requested_spec=normalized,
+        load_spec=exact,
         package=package,
         prefix=prefix,
     )
@@ -481,34 +519,44 @@ def _run_bounded_command(
     started = time.monotonic()
     stdin_file: BinaryIO | int = subprocess.DEVNULL
     owned_stdin: BinaryIO | None = None
-    if stdin_payload is not None:
+    if stdin_payload is not None and os.name != "nt":
         temporary_stdin = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
         temporary_stdin.write(stdin_payload)
         temporary_stdin.seek(0)
         owned_stdin = temporary_stdin
         stdin_file = temporary_stdin
 
+    windows_job: WindowsJob | None = None
     try:
-        process = subprocess.Popen(
-            argv,
-            stdin=stdin_file,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-            start_new_session=os.name != "nt",
-            creationflags=(
-                int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) if os.name == "nt" else 0
-            ),
-        )
+        if os.name == "nt":
+            process, windows_job = spawn_windows_job_process(
+                argv,
+                shell=False,
+                stdin_payload=stdin_payload,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+            )
+        else:
+            process = subprocess.Popen(
+                argv,
+                stdin=stdin_file,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                start_new_session=True,
+            )
     except OSError:
         if owned_stdin is not None:
             owned_stdin.close()
         raise
 
     if process.stdout is None or process.stderr is None:  # pragma: no cover - Popen contract.
-        _terminate_process_tree(process)
+        _terminate_process_tree(process, windows_job=windows_job)
         if owned_stdin is not None:
             owned_stdin.close()
+        if windows_job is not None:
+            windows_job.close(process)
         raise RuntimeError("subprocess capture pipes were not created")
 
     stdout_capture = _BoundedCapture(cast(BinaryIO, process.stdout))
@@ -525,41 +573,54 @@ def _run_bounded_command(
         returncode = process.wait(timeout=timeout_seconds)
     except subprocess.TimeoutExpired as exc:
         timeout_error = exc
-        _terminate_process_tree(process)
+        _terminate_process_tree(process, windows_job=windows_job)
         returncode = process.returncode if process.returncode is not None else -1
     finally:
         if owned_stdin is not None:
             owned_stdin.close()
 
-    _finish_captures(process, threads)
-    if timeout_error is not None:
-        raise timeout_error
-    capture_error = stdout_capture.error or stderr_capture.error
-    if capture_error is not None:
-        raise RuntimeError(f"subprocess stream read failed: {capture_error}")
-    return _CommandResult(
-        argv=tuple(argv),
-        returncode=returncode,
-        stdout=stdout_capture.text(),
-        stderr=stderr_capture.text(),
-        duration_seconds=time.monotonic() - started,
-        stdout_truncated=stdout_capture.truncated,
-        stderr_truncated=stderr_capture.truncated,
-        stdout_bytes=stdout_capture.raw(),
-        stderr_bytes=stderr_capture.raw(),
-    )
+    try:
+        _finish_captures(process, threads, windows_job=windows_job)
+        if timeout_error is not None:
+            raise timeout_error
+        capture_error = stdout_capture.error or stderr_capture.error
+        if capture_error is not None:
+            raise RuntimeError(f"subprocess stream read failed: {capture_error}")
+        if windows_job is not None:
+            windows_job.ensure_empty(process)
+        return _CommandResult(
+            argv=tuple(argv),
+            returncode=returncode,
+            stdout=stdout_capture.text(),
+            stderr=stderr_capture.text(),
+            duration_seconds=time.monotonic() - started,
+            stdout_truncated=stdout_capture.truncated,
+            stderr_truncated=stderr_capture.truncated,
+            stdout_bytes=stdout_capture.raw(),
+            stderr_bytes=stderr_capture.raw(),
+        )
+    finally:
+        if windows_job is not None:
+            windows_job.close(process)
 
 
 def _finish_captures(
     process: subprocess.Popen[bytes],
     threads: list[threading.Thread],
+    *,
+    windows_job: WindowsJob | None = None,
 ) -> None:
     """Finish stream readers, cleaning inherited child pipes if necessary."""
+    deadline = time.monotonic() + _STREAM_JOIN_TIMEOUT_SECONDS
     for thread in threads:
-        thread.join(timeout=_STREAM_JOIN_TIMEOUT_SECONDS)
+        thread.join(timeout=max(0.0, deadline - time.monotonic()))
     if not any(thread.is_alive() for thread in threads):
         return
-    _terminate_process_tree(process, include_exited_group=True)
+    _terminate_process_tree(
+        process,
+        include_exited_group=True,
+        windows_job=windows_job,
+    )
     if process.stdout is not None:
         process.stdout.close()
     if process.stderr is not None:
@@ -738,7 +799,55 @@ def _safe_environment_name(name: str) -> bool:
     normalized = name.upper()
     if normalized in _TRANSIENT_ENVIRONMENT_NAMES or normalized.startswith("BASH_FUNC_"):
         return False
-    return not any(fragment in normalized for fragment in _SENSITIVE_ENVIRONMENT_FRAGMENTS)
+    if _sensitive_environment_name(normalized):
+        return False
+    return normalized in _runtime_environment_allowlist()
+
+
+def _runtime_environment_allowlist() -> set[str]:
+    """Return safe defaults plus bounded operator-owned exact variable names."""
+    allowed = set(_DEFAULT_RUNTIME_ENVIRONMENT_ALLOWLIST)
+    configured_values = [
+        os.getenv("CLIO_SPACK_ENV_ALLOWLIST", ""),
+        os.getenv("SPACK_MCP_ENV_ALLOWLIST", ""),
+    ]
+    raw_names = [
+        name.strip()
+        for configured in configured_values
+        for name in configured.split(",")
+        if name.strip()
+    ]
+    if len(raw_names) > 128 or sum(len(name) for name in raw_names) > 8192:
+        raise SpackBackendError(
+            "invalid_allowlist",
+            "Spack environment allowlist extension is too large",
+            operation="environment",
+        )
+    for name in raw_names:
+        if _ENVIRONMENT_NAME.fullmatch(name) is None:
+            raise SpackBackendError(
+                "invalid_allowlist",
+                f"invalid Spack environment allowlist name: {name}",
+                operation="environment",
+            )
+        normalized = name.upper()
+        if normalized in _TRANSIENT_ENVIRONMENT_NAMES or _sensitive_environment_name(normalized):
+            raise SpackBackendError(
+                "invalid_allowlist",
+                f"unsafe Spack environment allowlist name: {name}",
+                operation="environment",
+            )
+        allowed.add(normalized)
+    return allowed
+
+
+def _sensitive_environment_name(normalized: str) -> bool:
+    """Return whether an already-normalized name is credential-shaped."""
+    return (
+        normalized in _SENSITIVE_ENVIRONMENT_EXACT_NAMES
+        or any(normalized.endswith(suffix) for suffix in _SENSITIVE_ENVIRONMENT_SUFFIXES)
+        or any(fragment in normalized for fragment in _SENSITIVE_ENVIRONMENT_FRAGMENTS)
+    )
 
 
 def _bounded_diagnostic(value: str) -> str:
@@ -755,26 +864,13 @@ def _terminate_process_tree(
     process: subprocess.Popen[bytes],
     *,
     include_exited_group: bool = False,
+    windows_job: WindowsJob | None = None,
 ) -> None:
     """Terminate the child and descendants started in its process group."""
     if os.name == "nt":
-        if process.poll() is None:
-            try:
-                subprocess.run(
-                    ["taskkill.exe", "/PID", str(process.pid), "/T", "/F"],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                    timeout=10,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
+        if windows_job is None:
+            raise RuntimeError("Windows subprocess has no identity-pinned Job Object")
+        windows_job.terminate(process)
         return
     if process.poll() is not None and not include_exited_group:
         return

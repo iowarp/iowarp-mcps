@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import inspect
 import io
 import os
 import subprocess
 import sys
+import time
 from collections import deque
 from pathlib import Path
 from types import SimpleNamespace
@@ -73,7 +75,7 @@ def test_locate_rejects_missing_and_invalid_prefix(
         backend.locate_installed("missing")
     assert missing.value.code == "not_installed"
 
-    package = backend.SpackPackage(name="demo")
+    package = backend.SpackPackage(name="demo", dag_hash="abc123")
     monkeypatch.setattr(
         backend,
         "find_installed",
@@ -240,9 +242,42 @@ def test_bounded_command_accepts_stdin_and_rejects_excessive_input(
         )
 
 
+def test_windows_job_cleans_pipe_holder_after_parent_exit(tmp_path: Path) -> None:
+    """A child retaining capture pipes is owned after its parent exits."""
+    pid_path = tmp_path / "pipe-holder.pid"
+    child_code = "import time; time.sleep(60)"
+    parent_code = (
+        "import os,subprocess,sys; "
+        "kwargs=({'creationflags':subprocess.CREATE_NEW_PROCESS_GROUP} "
+        "if os.name=='nt' else {}); "
+        f"child=subprocess.Popen([sys.executable,'-c',{child_code!r}],**kwargs); "
+        f"open({str(pid_path)!r},'w',encoding='ascii').write(str(child.pid))"
+    )
+    started = time.monotonic()
+
+    result = backend._run_bounded_command(
+        [sys.executable, "-c", parent_code],
+        env=os.environ.copy(),
+        timeout_seconds=20,
+    )
+
+    assert result.returncode == 0
+    assert time.monotonic() - started < 12
+    child_pid = int(pid_path.read_text(encoding="ascii"))
+    if os.name == "nt":
+        from spack_mcp.windows_job import process_start_identity
+
+        assert process_start_identity(child_pid) is None
+        assert "taskkill" not in inspect.getsource(backend._terminate_process_tree)
+    else:
+        with pytest.raises(OSError):
+            os.kill(child_pid, 0)
+
+
 def test_bounded_command_closes_owned_input_when_launch_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(backend.os, "name", "posix")
     stream = io.BytesIO()
     monkeypatch.setattr(backend.tempfile, "TemporaryFile", lambda **_kwargs: stream)
     monkeypatch.setattr(
@@ -333,6 +368,7 @@ def test_specs_reject_empty_and_overlong_values(spec: str) -> None:
 def test_environment_delta_rejects_invalid_encoding_and_limits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("SPACK_MCP_ENV_ALLOWLIST", "NAME,ONE,TWO")
     with pytest.raises(backend.SpackBackendError) as invalid_utf8:
         backend._filtered_environment_delta({}, b"NAME=\xff\0")
     assert invalid_utf8.value.code == "invalid_environment"
@@ -355,7 +391,21 @@ def test_environment_name_and_diagnostic_filters_cover_rejections(
     assert backend._safe_environment_name("INVALID-NAME") is False
     assert backend._safe_environment_name("BASH_FUNC_demo") is False
     assert backend._safe_environment_name("ACCESS_TOKEN") is False
+    assert backend._safe_environment_name("AWS_ACCESS_KEY_ID") is False
+    assert backend._safe_environment_name("GITHUB_PAT") is False
+    assert backend._safe_environment_name("DATABASE_URL") is False
     assert backend._safe_environment_name("SPACK_ROOT") is True
+
+    monkeypatch.setenv(
+        "SPACK_MCP_ENV_ALLOWLIST",
+        "AWS_ACCESS_KEY_ID,GITHUB_PAT,DATABASE_URL,API_TOKEN",
+    )
+    with pytest.raises(backend.SpackBackendError) as unsafe_allowlist:
+        backend._runtime_environment_allowlist()
+    assert unsafe_allowlist.value.code == "invalid_allowlist"
+
+    monkeypatch.setenv("SPACK_MCP_ENV_ALLOWLIST", "HDF5_ROOT")
+    assert backend._safe_environment_name("HDF5_ROOT") is True
 
     monkeypatch.setattr(backend, "_MAX_DIAGNOSTIC_BYTES", 4)
     assert backend._bounded_diagnostic("abcdef") == "[tail truncated]\ncdef"
@@ -378,8 +428,14 @@ def test_finish_captures_cleans_inherited_pipes(
     process = SimpleNamespace(stdout=io.BytesIO(), stderr=io.BytesIO())
     thread = _Thread(alive=True)
 
-    def terminate(_process: object, *, include_exited_group: bool = False) -> None:
+    def terminate(
+        _process: object,
+        *,
+        include_exited_group: bool = False,
+        windows_job: object | None = None,
+    ) -> None:
         assert include_exited_group is True
+        assert windows_job is None
         thread.alive = False
 
     monkeypatch.setattr(backend, "_terminate_process_tree", terminate)
@@ -393,44 +449,27 @@ def test_finish_captures_cleans_inherited_pipes(
         backend._finish_captures(process, [thread])  # type: ignore[arg-type]
 
 
-def test_terminate_process_tree_windows_fallbacks(
+def test_terminate_process_tree_windows_requires_pinned_job(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class Process:
         pid = 42
         returncode: int | None = None
 
-        def __init__(self) -> None:
-            self.waits = 0
-            self.terminated = False
-            self.killed = False
-
         def poll(self) -> int | None:
             return self.returncode
 
-        def terminate(self) -> None:
-            self.terminated = True
-
-        def wait(self, timeout: int) -> int:
-            self.waits += 1
-            if self.waits == 1:
-                raise subprocess.TimeoutExpired("task", timeout)
-            self.returncode = -9
-            return -9
-
-        def kill(self) -> None:
-            self.killed = True
-
     process = Process()
     monkeypatch.setattr(backend.os, "name", "nt")
-    monkeypatch.setattr(
-        backend.subprocess,
-        "run",
-        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("no taskkill")),
+    with pytest.raises(RuntimeError, match="identity-pinned Job Object"):
+        backend._terminate_process_tree(process)  # type: ignore[arg-type]
+
+    job = SimpleNamespace(terminate=lambda candidate: setattr(candidate, "returncode", -9))
+    backend._terminate_process_tree(  # type: ignore[arg-type]
+        process,
+        windows_job=job,
     )
-    backend._terminate_process_tree(process)  # type: ignore[arg-type]
-    assert process.terminated is True
-    assert process.killed is True
+    assert process.returncode == -9
 
 
 def test_terminate_process_tree_posix_escalates(

@@ -154,6 +154,7 @@ def test_locate_returns_exact_prefix(
     assert observed == [["location", "-i", "/abc123"]]
     assert result.package == package
     assert result.prefix == str(prefix)
+    assert result.load_spec == "/abc123"
 
 
 def test_specs_are_argv_not_shell_text(monkeypatch: pytest.MonkeyPatch) -> None:

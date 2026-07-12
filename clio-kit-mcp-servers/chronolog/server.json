@@ -16,10 +16,15 @@
       "transport": {
         "type": "stdio"
       },
-      "arguments": [
-        "clio-kit",
-        "mcp-server",
-        "chronolog"
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "chronolog"
+        }
       ]
     }
   ],

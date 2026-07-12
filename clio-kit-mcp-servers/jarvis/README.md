@@ -9,27 +9,26 @@ the root CLIO Kit launcher resolves that requirement from the shipped lock.
 Use this for normal agent workflows:
 
 ```bash
-uvx clio-kit mcp-server jarvis
-```
-
-or run the package entry point directly:
-
-```bash
-uvx --from jarvis-mcp jarvis-mcp
+uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis
 ```
 
 When Spack is outside the service PATH, pass its audited executable explicitly:
 
 ```bash
-uvx clio-kit mcp-server jarvis -- --spack-command /path/to/spack
-# Equivalent standalone package entry point:
-uvx --from jarvis-mcp jarvis-mcp --spack-command /path/to/spack
+uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis -- \
+  --spack-command /path/to/spack
 ```
 
 The path must resolve to an executable file and is used only when
 `jarvis_run(spack_specs=[...])` materializes the runtime environment.
 `JARVIS_MCP_SPACK_COMMAND` is the equivalent site-level override; the explicit
 CLI argument takes precedence.
+
+Spack materialization persists only a conservative path/toolchain allowlist.
+Sites can add exact non-secret package variables with comma-separated
+`CLIO_SPACK_ENV_ALLOWLIST` or `JARVIS_MCP_SPACK_ENV_ALLOWLIST`; sensitive and
+transient names remain rejected. Pipeline IDs are bounded path-safe names, and
+mutations are serialized per pipeline across MCP processes.
 
 The default user server exposes only:
 
@@ -63,18 +62,17 @@ surface.
 Use this only for operator or maintenance workflows:
 
 ```bash
-uvx --from jarvis-mcp jarvis-admin-mcp
+uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis -- --profile admin
 ```
 
 The admin server exposes the lower-level JARVIS and JarvisManager operations,
 including repository management, environment rebuilding, raw package editing,
 pipeline destruction, and other maintenance commands.
 
-The compatibility form is also available:
+The compatibility profile that combines user and admin tools is also available:
 
 ```bash
-uvx clio-kit mcp-server jarvis -- --profile admin
-uvx clio-kit mcp-server jarvis -- --profile all
+uvx --from clio-kit==3.0.0 clio-kit mcp-server jarvis -- --profile all
 ```
 
 ## Agent workflow
@@ -96,7 +94,13 @@ does not provide a destructive removal API.
 
 `jarvis_run(spack_specs=[...])` asks JARVIS to resolve a filtered Spack
 environment, merge it into the named pipeline, and persist it before direct or
-scheduler execution. Scheduler runs return a JARVIS-owned
+scheduler execution. Each scheduler submission seals an execution-scoped input
+and runtime copy of `pipeline.yaml` and `environment.yaml`, plus unique script
+and hostfile paths, so later edits to the named pipeline cannot change a queued
+job. The structured Spack metadata always records a disposition: a run with no
+requested specs and no prior owned environment reports `not_requested` rather
+than `null`; reuse is accepted only when the persisted digest still matches the
+pipeline environment. Scheduler runs return a JARVIS-owned
 `runtime_metadata.scheduler_job_id` parsed from the scheduler's structured
 submission API. The relay must not infer that identity from application stdout.
 

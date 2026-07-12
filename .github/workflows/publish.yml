@@ -64,7 +64,9 @@ jobs:
         uv run --with ruff ruff check scripts src tests
         uv run --with ruff ruff format --check scripts src tests
         uv run --with mypy mypy scripts/generate_server_json.py \
-          scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py src
+          scripts/generate_mcp_user_contracts.py \
+          scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py \
+          scripts/verify_mcp_registry_release.py src
         uv run pytest -q tests
         for server in jarvis spack; do
           uv lock --check --directory "clio-kit-mcp-servers/$server"
@@ -102,7 +104,8 @@ jobs:
           .claude-plugin/marketplace.json \
           claude_desktop_config.json \
           gemini-extension.json \
-          clio-kit-mcp-servers
+          clio-kit-mcp-servers \
+          src/clio_kit/_mcp_contracts
 
     - name: Build every root-wheel server package
       shell: bash
@@ -215,8 +218,15 @@ jobs:
         mapfile -t wheels < <(find dist -maxdepth 1 -type f -name '*.whl' -print | sort)
         test "${#wheels[@]}" -eq 1
         wheel="$(realpath "${wheels[0]}")"
-        uvx --isolated --no-cache --from "$wheel" clio-kit --help >/dev/null
-        listed_servers="$(uvx --isolated --no-cache --from "$wheel" clio-kit mcp-servers)"
+        uvx --isolated --from "$wheel" clio-kit --help >/dev/null
+        listed_servers="$(uvx --isolated --from "$wheel" clio-kit mcp-servers)"
+        listed_contracts="$(uvx --isolated --from "$wheel" clio-kit mcp-contracts)"
+        grep -Fq 'clio-kit-jarvis-user-v2' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-spack-user-v3' <<< "$listed_contracts"
+        spack_contract="$(uvx --isolated --from "$wheel" \
+          clio-kit mcp-contract clio-kit-spack-user-v3)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v3"' \
+          <<< "$spack_contract"
         server_count=0
         for server_dir in clio-kit-mcp-servers/*/; do
           if [ ! -f "$server_dir/pyproject.toml" ]; then
@@ -227,13 +237,13 @@ jobs:
           server_count=$((server_count + 1))
         done
         test "$server_count" -gt 0
-        child_help="$(uvx --isolated --no-cache --from "$wheel" \
+        child_help="$(uvx --isolated --from "$wheel" \
           clio-kit mcp-server spack -- --help)"
-        grep -Fq 'Spack user MCP Server' <<< "$child_help"
-        jarvis_help="$(uvx --isolated --no-cache --from "$wheel" \
+        grep -Fq 'Spack MCP Server' <<< "$child_help"
+        jarvis_help="$(uvx --isolated --from "$wheel" \
           clio-kit mcp-server jarvis -- --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_help"
-        jarvis_admin_help="$(uvx --isolated --no-cache --from "$wheel" \
+        jarvis_admin_help="$(uvx --isolated --from "$wheel" \
           clio-kit mcp-server jarvis -- --profile admin --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_admin_help"
 
@@ -538,19 +548,34 @@ jobs:
           if [ ! -f "$server_dir/server.json" ]; then continue; fi
           server_name=$(basename "$server_dir")
           echo "Publishing $server_name to MCP registry..."
-          OUTPUT=$(cd "$server_dir" && ../../mcp-publisher publish 2>&1) && {
-            echo "Published $server_name"
-            PUBLISHED=$((PUBLISHED + 1))
-          } || {
-            if echo "$OUTPUT" | grep -qi "duplicate version\|already published\|already exists"; then
-              echo "Skipped $server_name (version already published)"
-              SKIPPED=$((SKIPPED + 1))
+          if OUTPUT=$(cd "$server_dir" && ../../mcp-publisher publish 2>&1); then
+            publish_result=published
+          elif echo "$OUTPUT" | grep -qi \
+            "duplicate version\|already published\|already exists"; then
+            publish_result=duplicate
+          else
+            echo "::error::Failed to publish $server_name to MCP registry"
+            echo "$OUTPUT"
+            FAILURES=$((FAILURES + 1))
+            continue
+          fi
+
+          if python3 scripts/verify_mcp_registry_release.py \
+            --manifest "$server_dir/server.json" \
+            --attempts 12 \
+            --retry-delay 5; then
+            if [ "$publish_result" = published ]; then
+              echo "Published and verified $server_name"
+              PUBLISHED=$((PUBLISHED + 1))
             else
-              echo "::error::Failed to publish $server_name to MCP registry"
-              echo "$OUTPUT"
-              FAILURES=$((FAILURES + 1))
+              echo "Verified exact existing version for $server_name"
+              SKIPPED=$((SKIPPED + 1))
             fi
-          }
+          else
+            echo "::error::Registry state does not exactly match $server_name"
+            echo "$OUTPUT"
+            FAILURES=$((FAILURES + 1))
+          fi
         done
         echo "MCP Registry: $PUBLISHED published, $SKIPPED already existed, $FAILURES failed"
         if [ $FAILURES -gt 0 ]; then

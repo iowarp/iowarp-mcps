@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import os
+import re
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -19,7 +20,6 @@ from pydantic import (
 
 from .capabilities.jarvis_handler import (
     create_pipeline,
-    configure_pipeline,
     load_pipeline,
     export_pipeline,
     append_pkg,
@@ -268,6 +268,17 @@ _SCHEDULER_EXECUTION_FIELDS = {
     "gpus",
     "gpus_per_node",
 }
+_SCHEDULER_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@%+,-]{0,255}$")
+_HOST_ENTRY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$")
+
+
+def _bounded_single_line(value: str, *, field: str, limit: int = 4096) -> str:
+    """Reject control characters and unbounded scheduler/path text."""
+    if not value or len(value.encode("utf-8")) > limit:
+        raise ValueError(f"execution.{field} must be a non-empty bounded string")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError(f"execution.{field} cannot contain control characters")
+    return value
 
 
 class ExecutionIntent(BaseModel):
@@ -301,6 +312,59 @@ class ExecutionIntent(BaseModel):
         """Normalize a textual mode while preserving strict rejection of other types."""
         if isinstance(value, str):
             return value.strip().lower()
+        return value
+
+    @field_validator("hostfile", mode="after")
+    @classmethod
+    def validate_hostfile(cls, value: str | None) -> str | None:
+        """Validate a hostfile path without forbidding platform separators."""
+        if value is None:
+            return None
+        return _bounded_single_line(value, field="hostfile")
+
+    @field_validator("output", "error", mode="after")
+    @classmethod
+    def validate_scheduler_path(cls, value: str | None, info: Any) -> str | None:
+        """Require a single printable directive path token."""
+        if value is None:
+            return None
+        rendered = _bounded_single_line(value, field=info.field_name)
+        if any(character.isspace() for character in rendered) or "#" in rendered:
+            raise ValueError(
+                f"execution.{info.field_name} must be one printable path token"
+            )
+        return rendered
+
+    @field_validator(
+        "job_name",
+        "walltime",
+        "partition",
+        "account",
+        "qos",
+        mode="after",
+    )
+    @classmethod
+    def validate_scheduler_token(cls, value: str | None, info: Any) -> str | None:
+        """Reject whitespace/control injection in scheduler directive values."""
+        if value is None:
+            return None
+        rendered = _bounded_single_line(value, field=info.field_name, limit=256)
+        if _SCHEDULER_TOKEN.fullmatch(rendered) is None:
+            raise ValueError(
+                f"execution.{info.field_name} is not a valid scheduler token"
+            )
+        return rendered
+
+    @field_validator("hosts", mode="after")
+    @classmethod
+    def validate_hosts(cls, value: list[str] | None) -> list[str] | None:
+        """Validate semantic host names before writing a scheduler hostfile."""
+        if value is None:
+            return None
+        if len(value) > 4096:
+            raise ValueError("execution.hosts cannot contain more than 4096 entries")
+        if any(_HOST_ENTRY.fullmatch(host) is None for host in value):
+            raise ValueError("execution.hosts contains an invalid host name")
         return value
 
     @model_validator(mode="after")
@@ -564,13 +628,12 @@ async def jarvis_create_pipeline_tool(
     pipeline_id: str, execution: ExecutionIntent | None = None
 ) -> dict:
     """Create a new JARVIS pipeline, optionally seeding execution intent."""
-    created = await create_pipeline(pipeline_id)
-    if execution is not None:
-        configured = await configure_pipeline(
-            pipeline_id, _execution_intent_to_pipeline_config(execution)
-        )
-        return {"created": created, "configured": configured}
-    return created
+    initial_config = (
+        _execution_intent_to_pipeline_config(execution)
+        if execution is not None
+        else None
+    )
+    return await create_pipeline(pipeline_id, initial_config=initial_config)
 
 
 @mcp.tool(
@@ -710,9 +773,9 @@ async def jarvis_run_tool(
             "local": "direct",
             "hostfile": "direct",
         }.get(requested_mode, requested_mode)
-        await configure_pipeline(
-            pipeline_id, _execution_intent_to_pipeline_config(intent)
-        )
+        run_arguments_config = _execution_intent_to_pipeline_config(intent)
+    else:
+        run_arguments_config = None
 
     async def report_progress(
         current: float,
@@ -727,6 +790,7 @@ async def jarvis_run_tool(
         "submit": submit,
         "wait": wait,
         "spack_specs": spack_specs,
+        "pipeline_config": run_arguments_config,
     }
     if _context_has_progress_token(ctx):
         run_arguments["progress_reporter"] = report_progress

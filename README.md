@@ -104,6 +104,17 @@ resolve an embedded server whose lock is missing. The `--branch` launcher
 option is an explicit development path and is not an immutable
 release-artifact path.
 
+The root wheel also ships machine-readable user contracts for the locked
+JARVIS and Spack servers. These artifacts are generated from real stdio
+`tools/list` exchanges and include canonical SHA-256 digests for downstream
+federation gates:
+
+```bash
+uvx --from 'clio-kit==3.0.0' clio-kit mcp-contracts
+uvx --from 'clio-kit==3.0.0' \
+  clio-kit mcp-contract clio-kit-spack-user-v3
+```
+
 <details>
 <summary><b>Install in Cursor</b></summary>
 

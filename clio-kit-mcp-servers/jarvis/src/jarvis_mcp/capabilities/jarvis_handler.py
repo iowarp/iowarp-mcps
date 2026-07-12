@@ -1,3 +1,5 @@
+import asyncio
+import errno
 import hashlib
 import inspect
 import json
@@ -5,15 +7,18 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 from collections import deque
-from collections.abc import Callable
-from contextlib import redirect_stdout
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from typing import Any, BinaryIO, Optional, cast
 from uuid import uuid4
@@ -42,7 +47,37 @@ _SPACK_STREAM_JOIN_TIMEOUT_SECONDS = 5.0
 _SPACK_ENVIRONMENT_MARKER = b"\0__JARVIS_MCP_SPACK_ENVIRONMENT_V1__\0"
 _SPACK_ENVIRONMENT_STATE_SCHEMA = "jarvis.mcp.spack-environment.v1"
 _SPACK_ENVIRONMENT_STATE_FILENAME = ".jarvis-mcp-spack-environment.json"
+_SPACK_ENVIRONMENT_TRANSACTION_SCHEMA = "jarvis.mcp.spack-environment-transaction.v1"
+_SPACK_ENVIRONMENT_TRANSACTION_FILENAME = ".jarvis-mcp-spack-environment.pending.json"
+_PIPELINE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_WINDOWS_RESERVED_PIPELINE_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "CLOCK$",
+    *(f"COM{index}" for index in range(1, 10)),
+    *(f"LPT{index}" for index in range(1, 10)),
+}
+_HOST_ENTRY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$")
+_PIPELINE_LOCK_TIMEOUT_SECONDS = 30.0
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_DEFAULT_RUNTIME_ENVIRONMENT_ALLOWLIST = {
+    "ACLOCAL_PATH",
+    "CMAKE_PREFIX_PATH",
+    "CPATH",
+    "CPLUS_INCLUDE_PATH",
+    "C_INCLUDE_PATH",
+    "INFOPATH",
+    "LD_LIBRARY_PATH",
+    "LIBRARY_PATH",
+    "MANPATH",
+    "MODULEPATH",
+    "PATH",
+    "PKG_CONFIG_PATH",
+    "PYTHONPATH",
+    "SPACK_ROOT",
+}
 _TRANSIENT_ENVIRONMENT_NAMES = {
     "BASHOPTS",
     "BASHPID",
@@ -67,6 +102,39 @@ _SENSITIVE_ENVIRONMENT_FRAGMENTS = {
     "SECRET",
     "TOKEN",
 }
+_SENSITIVE_ENVIRONMENT_SUFFIXES = {
+    "_ACCESS_KEY_ID",
+    "_API_KEY",
+    "_DATABASE_URL",
+    "_PAT",
+}
+_SENSITIVE_ENVIRONMENT_EXACT_NAMES = {
+    "ACCESS_KEY_ID",
+    "API_KEY",
+    "DATABASE_URL",
+    "PAT",
+}
+
+
+class _SpackDocumentDurabilityError(RuntimeError):
+    """A sidecar replacement was visible but its directory was not durable."""
+
+
+@dataclass(frozen=True)
+class _SecureDocument:
+    """One bounded sidecar document pinned to its opened filesystem identity."""
+
+    payload: dict[str, Any]
+    device: int
+    inode: int
+
+
+@dataclass
+class _PipelineFileLock:
+    """An acquired cross-process advisory lock descriptor."""
+
+    descriptor: int
+    path: Path
 
 
 @dataclass(frozen=True)
@@ -139,11 +207,165 @@ except ModuleNotFoundError as core_error:  # pragma: no cover - legacy environme
         )
 
 
-async def create_pipeline(pipeline_id: str) -> dict:
+def _validate_pipeline_id(pipeline_id: str) -> str:
+    """Return a bounded path-safe named-pipeline identifier."""
+    reserved_stem = (
+        pipeline_id.split(".", 1)[0].upper() if isinstance(pipeline_id, str) else ""
+    )
+    if (
+        not isinstance(pipeline_id, str)
+        or _PIPELINE_ID.fullmatch(pipeline_id) is None
+        or pipeline_id.endswith(".")
+        or reserved_stem in _WINDOWS_RESERVED_PIPELINE_NAMES
+    ):
+        raise ValueError(
+            "pipeline_id must be 1-128 ASCII letters, digits, dots, underscores, "
+            "or hyphens, cannot begin with punctuation or end with a dot, and "
+            "cannot be a reserved Windows path alias"
+        )
+    return pipeline_id
+
+
+def _pipeline_lock_root() -> Path:
+    """Return a private operator-configurable directory for pipeline locks."""
+    configured = os.getenv("JARVIS_MCP_LOCK_DIR")
+    root = (
+        Path(configured).expanduser()
+        if configured
+        else Path.home() / ".cache" / "jarvis-mcp" / "locks"
+    )
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name != "nt":
+        root.chmod(0o700)
+        status = root.stat()
+        current_uid = getattr(os, "geteuid", lambda: status.st_uid)()
+        if status.st_uid != current_uid or stat.S_IMODE(status.st_mode) & 0o077:
+            raise RuntimeError("JARVIS MCP lock directory is not private to its owner")
+    return root.resolve()
+
+
+def _pipeline_lock_path(pipeline_id: str) -> Path:
+    """Return the non-user-controlled lock path for one validated pipeline."""
+    digest = hashlib.sha256(pipeline_id.casefold().encode("ascii")).hexdigest()
+    return _pipeline_lock_root() / f"pipeline-{digest}.lock"
+
+
+def _open_pipeline_lock(path: Path) -> _PipelineFileLock:
+    """Open and validate one private regular lock file without following links."""
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        status = os.fstat(descriptor)
+        path_status = path.lstat()
+        if (
+            not stat.S_ISREG(status.st_mode)
+            or stat.S_ISLNK(path_status.st_mode)
+            or (status.st_dev, status.st_ino)
+            != (path_status.st_dev, path_status.st_ino)
+            or status.st_nlink != 1
+        ):
+            raise RuntimeError("JARVIS MCP lock path is not a stable regular file")
+        current_uid = getattr(os, "geteuid", lambda: status.st_uid)()
+        if os.name != "nt" and (
+            status.st_uid != current_uid or stat.S_IMODE(status.st_mode) & 0o077
+        ):
+            raise RuntimeError("JARVIS MCP lock file is not private to its owner")
+        if status.st_size == 0:
+            os.write(descriptor, b"\0")
+            os.fsync(descriptor)
+        return _PipelineFileLock(descriptor=descriptor, path=path)
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _try_acquire_pipeline_lock(lock: _PipelineFileLock) -> bool:
+    """Attempt one non-blocking platform advisory lock acquisition."""
+    if os.name == "nt":  # pragma: no cover - exercised by Windows integration.
+        import msvcrt
+
+        os.lseek(lock.descriptor, 0, os.SEEK_SET)
+        try:
+            msvcrt.locking(lock.descriptor, msvcrt.LK_NBLCK, 1)
+            return True
+        except OSError as exc:
+            if exc.errno in {errno.EACCES, errno.EAGAIN, errno.EDEADLK, errno.EPERM}:
+                return False
+            raise
+    fcntl = __import__("fcntl")  # pragma: no cover - POSIX only.
+
+    try:
+        fcntl.flock(lock.descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except BlockingIOError:
+        return False
+
+
+def _release_pipeline_lock(lock: _PipelineFileLock) -> None:
+    """Release and close one platform advisory lock descriptor."""
+    try:
+        if os.name == "nt":  # pragma: no cover - exercised by Windows integration.
+            import msvcrt
+
+            os.lseek(lock.descriptor, 0, os.SEEK_SET)
+            msvcrt.locking(lock.descriptor, msvcrt.LK_UNLCK, 1)
+        else:
+            fcntl = __import__("fcntl")  # pragma: no cover - POSIX only.
+
+            fcntl.flock(lock.descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(lock.descriptor)
+
+
+@asynccontextmanager
+async def _pipeline_operation_lock(pipeline_id: str) -> AsyncIterator[None]:
+    """Serialize a complete named-pipeline operation across processes."""
+    lock = _open_pipeline_lock(_pipeline_lock_path(pipeline_id))
+    acquired = False
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _PIPELINE_LOCK_TIMEOUT_SECONDS
+    try:
+        while not acquired:
+            acquired = _try_acquire_pipeline_lock(lock)
+            if acquired:
+                break
+            if loop.time() >= deadline:
+                raise RuntimeError(f"pipeline is busy: {pipeline_id}")
+            await asyncio.sleep(0.05)
+        yield
+    finally:
+        if acquired:
+            _release_pipeline_lock(lock)
+        else:
+            os.close(lock.descriptor)
+
+
+def _locked_pipeline_operation(
+    function: Callable[..., Awaitable[dict[str, Any]]],
+) -> Callable[..., Awaitable[dict[str, Any]]]:
+    """Validate and lock the first pipeline-id argument for one async handler."""
+
+    @wraps(function)
+    async def guarded(pipeline_id: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        validated = _validate_pipeline_id(pipeline_id)
+        async with _pipeline_operation_lock(validated):
+            return await function(validated, *args, **kwargs)
+
+    return guarded
+
+
+@_locked_pipeline_operation
+async def create_pipeline(
+    pipeline_id: str,
+    initial_config: dict[str, Any] | None = None,
+) -> dict:
     try:
         with _protocol_stdout_to_stderr():
             pipeline = _require_pipeline_class()()
             _create_pipeline(pipeline, pipeline_id)
+            if initial_config is not None:
+                _apply_pipeline_config(pipeline, initial_config)
             _build_pipeline_env(pipeline)
             _save_pipeline(pipeline)
         return {"pipeline_id": pipeline_id, "status": "created"}
@@ -151,6 +373,7 @@ async def create_pipeline(pipeline_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Create failed: {e}")
 
 
+@_locked_pipeline_operation
 async def configure_pipeline(pipeline_id: str, config: dict[str, Any]) -> dict:
     """Configure pipeline-level JARVIS settings using native Pipeline fields."""
     try:
@@ -169,13 +392,20 @@ async def configure_pipeline(pipeline_id: str, config: dict[str, Any]) -> dict:
 
 async def load_pipeline(pipeline_id: Optional[str] = None) -> dict:
     try:
-        with _protocol_stdout_to_stderr():
-            _load_pipeline(pipeline_id)
+        if pipeline_id is None:
+            with _protocol_stdout_to_stderr():
+                _load_pipeline(None)
+        else:
+            validated = _validate_pipeline_id(pipeline_id)
+            async with _pipeline_operation_lock(validated):
+                with _protocol_stdout_to_stderr():
+                    _load_pipeline(validated)
         return {"pipeline_id": pipeline_id, "status": "loaded"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Load failed: {e}")
 
 
+@_locked_pipeline_operation
 async def export_pipeline(pipeline_id: str, include_yaml: bool = True) -> dict:
     """Return a structured snapshot of a JARVIS pipeline."""
     try:
@@ -203,6 +433,7 @@ async def export_pipeline(pipeline_id: str, include_yaml: bool = True) -> dict:
         raise HTTPException(status_code=500, detail=f"Export failed: {e}")
 
 
+@_locked_pipeline_operation
 async def append_pkg(
     pipeline_id: str,
     pkg_type: str,
@@ -233,6 +464,7 @@ async def append_pkg(
         raise HTTPException(status_code=500, detail=f"Append failed: {e}")
 
 
+@_locked_pipeline_operation
 async def build_pipeline_env(pipeline_id: str) -> dict:
     """
     Load a Jarvis-CD pipeline, rebuild its environment cache,
@@ -248,6 +480,7 @@ async def build_pipeline_env(pipeline_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Build env failed: {e}")
 
 
+@_locked_pipeline_operation
 async def update_pipeline(pipeline_id: str) -> dict:
     """
     Re-apply the current environment & configuration to every pkg in the pipeline,
@@ -263,6 +496,7 @@ async def update_pipeline(pipeline_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Update failed: {e}")
 
 
+@_locked_pipeline_operation
 async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs: Any) -> dict:
     try:
         with _protocol_stdout_to_stderr():
@@ -277,6 +511,7 @@ async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs: Any) -> dict:
         raise HTTPException(status_code=500, detail=f"Configure failed: {e}")
 
 
+@_locked_pipeline_operation
 async def get_pkg_config(pipeline_id: str, pkg_id: str) -> dict:
     try:
         with _protocol_stdout_to_stderr():
@@ -295,6 +530,7 @@ async def get_pkg_config(pipeline_id: str, pkg_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Get config failed: {e}")
 
 
+@_locked_pipeline_operation
 async def unlink_pkg(pipeline_id: str, pkg_id: str) -> dict:
     try:
         with _protocol_stdout_to_stderr():
@@ -316,6 +552,7 @@ async def unlink_pkg(pipeline_id: str, pkg_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Unlink failed: {e}")
 
 
+@_locked_pipeline_operation
 async def remove_pkg(pipeline_id: str, pkg_id: str) -> dict:
     try:
         with _protocol_stdout_to_stderr():
@@ -343,6 +580,7 @@ async def remove_pkg(pipeline_id: str, pkg_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Remove failed: {e}")
 
 
+@_locked_pipeline_operation
 async def run_pipeline(
     pipeline_id: str,
     mode: str = "auto",
@@ -351,6 +589,7 @@ async def run_pipeline(
     wait: bool = False,
     spack_specs: Optional[list[str]] = None,
     progress_reporter: ProgressReporter | None = None,
+    pipeline_config: dict[str, Any] | None = None,
 ) -> dict:
     """Run a pipeline and return JARVIS-owned structured runtime metadata."""
     started_at = datetime.now(timezone.utc)
@@ -358,6 +597,9 @@ async def run_pipeline(
     try:
         with _protocol_stdout_to_stderr():
             pipeline = _load_pipeline(pipeline_id)
+            if pipeline_config is not None:
+                _apply_pipeline_config(pipeline, pipeline_config)
+                _save_pipeline(pipeline)
             environment_metadata = _apply_spack_environment(
                 pipeline,
                 spack_specs or [],
@@ -387,10 +629,20 @@ async def run_pipeline(
                     "installed JARVIS-CD does not expose the structured "
                     "scheduler submission API required by jarvis_run"
                 )
+            submit_parameters = inspect.signature(pipeline.submit).parameters
+            if "execution_id" not in submit_parameters:
+                raise RuntimeError(
+                    "installed JARVIS-CD does not expose immutable execution "
+                    "snapshots required by jarvis_run"
+                )
             prior_submission = _jsonable(getattr(pipeline, "last_submission", None))
             try:
                 script_path = await _run_pipeline_operation(
-                    lambda: pipeline.submit(submit=submit, wait=wait),
+                    lambda: pipeline.submit(
+                        submit=submit,
+                        wait=wait,
+                        execution_id=execution_id,
+                    ),
                     progress_binding=progress_binding,
                     progress_reporter=progress_reporter,
                     execution_id=execution_id,
@@ -403,6 +655,7 @@ async def run_pipeline(
                     prior_submission=prior_submission,
                     submit=submit,
                     wait=wait,
+                    execution_id=execution_id,
                 )
                 if failure is None:
                     raise
@@ -443,6 +696,7 @@ async def run_pipeline(
                 scheduler=scheduler,
                 script_path=str(script_path),
                 require_identity=submit,
+                execution_id=execution_id,
             )
             status = (
                 "completed"
@@ -522,6 +776,7 @@ async def _run_pipeline_operation(
     ).run(operation, progress_reporter)
 
 
+@_locked_pipeline_operation
 async def destroy_pipeline(pipeline_id: str) -> dict:
     try:
         with _protocol_stdout_to_stderr():
@@ -567,19 +822,45 @@ def _jsonable(value: Any) -> Any:
 def _apply_spack_environment(
     pipeline: Any,
     spack_specs: list[str],
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
     """Capture, merge, and persist a filtered Spack runtime environment.
 
     The environment is materialized in this JARVIS invocation instead of relying
-    on shell-local ``spack load`` state. Clearing ``last_loaded_file`` makes a
-    scheduler script reload the saved named pipeline and its ``environment.yaml``
-    rather than rebuilding from an older source YAML inside the allocation.
+    on shell-local ``spack load`` state. Scheduler submission seals the resulting
+    named state into an execution-scoped pipeline/environment snapshot.
     """
+    recovered = _recover_spack_environment_transaction(pipeline)
     if not spack_specs:
-        return None
+        if recovered is not None:
+            return recovered
+        committed = _read_spack_environment_state_document(pipeline)
+        if committed is None:
+            return {
+                "specs": [],
+                "variable_names": [],
+                "variable_count": 0,
+                "environment_sha256": None,
+                "persisted": False,
+                "scheduler_reload": "execution_snapshot",
+                "transaction_id": None,
+                "disposition": "not_requested",
+            }
+        _spack_state_previous_values(committed.payload)
+        if not _committed_spack_environment_matches(pipeline, committed.payload):
+            raise RuntimeError(
+                "persisted Spack environment state does not match pipeline YAML"
+            )
+        _assert_secure_document_unchanged(
+            _spack_environment_state_path(pipeline), committed
+        )
+        return _spack_environment_metadata(committed.payload, disposition="reused")
     normalized = _validate_spack_specs(spack_specs)
     environment = _capture_spack_environment(normalized)
-    prior_values = _read_spack_environment_state(pipeline)
+    prior_document = _read_spack_environment_state_document(pipeline)
+    prior_payload = prior_document.payload if prior_document is not None else None
+    prior_values = (
+        _spack_state_previous_values(prior_payload) if prior_payload is not None else {}
+    )
     prior_owned_names = set(prior_values)
     prior_environment = dict(pipeline.env)
     prior_source_value = getattr(pipeline, "last_loaded_file", None)
@@ -590,23 +871,43 @@ def _apply_spack_environment(
         sort_keys=True,
     ).encode("utf-8")
     environment_sha256 = hashlib.sha256(serialized).hexdigest()
-    for name, previous_value in prior_values.items():
-        if previous_value is None:
-            pipeline.env.pop(name, None)
-        else:
-            pipeline.env[name] = previous_value
-    previous_values: dict[str, str | None] = {}
-    for name in environment:
-        previous_value = pipeline.env.get(name)
-        if previous_value is not None and not isinstance(previous_value, str):
-            raise RuntimeError(
-                f"JARVIS pipeline environment value is not a string: {name}"
-            )
-        previous_values[name] = previous_value
-    pipeline.env.update(environment)
-    if hasattr(pipeline, "last_loaded_file"):
-        pipeline.last_loaded_file = None
+    transaction_id = uuid4().hex
+    pending_written = False
     try:
+        for name, previous_value in prior_values.items():
+            if previous_value is None:
+                pipeline.env.pop(name, None)
+            else:
+                pipeline.env[name] = previous_value
+        previous_values: dict[str, str | None] = {}
+        for name in environment:
+            previous_value = pipeline.env.get(name)
+            if previous_value is not None and not isinstance(previous_value, str):
+                raise RuntimeError(
+                    f"JARVIS pipeline environment value is not a string: {name}"
+                )
+            previous_values[name] = previous_value
+        touched_names = prior_owned_names | environment.keys()
+        rollback_values = {
+            name: (
+                cast(str, prior_environment[name])
+                if name in prior_environment
+                else None
+            )
+            for name in sorted(touched_names)
+        }
+        _write_spack_environment_transaction(
+            pipeline,
+            transaction_id=transaction_id,
+            rollback_values=rollback_values,
+            prior_source=prior_source,
+            environment_sha256=environment_sha256,
+            prior_state=prior_payload,
+        )
+        pending_written = True
+        pipeline.env.update(environment)
+        if hasattr(pipeline, "last_loaded_file"):
+            pipeline.last_loaded_file = None
         _save_pipeline(pipeline)
         _write_spack_environment_state(
             pipeline,
@@ -614,13 +915,43 @@ def _apply_spack_environment(
             variable_names=sorted(environment),
             previous_values=previous_values,
             environment_sha256=environment_sha256,
+            transaction_id=transaction_id,
         )
-    except Exception:
-        pipeline.env.clear()
-        pipeline.env.update(prior_environment)
-        if hasattr(pipeline, "last_loaded_file"):
-            pipeline.last_loaded_file = prior_source_value
-        _save_pipeline(pipeline)
+        pending = _read_spack_environment_transaction_document(pipeline)
+        if pending is None:
+            raise RuntimeError(
+                "Spack environment transaction disappeared before commit"
+            )
+        _clear_spack_environment_transaction(pipeline, expected=pending)
+    except _SpackDocumentDurabilityError as exc:
+        if pending_written:
+            try:
+                _recover_spack_environment_transaction(pipeline, force_rollback=True)
+            except Exception as recovery_exc:
+                raise RuntimeError(
+                    "Spack environment durability failed and transaction recovery "
+                    f"also failed: {recovery_exc}"
+                ) from exc
+        else:
+            pipeline.env.clear()
+            pipeline.env.update(prior_environment)
+            if hasattr(pipeline, "last_loaded_file"):
+                pipeline.last_loaded_file = prior_source_value
+        raise
+    except Exception as exc:
+        if pending_written:
+            try:
+                _recover_spack_environment_transaction(pipeline)
+            except Exception as recovery_exc:
+                raise RuntimeError(
+                    "Spack environment persistence failed and transaction recovery "
+                    f"also failed: {recovery_exc}"
+                ) from exc
+        else:
+            pipeline.env.clear()
+            pipeline.env.update(prior_environment)
+            if hasattr(pipeline, "last_loaded_file"):
+                pipeline.last_loaded_file = prior_source_value
         raise
     return {
         "specs": normalized,
@@ -629,39 +960,30 @@ def _apply_spack_environment(
         "environment_sha256": environment_sha256,
         "removed_variable_names": sorted(prior_owned_names - environment.keys()),
         "persisted": True,
-        "scheduler_reload": "saved_pipeline_environment",
+        "scheduler_reload": "execution_snapshot",
         "prior_source_yaml": prior_source,
+        "transaction_id": transaction_id,
+        "disposition": "applied",
     }
 
 
 def _read_spack_environment_state(pipeline: Any) -> dict[str, str | None]:
     """Return prior values shadowed by the previous Spack materialization."""
-    path = _spack_environment_state_path(pipeline)
-    if not path.exists():
+    document = _read_spack_environment_state_document(pipeline)
+    if document is None:
         return {}
-    try:
-        if path.stat().st_size > _MAX_SPACK_CAPTURE_BYTES:
-            raise RuntimeError("persisted Spack environment state is too large")
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except RuntimeError:
-        raise
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError(
-            f"could not read persisted Spack environment state: {exc}"
-        ) from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != (
-        _SPACK_ENVIRONMENT_STATE_SCHEMA
-    ):
-        raise RuntimeError(
-            "persisted Spack environment state has an unsupported schema"
-        )
+    return _spack_state_previous_values(document.payload)
+
+
+def _spack_state_previous_values(payload: dict[str, Any]) -> dict[str, str | None]:
+    """Validate and return values shadowed by one committed Spack state."""
     raw_names = payload.get("variable_names")
     raw_previous_values = payload.get("previous_values")
     if (
         not isinstance(raw_names, list)
         or len(raw_names) > _MAX_ENVIRONMENT_VARIABLES
         or not all(
-            isinstance(name, str) and _safe_runtime_environment_name(name)
+            isinstance(name, str) and _valid_persisted_environment_name(name)
             for name in raw_names
         )
         or not isinstance(raw_previous_values, dict)
@@ -684,6 +1006,55 @@ def _read_spack_environment_state(pipeline: Any) -> dict[str, str | None]:
     }
 
 
+def _read_spack_environment_state_document(
+    pipeline: Any,
+) -> _SecureDocument | None:
+    """Read the bounded committed Spack state document when it exists."""
+    path = _spack_environment_state_path(pipeline)
+    document = _secure_read_spack_document(
+        path,
+        description="persisted Spack environment state",
+    )
+    if document is None:
+        return None
+    payload = document.payload
+    if not isinstance(payload, dict) or payload.get("schema_version") != (
+        _SPACK_ENVIRONMENT_STATE_SCHEMA
+    ):
+        raise RuntimeError(
+            "persisted Spack environment state has an unsupported schema"
+        )
+    transaction_id = payload.get("transaction_id")
+    specs = payload.get("specs")
+    environment_sha256 = payload.get("environment_sha256")
+    if (
+        not isinstance(specs, list)
+        or not all(
+            isinstance(spec, str)
+            and 0 < len(spec) <= _MAX_SPACK_SPEC_LENGTH
+            and not spec.startswith("-")
+            and not any(
+                ord(character) < 32 or ord(character) == 127 for character in spec
+            )
+            for spec in specs
+        )
+        or len(specs) > _MAX_SPACK_SPECS
+        or not isinstance(environment_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", environment_sha256) is None
+    ):
+        raise RuntimeError("persisted Spack environment state is invalid")
+    if transaction_id is not None and (
+        not isinstance(transaction_id, str)
+        or re.fullmatch(r"[0-9a-f]{32}", transaction_id) is None
+    ):
+        raise RuntimeError("persisted Spack environment transaction id is invalid")
+    return _SecureDocument(
+        payload=payload,
+        device=document.device,
+        inode=document.inode,
+    )
+
+
 def _write_spack_environment_state(
     pipeline: Any,
     *,
@@ -691,6 +1062,7 @@ def _write_spack_environment_state(
     variable_names: list[str],
     previous_values: dict[str, str | None],
     environment_sha256: str,
+    transaction_id: str | None = None,
 ) -> None:
     """Atomically persist the variables owned by the current Spack materialization."""
     path = _spack_environment_state_path(pipeline)
@@ -702,9 +1074,589 @@ def _write_spack_environment_state(
         "previous_values": previous_values,
         "environment_sha256": environment_sha256,
     }
+    if transaction_id is not None:
+        if re.fullmatch(r"[0-9a-f]{32}", transaction_id) is None:
+            raise RuntimeError("Spack environment transaction id is invalid")
+        document["transaction_id"] = transaction_id
+    _atomic_write_spack_document(
+        path,
+        document,
+        too_large_message="persisted Spack environment state is too large",
+    )
+
+
+def _write_spack_environment_transaction(
+    pipeline: Any,
+    *,
+    transaction_id: str,
+    rollback_values: dict[str, str | None],
+    prior_source: str | None,
+    environment_sha256: str,
+    prior_state: dict[str, Any] | None = None,
+) -> None:
+    """Durably record how to recover an interrupted two-file pipeline update."""
+    if re.fullmatch(r"[0-9a-f]{32}", transaction_id) is None:
+        raise RuntimeError("Spack environment transaction id is invalid")
+    if len(rollback_values) > _MAX_ENVIRONMENT_VARIABLES * 2 or not all(
+        _valid_persisted_environment_name(name)
+        and (
+            value is None
+            or (
+                isinstance(value, str)
+                and len(value.encode("utf-8")) <= _MAX_ENVIRONMENT_VALUE_BYTES
+            )
+        )
+        for name, value in rollback_values.items()
+    ):
+        raise RuntimeError("Spack environment rollback values are invalid")
+    if prior_source is not None and len(prior_source.encode("utf-8")) > 65_536:
+        raise RuntimeError("Spack environment prior source path is too large")
+    if re.fullmatch(r"[0-9a-f]{64}", environment_sha256) is None:
+        raise RuntimeError("Spack environment digest is invalid")
+    if prior_state is not None:
+        _spack_state_previous_values(prior_state)
+    path = _spack_environment_transaction_path(pipeline)
+    _atomic_write_spack_document(
+        path,
+        {
+            "schema_version": _SPACK_ENVIRONMENT_TRANSACTION_SCHEMA,
+            "transaction_id": transaction_id,
+            "rollback_values": rollback_values,
+            "prior_source": prior_source,
+            "environment_sha256": environment_sha256,
+            "prior_state": prior_state,
+        },
+        too_large_message="Spack environment transaction is too large",
+    )
+
+
+def _read_spack_environment_transaction_document(
+    pipeline: Any,
+) -> _SecureDocument | None:
+    """Securely read and validate one pending environment transaction."""
+    document = _secure_read_spack_document(
+        _spack_environment_transaction_path(pipeline),
+        description="Spack environment transaction",
+    )
+    if document is None:
+        return None
+    payload = document.payload
+    if set(payload) != {
+        "schema_version",
+        "transaction_id",
+        "rollback_values",
+        "prior_source",
+        "environment_sha256",
+        "prior_state",
+    }:
+        raise RuntimeError("Spack environment transaction has invalid fields")
+    transaction_id = payload.get("transaction_id")
+    rollback_values = payload.get("rollback_values")
+    prior_source = payload.get("prior_source")
+    environment_sha256 = payload.get("environment_sha256")
+    prior_state = payload.get("prior_state")
+    if (
+        payload.get("schema_version") != _SPACK_ENVIRONMENT_TRANSACTION_SCHEMA
+        or not isinstance(transaction_id, str)
+        or re.fullmatch(r"[0-9a-f]{32}", transaction_id) is None
+        or not isinstance(rollback_values, dict)
+        or len(rollback_values) > _MAX_ENVIRONMENT_VARIABLES * 2
+        or not all(
+            isinstance(name, str)
+            and _valid_persisted_environment_name(name)
+            and (
+                value is None
+                or (
+                    isinstance(value, str)
+                    and len(value.encode("utf-8")) <= _MAX_ENVIRONMENT_VALUE_BYTES
+                )
+            )
+            for name, value in rollback_values.items()
+        )
+        or (prior_source is not None and not isinstance(prior_source, str))
+        or (
+            isinstance(prior_source, str) and len(prior_source.encode("utf-8")) > 65_536
+        )
+        or not isinstance(environment_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", environment_sha256) is None
+        or (prior_state is not None and not isinstance(prior_state, dict))
+    ):
+        raise RuntimeError("Spack environment transaction is invalid")
+    if isinstance(prior_state, dict):
+        _spack_state_previous_values(prior_state)
+        prior_specs = prior_state.get("specs")
+        prior_digest = prior_state.get("environment_sha256")
+        prior_transaction_id = prior_state.get("transaction_id")
+        if (
+            prior_state.get("schema_version") != _SPACK_ENVIRONMENT_STATE_SCHEMA
+            or not isinstance(prior_specs, list)
+            or not all(isinstance(spec, str) for spec in prior_specs)
+            or len(prior_specs) > _MAX_SPACK_SPECS
+            or not isinstance(prior_digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", prior_digest) is None
+            or (
+                prior_transaction_id is not None
+                and (
+                    not isinstance(prior_transaction_id, str)
+                    or re.fullmatch(r"[0-9a-f]{32}", prior_transaction_id) is None
+                )
+            )
+        ):
+            raise RuntimeError("Spack environment transaction prior state is invalid")
+    return document
+
+
+def _recover_spack_environment_transaction(
+    pipeline: Any,
+    *,
+    force_rollback: bool = False,
+) -> dict[str, Any] | None:
+    """Finish or roll back a crash-interrupted Spack environment update."""
+    pending = _read_spack_environment_transaction_document(pipeline)
+    if pending is None:
+        return None
+    payload = pending.payload
+    transaction_id = cast(str, payload["transaction_id"])
+    rollback_values = cast(dict[str, str | None], payload["rollback_values"])
+    prior_source = cast(str | None, payload["prior_source"])
+    environment_sha256 = cast(str, payload["environment_sha256"])
+    prior_state = cast(dict[str, Any] | None, payload["prior_state"])
+    committed = _read_spack_environment_state_document(pipeline)
+    transaction_committed = (
+        not force_rollback
+        and committed is not None
+        and committed.payload.get("transaction_id") == transaction_id
+        and committed.payload.get("environment_sha256") == environment_sha256
+        and _committed_spack_environment_matches(pipeline, committed.payload)
+    )
+    if transaction_committed:
+        if committed is None:
+            raise AssertionError("committed transaction has no state document")
+        _spack_state_previous_values(committed.payload)
+        _assert_secure_document_unchanged(
+            _spack_environment_state_path(pipeline), committed
+        )
+        _clear_spack_environment_transaction(pipeline, expected=pending)
+        return _spack_environment_metadata(
+            committed.payload,
+            disposition="recovered_committed",
+        )
+
+    environment = getattr(pipeline, "env", None)
+    if not isinstance(environment, dict):
+        raise RuntimeError("JARVIS pipeline environment is not mutable")
+    for name, value in rollback_values.items():
+        if value is None:
+            environment.pop(name, None)
+        else:
+            environment[name] = value
+    if hasattr(pipeline, "last_loaded_file"):
+        pipeline.last_loaded_file = prior_source
+    _save_pipeline(pipeline)
+
+    if prior_state is None:
+        if committed is not None:
+            _remove_pinned_spack_document(
+                _spack_environment_state_path(pipeline), committed
+            )
+    else:
+        _atomic_write_spack_document(
+            _spack_environment_state_path(pipeline),
+            prior_state,
+            too_large_message="persisted Spack environment state is too large",
+        )
+    _clear_spack_environment_transaction(pipeline, expected=pending)
+    if prior_state is not None:
+        return _spack_environment_metadata(
+            prior_state,
+            disposition="recovered_rolled_back",
+        )
+    return {
+        "specs": [],
+        "variable_names": [],
+        "variable_count": 0,
+        "environment_sha256": None,
+        "persisted": False,
+        "scheduler_reload": "execution_snapshot",
+        "transaction_id": transaction_id,
+        "disposition": "recovered_rolled_back",
+    }
+
+
+def _committed_spack_environment_matches(
+    pipeline: Any,
+    payload: dict[str, Any],
+) -> bool:
+    """Return whether pipeline memory contains the exact committed Spack delta."""
+    names = payload.get("variable_names")
+    environment = getattr(pipeline, "env", None)
+    if not isinstance(names, list) or not isinstance(environment, dict):
+        return False
+    materialized: dict[str, str] = {}
+    for name in names:
+        value = environment.get(name)
+        if not isinstance(name, str) or not isinstance(value, str):
+            return False
+        materialized[name] = value
+    serialized = json.dumps(
+        dict(sorted(materialized.items())),
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest() == payload.get("environment_sha256")
+
+
+def _spack_environment_metadata(
+    payload: dict[str, Any],
+    *,
+    disposition: str,
+) -> dict[str, Any]:
+    """Return bounded runtime provenance from a validated committed state."""
+    previous_values = _spack_state_previous_values(payload)
+    specs = cast(list[str], payload["specs"])
+    names = sorted(previous_values)
+    return {
+        "specs": list(specs),
+        "variable_names": names,
+        "variable_count": len(names),
+        "environment_sha256": cast(str, payload["environment_sha256"]),
+        "persisted": True,
+        "scheduler_reload": "execution_snapshot",
+        "transaction_id": payload.get("transaction_id"),
+        "disposition": disposition,
+    }
+
+
+def _clear_spack_environment_transaction(
+    pipeline: Any,
+    *,
+    expected: _SecureDocument,
+) -> None:
+    """Remove only the exact recovered transaction and sync its directory."""
+    _remove_pinned_spack_document(
+        _spack_environment_transaction_path(pipeline), expected
+    )
+
+
+def _open_spack_path_descriptor(path: Path, *, nonblocking: bool = False) -> int:
+    """Open a sidecar while permitting identity-pinned rename/delete on Windows."""
+    if os.name != "nt":
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        if nonblocking:
+            flags |= getattr(os, "O_NONBLOCK", 0)
+        return os.open(path, flags)
+
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    handle = create_file(
+        str(path),
+        0x80000000,  # GENERIC_READ
+        0x00000001 | 0x00000002 | 0x00000004,  # SHARE_READ|WRITE|DELETE
+        None,
+        3,  # OPEN_EXISTING
+        0x00000080 | 0x00200000,  # NORMAL | OPEN_REPARSE_POINT
+        None,
+    )
+    invalid_handle = ctypes.c_void_p(-1).value
+    if handle == invalid_handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        return msvcrt.open_osfhandle(
+            int(handle),
+            os.O_RDONLY | getattr(os, "O_BINARY", 0),
+        )
+    except BaseException:
+        kernel32.CloseHandle(handle)
+        raise
+
+
+def _remove_pinned_spack_document(path: Path, expected: _SecureDocument) -> None:
+    """Durably remove one exact sidecar through recoverable phase names."""
+    _recover_spack_document_removal(path)
+    clearing = path.with_name(f".{path.name}.clearing")
+    cleared = path.with_name(f".{path.name}.cleared")
+    try:
+        descriptor = _open_spack_path_descriptor(path)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"Spack sidecar disappeared before removal: {path.name}"
+        ) from exc
+    clear_committed = False
+    try:
+        status = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(status.st_mode)
+            or status.st_nlink != 1
+            or (status.st_dev, status.st_ino) != (expected.device, expected.inode)
+        ):
+            raise RuntimeError(f"Spack sidecar changed before removal: {path.name}")
+
+        os.replace(path, clearing)
+        _assert_descriptor_path_identity(clearing, descriptor, expected)
+        try:
+            _fsync_spack_directory(path.parent)
+        except OSError as exc:
+            os.replace(clearing, path)
+            _fsync_spack_directory(path.parent)
+            raise _SpackDocumentDurabilityError(
+                f"could not durably prepare Spack sidecar removal: {path.name}"
+            ) from exc
+
+        os.replace(clearing, cleared)
+        _assert_descriptor_path_identity(cleared, descriptor, expected)
+        try:
+            _fsync_spack_directory(path.parent)
+        except OSError as exc:
+            os.replace(cleared, path)
+            _fsync_spack_directory(path.parent)
+            raise _SpackDocumentDurabilityError(
+                f"could not durably commit Spack sidecar removal: {path.name}"
+            ) from exc
+        clear_committed = True
+        _unlink_cleared_spack_document(cleared, expected)
+    except BaseException:
+        if not clear_committed:
+            restored = False
+            for phase in (clearing, cleared):
+                try:
+                    phase_descriptor = _open_expected_spack_descriptor(phase, expected)
+                except (FileNotFoundError, RuntimeError):
+                    continue
+                os.close(phase_descriptor)
+                os.replace(phase, path)
+                _fsync_spack_directory(path.parent)
+                restored = True
+                break
+            if not restored:
+                try:
+                    path.lstat()
+                except FileNotFoundError:
+                    _atomic_write_spack_document(
+                        path,
+                        expected.payload,
+                        too_large_message="Spack recovery evidence is too large",
+                    )
+        raise
+    finally:
+        os.close(descriptor)
+
+
+def _open_expected_spack_descriptor(
+    path: Path,
+    expected: _SecureDocument,
+) -> int:
+    """Open a phase path and bind it to the expected stable identity."""
+    descriptor = _open_spack_path_descriptor(path)
+    try:
+        _assert_descriptor_path_identity(path, descriptor, expected)
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
+
+
+def _assert_descriptor_path_identity(
+    path: Path,
+    descriptor: int,
+    expected: _SecureDocument,
+) -> None:
+    """Bind a phase pathname to the still-open expected inode."""
+    descriptor_status = os.fstat(descriptor)
+    path_status = path.lstat()
+    identity = (expected.device, expected.inode)
+    if (
+        stat.S_ISLNK(path_status.st_mode)
+        or (descriptor_status.st_dev, descriptor_status.st_ino) != identity
+        or (path_status.st_dev, path_status.st_ino) != identity
+        or descriptor_status.st_nlink != 1
+    ):
+        raise RuntimeError(f"Spack sidecar changed during removal: {path.name}")
+
+
+def _unlink_cleared_spack_document(
+    path: Path,
+    expected: _SecureDocument,
+) -> None:
+    """Unlink a committed clear phase and recreate evidence on fsync failure."""
+    descriptor = _open_spack_path_descriptor(path)
+    try:
+        _assert_descriptor_path_identity(path, descriptor, expected)
+        os.unlink(path)
+        if os.name == "nt":
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                unlinked_expected = True
+            else:
+                unlinked_expected = False
+        else:
+            unlinked_expected = os.fstat(descriptor).st_nlink == 0
+        if not unlinked_expected:
+            _atomic_write_spack_document(
+                path,
+                expected.payload,
+                too_large_message="Spack removal evidence is too large",
+            )
+            raise RuntimeError(f"Spack sidecar changed during unlink: {path.name}")
+        try:
+            _fsync_spack_directory(path.parent)
+        except OSError as exc:
+            _atomic_write_spack_document(
+                path,
+                expected.payload,
+                too_large_message="Spack removal evidence is too large",
+            )
+            raise _SpackDocumentDurabilityError(
+                f"could not durably finish Spack sidecar removal: {path.name}"
+            ) from exc
+    finally:
+        os.close(descriptor)
+
+
+def _recover_spack_document_removal(path: Path) -> None:
+    """Restore a prepared clear or finish a durably committed clear."""
+    clearing = path.with_name(f".{path.name}.clearing")
+    cleared = path.with_name(f".{path.name}.cleared")
+    try:
+        clearing.lstat()
+        has_clearing = True
+    except FileNotFoundError:
+        has_clearing = False
+    try:
+        cleared.lstat()
+        has_cleared = True
+    except FileNotFoundError:
+        has_cleared = False
+    if has_clearing and has_cleared:
+        raise RuntimeError(f"conflicting Spack removal phases: {path.name}")
+    if has_clearing:
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            os.replace(clearing, path)
+            _fsync_spack_directory(path.parent)
+        else:
+            raise RuntimeError(f"conflicting Spack sidecar removal: {path.name}")
+    if has_cleared:
+        evidence = _secure_read_spack_document(
+            cleared,
+            description="committed Spack removal evidence",
+            recover_removal=False,
+        )
+        if evidence is None:
+            return
+        _unlink_cleared_spack_document(cleared, evidence)
+
+
+def _assert_secure_document_unchanged(
+    path: Path,
+    expected: _SecureDocument,
+) -> None:
+    """Reject a sidecar replaced after its secure bounded read."""
+    try:
+        status = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"Spack sidecar changed after read: {path.name}") from exc
+    if stat.S_ISLNK(status.st_mode) or (status.st_dev, status.st_ino) != (
+        expected.device,
+        expected.inode,
+    ):
+        raise RuntimeError(f"Spack sidecar changed after read: {path.name}")
+
+
+def _secure_read_spack_document(
+    path: Path,
+    *,
+    description: str,
+    recover_removal: bool = True,
+) -> _SecureDocument | None:
+    """Read one private regular JSON sidecar through one bounded descriptor."""
+    if recover_removal:
+        _recover_spack_document_removal(path)
+    try:
+        descriptor = _open_spack_path_descriptor(path, nonblocking=True)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise RuntimeError(f"could not open {description}: {exc}") from exc
+    try:
+        status = os.fstat(descriptor)
+        path_status = path.lstat()
+        if (
+            not stat.S_ISREG(status.st_mode)
+            or stat.S_ISLNK(path_status.st_mode)
+            or (status.st_dev, status.st_ino)
+            != (path_status.st_dev, path_status.st_ino)
+            or status.st_nlink != 1
+        ):
+            raise RuntimeError(f"{description} is not a stable regular file")
+        current_uid = getattr(os, "geteuid", lambda: status.st_uid)()
+        if os.name != "nt" and (
+            status.st_uid != current_uid or stat.S_IMODE(status.st_mode) & 0o077
+        ):
+            raise RuntimeError(f"{description} is not private to its owner")
+        if status.st_size > _MAX_SPACK_CAPTURE_BYTES:
+            raise RuntimeError(f"{description} is too large")
+        chunks: list[bytes] = []
+        retained = 0
+        while retained <= _MAX_SPACK_CAPTURE_BYTES:
+            chunk = os.read(
+                descriptor,
+                min(65_536, _MAX_SPACK_CAPTURE_BYTES + 1 - retained),
+            )
+            if not chunk:
+                break
+            chunks.append(chunk)
+            retained += len(chunk)
+        if retained > _MAX_SPACK_CAPTURE_BYTES:
+            raise RuntimeError(f"{description} is too large")
+        final_status = os.fstat(descriptor)
+        if (final_status.st_dev, final_status.st_ino) != (status.st_dev, status.st_ino):
+            raise RuntimeError(f"{description} changed while being read")
+        identity = _SecureDocument(
+            payload={}, device=status.st_dev, inode=status.st_ino
+        )
+        _assert_secure_document_unchanged(path, identity)
+        try:
+            payload = json.loads(b"".join(chunks).decode("utf-8", errors="strict"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"could not read {description}: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"{description} is not a JSON object")
+        return _SecureDocument(
+            payload=cast(dict[str, Any], payload),
+            device=status.st_dev,
+            inode=status.st_ino,
+        )
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write_spack_document(
+    path: Path,
+    document: dict[str, Any],
+    *,
+    too_large_message: str,
+) -> None:
+    """Write one bounded JSON sidecar with atomic replacement and durability."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n"
     if len(payload.encode("utf-8")) > _MAX_SPACK_CAPTURE_BYTES:
-        raise RuntimeError("persisted Spack environment state is too large")
+        raise RuntimeError(too_large_message)
     descriptor, temporary_name = tempfile.mkstemp(
         dir=path.parent,
         prefix=f".{path.name}.",
@@ -712,14 +1664,98 @@ def _write_spack_environment_state(
         text=True,
     )
     temporary_path = Path(temporary_name)
+    replaced = False
+    descriptor_owned = True
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+        _set_private_descriptor_mode(descriptor)
+        try:
+            stream = os.fdopen(
+                descriptor,
+                "w",
+                encoding="utf-8",
+                newline="\n",
+            )
+        except BaseException:
+            os.close(descriptor)
+            descriptor_owned = False
+            raise
+        descriptor_owned = False
+        with stream:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary_path, path)
+        replaced = True
+        try:
+            _fsync_spack_directory(path.parent)
+        except OSError as exc:
+            raise _SpackDocumentDurabilityError(
+                f"could not make Spack sidecar durable: {path.name}"
+            ) from exc
     finally:
-        temporary_path.unlink(missing_ok=True)
+        if descriptor_owned:
+            os.close(descriptor)
+        if not replaced:
+            temporary_path.unlink(missing_ok=True)
+
+
+def _atomic_write_hostfile(path: Path, hosts: list[str]) -> None:
+    """Durably replace an MCP-managed hostfile without exposing partial bytes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = "\n".join(hosts) + "\n"
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        text=True,
+    )
+    temporary_path = Path(temporary_name)
+    descriptor_owned = True
+    replaced = False
+    try:
+        _set_private_descriptor_mode(descriptor)
+        try:
+            stream = os.fdopen(
+                descriptor,
+                "w",
+                encoding="utf-8",
+                newline="\n",
+            )
+        except BaseException:
+            os.close(descriptor)
+            descriptor_owned = False
+            raise
+        descriptor_owned = False
+        with stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_path, path)
+        replaced = True
+        _fsync_spack_directory(path.parent)
+    finally:
+        if descriptor_owned:
+            os.close(descriptor)
+        if not replaced:
+            temporary_path.unlink(missing_ok=True)
+
+
+def _set_private_descriptor_mode(descriptor: int) -> None:
+    """Restrict a newly-created sidecar descriptor where chmod is available."""
+    fchmod = getattr(os, "fchmod", None)
+    if os.name != "nt" and fchmod is not None:
+        fchmod(descriptor, 0o600)
+
+
+def _fsync_spack_directory(path: Path) -> None:
+    """Sync sidecar directory entries where the platform exposes that primitive."""
+    if os.name == "nt":
+        return
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _spack_environment_state_path(pipeline: Any) -> Path:
@@ -730,6 +1766,16 @@ def _spack_environment_state_path(pipeline: Any) -> Path:
             "JARVIS pipeline does not expose a persistent environment path"
         )
     return Path(environment_path).with_name(_SPACK_ENVIRONMENT_STATE_FILENAME)
+
+
+def _spack_environment_transaction_path(pipeline: Any) -> Path:
+    """Return the pipeline-local write-ahead transaction sidecar path."""
+    environment_path = _pipeline_env_path(pipeline)
+    if not isinstance(environment_path, (str, os.PathLike)):
+        raise RuntimeError(
+            "JARVIS pipeline does not expose a persistent environment path"
+        )
+    return Path(environment_path).with_name(_SPACK_ENVIRONMENT_TRANSACTION_FILENAME)
 
 
 def _capture_spack_environment(spack_specs: list[str]) -> dict[str, str]:
@@ -839,26 +1885,36 @@ def _run_bounded_process(
 
     stdin_file: BinaryIO | int = subprocess.DEVNULL
     owned_stdin: BinaryIO | None = None
-    if stdin_payload is not None:
+    if stdin_payload is not None and os.name != "nt":
         temporary_stdin = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
         temporary_stdin.write(stdin_payload)
         temporary_stdin.seek(0)
         owned_stdin = temporary_stdin
         stdin_file = temporary_stdin
+    windows_job: Any | None = None
     try:
-        process = subprocess.Popen(
-            argv,
-            stdin=stdin_file,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-            start_new_session=os.name != "nt",
-            creationflags=(
-                int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
-                if os.name == "nt"
-                else 0
-            ),
-        )
+        if os.name == "nt":
+            from jarvis_mcp.windows_job import (
+                spawn_windows_job_process,
+            )
+
+            process, windows_job = spawn_windows_job_process(
+                argv,
+                shell=False,
+                stdin_payload=stdin_payload,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+            )
+        else:
+            process = subprocess.Popen(
+                argv,
+                stdin=stdin_file,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                start_new_session=True,
+            )
     except OSError:
         if owned_stdin is not None:
             owned_stdin.close()
@@ -867,9 +1923,11 @@ def _run_bounded_process(
     if (
         process.stdout is None or process.stderr is None
     ):  # pragma: no cover - Popen contract.
-        _terminate_spack_process_tree(process)
+        _terminate_spack_process_tree(process, windows_job=windows_job)
         if owned_stdin is not None:
             owned_stdin.close()
+        if windows_job is not None:
+            windows_job.close(process)
         raise RuntimeError("subprocess capture pipes were not created")
 
     stdout_capture = _BoundedCapture(cast(BinaryIO, process.stdout))
@@ -886,37 +1944,50 @@ def _run_bounded_process(
         returncode = process.wait(timeout=timeout_seconds)
     except subprocess.TimeoutExpired as exc:
         timeout_error = exc
-        _terminate_spack_process_tree(process)
+        _terminate_spack_process_tree(process, windows_job=windows_job)
         returncode = process.returncode if process.returncode is not None else -1
     finally:
         if owned_stdin is not None:
             owned_stdin.close()
 
-    _finish_spack_captures(process, threads)
-    if timeout_error is not None:
-        raise timeout_error
-    capture_error = stdout_capture.error or stderr_capture.error
-    if capture_error is not None:
-        raise RuntimeError(f"subprocess stream read failed: {capture_error}")
-    return _BoundedProcessResult(
-        returncode=returncode,
-        stdout=stdout_capture.raw(),
-        stderr=stderr_capture.raw(),
-        stdout_truncated=stdout_capture.truncated,
-        stderr_truncated=stderr_capture.truncated,
-    )
+    try:
+        _finish_spack_captures(process, threads, windows_job=windows_job)
+        if timeout_error is not None:
+            raise timeout_error
+        capture_error = stdout_capture.error or stderr_capture.error
+        if capture_error is not None:
+            raise RuntimeError(f"subprocess stream read failed: {capture_error}")
+        if windows_job is not None:
+            windows_job.ensure_empty(process)
+        return _BoundedProcessResult(
+            returncode=returncode,
+            stdout=stdout_capture.raw(),
+            stderr=stderr_capture.raw(),
+            stdout_truncated=stdout_capture.truncated,
+            stderr_truncated=stderr_capture.truncated,
+        )
+    finally:
+        if windows_job is not None:
+            windows_job.close(process)
 
 
 def _finish_spack_captures(
     process: subprocess.Popen[bytes],
     threads: list[threading.Thread],
+    *,
+    windows_job: Any | None = None,
 ) -> None:
     """Finish pipe readers and clean descendants that inherited the pipes."""
+    deadline = time.monotonic() + _SPACK_STREAM_JOIN_TIMEOUT_SECONDS
     for thread in threads:
-        thread.join(timeout=_SPACK_STREAM_JOIN_TIMEOUT_SECONDS)
+        thread.join(timeout=max(0.0, deadline - time.monotonic()))
     if not any(thread.is_alive() for thread in threads):
         return
-    _terminate_spack_process_tree(process, include_exited_group=True)
+    _terminate_spack_process_tree(
+        process,
+        include_exited_group=True,
+        windows_job=windows_job,
+    )
     if process.stdout is not None:
         process.stdout.close()
     if process.stderr is not None:
@@ -941,26 +2012,13 @@ def _terminate_spack_process_tree(
     process: subprocess.Popen[bytes],
     *,
     include_exited_group: bool = False,
+    windows_job: Any | None = None,
 ) -> None:
     """Terminate a Spack/Bash child and descendants in its process group."""
     if os.name == "nt":
-        if process.poll() is None:
-            try:
-                subprocess.run(
-                    ["taskkill.exe", "/PID", str(process.pid), "/T", "/F"],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                    timeout=10,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
+        if windows_job is None:
+            raise RuntimeError("Windows subprocess has no identity-pinned Job Object")
+        windows_job.terminate(process)
         return
     if process.poll() is not None and not include_exited_group:
         return
@@ -1035,7 +2093,8 @@ def _validate_spack_specs(spack_specs: list[str]) -> list[str]:
     return normalized
 
 
-def _safe_runtime_environment_name(name: str) -> bool:
+def _valid_persisted_environment_name(name: str) -> bool:
+    """Return whether a legacy sidecar name is syntactically non-sensitive."""
     if _ENVIRONMENT_NAME.fullmatch(name) is None:
         return False
     normalized = name.upper()
@@ -1043,8 +2102,42 @@ def _safe_runtime_environment_name(name: str) -> bool:
         "BASH_FUNC_"
     ):
         return False
-    return not any(
-        fragment in normalized for fragment in _SENSITIVE_ENVIRONMENT_FRAGMENTS
+    return not (
+        normalized in _SENSITIVE_ENVIRONMENT_EXACT_NAMES
+        or any(
+            normalized.endswith(suffix) for suffix in _SENSITIVE_ENVIRONMENT_SUFFIXES
+        )
+        or any(fragment in normalized for fragment in _SENSITIVE_ENVIRONMENT_FRAGMENTS)
+    )
+
+
+def _runtime_environment_allowlist() -> set[str]:
+    """Return the default allowlist plus bounded operator-owned exact names."""
+    allowed = set(_DEFAULT_RUNTIME_ENVIRONMENT_ALLOWLIST)
+    configured_values = [
+        os.getenv("CLIO_SPACK_ENV_ALLOWLIST", ""),
+        os.getenv("JARVIS_MCP_SPACK_ENV_ALLOWLIST", ""),
+    ]
+    raw_names = [
+        name.strip()
+        for configured in configured_values
+        for name in configured.split(",")
+        if name.strip()
+    ]
+    if len(raw_names) > 128 or sum(len(name) for name in raw_names) > 8192:
+        raise RuntimeError("Spack environment allowlist extension is too large")
+    for name in raw_names:
+        if not _valid_persisted_environment_name(name):
+            raise RuntimeError(f"invalid Spack environment allowlist name: {name}")
+        allowed.add(name.upper())
+    return allowed
+
+
+def _safe_runtime_environment_name(name: str) -> bool:
+    """Return whether a captured variable is explicitly safe to persist."""
+    return (
+        _valid_persisted_environment_name(name)
+        and name.upper() in _runtime_environment_allowlist()
     )
 
 
@@ -1092,7 +2185,10 @@ def _runtime_result(
         "scheduler_phase": scheduler_phase,
         "script_path": script_path,
         "hostfile_path": (
-            _optional_str(scheduler_document.get("hostfile"))
+            _optional_str(submission_metadata.get("hostfile_path"))
+            if submission_metadata is not None
+            and submission_metadata.get("hostfile_path") is not None
+            else _optional_str(scheduler_document.get("hostfile"))
             if isinstance(scheduler_document, dict)
             else None
         ),
@@ -1147,6 +2243,7 @@ def _waited_workload_failure_metadata(
     prior_submission: Any,
     submit: bool,
     wait: bool,
+    execution_id: str | None = None,
 ) -> tuple[dict[str, Any], str, int] | None:
     """Return a fresh, validated scheduler-owned waited-workload failure."""
     if not submit or not wait:
@@ -1163,6 +2260,7 @@ def _waited_workload_failure_metadata(
             scheduler=scheduler,
             script_path=script_path,
             require_identity=True,
+            execution_id=execution_id,
         )
     except RuntimeError:
         return None
@@ -1187,6 +2285,7 @@ def _scheduler_submission_metadata(
     scheduler: Any,
     script_path: str,
     require_identity: bool,
+    execution_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Validate scheduler metadata produced by JARVIS-CD's provider boundary."""
     value = getattr(pipeline, "last_submission", None)
@@ -1208,6 +2307,27 @@ def _scheduler_submission_metadata(
         raise RuntimeError("JARVIS-CD scheduler submission provider did not match")
     if _optional_str(document.get("script_path")) != script_path:
         raise RuntimeError("JARVIS-CD scheduler submission did not match this script")
+    if execution_id is not None:
+        if _optional_str(document.get("execution_id")) != execution_id:
+            raise RuntimeError(
+                "JARVIS-CD scheduler submission did not match this execution"
+            )
+        for key in (
+            "hostfile_path",
+            "pipeline_snapshot_path",
+            "pipeline_input_path",
+        ):
+            value = document.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise RuntimeError(f"JARVIS-CD scheduler submission omitted {key}")
+        snapshot_digest = document.get("pipeline_snapshot_sha256")
+        if (
+            not isinstance(snapshot_digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", snapshot_digest) is None
+        ):
+            raise RuntimeError(
+                "JARVIS-CD scheduler submission returned an invalid snapshot digest"
+            )
     job_id = _optional_str(document.get("scheduler_job_id"))
     if job_id is not None and (
         document.get("submitted") is not True
@@ -1280,6 +2400,8 @@ def _optional_str(value: Any) -> str | None:
 
 def _load_pipeline(pipeline_id: str | None) -> Any:
     pipeline_cls = _require_pipeline_class()
+    if pipeline_id is not None:
+        pipeline_id = _validate_pipeline_id(pipeline_id)
     if _uses_current_pipeline_api():
         if pipeline_id is not None:
             return pipeline_cls(pipeline_id)
@@ -1292,7 +2414,7 @@ def _load_pipeline(pipeline_id: str | None) -> Any:
 
 
 def _create_pipeline(pipeline: Any, pipeline_id: str) -> Any:
-    created = pipeline.create(pipeline_id)
+    created = pipeline.create(_validate_pipeline_id(pipeline_id))
     return created if created is not None else pipeline
 
 
@@ -1354,19 +2476,35 @@ def _apply_pipeline_config(pipeline: Any, config: dict[str, Any]) -> None:
         if hostfile_path in (None, ""):
             pipeline.hostfile = None
         else:
+            try:
+                hostfile_text = os.fspath(hostfile_path)
+            except TypeError as exc:
+                raise ValueError("hostfile must be one bounded printable path") from exc
+            if not isinstance(hostfile_text, str) or (
+                len(hostfile_text.encode("utf-8")) > 4096
+                or any(
+                    ord(character) < 32 or ord(character) == 127
+                    for character in hostfile_text
+                )
+            ):
+                raise ValueError("hostfile must be one bounded printable path")
             from jarvis_cd.util.hostfile import Hostfile  # type: ignore[import-untyped]
 
-            pipeline.hostfile = Hostfile(path=str(hostfile_path))
+            pipeline.hostfile = Hostfile(path=hostfile_text)
     if "hostfile_entries" in config:
         hosts = config["hostfile_entries"]
         if not isinstance(hosts, list) or not all(
             isinstance(host, str) for host in hosts
         ):
             raise ValueError("hostfile_entries must be a list of host names")
+        if len(hosts) > 4096 or any(
+            _HOST_ENTRY.fullmatch(host) is None for host in hosts
+        ):
+            raise ValueError("hostfile_entries contains an invalid host name")
         shared_dir = pipeline.jarvis.get_pipeline_shared_dir(pipeline.name)
         shared_dir.mkdir(parents=True, exist_ok=True)
         hostfile_path = shared_dir / "mcp-hostfile.txt"
-        hostfile_path.write_text("\n".join(hosts) + "\n", encoding="utf-8")
+        _atomic_write_hostfile(hostfile_path, hosts)
         from jarvis_cd.util.hostfile import Hostfile  # type: ignore[import-untyped]
 
         pipeline.hostfile = Hostfile(path=str(hostfile_path))
@@ -1427,7 +2565,9 @@ def _pipeline_env_path(pipeline: Any) -> Any:
     jarvis = getattr(pipeline, "jarvis", None)
     name = getattr(pipeline, "name", None)
     if jarvis is not None and name and hasattr(jarvis, "get_pipeline_dir"):
-        return jarvis.get_pipeline_dir(name) / "environment.yaml"
+        directory = jarvis.get_pipeline_dir(name)
+        if isinstance(directory, (str, os.PathLike)):
+            return Path(directory) / "environment.yaml"
     return None
 
 

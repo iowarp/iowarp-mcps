@@ -37,6 +37,7 @@ mcp: FastMCP = FastMCP(
 
 USER_TOOLS = {"spack_find", "spack_locate", "spack_install"}
 ADMIN_TOOLS = {"spack_environment"}
+MCP_METADATA_PROFILE = "user"
 ResultT = TypeVar("ResultT")
 
 

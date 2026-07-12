@@ -1,0 +1,740 @@
+{
+  "canonicalization": "json-sort-keys-compact-utf8-v1",
+  "contract_id": "clio-kit-jarvis-user-v2",
+  "contract_sha256": "150159ffba27725d7cd7146cf0cec2e32e41834d213ab6043e0be43f99075120",
+  "profile": "user",
+  "projection": "mcp-agent-tool-schema-v1",
+  "schema_version": "clio-kit.mcp-user-contract.v1",
+  "server_name": "jarvis",
+  "source": {
+    "method": "tools/list",
+    "protocol_version": "2024-11-05",
+    "transport": "stdio"
+  },
+  "tool_names": [
+    "jarvis_add_step",
+    "jarvis_create_pipeline",
+    "jarvis_describe",
+    "jarvis_edit_step",
+    "jarvis_run"
+  ],
+  "tools": [
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jarvis",
+            "pipeline",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Add a package-backed step to a JARVIS pipeline and optionally configure that step with package-owned settings.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "do_configure": {
+            "default": true,
+            "type": "boolean"
+          },
+          "package_name": {
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "step_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "pipeline_id",
+          "package_name"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_add_step",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jarvis",
+            "pipeline",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a JARVIS pipeline. Optionally pass execution intent such as local, cluster, or hostfile mode; backend details are resolved where the MCP server runs.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "execution": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Validated, backend-neutral execution request for a JARVIS pipeline.",
+                "properties": {
+                  "account": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "cpus_per_task": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "error": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "exclusive": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "gpus": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "gpus_per_node": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "hostfile": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "hosts": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "job_name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "mode": {
+                    "default": "auto",
+                    "enum": [
+                      "auto",
+                      "local",
+                      "direct",
+                      "cluster",
+                      "scheduler",
+                      "hostfile"
+                    ],
+                    "type": "string"
+                  },
+                  "nodes": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "partition": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "qos": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tasks": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tasks_per_node": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "walltime": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "pipeline_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline_id"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_create_pipeline",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jarvis",
+            "pipeline",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Describe JARVIS packages, one package, a pipeline, or one pipeline step.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "include_yaml": {
+            "default": true,
+            "type": "boolean"
+          },
+          "package_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "step_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target": {
+            "enum": [
+              "packages",
+              "package",
+              "pipeline",
+              "step"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_describe",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jarvis",
+            "pipeline",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Edit or remove a step in a JARVIS pipeline. Use operation='edit' with config, or operation='remove' without config.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "operation": {
+            "default": "edit",
+            "enum": [
+              "edit",
+              "remove"
+            ],
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "step_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline_id",
+          "step_id"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_edit_step",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jarvis",
+            "pipeline",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Run a configured JARVIS pipeline. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. Optional spack_specs are resolved into a filtered environment that JARVIS persists before direct or scheduler execution.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "execution": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Validated, backend-neutral execution request for a JARVIS pipeline.",
+                "properties": {
+                  "account": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "cpus_per_task": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "error": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "exclusive": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "gpus": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "gpus_per_node": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "hostfile": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "hosts": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "job_name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "mode": {
+                    "default": "auto",
+                    "enum": [
+                      "auto",
+                      "local",
+                      "direct",
+                      "cluster",
+                      "scheduler",
+                      "hostfile"
+                    ],
+                    "type": "string"
+                  },
+                  "nodes": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "partition": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "qos": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tasks": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tasks_per_node": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "walltime": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "spack_specs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "submit": {
+            "default": true,
+            "type": "boolean"
+          },
+          "wait": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pipeline_id"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_run",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    }
+  ],
+  "wire_sha256": "db2ae1f73138e5c4f2607a34b7c7cba19171ff381b2e50eb2e0bc0413e760341"
+}

@@ -49,6 +49,7 @@ class ModernPipeline:
         self.last_loaded_file = None
         self.last_submission = None
         self.jarvis = Mock()
+        self.jarvis.get_pipeline_dir.return_value = Path("/tmp") / self.name
         self.jarvis.get_pipeline_shared_dir.return_value = Path("/tmp") / self.name
         ModernPipeline.instances.append(self)
 
@@ -61,17 +62,29 @@ class ModernPipeline:
     def run(self):
         self.ran = True
 
-    def submit(self, *, submit: bool = True, wait: bool = False):
+    def submit(
+        self,
+        *,
+        submit: bool = True,
+        wait: bool = False,
+        execution_id: str | None = None,
+    ):
         self.submitted = submit
         self.waited = wait
-        script_path = Path("/tmp") / self.name / "submit.slurm"
+        execution_root = Path("/tmp") / self.name / "executions" / str(execution_id)
+        script_path = execution_root / "submit.slurm"
         provider = (
             self.scheduler.get("name") if isinstance(self.scheduler, dict) else None
         )
         self.last_submission = {
             "schema_version": "jarvis.scheduler.submission.v1",
+            "execution_id": execution_id,
             "provider": provider,
             "script_path": str(script_path),
+            "hostfile_path": str(execution_root / "hostfile.txt"),
+            "pipeline_snapshot_path": str(execution_root / "runtime"),
+            "pipeline_input_path": str(execution_root / "input"),
+            "pipeline_snapshot_sha256": "a" * 64,
             "scheduler_job_id": "24680" if submit else None,
             "scheduler_cluster": "ares" if submit else None,
             "identity_source": "scheduler_submit_api" if submit else None,
@@ -195,7 +208,7 @@ class TestHandlerHelpers:
         assert pipeline.saved is True
         assert metadata is not None
         assert metadata["persisted"] is True
-        assert metadata["scheduler_reload"] == "saved_pipeline_environment"
+        assert metadata["scheduler_reload"] == "execution_snapshot"
         assert metadata["variable_names"] == ["PATH", "SPACK_ROOT"]
         assert metadata["removed_variable_names"] == []
 
@@ -801,8 +814,16 @@ class TestPipelineExecutionOperations:
                 super().__init__(name)
                 self.scheduler = {"name": "slurm"}
 
-            def submit(self, *, submit: bool = True, wait: bool = False):
-                script_path = super().submit(submit=submit, wait=wait)
+            def submit(
+                self,
+                *,
+                submit: bool = True,
+                wait: bool = False,
+                execution_id: str | None = None,
+            ):
+                script_path = super().submit(
+                    submit=submit, wait=wait, execution_id=execution_id
+                )
                 assert self.last_submission is not None
                 self.last_submission["scheduler_job_id"] = "24680"
                 self.last_submission["identity_source"] = "scheduler_submit_api"
@@ -831,14 +852,28 @@ class TestPipelineExecutionOperations:
                     "error": "/tmp/job-%j.err",
                 }
 
-            def submit(self, *, submit: bool = True, wait: bool = False):
+            def submit(
+                self,
+                *,
+                submit: bool = True,
+                wait: bool = False,
+                execution_id: str | None = None,
+            ):
                 assert submit is True
                 assert wait is True
-                script_path = Path("/tmp") / self.name / "submit.slurm"
+                execution_root = (
+                    Path("/tmp") / self.name / "executions" / str(execution_id)
+                )
+                script_path = execution_root / "submit.slurm"
                 self.last_submission = {
                     "schema_version": "jarvis.scheduler.submission.v1",
+                    "execution_id": execution_id,
                     "provider": "slurm",
                     "script_path": str(script_path),
+                    "hostfile_path": str(execution_root / "hostfile.txt"),
+                    "pipeline_snapshot_path": str(execution_root / "runtime"),
+                    "pipeline_input_path": str(execution_root / "input"),
+                    "pipeline_snapshot_sha256": "b" * 64,
                     "scheduler_job_id": "97531",
                     "scheduler_cluster": "ares",
                     "identity_source": "scheduler_submit_api",
@@ -918,8 +953,14 @@ class TestPipelineExecutionOperations:
                 super().__init__(name)
                 self.scheduler = {"name": "slurm"}
 
-            def submit(self, *, submit: bool = True, wait: bool = False):
-                del submit, wait
+            def submit(
+                self,
+                *,
+                submit: bool = True,
+                wait: bool = False,
+                execution_id: str | None = None,
+            ):
+                del submit, wait, execution_id
                 self.last_submission = None
                 return Path("/tmp") / self.name / "submit.slurm"
 

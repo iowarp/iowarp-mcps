@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from clio_kit.mcp_contracts import generate_user_contract_artifacts
+
 try:
     import tomllib
 except ImportError:
@@ -146,7 +148,10 @@ def build_server_json(
                 "identifier": "clio-kit",
                 "version": pypi_version,
                 "transport": {"type": "stdio"},
-                "arguments": ["clio-kit", "mcp-server", server_name],
+                "packageArguments": [
+                    {"type": "positional", "value": "mcp-server"},
+                    {"type": "positional", "value": server_name},
+                ],
             }
         ],
         "tools": tools,
@@ -326,6 +331,16 @@ def generate_all(mcps_dir: str) -> None:
     gemini_ext = build_gemini_extension(generated)
     _write_json(repo_root / "gemini-extension.json", gemini_ext)
     print(f"Wrote gemini-extension.json ({len(generated)} servers)")
+
+    # The registry manifest intentionally carries only abbreviated tool metadata.
+    # Bind the full locked JARVIS and Spack user schemas from their actual stdio
+    # tools/list responses in separately shipped canonical artifacts.
+    contracts = generate_user_contract_artifacts(repo_root)
+    for contract in contracts:
+        print(
+            "Wrote MCP user contract "
+            f"{contract['contract_id']} ({contract['contract_sha256']})"
+        )
 
     # Summary
     print(f"\nGenerated: {len(generated)} servers")
