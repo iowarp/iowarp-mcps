@@ -93,7 +93,7 @@ def extract_metadata(server_dir: Path) -> dict[str, Any] | None:
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     """Write a dict as formatted JSON to a file, creating parent dirs."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
 

@@ -866,6 +866,7 @@ def _capture_with_second_result(
         monkeypatch.delenv(name, raising=False)
     results: list[object] = [_process_result(b"export NEW=value"), second]
     monkeypatch.setattr(handler, "_spack_executable", lambda: "spack")
+    monkeypatch.setattr(handler, "_bash_executable", lambda: "bash")
 
     def run(*_args: object, **_kwargs: object) -> handler._BoundedProcessResult:
         value = results.pop(0)
@@ -882,6 +883,7 @@ def _capture_with_second_result(
     [
         (OSError("bash"), "could not materialize"),
         (_process_result(returncode=4, stderr=b"bad script"), "script failed"),
+        (_process_result(returncode=4), "exit code 4"),
         (_process_result(stdout_truncated=True), "exceeded"),
         (_process_result(stdout=b"missing marker"), "integrity marker"),
         (
@@ -1087,6 +1089,50 @@ def test_spack_diagnostic_and_executable_resolution(
     monkeypatch.setattr(Path, "is_file", lambda _path: False)
     with pytest.raises(RuntimeError, match="was not found"):
         handler._spack_executable()
+
+
+def test_bash_executable_override_is_validated(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An operator Bash override must resolve to a real executable file."""
+    command = tmp_path / ("bash.exe" if os.name == "nt" else "bash")
+    command.write_text("", encoding="utf-8")
+    command.chmod(0o755)
+    monkeypatch.setenv("JARVIS_MCP_BASH_COMMAND", str(command))
+
+    assert handler._bash_executable() == str(command.resolve())
+
+    monkeypatch.setenv("JARVIS_MCP_BASH_COMMAND", str(tmp_path / "missing-bash"))
+    with pytest.raises(RuntimeError, match="does not exist"):
+        handler._bash_executable()
+
+
+def test_windows_bash_candidates_follow_the_git_installation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Git's install root is preferred over the legacy System32 WSL launcher."""
+    git_root = tmp_path / "Git"
+    git = git_root / "cmd" / "git.exe"
+    git.parent.mkdir(parents=True)
+    git.write_bytes(b"")
+    monkeypatch.setattr(
+        handler.shutil,
+        "which",
+        lambda name: str(git) if name == "git" else None,
+    )
+    for variable in (
+        "GIT_INSTALL_ROOT",
+        "ProgramW6432",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "LOCALAPPDATA",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+
+    assert handler._windows_bash_candidates() == [
+        git_root / "bin" / "bash.exe",
+        git_root / "usr" / "bin" / "bash.exe",
+    ]
 
 
 def test_terminate_spack_tree_windows_requires_pinned_job(

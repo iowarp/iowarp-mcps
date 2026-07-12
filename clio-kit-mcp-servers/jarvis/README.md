@@ -24,6 +24,12 @@ The path must resolve to an executable file and is used only when
 `JARVIS_MCP_SPACK_COMMAND` is the equivalent site-level override; the explicit
 CLI argument takes precedence.
 
+Materializing `spack load --sh` also requires Bash. POSIX systems resolve Bash
+from `PATH`. Native Windows resolves Bash from the installed Git for Windows
+tree and deliberately rejects the legacy `System32\bash.exe` WSL launcher,
+which can exist without an installed WSL distribution. Sites with another
+audited Bash can set `JARVIS_MCP_BASH_COMMAND` to its executable path.
+
 Spack materialization persists only a conservative path/toolchain allowlist.
 Sites can add exact non-secret package variables with comma-separated
 `CLIO_SPACK_ENV_ALLOWLIST` or `JARVIS_MCP_SPACK_ENV_ALLOWLIST`; sensitive and

@@ -1837,7 +1837,7 @@ def _capture_spack_environment(spack_specs: list[str]) -> dict[str, str]:
     )
     try:
         captured = _run_bounded_process(
-            ["bash", "--noprofile", "--norc"],
+            [_bash_executable(), "--noprofile", "--norc"],
             env=baseline,
             stdin_payload=script.encode("utf-8"),
             timeout_seconds=120,
@@ -1847,7 +1847,10 @@ def _capture_spack_environment(spack_specs: list[str]) -> dict[str, str]:
             f"could not materialize Spack runtime environment: {exc}"
         ) from exc
     if captured.returncode != 0:
-        detail = _bounded_spack_diagnostic(captured.stderr)
+        detail = (
+            _bounded_spack_diagnostic(captured.stderr)
+            or f"exit code {captured.returncode}"
+        )
         raise RuntimeError(f"Spack runtime environment script failed: {detail}")
     if captured.stdout_truncated:
         raise RuntimeError(
@@ -2088,6 +2091,83 @@ def _spack_executable() -> str:
     raise RuntimeError(
         "Spack executable was not found in PATH, SPACK_ROOT/bin, "
         "~/.local/spack, or /opt/spack"
+    )
+
+
+def _windows_bash_candidates() -> list[Path]:
+    """Return deterministic Git-for-Windows Bash candidates.
+
+    ``C:\\Windows\\System32\\bash.exe`` is a legacy WSL launcher and can exist
+    even when no WSL distribution is installed. It must never be selected for
+    native Windows subprocess materialization.
+    """
+    install_roots: list[Path] = []
+    git = shutil.which("git")
+    if git is not None:
+        git_path = Path(git).resolve()
+        parent = git_path.parent
+        if (
+            parent.name.casefold() == "bin"
+            and parent.parent.name.casefold() == "mingw64"
+        ):
+            install_roots.append(parent.parent.parent)
+        elif parent.name.casefold() in {"bin", "cmd"}:
+            install_roots.append(parent.parent)
+
+    configured_root = os.getenv("GIT_INSTALL_ROOT")
+    if configured_root:
+        install_roots.append(Path(configured_root).expanduser())
+    for variable in ("ProgramW6432", "ProgramFiles", "ProgramFiles(x86)"):
+        value = os.getenv(variable)
+        if value:
+            install_roots.append(Path(value) / "Git")
+    local_app_data = os.getenv("LOCALAPPDATA")
+    if local_app_data:
+        install_roots.append(Path(local_app_data) / "Programs" / "Git")
+
+    candidates: list[Path] = []
+    seen: set[str] = set()
+    for root in install_roots:
+        for candidate in (root / "bin" / "bash.exe", root / "usr" / "bin" / "bash.exe"):
+            key = os.path.normcase(os.path.abspath(candidate))
+            if key not in seen:
+                seen.add(key)
+                candidates.append(candidate)
+    return candidates
+
+
+def _bash_executable() -> str:
+    """Resolve the audited Bash used to materialize ``spack load --sh``."""
+    configured = os.getenv("JARVIS_MCP_BASH_COMMAND")
+    if configured:
+        candidate = Path(configured).expanduser()
+        try:
+            resolved = candidate.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise RuntimeError(
+                f"configured Bash command does not exist: {candidate}"
+            ) from exc
+        if not resolved.is_file():
+            raise RuntimeError(f"configured Bash command is not a file: {resolved}")
+        if os.name != "nt" and not os.access(resolved, os.X_OK):
+            raise RuntimeError(f"configured Bash command is not executable: {resolved}")
+        return str(resolved)
+
+    if os.name == "nt":
+        for candidate in _windows_bash_candidates():
+            if candidate.is_file():
+                return str(candidate.resolve())
+        raise RuntimeError(
+            "Git for Windows Bash was not found; install Git for Windows or set "
+            "JARVIS_MCP_BASH_COMMAND to an audited bash.exe path"
+        )
+
+    resolved_bash = shutil.which("bash")
+    if resolved_bash is not None:
+        return str(Path(resolved_bash).resolve())
+    raise RuntimeError(
+        "Bash was not found in PATH; install Bash or set "
+        "JARVIS_MCP_BASH_COMMAND to an audited executable path"
     )
 
 

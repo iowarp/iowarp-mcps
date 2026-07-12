@@ -82,6 +82,9 @@ def test_locate_load_spec_is_consumed_by_jarvis_execution(
     monkeypatch.setenv("FAKE_SPACK_PREFIX", str(prefix))
 
     located = backend.locate_installed("lammps@1.0")
+    if os.name == "nt":
+        bash = Path(jarvis_handler._bash_executable()).resolve()
+        assert "system32" not in {part.casefold() for part in bash.parts}
     environment = jarvis_handler._capture_spack_environment([located.load_spec])
 
     assert located.load_spec == "/abc123"

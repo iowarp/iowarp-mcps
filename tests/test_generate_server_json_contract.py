@@ -7,6 +7,9 @@ import json
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import IO, Any
+
+import pytest
 
 
 def _load_generator() -> ModuleType:
@@ -21,6 +24,25 @@ def _load_generator() -> ModuleType:
 
 
 GENERATOR = _load_generator()
+
+
+def test_json_writer_requests_platform_independent_newlines(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Generated release metadata must remain byte-identical on Windows."""
+    real_open = open
+    observed: dict[str, Any] = {}
+
+    def checked_open(*args: Any, **kwargs: Any) -> IO[str]:
+        observed["newline"] = kwargs.get("newline")
+        return real_open(*args, **kwargs)
+
+    monkeypatch.setattr(GENERATOR, "open", checked_open, raising=False)
+    output = tmp_path / "manifest.json"
+    GENERATOR._write_json(output, {"name": "demo"})
+
+    assert observed["newline"] == "\n"
+    assert output.read_bytes() == b'{\n  "name": "demo"\n}\n'
 
 
 def test_pypi_manifest_uses_standard_fixed_package_arguments() -> None:
