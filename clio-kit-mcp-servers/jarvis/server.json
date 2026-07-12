@@ -48,6 +48,14 @@
     {
       "name": "jarvis_run",
       "description": "Run a configured JARVIS pipeline. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. Optional spack_specs are resolved into a filtered environment that JARVIS persists before direct or scheduler execution."
+    },
+    {
+      "name": "jarvis_get_execution",
+      "description": "Query one JARVIS execution handle and durable lifecycle record by pipeline and execution ID."
+    },
+    {
+      "name": "jarvis_get_execution_progress",
+      "description": "Query the latest JARVIS-owned package progress snapshot for one pipeline execution."
     }
   ],
   "resources": [

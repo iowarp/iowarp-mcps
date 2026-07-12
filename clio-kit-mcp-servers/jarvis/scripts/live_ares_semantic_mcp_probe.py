@@ -211,6 +211,8 @@ def main() -> int:
             "jarvis_add_step",
             "jarvis_edit_step",
             "jarvis_run",
+            "jarvis_get_execution",
+            "jarvis_get_execution_progress",
         ]
         assert tools == expected, tools
         pipeline_id = f"clio_semantic_{int(time.time())}"
@@ -301,6 +303,17 @@ def main() -> int:
             },
         )
         scripted_payload = _tool_payload(scripted_result)
+        assert scripted_payload.get("schema_version") == "clio-kit.jarvis-run.v1"
+        scripted_handle = scripted_payload.get("execution_handle")
+        assert isinstance(scripted_handle, dict), scripted_payload
+        assert scripted_handle.get("scheduler_provider") == "slurm", scripted_handle
+        assert scripted_handle.get("scheduler_native_id") is None, scripted_handle
+        assert scripted_handle.get("cluster") is None, scripted_handle
+        scripted_progress = scripted_payload.get("progress")
+        assert isinstance(scripted_progress, dict), scripted_payload
+        assert scripted_progress.get("schema_version") == (
+            "jarvis.execution.progress.v1"
+        ), scripted_progress
         runtime_metadata = scripted_payload.get("runtime_metadata")
         assert isinstance(runtime_metadata, dict), scripted_payload
         details = runtime_metadata.get("details")
@@ -349,13 +362,46 @@ def main() -> int:
             },
         )
         submitted_payload = _tool_payload(submitted_result)
+        assert submitted_payload.get("schema_version") == "clio-kit.jarvis-run.v1"
+        submitted_handle = submitted_payload.get("execution_handle")
+        assert isinstance(submitted_handle, dict), submitted_payload
         submitted_metadata = submitted_payload.get("runtime_metadata")
         assert isinstance(submitted_metadata, dict), submitted_payload
         assert submitted_payload.get("status") == "completed", submitted_payload
+        assert submitted_handle.get("scheduler_provider") == "slurm", submitted_handle
+        assert submitted_handle.get("scheduler_native_id"), submitted_handle
+        assert "cluster" in submitted_handle, submitted_handle
+        submitted_progress = submitted_payload.get("progress")
+        assert isinstance(submitted_progress, dict), submitted_payload
+        assert submitted_progress.get("schema_version") == (
+            "jarvis.execution.progress.v1"
+        ), submitted_progress
+        assert (
+            submitted_metadata.get("scheduler_native_id")
+            == (submitted_handle["scheduler_native_id"])
+        ), submitted_metadata
         assert submitted_metadata.get("scheduler_job_id"), submitted_metadata
         terminal = submitted_metadata.get("terminal")
         assert isinstance(terminal, dict) and terminal.get("terminal") is True
         assert terminal.get("returncode") == 0, terminal
+        execution_id = submitted_handle.get("execution_id")
+        assert isinstance(execution_id, str), submitted_handle
+        execution_result = user.call_tool(
+            "jarvis_get_execution",
+            {"pipeline_id": pipeline_id, "execution_id": execution_id},
+        )
+        progress_result = user.call_tool(
+            "jarvis_get_execution_progress",
+            {"pipeline_id": pipeline_id, "execution_id": execution_id},
+        )
+        execution_payload = _tool_payload(execution_result)
+        progress_payload = _tool_payload(progress_result)
+        assert execution_payload.get("schema_version") == (
+            "clio-kit.jarvis-execution.v1"
+        ), execution_payload
+        assert progress_payload.get("schema_version") == (
+            "clio-kit.jarvis-execution-progress-query.v1"
+        ), progress_payload
         print(
             json.dumps(
                 {
@@ -370,6 +416,8 @@ def main() -> int:
                     "scripted": scripted_result,
                     "pipeline_after_spack": pipeline_after_spack,
                     "submitted": submitted_result,
+                    "execution": execution_result,
+                    "progress": progress_result,
                 },
                 indent=2,
             )

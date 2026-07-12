@@ -26,8 +26,112 @@ from jarvis_mcp.capabilities.jarvis_handler import (
     unlink_pkg,
     remove_pkg,
     run_pipeline,
+    get_execution,
+    get_execution_progress,
     destroy_pipeline,
 )
+
+
+@pytest.fixture(autouse=True)
+def native_execution_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep handler unit tests independent of the dependency lock transition."""
+    from jarvis_mcp.capabilities import jarvis_handler
+
+    monkeypatch.setattr(
+        jarvis_handler,
+        "_native_execution_id",
+        lambda value: value or "jarvis_test_execution",
+    )
+
+
+class NativeHandle:
+    """Test double for the released JARVIS ExecutionHandle contract."""
+
+    def __init__(
+        self,
+        *,
+        execution_id: str,
+        pipeline_id: str,
+        mode: str,
+        scheduler_provider: str | None = None,
+        scheduler_native_id: str | None = None,
+        cluster: str | None = None,
+    ) -> None:
+        self.execution_id = execution_id
+        self.pipeline_id = pipeline_id
+        self.mode = mode
+        self.scheduler_provider = scheduler_provider
+        self.scheduler_native_id = scheduler_native_id
+        self.cluster = cluster
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": "jarvis.execution.handle.v1",
+            "execution_id": self.execution_id,
+            "pipeline_id": self.pipeline_id,
+            "mode": self.mode,
+            "scheduler_provider": self.scheduler_provider,
+            "scheduler_native_id": self.scheduler_native_id,
+            "cluster": self.cluster,
+        }
+
+
+class NativeRecord:
+    """Test double for the released JARVIS ExecutionRecord contract."""
+
+    def __init__(
+        self,
+        handle: NativeHandle,
+        *,
+        state: str,
+        submitted: bool,
+        terminal: bool,
+        return_code: int | None,
+        error: str | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> None:
+        self.handle = handle
+        self.state = state
+        self.submitted = submitted
+        self.terminal = terminal
+        self.return_code = return_code
+        self.error = error
+        self.metadata = metadata or {}
+
+    def to_dict(self) -> dict[str, object]:
+        handle = self.handle.to_dict()
+        return {
+            "schema_version": "jarvis.execution.record.v1",
+            "execution_id": handle["execution_id"],
+            "pipeline_id": handle["pipeline_id"],
+            "pipeline_name": handle["pipeline_id"],
+            "mode": handle["mode"],
+            "scheduler_provider": handle["scheduler_provider"],
+            "scheduler_native_id": handle["scheduler_native_id"],
+            "cluster": handle["cluster"],
+            "state": self.state,
+            "submitted": self.submitted,
+            "terminal": self.terminal,
+            "created_at": "2026-07-12T12:00:00Z",
+            "updated_at": "2026-07-12T12:01:00Z",
+            "return_code": self.return_code,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+
+
+def native_progress(
+    execution_id: str, pipeline_id: str, state: str, terminal: bool
+) -> dict[str, object]:
+    """Return an empty but authoritative JARVIS progress snapshot."""
+    return {
+        "schema_version": "jarvis.execution.progress.v1",
+        "execution_id": execution_id,
+        "pipeline_id": pipeline_id,
+        "execution_state": state,
+        "terminal": terminal,
+        "packages": [],
+    }
 
 
 class ModernPipeline:
@@ -48,6 +152,7 @@ class ModernPipeline:
         self.submitted = False
         self.last_loaded_file = None
         self.last_submission = None
+        self.records: dict[str, NativeRecord] = {}
         self.jarvis = Mock()
         self.jarvis.get_pipeline_dir.return_value = Path("/tmp") / self.name
         self.jarvis.get_pipeline_shared_dir.return_value = Path("/tmp") / self.name
@@ -59,8 +164,28 @@ class ModernPipeline:
     def save(self):
         self.saved = True
 
-    def run(self):
+    def run(
+        self,
+        *,
+        execution_id: str | None = None,
+        wait: bool = True,
+    ) -> NativeHandle:
+        assert execution_id is not None
         self.ran = True
+        self.waited = wait
+        handle = NativeHandle(
+            execution_id=execution_id,
+            pipeline_id=self.name,
+            mode="direct",
+        )
+        self.records[execution_id] = NativeRecord(
+            handle,
+            state="completed" if wait else "running",
+            submitted=False,
+            terminal=wait,
+            return_code=0 if wait else None,
+        )
+        return handle
 
     def submit(
         self,
@@ -68,7 +193,8 @@ class ModernPipeline:
         submit: bool = True,
         wait: bool = False,
         execution_id: str | None = None,
-    ):
+    ) -> NativeHandle:
+        assert execution_id is not None
         self.submitted = submit
         self.waited = wait
         execution_root = Path("/tmp") / self.name / "executions" / str(execution_id)
@@ -98,7 +224,33 @@ class ModernPipeline:
             "terminal": submit and wait,
             "submission_returncode": 0 if submit else None,
         }
-        return script_path
+        handle = NativeHandle(
+            execution_id=execution_id,
+            pipeline_id=self.name,
+            mode="scheduler",
+            scheduler_provider=provider,
+            scheduler_native_id="24680" if submit else None,
+            cluster="ares" if submit else None,
+        )
+        self.records[execution_id] = NativeRecord(
+            handle,
+            state=self.last_submission["state"],
+            submitted=submit,
+            terminal=(submit and wait) or not submit,
+            return_code=0 if submit and wait else None,
+            metadata={
+                "script_path": str(script_path),
+                "submission": self.last_submission,
+            },
+        )
+        return handle
+
+    def get_execution(self, execution_id: str) -> NativeRecord:
+        return self.records[execution_id]
+
+    def get_execution_progress(self, execution_id: str) -> dict[str, object]:
+        record = self.records[execution_id]
+        return native_progress(execution_id, self.name, record.state, record.terminal)
 
 
 class TestHandlerHelpers:
@@ -734,11 +886,56 @@ class TestPipelineExecutionOperations:
         result = await run_pipeline("test_pipeline")
 
         assert result["pipeline_id"] == "test_pipeline"
-        assert result["status"] == "completed"
-        assert result["runtime_metadata"]["terminal"]["terminal"] is True
+        assert result["status"] == "running"
+        assert result["runtime_metadata"]["terminal"]["terminal"] is False
 
         mock_pipeline.load.assert_called_once_with("test_pipeline")
-        mock_pipeline.run.assert_called_once()
+        mock_pipeline.run.assert_called_once_with(
+            execution_id="jarvis_test_execution",
+            wait=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_direct_run_honors_wait_and_explicit_execution_identity(self):
+        """The MCP passes both direct execution arguments to JARVIS-CD."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            result = await run_pipeline(
+                "direct-wait",
+                wait=True,
+                execution_id="operator-run-1",
+            )
+
+        pipeline = ModernPipeline.instances[-1]
+        assert pipeline.waited is True
+        assert result["schema_version"] == "clio-kit.jarvis-run.v1"
+        assert set(result) == {
+            "schema_version",
+            "pipeline_id",
+            "execution_id",
+            "status",
+            "mode",
+            "scheduler",
+            "script_path",
+            "wait",
+            "execution_handle",
+            "execution_record",
+            "progress",
+            "runtime_metadata",
+        }
+        assert result["execution_id"] == "operator-run-1"
+        assert result["status"] == "completed"
+        assert result["execution_handle"] == {
+            "schema_version": "jarvis.execution.handle.v1",
+            "execution_id": "operator-run-1",
+            "pipeline_id": "direct-wait",
+            "mode": "direct",
+            "scheduler_provider": None,
+            "scheduler_native_id": None,
+            "cluster": None,
+        }
+        assert result["progress"]["schema_version"] == ("jarvis.execution.progress.v1")
+        assert result["runtime_metadata"]["terminal"]["terminal"] is True
 
     @pytest.mark.asyncio
     async def test_run_pipeline_failure(self, mock_pipeline):
@@ -751,6 +948,26 @@ class TestPipelineExecutionOperations:
         error = json.loads(str(exc_info.value))
         assert error["schema_version"] == "jarvis.error.v1"
         assert "Run failed" in error["error"]["message"]
+
+    @pytest.mark.asyncio
+    async def test_run_rejects_execution_identity_with_bounded_structured_error(self):
+        """Invalid native IDs fail before loading and are not echoed unboundedly."""
+        with (
+            patch(
+                "jarvis_mcp.capabilities.jarvis_handler._native_execution_id",
+                side_effect=ValueError("execution_id is invalid"),
+            ),
+            patch(
+                "jarvis_mcp.capabilities.jarvis_handler._load_pipeline"
+            ) as load_pipeline,
+            pytest.raises(ToolError) as exc_info,
+        ):
+            await run_pipeline("test_pipeline", execution_id="x" * 4096)
+
+        error = json.loads(str(exc_info.value))
+        assert error["error"]["code"] == "jarvis_execution_id_invalid"
+        assert error["error"]["execution_id"] == "unassigned"
+        load_pipeline.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_run_pipeline_scheduler_mode_submits_modern_pipeline(self):
@@ -774,6 +991,8 @@ class TestPipelineExecutionOperations:
         assert result["status"] == "completed"
         assert result["mode"] == "scheduler"
         assert result["runtime_metadata"]["schema_version"] == "jarvis.runtime.v1"
+        assert result["runtime_metadata"]["scheduler_native_id"] == "24680"
+        assert result["runtime_metadata"]["cluster"] == "ares"
         assert result["runtime_metadata"]["scheduler_job_id"] == "24680"
         assert result["runtime_metadata"]["terminal"]["terminal"] is True
         assert (
@@ -782,6 +1001,49 @@ class TestPipelineExecutionOperations:
         )
         assert pipeline.submitted is True
         assert pipeline.waited is True
+
+    @pytest.mark.asyncio
+    async def test_execution_query_returns_record_and_generic_progress(self) -> None:
+        """A returned execution reference remains queryable without log parsing."""
+        ModernPipeline.instances = []
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", ModernPipeline):
+            await run_pipeline(
+                "queryable",
+                wait=False,
+                execution_id="query-run-1",
+            )
+            pipeline = ModernPipeline.instances[-1]
+            with patch(
+                "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+                return_value=pipeline,
+            ):
+                result = await get_execution("queryable", "query-run-1")
+                progress = await get_execution_progress("queryable", "query-run-1")
+
+        assert result["schema_version"] == "clio-kit.jarvis-execution.v1"
+        assert set(result) == {
+            "schema_version",
+            "pipeline_id",
+            "execution_id",
+            "execution_handle",
+            "execution_record",
+            "runtime_metadata",
+        }
+        assert result["execution_id"] == "query-run-1"
+        assert result["execution_record"]["state"] == "running"
+        assert progress == {
+            "schema_version": "clio-kit.jarvis-execution-progress-query.v1",
+            "pipeline_id": "queryable",
+            "execution_id": "query-run-1",
+            "progress": {
+                "schema_version": "jarvis.execution.progress.v1",
+                "execution_id": "query-run-1",
+                "pipeline_id": "queryable",
+                "execution_state": "running",
+                "terminal": False,
+                "packages": [],
+            },
+        }
 
     @pytest.mark.asyncio
     async def test_run_pipeline_scheduler_script_only(self):
@@ -834,9 +1096,7 @@ class TestPipelineExecutionOperations:
             "jarvis_mcp.capabilities.jarvis_handler.Pipeline",
             ForgedScriptPipeline,
         ):
-            with pytest.raises(
-                ToolError, match="provider-owned scheduler job identity"
-            ):
+            with pytest.raises(ToolError, match="native identity did not match"):
                 await run_pipeline("forged-script", mode="scheduler", submit=False)
 
     @pytest.mark.asyncio
@@ -884,6 +1144,27 @@ class TestPipelineExecutionOperations:
                     "submission_returncode": 42,
                     "terminal_returncode": 42,
                 }
+                assert execution_id is not None
+                handle = NativeHandle(
+                    execution_id=execution_id,
+                    pipeline_id=self.name,
+                    mode="scheduler",
+                    scheduler_provider="slurm",
+                    scheduler_native_id="97531",
+                    cluster="ares",
+                )
+                self.records[execution_id] = NativeRecord(
+                    handle,
+                    state="failed",
+                    submitted=True,
+                    terminal=True,
+                    return_code=42,
+                    error="scheduler workload exited 42",
+                    metadata={
+                        "script_path": str(script_path),
+                        "submission": self.last_submission,
+                    },
+                )
                 raise RuntimeError("scheduler workload exited 42")
 
         with patch(
@@ -901,8 +1182,10 @@ class TestPipelineExecutionOperations:
         assert error["error"]["code"] == "jarvis_workload_failed"
         metadata = error["runtime_metadata"]
         assert metadata["scheduler_provider"] == "slurm"
+        assert metadata["scheduler_native_id"] == "97531"
+        assert metadata["cluster"] == "ares"
         assert metadata["scheduler_job_id"] == "97531"
-        assert metadata["scheduler_phase"] == "workload_failed"
+        assert metadata["scheduler_phase"] == "failed"
         assert metadata["terminal"] == {
             "state": "failed",
             "terminal": True,
@@ -968,9 +1251,7 @@ class TestPipelineExecutionOperations:
             "jarvis_mcp.capabilities.jarvis_handler.Pipeline",
             LegacySubmissionPipeline,
         ):
-            with pytest.raises(
-                ToolError, match="provider-owned scheduler job identity"
-            ):
+            with pytest.raises(ToolError, match="did not return an ExecutionHandle"):
                 await run_pipeline("legacy", mode="scheduler")
 
     @pytest.mark.asyncio
@@ -992,7 +1273,7 @@ class TestPipelineExecutionOperations:
         with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", BaselinePipeline):
             with pytest.raises(
                 ToolError,
-                match="does not expose the structured scheduler submission API",
+                match="lacks native execution parameters: execution_id",
             ):
                 await run_pipeline("baseline", mode="scheduler")
 
@@ -1188,7 +1469,7 @@ class TestIntegrationScenarios:
 
         # Run pipeline
         run_result = await run_pipeline("workflow_test")
-        assert run_result["status"] == "completed"
+        assert run_result["status"] == "running"
 
         # Destroy pipeline
         destroy_result = await destroy_pipeline("workflow_test")

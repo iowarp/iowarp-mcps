@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -791,11 +791,12 @@ wheels = [
 
 [[package]]
 name = "jarvis-cd"
-version = "1.0.0.post1.dev382+ge870913"
-source = { git = "https://github.com/grc-iit/jarvis-cd.git?rev=e8709137b0590606b045500e0b2538b6dc6b21c4#e8709137b0590606b045500e0b2538b6dc6b21c4" }
+version = "1.0.0.post1.dev391+g01f4fc2"
+source = { git = "https://github.com/grc-iit/jarvis-cd.git?rev=01f4fc2fb9a5b60b62f1545c79dd58955b400ba7#01f4fc2fb9a5b60b62f1545c79dd58955b400ba7" }
 dependencies = [
     { name = "pandas" },
     { name = "podman-compose" },
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "pyyaml" },
 ]
 
@@ -840,7 +841,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp", specifier = ">=3.2.0" },
     { name = "idna", specifier = ">=3.15" },
-    { name = "jarvis-cd", git = "https://github.com/grc-iit/jarvis-cd.git?rev=e8709137b0590606b045500e0b2538b6dc6b21c4" },
+    { name = "jarvis-cd", git = "https://github.com/grc-iit/jarvis-cd.git?rev=01f4fc2fb9a5b60b62f1545c79dd58955b400ba7" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pygments", specifier = ">=2.20.0" },
@@ -2097,8 +2098,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "cryptography" },
+    { name = "jeepney" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [

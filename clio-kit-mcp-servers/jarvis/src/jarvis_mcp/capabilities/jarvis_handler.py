@@ -17,7 +17,6 @@ from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, redirect_stdout
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from typing import Any, BinaryIO, Optional, cast
@@ -27,15 +26,17 @@ from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
 
 from jarvis_mcp.progress import (
-    PackageProgressBinding,
-    PackageProgressExecution,
+    NativeProgressExecution,
     ProgressReporter,
-    bind_package_progress_provider,
+    progress_snapshot_document,
 )
 
 
 RUNTIME_METADATA_SCHEMA = "jarvis.runtime.v1"
 RUNTIME_ERROR_SCHEMA = "jarvis.error.v1"
+RUN_RESULT_SCHEMA = "clio-kit.jarvis-run.v1"
+EXECUTION_QUERY_SCHEMA = "clio-kit.jarvis-execution.v1"
+EXECUTION_PROGRESS_QUERY_SCHEMA = "clio-kit.jarvis-execution-progress-query.v1"
 _MAX_SPACK_SPECS = 32
 _MAX_SPACK_SPEC_LENGTH = 1024
 _MAX_ENVIRONMENT_VARIABLES = 512
@@ -191,6 +192,7 @@ class _BoundedCapture:
 
 Pipeline: Any | None = None
 _PIPELINE_IMPORT_ERROR: Exception | None = None
+_JARVIS_EXECUTION_STDOUT_LOCK = asyncio.Lock()
 
 try:  # pragma: no cover - current JARVIS-CD environments.
     from jarvis_cd.core.pipeline import Pipeline as _Pipeline  # type: ignore[import-untyped]
@@ -594,13 +596,25 @@ async def run_pipeline(
     *,
     submit: bool = True,
     wait: bool = False,
+    execution_id: str | None = None,
     spack_specs: Optional[list[str]] = None,
     progress_reporter: ProgressReporter | None = None,
     pipeline_config: dict[str, Any] | None = None,
 ) -> dict:
     """Run a pipeline and return JARVIS-owned structured runtime metadata."""
-    started_at = datetime.now(timezone.utc)
-    execution_id = f"jarvis_{uuid4().hex}"
+    try:
+        resolved_execution_id = _native_execution_id(execution_id)
+    except Exception as exc:
+        raise ToolError(
+            _structured_runtime_error(
+                code="jarvis_execution_id_invalid",
+                message=f"Run failed: {exc}",
+                pipeline_id=pipeline_id,
+                execution_id=_safe_error_execution_id(execution_id),
+            )
+        ) from exc
+    pipeline: Any | None = None
+    environment_metadata: dict[str, Any] | None = None
     try:
         with _protocol_stdout_to_stderr():
             pipeline = _load_pipeline(pipeline_id)
@@ -620,167 +634,172 @@ async def run_pipeline(
                 raise ValueError(
                     "scheduler mode requires a configured pipeline scheduler"
                 )
-            progress_binding = (
-                bind_package_progress_provider(
-                    _pipeline_packages(pipeline),
-                    execution_id=execution_id,
-                    base_deploy_mode=getattr(pipeline, "base_deploy_mode", None),
-                )
-                if progress_reporter is not None
-                else None
-            )
         resolved_pipeline_id = _pipeline_id(pipeline) or pipeline_id
         if normalized == "scheduler" or (normalized == "auto" and has_scheduler):
-            if submit and not hasattr(pipeline, "last_submission"):
-                raise RuntimeError(
-                    "installed JARVIS-CD does not expose the structured "
-                    "scheduler submission API required by jarvis_run"
-                )
-            submit_parameters = inspect.signature(pipeline.submit).parameters
-            if "execution_id" not in submit_parameters:
-                raise RuntimeError(
-                    "installed JARVIS-CD does not expose immutable execution "
-                    "snapshots required by jarvis_run"
-                )
-            prior_submission = _jsonable(getattr(pipeline, "last_submission", None))
-            try:
-                script_path = await _run_pipeline_operation(
-                    lambda: pipeline.submit(
-                        submit=submit,
-                        wait=wait,
-                        execution_id=execution_id,
-                    ),
-                    progress_binding=progress_binding,
-                    progress_reporter=progress_reporter,
-                    execution_id=execution_id,
-                    pipeline_id=resolved_pipeline_id,
-                )
-            except Exception as exc:
-                failure = _waited_workload_failure_metadata(
-                    pipeline,
-                    scheduler=scheduler,
-                    prior_submission=prior_submission,
+            _require_execution_parameters(
+                pipeline.submit,
+                operation_name="Pipeline.submit",
+                required={"execution_id"},
+            )
+            handle = await _run_pipeline_operation(
+                lambda: pipeline.submit(
                     submit=submit,
                     wait=wait,
-                    execution_id=execution_id,
-                )
-                if failure is None:
-                    raise
-                (
-                    failed_submission_metadata,
-                    failed_script_path,
-                    returncode,
-                ) = failure
-                failed_result = _runtime_result(
-                    pipeline,
-                    pipeline_id=pipeline_id,
-                    execution_id=execution_id,
-                    mode="scheduler",
-                    status="failed",
-                    terminal=True,
-                    scheduler=scheduler,
-                    scheduler_phase="workload_failed",
-                    script_path=failed_script_path,
-                    submit=True,
-                    wait=True,
-                    started_at=started_at,
-                    environment_metadata=environment_metadata,
-                    submission_metadata=failed_submission_metadata,
-                    terminal_returncode=returncode,
-                    terminal_reason=str(exc),
-                )
-                raise ToolError(
-                    _structured_runtime_error(
-                        code="jarvis_workload_failed",
-                        message=f"Run failed: {exc}",
-                        pipeline_id=pipeline_id,
-                        execution_id=execution_id,
-                        runtime_metadata=failed_result["runtime_metadata"],
-                    )
-                ) from exc
-            submission_metadata = _scheduler_submission_metadata(
-                pipeline,
-                scheduler=scheduler,
-                script_path=str(script_path),
-                require_identity=submit,
-                execution_id=execution_id,
+                    execution_id=resolved_execution_id,
+                ),
+                pipeline=pipeline,
+                progress_reporter=progress_reporter,
+                execution_id=resolved_execution_id,
+                pipeline_id=resolved_pipeline_id,
             )
-            status = (
-                "completed"
-                if submit and wait
-                else "submitted"
-                if submit
-                else "scripted"
+        else:
+            _require_execution_parameters(
+                pipeline.run,
+                operation_name="Pipeline.run",
+                required={"execution_id", "wait"},
             )
-            return _runtime_result(
-                pipeline,
-                pipeline_id=pipeline_id,
-                execution_id=execution_id,
-                mode="scheduler",
-                status=status,
-                terminal=submit and wait,
-                scheduler=scheduler,
-                scheduler_phase=status,
-                script_path=str(script_path),
-                submit=submit,
-                wait=wait,
-                started_at=started_at,
-                environment_metadata=environment_metadata,
-                submission_metadata=submission_metadata,
+            handle = await _run_pipeline_operation(
+                lambda: pipeline.run(
+                    execution_id=resolved_execution_id,
+                    wait=wait,
+                ),
+                pipeline=pipeline,
+                progress_reporter=progress_reporter,
+                execution_id=resolved_execution_id,
+                pipeline_id=resolved_pipeline_id,
             )
-        await _run_pipeline_operation(
-            pipeline.run,
-            progress_binding=progress_binding,
-            progress_reporter=progress_reporter,
-            execution_id=execution_id,
-            pipeline_id=resolved_pipeline_id,
-        )
-        return _runtime_result(
+        return _result_from_native_execution(
             pipeline,
-            pipeline_id=pipeline_id,
-            execution_id=execution_id,
-            mode="direct",
-            status="completed",
-            terminal=True,
-            scheduler=None,
-            scheduler_phase=None,
-            script_path=None,
-            submit=True,
-            wait=True,
-            started_at=started_at,
+            handle,
+            expected_execution_id=resolved_execution_id,
+            expected_pipeline_id=resolved_pipeline_id,
+            submit=submit,
+            wait=wait,
             environment_metadata=environment_metadata,
-            submission_metadata=None,
         )
     except ToolError:
         raise
     except Exception as e:
+        runtime_metadata = _runtime_metadata_after_failure(
+            pipeline,
+            pipeline_id=pipeline_id,
+            execution_id=resolved_execution_id,
+            submit=submit,
+            wait=wait,
+            environment_metadata=environment_metadata,
+        )
+        code = (
+            "jarvis_workload_failed"
+            if runtime_metadata is not None
+            and runtime_metadata.get("terminal", {}).get("state") == "failed"
+            else "jarvis_run_failed"
+        )
         raise ToolError(
             _structured_runtime_error(
-                code="jarvis_run_failed",
+                code=code,
                 message=f"Run failed: {e}",
                 pipeline_id=pipeline_id,
-                execution_id=execution_id,
+                execution_id=resolved_execution_id,
+                runtime_metadata=runtime_metadata,
             )
         ) from e
 
 
+async def get_execution(pipeline_id: str, execution_id: str) -> dict[str, Any]:
+    """Return the durable JARVIS record and generic package progress snapshot."""
+    validated_pipeline = _validate_pipeline_id(pipeline_id)
+    try:
+        validated_execution = _native_execution_id(execution_id)
+    except Exception as exc:
+        raise ToolError(f"Execution query failed: {exc}") from exc
+    async with _pipeline_operation_lock(validated_pipeline):
+        try:
+            with _protocol_stdout_to_stderr():
+                pipeline = _load_pipeline(validated_pipeline)
+            record = pipeline.get_execution(validated_execution)
+            record_document = _execution_record_document(
+                record,
+                expected_execution_id=validated_execution,
+                expected_pipeline_id=validated_pipeline,
+            )
+            handle_document = _execution_handle_document(
+                getattr(record, "handle", None),
+                expected_execution_id=validated_execution,
+                expected_pipeline_id=validated_pipeline,
+            )
+            query_submit, query_wait = _execution_query_flags(record_document)
+            runtime_metadata = _runtime_metadata_from_documents(
+                pipeline,
+                handle_document=handle_document,
+                record_document=record_document,
+                progress_document=None,
+                submit=query_submit,
+                wait=query_wait,
+                environment_metadata=None,
+            )
+            return {
+                "schema_version": EXECUTION_QUERY_SCHEMA,
+                "pipeline_id": validated_pipeline,
+                "execution_id": validated_execution,
+                "execution_handle": handle_document,
+                "execution_record": record_document,
+                "runtime_metadata": runtime_metadata,
+            }
+        except Exception as exc:
+            raise ToolError(f"Execution query failed: {exc}") from exc
+
+
+async def get_execution_progress(
+    pipeline_id: str,
+    execution_id: str,
+) -> dict[str, Any]:
+    """Return one identity-checked JARVIS package progress snapshot."""
+    validated_pipeline = _validate_pipeline_id(pipeline_id)
+    try:
+        validated_execution = _native_execution_id(execution_id)
+    except Exception as exc:
+        raise ToolError(f"Execution progress query failed: {exc}") from exc
+    async with _pipeline_operation_lock(validated_pipeline):
+        try:
+            with _protocol_stdout_to_stderr():
+                pipeline = _load_pipeline(validated_pipeline)
+            snapshot = progress_snapshot_document(
+                pipeline.get_execution_progress(validated_execution),
+                expected_execution_id=validated_execution,
+                expected_pipeline_id=validated_pipeline,
+            )
+            return {
+                "schema_version": EXECUTION_PROGRESS_QUERY_SCHEMA,
+                "pipeline_id": validated_pipeline,
+                "execution_id": validated_execution,
+                "progress": snapshot,
+            }
+        except Exception as exc:
+            raise ToolError(f"Execution progress query failed: {exc}") from exc
+
+
 async def _run_pipeline_operation(
-    operation: Any,
+    operation: Callable[[], Any],
     *,
-    progress_binding: PackageProgressBinding | None,
+    pipeline: Any,
     progress_reporter: ProgressReporter | None,
     execution_id: str,
     pipeline_id: str,
 ) -> Any:
-    """Run one JARVIS operation with optional package-provider observations."""
-    if progress_binding is None or progress_reporter is None:
+    """Run one JARVIS operation and optionally poll its native progress API."""
+
+    def execute() -> Any:
         with _protocol_stdout_to_stderr():
             return operation()
-    return await PackageProgressExecution(
-        progress_binding,
-        execution_id=execution_id,
-        pipeline_id=pipeline_id,
-    ).run(operation, progress_reporter)
+
+    async with _JARVIS_EXECUTION_STDOUT_LOCK:
+        if progress_reporter is None:
+            return await asyncio.to_thread(execute)
+        return await NativeProgressExecution(
+            pipeline,
+            execution_id=execution_id,
+            pipeline_id=pipeline_id,
+        ).run(execute, progress_reporter)
 
 
 @_locked_pipeline_operation
@@ -2239,214 +2258,459 @@ def _safe_runtime_environment_name(name: str) -> bool:
     )
 
 
-def _runtime_result(
-    pipeline: Any,
+def _native_execution_id(value: str | None) -> str:
+    """Delegate execution identity generation and validation to JARVIS-CD."""
+    try:
+        from jarvis_cd.core.execution import (  # type: ignore[import-untyped]
+            validate_execution_id,
+        )
+    except (ImportError, ModuleNotFoundError) as exc:
+        raise RuntimeError(
+            "installed JARVIS-CD does not expose native execution handles"
+        ) from exc
+    return cast(str, validate_execution_id(value))
+
+
+def _require_execution_parameters(
+    operation: Callable[..., Any],
     *,
-    pipeline_id: str,
-    execution_id: str,
-    mode: str,
-    status: str,
-    terminal: bool,
-    scheduler: Any,
-    scheduler_phase: str | None,
-    script_path: str | None,
+    operation_name: str,
+    required: set[str],
+) -> None:
+    """Fail before launch when an obsolete JARVIS-CD API is installed."""
+    parameters = inspect.signature(operation).parameters
+    accepts_keywords = any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+    missing = [] if accepts_keywords else sorted(required - set(parameters))
+    if missing:
+        raise RuntimeError(
+            f"installed JARVIS-CD {operation_name} lacks native execution "
+            f"parameters: {', '.join(missing)}"
+        )
+
+
+def _result_from_native_execution(
+    pipeline: Any,
+    handle: object,
+    *,
+    expected_execution_id: str,
+    expected_pipeline_id: str,
     submit: bool,
     wait: bool,
-    started_at: datetime,
     environment_metadata: dict[str, Any] | None,
-    submission_metadata: dict[str, Any] | None,
-    terminal_returncode: int | None = None,
-    terminal_reason: str | None = None,
 ) -> dict[str, Any]:
-    resolved_pipeline_id = _pipeline_id(pipeline) or pipeline_id
+    """Build the MCP result solely from JARVIS-owned handle and record APIs."""
+    handle_document = _execution_handle_document(
+        handle,
+        expected_execution_id=expected_execution_id,
+        expected_pipeline_id=expected_pipeline_id,
+    )
+    record_document = _execution_record_document(
+        pipeline.get_execution(expected_execution_id),
+        expected_execution_id=expected_execution_id,
+        expected_pipeline_id=expected_pipeline_id,
+    )
+    for field_name in (
+        "mode",
+        "scheduler_provider",
+        "scheduler_native_id",
+        "cluster",
+    ):
+        if handle_document[field_name] != record_document[field_name]:
+            raise RuntimeError(
+                f"JARVIS execution handle {field_name} did not match its record"
+            )
+    progress_document = progress_snapshot_document(
+        pipeline.get_execution_progress(expected_execution_id),
+        expected_execution_id=expected_execution_id,
+        expected_pipeline_id=expected_pipeline_id,
+    )
+    runtime_metadata = _runtime_metadata_from_documents(
+        pipeline,
+        handle_document=handle_document,
+        record_document=record_document,
+        progress_document=progress_document,
+        submit=submit,
+        wait=wait,
+        environment_metadata=environment_metadata,
+    )
+    scheduler = getattr(pipeline, "scheduler", None)
     scheduler_document = _jsonable(scheduler) if isinstance(scheduler, dict) else None
-    scheduler_provider = (
-        _optional_str(scheduler_document.get("name"))
-        if isinstance(scheduler_document, dict)
-        else None
-    )
-    scheduler_job_id = (
-        _optional_str(submission_metadata.get("scheduler_job_id"))
-        if submission_metadata is not None
-        else None
-    )
-    finished_at = datetime.now(timezone.utc) if terminal else None
-    runtime_metadata: dict[str, Any] = {
-        "schema_version": RUNTIME_METADATA_SCHEMA,
-        "source": "jarvis_mcp",
-        "execution_id": execution_id,
-        "pipeline_id": resolved_pipeline_id,
-        "mode": mode,
-        "scheduler_provider": scheduler_provider,
-        "scheduler_type": scheduler_provider,
-        "scheduler_job_id": scheduler_job_id,
-        "scheduler_phase": scheduler_phase,
-        "script_path": script_path,
-        "hostfile_path": (
-            _optional_str(submission_metadata.get("hostfile_path"))
-            if submission_metadata is not None
-            and submission_metadata.get("hostfile_path") is not None
-            else _optional_str(scheduler_document.get("hostfile"))
-            if isinstance(scheduler_document, dict)
-            else None
-        ),
-        "output_path": (
-            _optional_str(scheduler_document.get("output"))
-            if isinstance(scheduler_document, dict)
-            else None
-        ),
-        "error_path": (
-            _optional_str(scheduler_document.get("error"))
-            if isinstance(scheduler_document, dict)
-            else None
-        ),
-        "package_provenance": _pipeline_package_provenance(pipeline),
-        "terminal": {
-            "state": status,
-            "terminal": terminal,
-            "returncode": (
-                terminal_returncode
-                if terminal_returncode is not None
-                else 0
-                if terminal
-                else None
-            ),
-            "reason": terminal_reason,
-            "started_at": started_at.isoformat(),
-            "finished_at": finished_at.isoformat() if finished_at is not None else None,
-        },
-        "details": {
-            "execution_owner": "jarvis_cd.pipeline",
-            "submit": submit,
-            "wait": wait,
-            "environment": environment_metadata,
-            "scheduler_submission": submission_metadata,
-        },
-    }
+    script_path = runtime_metadata["script_path"]
     return {
-        "pipeline_id": resolved_pipeline_id,
-        "status": status,
-        "mode": mode,
+        "schema_version": RUN_RESULT_SCHEMA,
+        "pipeline_id": expected_pipeline_id,
+        "execution_id": expected_execution_id,
+        "status": record_document["state"],
+        "mode": handle_document["mode"],
         "scheduler": scheduler_document,
         "script_path": script_path,
         "wait": wait,
+        "execution_handle": handle_document,
+        "execution_record": record_document,
+        "progress": progress_document,
         "runtime_metadata": runtime_metadata,
     }
 
 
-def _waited_workload_failure_metadata(
-    pipeline: Any,
+def _execution_handle_document(
+    handle: object,
     *,
-    scheduler: Any,
-    prior_submission: Any,
-    submit: bool,
-    wait: bool,
-    execution_id: str | None = None,
-) -> tuple[dict[str, Any], str, int] | None:
-    """Return a fresh, validated scheduler-owned waited-workload failure."""
-    if not submit or not wait:
-        return None
-    current = getattr(pipeline, "last_submission", None)
-    if not isinstance(current, dict) or _jsonable(current) == prior_submission:
-        return None
-    script_path = _optional_str(current.get("script_path"))
-    if script_path is None:
-        return None
-    try:
-        document = _scheduler_submission_metadata(
-            pipeline,
-            scheduler=scheduler,
-            script_path=script_path,
-            require_identity=True,
-            execution_id=execution_id,
-        )
-    except RuntimeError:
-        return None
-    if document is None:
-        return None
-    returncode = document.get("terminal_returncode")
+    expected_execution_id: str,
+    expected_pipeline_id: str,
+) -> dict[str, Any]:
+    """Validate one public JARVIS execution-handle document."""
+    to_dict = getattr(handle, "to_dict", None)
+    if not callable(to_dict):
+        raise RuntimeError("JARVIS execution did not return an ExecutionHandle")
+    value = to_dict()
+    expected_fields = {
+        "schema_version",
+        "execution_id",
+        "pipeline_id",
+        "mode",
+        "scheduler_provider",
+        "scheduler_native_id",
+        "cluster",
+    }
     if (
-        document.get("state") != "workload_failed"
-        or document.get("wait") is not True
-        or document.get("terminal") is not True
-        or isinstance(returncode, bool)
-        or not isinstance(returncode, int)
-        or returncode == 0
+        not isinstance(value, dict)
+        or set(value) != expected_fields
+        or value.get("schema_version") != "jarvis.execution.handle.v1"
+        or value.get("execution_id") != expected_execution_id
+        or value.get("pipeline_id") != expected_pipeline_id
     ):
-        return None
-    return document, script_path, returncode
+        raise RuntimeError("JARVIS execution handle schema or identity is invalid")
+    mode = value.get("mode")
+    if mode not in {"direct", "scheduler"}:
+        raise RuntimeError("JARVIS execution handle mode is invalid")
+    for field_name in ("scheduler_provider", "scheduler_native_id", "cluster"):
+        _native_optional_text(value.get(field_name), field_name=field_name)
+    if mode == "direct" and any(
+        value.get(field_name) is not None
+        for field_name in ("scheduler_provider", "scheduler_native_id", "cluster")
+    ):
+        raise RuntimeError("direct JARVIS execution exposed scheduler identity")
+    if mode == "scheduler" and value.get("scheduler_provider") is None:
+        raise RuntimeError("scheduler JARVIS execution omitted its provider")
+    return cast(dict[str, Any], value)
 
 
-def _scheduler_submission_metadata(
+def _execution_record_document(
+    record: object,
+    *,
+    expected_execution_id: str,
+    expected_pipeline_id: str,
+) -> dict[str, Any]:
+    """Validate one durable JARVIS execution-record document."""
+    to_dict = getattr(record, "to_dict", None)
+    if not callable(to_dict):
+        raise RuntimeError("JARVIS execution query did not return an ExecutionRecord")
+    value = to_dict()
+    expected_fields = {
+        "schema_version",
+        "execution_id",
+        "pipeline_id",
+        "pipeline_name",
+        "mode",
+        "scheduler_provider",
+        "scheduler_native_id",
+        "cluster",
+        "state",
+        "submitted",
+        "terminal",
+        "created_at",
+        "updated_at",
+        "return_code",
+        "error",
+        "metadata",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != expected_fields
+        or value.get("schema_version") != "jarvis.execution.record.v1"
+        or value.get("execution_id") != expected_execution_id
+        or value.get("pipeline_id") != expected_pipeline_id
+        or value.get("pipeline_name") != expected_pipeline_id
+    ):
+        raise RuntimeError("JARVIS execution record schema or identity is invalid")
+    if not isinstance(value.get("state"), str) or not value["state"]:
+        raise RuntimeError("JARVIS execution record state is invalid")
+    if not isinstance(value.get("submitted"), bool) or not isinstance(
+        value.get("terminal"), bool
+    ):
+        raise RuntimeError("JARVIS execution record lifecycle flags are invalid")
+    for field_name in ("created_at", "updated_at"):
+        if (
+            _native_optional_text(
+                value.get(field_name),
+                field_name=field_name,
+                maximum_bytes=64,
+            )
+            is None
+        ):
+            raise RuntimeError("JARVIS execution record timestamp is missing")
+    if not isinstance(value.get("metadata"), dict):
+        raise RuntimeError("JARVIS execution record metadata is invalid")
+    return_code = value.get("return_code")
+    if return_code is not None and (
+        isinstance(return_code, bool) or not isinstance(return_code, int)
+    ):
+        raise RuntimeError("JARVIS execution record return code is invalid")
+    error = value.get("error")
+    if error is not None and (
+        not isinstance(error, str) or not error or len(error.encode("utf-8")) > 16_384
+    ):
+        raise RuntimeError("JARVIS execution record error is invalid")
+    try:
+        encoded = json.dumps(
+            value,
+            allow_nan=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    except (TypeError, ValueError, OverflowError, RecursionError) as exc:
+        raise RuntimeError("JARVIS execution record is not bounded JSON") from exc
+    if len(encoded) > 65_536:
+        raise RuntimeError("JARVIS execution record exceeded its byte limit")
+    projected_handle = {
+        key: value[key]
+        for key in (
+            "execution_id",
+            "pipeline_id",
+            "mode",
+            "scheduler_provider",
+            "scheduler_native_id",
+            "cluster",
+        )
+    }
+    projected_handle["schema_version"] = "jarvis.execution.handle.v1"
+    _execution_handle_document(
+        _DocumentHandle(projected_handle),
+        expected_execution_id=expected_execution_id,
+        expected_pipeline_id=expected_pipeline_id,
+    )
+    return cast(dict[str, Any], value)
+
+
+class _DocumentHandle:
+    """Small private adapter for validating a record's handle projection."""
+
+    def __init__(self, document: dict[str, Any]) -> None:
+        self.document = document
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the projected handle document."""
+        return self.document
+
+
+def _runtime_metadata_from_documents(
     pipeline: Any,
     *,
-    scheduler: Any,
-    script_path: str,
-    require_identity: bool,
-    execution_id: str | None = None,
-) -> dict[str, Any] | None:
-    """Validate scheduler metadata produced by JARVIS-CD's provider boundary."""
-    value = getattr(pipeline, "last_submission", None)
+    handle_document: dict[str, Any],
+    record_document: dict[str, Any],
+    progress_document: dict[str, Any] | None,
+    submit: bool | None,
+    wait: bool | None,
+    environment_metadata: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Project JARVIS-owned execution documents into the relay compatibility shape."""
+    scheduler = getattr(pipeline, "scheduler", None)
+    scheduler_document = _jsonable(scheduler) if isinstance(scheduler, dict) else None
+    submission = _scheduler_submission_from_record(
+        record_document,
+        handle_document=handle_document,
+    )
+    metadata = cast(dict[str, Any], record_document["metadata"])
+    script_path = _native_optional_text(
+        metadata.get("script_path"),
+        field_name="script_path",
+    )
+    scheduler_provider = cast(str | None, handle_document["scheduler_provider"])
+    scheduler_native_id = cast(str | None, handle_document["scheduler_native_id"])
+    cluster = cast(str | None, handle_document["cluster"])
+    return {
+        "schema_version": RUNTIME_METADATA_SCHEMA,
+        "source": "jarvis_mcp",
+        "execution_id": handle_document["execution_id"],
+        "pipeline_id": handle_document["pipeline_id"],
+        "mode": handle_document["mode"],
+        "scheduler_provider": scheduler_provider,
+        "scheduler_native_id": scheduler_native_id,
+        "cluster": cluster,
+        # Compatibility aliases consumed by clio-relay 0.x. The native fields
+        # above remain authoritative and are never recovered from stdout.
+        "scheduler_type": scheduler_provider,
+        "scheduler_job_id": scheduler_native_id,
+        "scheduler_phase": record_document["state"],
+        "script_path": script_path,
+        "hostfile_path": (
+            _native_optional_text(
+                submission.get("hostfile_path"),
+                field_name="hostfile_path",
+            )
+            if submission is not None
+            else None
+        ),
+        "output_path": (
+            _optional_str(scheduler_document.get("output"))
+            if progress_document is not None and isinstance(scheduler_document, dict)
+            else None
+        ),
+        "error_path": (
+            _optional_str(scheduler_document.get("error"))
+            if progress_document is not None and isinstance(scheduler_document, dict)
+            else None
+        ),
+        "package_provenance": (
+            _pipeline_package_provenance(pipeline)
+            if progress_document is not None
+            else []
+        ),
+        "terminal": {
+            "state": record_document["state"],
+            "terminal": record_document["terminal"],
+            "returncode": record_document["return_code"],
+            "reason": record_document["error"],
+            "started_at": record_document["created_at"],
+            "finished_at": (
+                record_document["updated_at"] if record_document["terminal"] else None
+            ),
+        },
+        "details": {
+            "execution_owner": "jarvis_cd.execution_record",
+            "submit": submit,
+            "wait": wait,
+            "environment": environment_metadata,
+            "execution_handle": handle_document,
+            "execution_record": record_document,
+            "scheduler_submission": submission,
+        },
+    }
+
+
+def _execution_query_flags(
+    record_document: dict[str, Any],
+) -> tuple[bool | None, bool | None]:
+    """Recover invocation flags only when the durable record retained them."""
+    metadata = cast(dict[str, Any], record_document["metadata"])
+    if record_document["mode"] == "scheduler":
+        submission = metadata.get("submission")
+        if isinstance(submission, dict):
+            submitted = submission.get("submitted")
+            waited = submission.get("wait")
+            return (
+                submitted if isinstance(submitted, bool) else None,
+                waited if isinstance(waited, bool) else None,
+            )
+        return cast(bool, record_document["submitted"]), None
+    launch = metadata.get("direct_launch")
+    if isinstance(launch, dict):
+        return None, False
+    return None, True
+
+
+def _native_optional_text(
+    value: object,
+    *,
+    field_name: str,
+    maximum_bytes: int = 4096,
+) -> str | None:
+    """Validate a nullable bounded text field from a native JARVIS document."""
     if value is None:
-        if not require_identity:
-            return None
-        raise RuntimeError(
-            "JARVIS-CD did not return a provider-owned scheduler job identity"
-        )
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value.encode("utf-8")) > maximum_bytes
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise RuntimeError(f"JARVIS execution {field_name} is invalid")
+    return value
+
+
+def _scheduler_submission_from_record(
+    record_document: dict[str, Any],
+    *,
+    handle_document: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Validate the per-execution scheduler compatibility projection, if any."""
+    if handle_document["mode"] == "direct":
+        return None
+    record_metadata = cast(dict[str, Any], record_document["metadata"])
+    value = record_metadata.get("submission")
     if not isinstance(value, dict):
-        raise RuntimeError("JARVIS-CD returned invalid scheduler submission metadata")
+        if handle_document["scheduler_native_id"] is not None:
+            raise RuntimeError("JARVIS scheduler record omitted submission provenance")
+        return None
     document = {str(key): _jsonable(item) for key, item in value.items()}
     if document.get("schema_version") != "jarvis.scheduler.submission.v1":
-        raise RuntimeError("JARVIS-CD scheduler submission schema is unsupported")
-    configured_provider = (
-        _optional_str(scheduler.get("name")) if isinstance(scheduler, dict) else None
-    )
-    if _optional_str(document.get("provider")) != configured_provider:
-        raise RuntimeError("JARVIS-CD scheduler submission provider did not match")
-    if _optional_str(document.get("script_path")) != script_path:
-        raise RuntimeError("JARVIS-CD scheduler submission did not match this script")
-    if execution_id is not None:
-        if _optional_str(document.get("execution_id")) != execution_id:
-            raise RuntimeError(
-                "JARVIS-CD scheduler submission did not match this execution"
-            )
-        for key in (
-            "hostfile_path",
-            "pipeline_snapshot_path",
-            "pipeline_input_path",
-        ):
-            value = document.get(key)
-            if not isinstance(value, str) or not value.strip():
-                raise RuntimeError(f"JARVIS-CD scheduler submission omitted {key}")
-        snapshot_digest = document.get("pipeline_snapshot_sha256")
-        if (
-            not isinstance(snapshot_digest, str)
-            or re.fullmatch(r"[0-9a-f]{64}", snapshot_digest) is None
-        ):
-            raise RuntimeError(
-                "JARVIS-CD scheduler submission returned an invalid snapshot digest"
-            )
-    job_id = _optional_str(document.get("scheduler_job_id"))
-    if job_id is not None and (
+        raise RuntimeError("JARVIS scheduler submission schema is unsupported")
+    if document.get("execution_id") != handle_document["execution_id"]:
+        raise RuntimeError("JARVIS scheduler submission execution did not match")
+    if document.get("provider") != handle_document["scheduler_provider"]:
+        raise RuntimeError("JARVIS scheduler submission provider did not match")
+    if document.get("scheduler_job_id") != handle_document["scheduler_native_id"]:
+        raise RuntimeError("JARVIS scheduler native identity did not match")
+    if document.get("scheduler_cluster") != handle_document["cluster"]:
+        raise RuntimeError("JARVIS scheduler cluster did not match")
+    native_id = handle_document["scheduler_native_id"]
+    if native_id is not None and (
         document.get("submitted") is not True
         or document.get("identity_source") != "scheduler_submit_api"
     ):
-        raise RuntimeError(
-            "JARVIS-CD did not return a provider-owned scheduler job identity"
-        )
-    if not require_identity and job_id is not None:
-        raise RuntimeError(
-            "JARVIS-CD returned a scheduler identity for a script-only run"
-        )
-    if not require_identity and job_id is None:
-        return document
-    if job_id is None:
-        raise RuntimeError(
-            "JARVIS-CD did not return a provider-owned scheduler job identity"
-        )
-    if configured_provider == "slurm" and re.fullmatch(r"[0-9]+", job_id) is None:
-        raise RuntimeError("JARVIS-CD returned an invalid SLURM job identity")
+        raise RuntimeError("JARVIS scheduler identity provenance is invalid")
+    if handle_document["scheduler_provider"] == "slurm" and native_id is not None:
+        if re.fullmatch(r"[0-9]+", native_id) is None:
+            raise RuntimeError("JARVIS returned an invalid SLURM native identity")
     return document
+
+
+def _runtime_metadata_after_failure(
+    pipeline: Any | None,
+    *,
+    pipeline_id: str,
+    execution_id: str,
+    submit: bool,
+    wait: bool,
+    environment_metadata: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Best-effort projection of a durable record after a failed launch or run."""
+    if pipeline is None:
+        return None
+    try:
+        record = pipeline.get_execution(execution_id)
+        record_document = _execution_record_document(
+            record,
+            expected_execution_id=execution_id,
+            expected_pipeline_id=_pipeline_id(pipeline) or pipeline_id,
+        )
+        handle_document = _execution_handle_document(
+            record.handle,
+            expected_execution_id=execution_id,
+            expected_pipeline_id=_pipeline_id(pipeline) or pipeline_id,
+        )
+        try:
+            progress_document = progress_snapshot_document(
+                pipeline.get_execution_progress(execution_id),
+                expected_execution_id=execution_id,
+                expected_pipeline_id=_pipeline_id(pipeline) or pipeline_id,
+            )
+        except Exception:
+            progress_document = None
+        return _runtime_metadata_from_documents(
+            pipeline,
+            handle_document=handle_document,
+            record_document=record_document,
+            progress_document=progress_document,
+            submit=submit,
+            wait=wait,
+            environment_metadata=environment_metadata,
+        )
+    except Exception:
+        return None
 
 
 def _pipeline_package_provenance(pipeline: Any) -> list[dict[str, Any]]:
@@ -2483,6 +2747,17 @@ def _structured_runtime_error(
     if runtime_metadata is not None:
         document["runtime_metadata"] = runtime_metadata
     return json.dumps(document, separators=(",", ":"), sort_keys=True)
+
+
+def _safe_error_execution_id(value: object) -> str:
+    """Return a bounded diagnostic identity without echoing hostile input."""
+    if (
+        isinstance(value, str)
+        and 0 < len(value) <= 128
+        and all(32 <= ord(character) < 127 for character in value)
+    ):
+        return value
+    return "unassigned"
 
 
 def _protocol_stdout_to_stderr() -> Any:

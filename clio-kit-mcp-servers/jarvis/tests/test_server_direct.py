@@ -470,6 +470,7 @@ class TestPipelineToolsDirect:
                 mode="auto",
                 submit=True,
                 wait=False,
+                execution_id=None,
                 spack_specs=None,
                 pipeline_config=None,
             )
@@ -500,6 +501,7 @@ class TestPipelineToolsDirect:
             mode="auto",
             submit=True,
             wait=False,
+            execution_id=None,
             spack_specs=None,
             pipeline_config=None,
         )
@@ -539,6 +541,7 @@ class TestPipelineToolsDirect:
             "mode": "auto",
             "submit": True,
             "wait": False,
+            "execution_id": None,
             "spack_specs": None,
             "pipeline_config": None,
         }
@@ -571,6 +574,7 @@ class TestPipelineToolsDirect:
                 mode="scheduler",
                 submit=True,
                 wait=False,
+                execution_id=None,
                 spack_specs=None,
                 pipeline_config={
                     "scheduler": {
@@ -600,6 +604,7 @@ class TestPipelineToolsDirect:
                 mode="direct",
                 submit=True,
                 wait=False,
+                execution_id=None,
                 spack_specs=None,
                 pipeline_config={
                     "scheduler": None,
@@ -622,9 +627,41 @@ class TestPipelineToolsDirect:
             mode="auto",
             submit=True,
             wait=False,
+            execution_id=None,
             spack_specs=["lammps@2025 +mpi"],
             pipeline_config=None,
         )
+
+    @pytest.mark.asyncio
+    async def test_execution_query_tools_delegate_to_native_handlers(self):
+        """User tools expose separate lifecycle and package-progress queries."""
+        with (
+            patch("jarvis_mcp.server.get_execution") as get_handler,
+            patch("jarvis_mcp.server.get_execution_progress") as progress_handler,
+        ):
+            get_handler.return_value = {
+                "schema_version": "clio-kit.jarvis-execution.v1"
+            }
+            progress_handler.return_value = {
+                "schema_version": "clio-kit.jarvis-execution-progress-query.v1"
+            }
+            from jarvis_mcp.server import (
+                jarvis_get_execution_progress_tool,
+                jarvis_get_execution_tool,
+            )
+
+            record = await jarvis_get_execution_tool("pipeline", "execution-1")
+            progress = await jarvis_get_execution_progress_tool(
+                "pipeline",
+                "execution-1",
+            )
+
+        assert record["schema_version"] == "clio-kit.jarvis-execution.v1"
+        assert progress["schema_version"] == (
+            "clio-kit.jarvis-execution-progress-query.v1"
+        )
+        get_handler.assert_awaited_once_with("pipeline", "execution-1")
+        progress_handler.assert_awaited_once_with("pipeline", "execution-1")
 
     def test_execution_intent_local_and_direct_disable_scheduler(self):
         """Local and direct modes select single-node execution without a scheduler."""

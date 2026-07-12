@@ -3,7 +3,7 @@ import importlib
 import os
 import re
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, TypedDict, cast
 
 from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
@@ -27,6 +27,8 @@ from .capabilities.jarvis_handler import (
     unlink_pkg,
     remove_pkg,
     run_pipeline,
+    get_execution,
+    get_execution_progress,
     destroy_pipeline,
     get_pkg_config,
     update_pipeline,
@@ -184,6 +186,118 @@ mcp: FastMCP = FastMCP(
 )
 MCP_METADATA_PROFILE = "user"
 
+
+class JarvisExecutionHandleDocument(TypedDict):
+    """Stable JARVIS-CD execution-handle document."""
+
+    schema_version: Literal["jarvis.execution.handle.v1"]
+    execution_id: str
+    pipeline_id: str
+    mode: Literal["direct", "scheduler"]
+    scheduler_provider: str | None
+    scheduler_native_id: str | None
+    cluster: str | None
+
+
+class JarvisExecutionRecordDocument(TypedDict):
+    """Stable JARVIS-CD durable execution-record document."""
+
+    schema_version: Literal["jarvis.execution.record.v1"]
+    execution_id: str
+    pipeline_id: str
+    pipeline_name: str
+    mode: Literal["direct", "scheduler"]
+    scheduler_provider: str | None
+    scheduler_native_id: str | None
+    cluster: str | None
+    state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    submitted: bool
+    terminal: bool
+    created_at: str
+    updated_at: str
+    return_code: int | None
+    error: str | None
+    metadata: dict[str, Any]
+
+
+class JarvisProgressSnapshotDocument(TypedDict):
+    """Stable aggregate returned by JARVIS-CD's execution progress API."""
+
+    schema_version: Literal["jarvis.execution.progress.v1"]
+    execution_id: str
+    pipeline_id: str
+    execution_state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    terminal: bool
+    packages: list[dict[str, Any]]
+
+
+class JarvisRunResult(TypedDict):
+    """Frozen top-level result envelope for ``jarvis_run``."""
+
+    schema_version: Literal["clio-kit.jarvis-run.v1"]
+    pipeline_id: str
+    execution_id: str
+    status: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    mode: Literal["direct", "scheduler"]
+    scheduler: dict[str, Any] | None
+    script_path: str | None
+    wait: bool
+    execution_handle: JarvisExecutionHandleDocument
+    execution_record: JarvisExecutionRecordDocument
+    progress: JarvisProgressSnapshotDocument
+    runtime_metadata: dict[str, Any]
+
+
+class JarvisExecutionResult(TypedDict):
+    """Frozen top-level result envelope for an execution query."""
+
+    schema_version: Literal["clio-kit.jarvis-execution.v1"]
+    pipeline_id: str
+    execution_id: str
+    execution_handle: JarvisExecutionHandleDocument
+    execution_record: JarvisExecutionRecordDocument
+    runtime_metadata: dict[str, Any]
+
+
+class JarvisExecutionProgressResult(TypedDict):
+    """Frozen top-level result envelope for an execution-progress query."""
+
+    schema_version: Literal["clio-kit.jarvis-execution-progress-query.v1"]
+    pipeline_id: str
+    execution_id: str
+    progress: JarvisProgressSnapshotDocument
+
+
 # Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
 # functional JARVIS-CD installation. Admin tools still fail clearly at call time
 # if the installed JARVIS version lacks the needed manager API.
@@ -208,6 +322,8 @@ USER_TOOLS = {
     "jarvis_add_step",
     "jarvis_edit_step",
     "jarvis_run",
+    "jarvis_get_execution",
+    "jarvis_get_execution_progress",
 }
 
 ADMIN_TOOLS = {
@@ -760,9 +876,10 @@ async def jarvis_run_tool(
     execution: ExecutionIntent | None = None,
     submit: bool = True,
     wait: bool = False,
+    execution_id: str | None = None,
     spack_specs: Optional[list[str]] = None,
     ctx: Context | None = None,
-) -> dict:
+) -> JarvisRunResult:
     """Run or submit a pipeline after persisting any requested Spack environment."""
     mode = "auto"
     if execution is not None:
@@ -789,12 +906,58 @@ async def jarvis_run_tool(
         "mode": mode,
         "submit": submit,
         "wait": wait,
+        "execution_id": execution_id,
         "spack_specs": spack_specs,
         "pipeline_config": run_arguments_config,
     }
     if _context_has_progress_token(ctx):
         run_arguments["progress_reporter"] = report_progress
-    return await run_pipeline(pipeline_id, **run_arguments)
+    return cast(JarvisRunResult, await run_pipeline(pipeline_id, **run_arguments))
+
+
+@mcp.tool(
+    name="jarvis_get_execution",
+    description=(
+        "Query one JARVIS execution handle and durable lifecycle record by "
+        "pipeline and execution ID."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline", "execution", "user"},
+)
+async def jarvis_get_execution_tool(
+    pipeline_id: str,
+    execution_id: str,
+) -> JarvisExecutionResult:
+    """Query JARVIS-owned lifecycle state without scraping process output."""
+    return cast(JarvisExecutionResult, await get_execution(pipeline_id, execution_id))
+
+
+@mcp.tool(
+    name="jarvis_get_execution_progress",
+    description=(
+        "Query the latest JARVIS-owned package progress snapshot for one "
+        "pipeline execution."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline", "execution", "progress", "user"},
+)
+async def jarvis_get_execution_progress_tool(
+    pipeline_id: str,
+    execution_id: str,
+) -> JarvisExecutionProgressResult:
+    """Query JARVIS-owned package progress without application-specific logic."""
+    return cast(
+        JarvisExecutionProgressResult,
+        await get_execution_progress(pipeline_id, execution_id),
+    )
 
 
 def _context_has_progress_token(ctx: Context | None) -> bool:

@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
-  "contract_id": "clio-kit-jarvis-user-v2",
-  "contract_sha256": "150159ffba27725d7cd7146cf0cec2e32e41834d213ab6043e0be43f99075120",
+  "contract_id": "clio-kit-jarvis-user-v3",
+  "contract_sha256": "d2365800cc38bffeecafcfade1288423a57f356eab8bad0bd6d55dbf52d172e3",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -16,6 +16,8 @@
     "jarvis_create_pipeline",
     "jarvis_describe",
     "jarvis_edit_step",
+    "jarvis_get_execution",
+    "jarvis_get_execution_progress",
     "jarvis_run"
   ],
   "tools": [
@@ -470,6 +472,361 @@
       "_meta": {
         "fastmcp": {
           "tags": [
+            "execution",
+            "jarvis",
+            "pipeline",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Query one JARVIS execution handle and durable lifecycle record by pipeline and execution ID.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_id": {
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline_id",
+          "execution_id"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_get_execution",
+      "outputSchema": {
+        "description": "Frozen top-level result envelope for an execution query.",
+        "properties": {
+          "execution_handle": {
+            "description": "Stable JARVIS-CD execution-handle document.",
+            "properties": {
+              "cluster": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "execution_id": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "direct",
+                  "scheduler"
+                ],
+                "type": "string"
+              },
+              "pipeline_id": {
+                "type": "string"
+              },
+              "scheduler_native_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scheduler_provider": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "schema_version": {
+                "const": "jarvis.execution.handle.v1",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "execution_id",
+              "pipeline_id",
+              "mode",
+              "scheduler_provider",
+              "scheduler_native_id",
+              "cluster"
+            ],
+            "type": "object"
+          },
+          "execution_id": {
+            "type": "string"
+          },
+          "execution_record": {
+            "description": "Stable JARVIS-CD durable execution-record document.",
+            "properties": {
+              "cluster": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "created_at": {
+                "type": "string"
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "execution_id": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "mode": {
+                "enum": [
+                  "direct",
+                  "scheduler"
+                ],
+                "type": "string"
+              },
+              "pipeline_id": {
+                "type": "string"
+              },
+              "pipeline_name": {
+                "type": "string"
+              },
+              "return_code": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scheduler_native_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scheduler_provider": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "schema_version": {
+                "const": "jarvis.execution.record.v1",
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "preparing",
+                  "scripted",
+                  "submitting",
+                  "submitted",
+                  "running",
+                  "completed",
+                  "failed",
+                  "canceled",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "submitted": {
+                "type": "boolean"
+              },
+              "terminal": {
+                "type": "boolean"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "execution_id",
+              "pipeline_id",
+              "pipeline_name",
+              "mode",
+              "scheduler_provider",
+              "scheduler_native_id",
+              "cluster",
+              "state",
+              "submitted",
+              "terminal",
+              "created_at",
+              "updated_at",
+              "return_code",
+              "error",
+              "metadata"
+            ],
+            "type": "object"
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "runtime_metadata": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "schema_version": {
+            "const": "clio-kit.jarvis-execution.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "pipeline_id",
+          "execution_id",
+          "execution_handle",
+          "execution_record",
+          "runtime_metadata"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "execution",
+            "jarvis",
+            "pipeline",
+            "progress",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Query the latest JARVIS-owned package progress snapshot for one pipeline execution.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_id": {
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline_id",
+          "execution_id"
+        ],
+        "type": "object"
+      },
+      "name": "jarvis_get_execution_progress",
+      "outputSchema": {
+        "description": "Frozen top-level result envelope for an execution-progress query.",
+        "properties": {
+          "execution_id": {
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "progress": {
+            "description": "Stable aggregate returned by JARVIS-CD's execution progress API.",
+            "properties": {
+              "execution_id": {
+                "type": "string"
+              },
+              "execution_state": {
+                "enum": [
+                  "preparing",
+                  "scripted",
+                  "submitting",
+                  "submitted",
+                  "running",
+                  "completed",
+                  "failed",
+                  "canceled",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "packages": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pipeline_id": {
+                "type": "string"
+              },
+              "schema_version": {
+                "const": "jarvis.execution.progress.v1",
+                "type": "string"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "schema_version",
+              "execution_id",
+              "pipeline_id",
+              "execution_state",
+              "terminal",
+              "packages"
+            ],
+            "type": "object"
+          },
+          "schema_version": {
+            "const": "clio-kit.jarvis-execution-progress-query.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "pipeline_id",
+          "execution_id",
+          "progress"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
             "jarvis",
             "pipeline",
             "user"
@@ -698,6 +1055,17 @@
             ],
             "default": null
           },
+          "execution_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "pipeline_id": {
             "type": "string"
           },
@@ -731,10 +1099,319 @@
       },
       "name": "jarvis_run",
       "outputSchema": {
-        "additionalProperties": true,
+        "description": "Frozen top-level result envelope for ``jarvis_run``.",
+        "properties": {
+          "execution_handle": {
+            "description": "Stable JARVIS-CD execution-handle document.",
+            "properties": {
+              "cluster": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "execution_id": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "direct",
+                  "scheduler"
+                ],
+                "type": "string"
+              },
+              "pipeline_id": {
+                "type": "string"
+              },
+              "scheduler_native_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scheduler_provider": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "schema_version": {
+                "const": "jarvis.execution.handle.v1",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "execution_id",
+              "pipeline_id",
+              "mode",
+              "scheduler_provider",
+              "scheduler_native_id",
+              "cluster"
+            ],
+            "type": "object"
+          },
+          "execution_id": {
+            "type": "string"
+          },
+          "execution_record": {
+            "description": "Stable JARVIS-CD durable execution-record document.",
+            "properties": {
+              "cluster": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "created_at": {
+                "type": "string"
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "execution_id": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "mode": {
+                "enum": [
+                  "direct",
+                  "scheduler"
+                ],
+                "type": "string"
+              },
+              "pipeline_id": {
+                "type": "string"
+              },
+              "pipeline_name": {
+                "type": "string"
+              },
+              "return_code": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scheduler_native_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "scheduler_provider": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "schema_version": {
+                "const": "jarvis.execution.record.v1",
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "preparing",
+                  "scripted",
+                  "submitting",
+                  "submitted",
+                  "running",
+                  "completed",
+                  "failed",
+                  "canceled",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "submitted": {
+                "type": "boolean"
+              },
+              "terminal": {
+                "type": "boolean"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "execution_id",
+              "pipeline_id",
+              "pipeline_name",
+              "mode",
+              "scheduler_provider",
+              "scheduler_native_id",
+              "cluster",
+              "state",
+              "submitted",
+              "terminal",
+              "created_at",
+              "updated_at",
+              "return_code",
+              "error",
+              "metadata"
+            ],
+            "type": "object"
+          },
+          "mode": {
+            "enum": [
+              "direct",
+              "scheduler"
+            ],
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "progress": {
+            "description": "Stable aggregate returned by JARVIS-CD's execution progress API.",
+            "properties": {
+              "execution_id": {
+                "type": "string"
+              },
+              "execution_state": {
+                "enum": [
+                  "preparing",
+                  "scripted",
+                  "submitting",
+                  "submitted",
+                  "running",
+                  "completed",
+                  "failed",
+                  "canceled",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "packages": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pipeline_id": {
+                "type": "string"
+              },
+              "schema_version": {
+                "const": "jarvis.execution.progress.v1",
+                "type": "string"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "schema_version",
+              "execution_id",
+              "pipeline_id",
+              "execution_state",
+              "terminal",
+              "packages"
+            ],
+            "type": "object"
+          },
+          "runtime_metadata": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "scheduler": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": "clio-kit.jarvis-run.v1",
+            "type": "string"
+          },
+          "script_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "preparing",
+              "scripted",
+              "submitting",
+              "submitted",
+              "running",
+              "completed",
+              "failed",
+              "canceled",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "wait": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "schema_version",
+          "pipeline_id",
+          "execution_id",
+          "status",
+          "mode",
+          "scheduler",
+          "script_path",
+          "wait",
+          "execution_handle",
+          "execution_record",
+          "progress",
+          "runtime_metadata"
+        ],
         "type": "object"
       }
     }
   ],
-  "wire_sha256": "db2ae1f73138e5c4f2607a34b7c7cba19171ff381b2e50eb2e0bc0413e760341"
+  "wire_sha256": "2bd6d7a701fbe86db6caa8bdf3d7bf2adeda7456a2c9c5895405a9955a9c53f3"
 }

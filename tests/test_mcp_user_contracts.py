@@ -44,13 +44,15 @@ def test_committed_contracts_match_real_locked_stdio_tools_list() -> None:
     ("contract_id", "expected_names"),
     [
         (
-            "clio-kit-jarvis-user-v2",
+            "clio-kit-jarvis-user-v3",
             {
                 "jarvis_create_pipeline",
                 "jarvis_describe",
                 "jarvis_add_step",
                 "jarvis_edit_step",
                 "jarvis_run",
+                "jarvis_get_execution",
+                "jarvis_get_execution_progress",
             },
         ),
         (
@@ -93,9 +95,9 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     assert "load_spec" in cast(list[str], output_schema["required"])
 
 
-def test_jarvis_contract_combines_edit_and_remove() -> None:
-    """JARVIS keeps the five-tool surface with remove as an edit operation."""
-    artifact = load_mcp_user_contract("clio-kit-jarvis-user-v2")
+def test_jarvis_contract_combines_edit_remove_and_exposes_execution_queries() -> None:
+    """JARVIS keeps mutations compact while exposing native execution queries."""
+    artifact = load_mcp_user_contract("clio-kit-jarvis-user-v3")
     tools = {
         cast(str, tool["name"]): cast(JSON, tool)
         for tool in cast(list[JSON], artifact["tools"])
@@ -106,6 +108,62 @@ def test_jarvis_contract_combines_edit_and_remove() -> None:
     properties = cast(JSON, edit_input["properties"])
     operation = cast(JSON, properties["operation"])
     assert operation["enum"] == ["edit", "remove"]
+    assert "jarvis_get_execution" in tools
+    assert "jarvis_get_execution_progress" in tools
+    run_input = cast(JSON, tools["jarvis_run"]["inputSchema"])
+    run_properties = cast(JSON, run_input["properties"])
+    execution_id = cast(JSON, run_properties["execution_id"])
+    assert execution_id == {
+        "anyOf": [{"type": "string"}, {"type": "null"}],
+        "default": None,
+    }
+    for tool_name in ("jarvis_get_execution", "jarvis_get_execution_progress"):
+        query_input = cast(JSON, tools[tool_name]["inputSchema"])
+        assert query_input["required"] == ["pipeline_id", "execution_id"]
+        assert set(cast(JSON, query_input["properties"])) == {
+            "pipeline_id",
+            "execution_id",
+        }
+    expected_result_schemas = {
+        "jarvis_run": "clio-kit.jarvis-run.v1",
+        "jarvis_get_execution": "clio-kit.jarvis-execution.v1",
+        "jarvis_get_execution_progress": (
+            "clio-kit.jarvis-execution-progress-query.v1"
+        ),
+    }
+    for tool_name, schema_version in expected_result_schemas.items():
+        output = cast(JSON, tools[tool_name]["outputSchema"])
+        output_properties = cast(JSON, output["properties"])
+        assert output_properties["schema_version"] == {
+            "const": schema_version,
+            "type": "string",
+        }
+    for tool_name in ("jarvis_run", "jarvis_get_execution"):
+        output = cast(JSON, tools[tool_name]["outputSchema"])
+        handle = cast(JSON, cast(JSON, output["properties"])["execution_handle"])
+        handle_properties = cast(JSON, handle["properties"])
+        assert handle_properties["schema_version"] == {
+            "const": "jarvis.execution.handle.v1",
+            "type": "string",
+        }
+        assert set(cast(list[str], handle["required"])) == {
+            "schema_version",
+            "execution_id",
+            "pipeline_id",
+            "mode",
+            "scheduler_provider",
+            "scheduler_native_id",
+            "cluster",
+        }
+    run_output = cast(JSON, tools["jarvis_run"]["outputSchema"])
+    run_output_properties = cast(JSON, run_output["properties"])
+    run_progress = cast(JSON, run_output_properties["progress"])
+    run_progress_properties = cast(JSON, run_progress["properties"])
+    assert run_progress_properties["schema_version"] == {
+        "const": "jarvis.execution.progress.v1",
+        "type": "string",
+    }
+    assert "progress" in cast(list[str], run_output["required"])
 
 
 def test_contract_projection_matches_downstream_schema_digest_shape() -> None:
@@ -149,7 +207,7 @@ def test_contract_cli_lists_and_prints_verified_artifacts() -> None:
     shown = runner.invoke(main, ["mcp-contract", "clio-kit-spack-user-v3"])
 
     assert listed.exit_code == 0, listed.output
-    assert "clio-kit-jarvis-user-v2" in listed.output
+    assert "clio-kit-jarvis-user-v3" in listed.output
     assert "clio-kit-spack-user-v3" in listed.output
     assert shown.exit_code == 0, shown.output
     assert json.loads(shown.output)["contract_id"] == "clio-kit-spack-user-v3"

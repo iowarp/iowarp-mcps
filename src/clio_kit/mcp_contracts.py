@@ -111,8 +111,8 @@ class UserContractSpec:
 
 USER_CONTRACT_SPECS: Final = (
     UserContractSpec(
-        contract_id="clio-kit-jarvis-user-v2",
-        artifact_name="jarvis-user-v2.json",
+        contract_id="clio-kit-jarvis-user-v3",
+        artifact_name="jarvis-user-v3.json",
         server_name="jarvis",
         entry_command="jarvis-mcp",
         profile_environment="JARVIS_MCP_PROFILE",
@@ -123,6 +123,8 @@ USER_CONTRACT_SPECS: Final = (
                 "jarvis_add_step",
                 "jarvis_edit_step",
                 "jarvis_run",
+                "jarvis_get_execution",
+                "jarvis_get_execution_progress",
             }
         ),
     ),

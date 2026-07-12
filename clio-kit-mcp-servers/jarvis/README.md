@@ -91,6 +91,7 @@ A normal agent should work at the pipeline level:
 4. `jarvis_edit_step`
 5. `jarvis_describe(target="pipeline")`
 6. `jarvis_run`
+7. `jarvis_get_execution` or `jarvis_get_execution_progress` for a nonterminal handle
 
 If the agent needs to remove a pipeline step, call
 `jarvis_edit_step(operation="remove")`. Do not use raw `remove_pkg` from the
@@ -106,9 +107,14 @@ and hostfile paths, so later edits to the named pipeline cannot change a queued
 job. The structured Spack metadata always records a disposition: a run with no
 requested specs and no prior owned environment reports `not_requested` rather
 than `null`; reuse is accepted only when the persisted digest still matches the
-pipeline environment. Scheduler runs return a JARVIS-owned
-`runtime_metadata.scheduler_job_id` parsed from the scheduler's structured
-submission API. The relay must not infer that identity from application stdout.
+pipeline environment. Every run returns a JARVIS `execution_handle` and the
+current durable `execution_record`. Direct runs pass `wait` through to
+`Pipeline.run`; with `wait=false` the handle remains nonterminal and can be
+queried later with `jarvis_get_execution`. Scheduler runs use the handle
+returned by `Pipeline.submit`. The authoritative scheduler fields are
+`scheduler_provider`, nullable `scheduler_native_id`, and nullable `cluster`.
+`scheduler_job_id` remains a temporary relay compatibility alias and is never
+inferred from application stdout.
 
 ### Runtime and progress contracts
 
@@ -119,23 +125,28 @@ provider and job id match the runtime record, `submitted` is true, and
 `identity_source` is `scheduler_submit_api`. Consumers must treat a missing or
 different schema as compatibility data, not scheduler ownership proof.
 
-When the MCP client supplies a standard progress token, `jarvis_run` binds the
-selected package provider from the
-`clio_relay.package_progress_adapters` entry-point group and emits
-`clio-kit.jarvis-package-progress.v1` envelopes through MCP
-`notifications/progress`. Each envelope identifies the JARVIS execution,
-pipeline, provider entry point and distribution, monotonic notification
-sequence, selected source authority, and bounded JSON progress record.
-The entry-point group is the generic relay-consumer extension protocol, not an
-application-ownership claim. The recorded entry-point value and distribution
-identity provide runtime provenance, not a cryptographic attestation; the
-built-in LAMMPS provider is
-`jarvis_cd.progress.lammps:adapter_from_package` from `jarvis-cd`. Package logs
-are authoritative when the provider declares one; otherwise the server
-uses its serialized JARVIS-stdout fallback. Notifications are capped at 64 KiB
-each, 10,000 per run, and 4 MiB total. Provider or reporter failure does not
-orphan the underlying JARVIS operation: the operation remains owned and is
-awaited before the error is returned.
+When the MCP client supplies a standard progress token, `jarvis_run` polls
+`Pipeline.get_execution_progress(execution_id)` and forwards changed snapshots
+through MCP `notifications/progress`. The notification message is the exact
+serialized `jarvis.execution.progress.v1` document. The MCP `progress` number
+is a strictly increasing transport sequence and `total` remains null; workload
+counts and totals exist only inside the JARVIS snapshot, so transport metadata
+is never presented as an application percentage. JARVIS-CD owns package
+discovery, application output interpretation, identity validation, sequence
+numbers, and durable JSONL storage. The MCP does not scrape JARVIS or
+application stdout. Notifications are capped at 64 KiB each, 10,000 per run,
+and 4 MiB total. Reporter failure does not orphan the JARVIS operation: the
+operation is awaited before the error is returned.
+
+`jarvis_get_execution(pipeline_id=..., execution_id=...)` returns the exact
+handle and latest execution record. `jarvis_get_execution_progress` returns the
+generic package progress snapshot separately. Both queries work for direct
+executions with no scheduler, scheduler executions before or after allocation,
+and terminal executions. Successful `jarvis_run` results also include the
+current exact JARVIS `progress` snapshot and use
+`clio-kit.jarvis-run.v1`; execution and progress query results use
+`clio-kit.jarvis-execution.v1` and
+`clio-kit.jarvis-execution-progress-query.v1`, respectively.
 
 ## Claude Code
 

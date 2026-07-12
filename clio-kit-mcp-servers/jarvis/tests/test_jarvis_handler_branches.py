@@ -160,14 +160,14 @@ def test_bounded_capture_handles_errors_and_full_chunk_trimming(
 
 
 @pytest.mark.asyncio
-async def test_pipeline_operation_uses_progress_execution(
+async def test_pipeline_operation_uses_native_progress_execution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
 
     class Execution:
-        def __init__(self, binding: object, **kwargs: object) -> None:
-            observed.update(binding=binding, **kwargs)
+        def __init__(self, pipeline: object, **kwargs: object) -> None:
+            observed.update(pipeline=pipeline, **kwargs)
 
         async def run(self, operation: Any, reporter: Any) -> str:
             observed["reporter"] = reporter
@@ -176,18 +176,18 @@ async def test_pipeline_operation_uses_progress_execution(
     async def reporter(_current: float, _total: float | None, _message: str) -> None:
         return None
 
-    binding = object()
-    monkeypatch.setattr(handler, "PackageProgressExecution", Execution)
+    pipeline = object()
+    monkeypatch.setattr(handler, "NativeProgressExecution", Execution)
     result = await handler._run_pipeline_operation(
         lambda: "complete",
-        progress_binding=binding,  # type: ignore[arg-type]
+        pipeline=pipeline,
         progress_reporter=reporter,
         execution_id="execution",
         pipeline_id="pipeline",
     )
     assert result == "complete"
     assert observed == {
-        "binding": binding,
+        "pipeline": pipeline,
         "execution_id": "execution",
         "pipeline_id": "pipeline",
         "reporter": reporter,
@@ -1227,9 +1227,11 @@ def test_runtime_environment_name_filters_invalid_and_transient_names() -> None:
 def _submission(**overrides: object) -> dict[str, object]:
     document: dict[str, object] = {
         "schema_version": "jarvis.scheduler.submission.v1",
+        "execution_id": "jarvis_expected",
         "provider": "slurm",
         "script_path": "/tmp/job.sh",
         "scheduler_job_id": "42",
+        "scheduler_cluster": "ares",
         "submitted": True,
         "identity_source": "scheduler_submit_api",
         "state": "submitted",
@@ -1240,186 +1242,125 @@ def _submission(**overrides: object) -> dict[str, object]:
     return document
 
 
+def _handle(**overrides: object) -> dict[str, object]:
+    document: dict[str, object] = {
+        "schema_version": "jarvis.execution.handle.v1",
+        "execution_id": "jarvis_expected",
+        "pipeline_id": "pipeline",
+        "mode": "scheduler",
+        "scheduler_provider": "slurm",
+        "scheduler_native_id": "42",
+        "cluster": "ares",
+    }
+    document.update(overrides)
+    return document
+
+
+def _record(**overrides: object) -> dict[str, object]:
+    handle = _handle()
+    document: dict[str, object] = {
+        "schema_version": "jarvis.execution.record.v1",
+        "execution_id": handle["execution_id"],
+        "pipeline_id": handle["pipeline_id"],
+        "pipeline_name": handle["pipeline_id"],
+        "mode": handle["mode"],
+        "scheduler_provider": handle["scheduler_provider"],
+        "scheduler_native_id": handle["scheduler_native_id"],
+        "cluster": handle["cluster"],
+        "state": "submitted",
+        "submitted": True,
+        "terminal": False,
+        "created_at": "2026-07-12T12:00:00Z",
+        "updated_at": "2026-07-12T12:00:01Z",
+        "return_code": None,
+        "error": None,
+        "metadata": {"script_path": "/tmp/job.sh", "submission": _submission()},
+    }
+    document.update(overrides)
+    return document
+
+
 @pytest.mark.parametrize(
     ("value", "message"),
     [
-        ("invalid", "invalid scheduler submission"),
+        (None, "omitted submission provenance"),
         (_submission(schema_version="wrong"), "schema is unsupported"),
+        (_submission(execution_id="other"), "execution did not match"),
         (_submission(provider="pbs"), "provider did not match"),
-        (_submission(script_path="other"), "did not match this script"),
-        (
-            _submission(submitted=False),
-            "provider-owned scheduler job identity",
-        ),
-        (_submission(scheduler_job_id="not-a-number"), "invalid SLURM job identity"),
+        (_submission(scheduler_job_id="43"), "native identity did not match"),
+        (_submission(scheduler_cluster="other"), "cluster did not match"),
+        (_submission(submitted=False), "identity provenance is invalid"),
     ],
 )
-def test_scheduler_submission_metadata_rejects_forged_records(
-    value: object, message: str
+def test_scheduler_record_submission_rejects_forged_provenance(
+    value: object | None, message: str
 ) -> None:
-    pipeline = SimpleNamespace(last_submission=value)
+    record = _record(metadata={"script_path": "/tmp/job.sh", "submission": value})
     with pytest.raises(RuntimeError, match=message):
-        handler._scheduler_submission_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=True,
+        handler._scheduler_submission_from_record(
+            record,
+            handle_document=_handle(),
         )
 
 
-def test_scheduler_submission_metadata_handles_script_only_contract() -> None:
-    assert (
-        handler._scheduler_submission_metadata(
-            SimpleNamespace(last_submission=None),
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=False,
-        )
-        is None
-    )
+def test_scheduler_record_submission_handles_script_only_contract() -> None:
     script = _submission(
         scheduler_job_id=None,
+        scheduler_cluster=None,
         submitted=False,
         identity_source=None,
     )
+    handle = _handle(scheduler_native_id=None, cluster=None)
+    record = _record(
+        scheduler_native_id=None,
+        cluster=None,
+        state="scripted",
+        submitted=False,
+        terminal=True,
+        metadata={"script_path": "/tmp/job.sh", "submission": script},
+    )
     assert (
-        handler._scheduler_submission_metadata(
-            SimpleNamespace(last_submission=script),
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=False,
+        handler._scheduler_submission_from_record(
+            record,
+            handle_document=handle,
         )
         == script
     )
-    with pytest.raises(RuntimeError, match="script-only"):
-        handler._scheduler_submission_metadata(
-            SimpleNamespace(last_submission=_submission()),
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=False,
-        )
-    with pytest.raises(RuntimeError, match="provider-owned"):
-        handler._scheduler_submission_metadata(
-            SimpleNamespace(last_submission=script),
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=True,
-        )
 
 
-def test_scheduler_submission_metadata_binds_execution_snapshot() -> None:
-    """Relay metadata is accepted only for the invocation's exact snapshot."""
-    document = _submission(
-        execution_id="jarvis_expected",
-        hostfile_path="/tmp/execution/hostfile.txt",
-        pipeline_snapshot_path="/tmp/execution/runtime",
-        pipeline_input_path="/tmp/execution/input",
-        pipeline_snapshot_sha256="a" * 64,
-    )
-    accepted = handler._scheduler_submission_metadata(
-        SimpleNamespace(last_submission=document),
-        scheduler={"name": "slurm"},
-        script_path="/tmp/job.sh",
-        require_identity=True,
-        execution_id="jarvis_expected",
-    )
-    assert accepted == document
-
-    with pytest.raises(RuntimeError, match="match this execution"):
-        handler._scheduler_submission_metadata(
-            SimpleNamespace(last_submission=document),
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=True,
-            execution_id="jarvis_other",
-        )
-    with pytest.raises(RuntimeError, match="snapshot digest"):
-        handler._scheduler_submission_metadata(
-            SimpleNamespace(
-                last_submission={**document, "pipeline_snapshot_sha256": "invalid"}
-            ),
-            scheduler={"name": "slurm"},
-            script_path="/tmp/job.sh",
-            require_identity=True,
-            execution_id="jarvis_expected",
-        )
-
-
-def test_waited_failure_metadata_rejects_stale_or_nonworkload_records() -> None:
-    pipeline = SimpleNamespace(last_submission=_submission())
-    assert (
-        handler._waited_workload_failure_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            prior_submission={},
-            submit=False,
-            wait=True,
-        )
-        is None
+def test_direct_execution_has_no_scheduler_compatibility_projection() -> None:
+    direct = _handle(
+        mode="direct",
+        scheduler_provider=None,
+        scheduler_native_id=None,
+        cluster=None,
     )
     assert (
-        handler._waited_workload_failure_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            prior_submission=handler._jsonable(pipeline.last_submission),
-            submit=True,
-            wait=True,
-        )
-        is None
-    )
-    pipeline.last_submission = _submission(script_path=None)
-    assert (
-        handler._waited_workload_failure_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            prior_submission={},
-            submit=True,
-            wait=True,
-        )
-        is None
-    )
-    pipeline.last_submission = _submission(state="completed", terminal_returncode=0)
-    assert (
-        handler._waited_workload_failure_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            prior_submission={},
-            submit=True,
-            wait=True,
+        handler._scheduler_submission_from_record(
+            _record(),
+            handle_document=direct,
         )
         is None
     )
 
 
-def test_waited_failure_metadata_rejects_invalid_or_absent_provider_document(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    pipeline = SimpleNamespace(last_submission=_submission())
-    monkeypatch.setattr(
-        handler,
-        "_scheduler_submission_metadata",
-        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("invalid")),
-    )
-    assert (
-        handler._waited_workload_failure_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            prior_submission={},
-            submit=True,
-            wait=True,
+def test_execution_documents_reject_cross_identity_records() -> None:
+    class Document:
+        def __init__(self, value: dict[str, object]) -> None:
+            self.value = value
+
+        def to_dict(self) -> dict[str, object]:
+            return self.value
+
+    with pytest.raises(RuntimeError, match="schema or identity"):
+        handler._execution_handle_document(
+            Document(_handle(execution_id="forged")),
+            expected_execution_id="jarvis_expected",
+            expected_pipeline_id="pipeline",
         )
-        is None
-    )
-    monkeypatch.setattr(
-        handler, "_scheduler_submission_metadata", lambda *args, **kwargs: None
-    )
-    assert (
-        handler._waited_workload_failure_metadata(
-            pipeline,
-            scheduler={"name": "slurm"},
-            prior_submission={},
-            submit=True,
-            wait=True,
+    with pytest.raises(RuntimeError, match="schema or identity"):
+        handler._execution_record_document(
+            Document(_record(pipeline_name="other")),
+            expected_execution_id="jarvis_expected",
+            expected_pipeline_id="pipeline",
         )
-        is None
-    )
