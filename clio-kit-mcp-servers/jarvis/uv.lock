@@ -791,8 +791,8 @@ wheels = [
 
 [[package]]
 name = "jarvis-cd"
-version = "1.0.0.post1.dev392+gd7b43e3"
-source = { git = "https://github.com/grc-iit/jarvis-cd.git?rev=d7b43e374895286362c2b2640eb4623391836118#d7b43e374895286362c2b2640eb4623391836118" }
+version = "1.0.0.post1.dev393+g1aa4456"
+source = { git = "https://github.com/grc-iit/jarvis-cd.git?rev=1aa4456e84154841fc6ba2c9c6193f44f545d952#1aa4456e84154841fc6ba2c9c6193f44f545d952" }
 dependencies = [
     { name = "pandas" },
     { name = "podman-compose" },
@@ -841,7 +841,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp", specifier = ">=3.2.0" },
     { name = "idna", specifier = ">=3.15" },
-    { name = "jarvis-cd", git = "https://github.com/grc-iit/jarvis-cd.git?rev=d7b43e374895286362c2b2640eb4623391836118" },
+    { name = "jarvis-cd", git = "https://github.com/grc-iit/jarvis-cd.git?rev=1aa4456e84154841fc6ba2c9c6193f44f545d952" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pygments", specifier = ">=2.20.0" },
