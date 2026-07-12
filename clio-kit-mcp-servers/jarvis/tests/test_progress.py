@@ -380,7 +380,9 @@ mcp.run(transport="stdio", show_banner=False)
         process.stdin.write(json.dumps(request, separators=(",", ":")) + "\n")
     process.stdin.flush()
     observed: list[dict[str, Any]] = []
-    deadline = time.monotonic() + 10
+    # A fresh FastMCP interpreter can take longer to import under concurrent CI
+    # coverage load even though the protocol exchange itself is healthy.
+    deadline = time.monotonic() + 30
     try:
         while time.monotonic() < deadline:
             try:
