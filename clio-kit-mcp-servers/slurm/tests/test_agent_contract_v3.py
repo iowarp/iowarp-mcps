@@ -138,6 +138,74 @@ def test_main_selects_user_profile_by_default() -> None:
     run.assert_called_once_with(transport="stdio")
 
 
+@pytest.mark.parametrize(
+    ("tool_name", "backend_name", "arguments"),
+    [
+        ("slurm_submit_tool", "submit", {"script_path": "job.sh"}),
+        ("slurm_list_tool", "list_jobs", {}),
+        ("slurm_describe_tool", "describe_job", {"job_id": "123"}),
+        ("slurm_cluster_tool", "cluster_snapshot", {}),
+        (
+            "slurm_cancel_tool",
+            "request_cancellation",
+            {"job_id": "123", "confirm_job_id": "123"},
+        ),
+    ],
+)
+async def test_user_tool_wrappers_return_backend_results_and_preserve_tool_errors(
+    tool_name: str,
+    backend_name: str,
+    arguments: dict[str, object],
+) -> None:
+    """The thin MCP layer returns typed backends and preserves their ToolErrors."""
+    expected = MagicMock()
+    with patch.object(server, backend_name, return_value=expected):
+        assert await getattr(server, tool_name)(**arguments) is expected
+
+    denied = ToolError("scheduler denied the request")
+    with patch.object(server, backend_name, side_effect=denied):
+        with pytest.raises(ToolError) as captured:
+            await getattr(server, tool_name)(**arguments)
+    assert captured.value is denied
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "backend_name", "arguments", "message"),
+    [
+        (
+            "slurm_submit_tool",
+            "submit",
+            {"script_path": "job.sh"},
+            "Slurm submission failed",
+        ),
+        ("slurm_list_tool", "list_jobs", {}, "Slurm job listing failed"),
+        (
+            "slurm_describe_tool",
+            "describe_job",
+            {"job_id": "123"},
+            "Slurm job description failed",
+        ),
+        ("slurm_cluster_tool", "cluster_snapshot", {}, "Slurm cluster query failed"),
+        (
+            "slurm_cancel_tool",
+            "request_cancellation",
+            {"job_id": "123", "confirm_job_id": "123"},
+            "Slurm cancellation failed",
+        ),
+    ],
+)
+async def test_user_tool_wrappers_translate_unexpected_backend_errors(
+    tool_name: str,
+    backend_name: str,
+    arguments: dict[str, object],
+    message: str,
+) -> None:
+    """Unexpected backend failures become bounded agent-facing ToolErrors."""
+    with patch.object(server, backend_name, side_effect=RuntimeError("boom")):
+        with pytest.raises(ToolError, match=message):
+            await getattr(server, tool_name)(**arguments)
+
+
 def test_result_contracts_are_closed() -> None:
     """Every public result model rejects additional fields recursively."""
     assert contract_schemas() == (
