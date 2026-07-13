@@ -528,14 +528,77 @@ jobs:
         trap 'rm -rf "$release_tmp"' EXIT
         release_json="$release_tmp/release.json"
         release_error="$release_tmp/release.error"
+        expected_notes_json="$release_tmp/expected-release-notes.json"
+        publish_payload="$release_tmp/publish-release.json"
+        expected_body_json=""
 
-        fetch_release() {
-          gh api "repos/$REPOSITORY/releases/tags/$TAG_NAME" >"$release_json"
-          test "$(jq -r .tag_name "$release_json")" = "$TAG_NAME"
+        verify_release_identity() {
+          local target_commitish
+          jq -e '.id | type == "number"' "$release_json" >/dev/null || return
+          test "$(jq -r .tag_name "$release_json")" = "$TAG_NAME" || return
+          test "$(jq -r .name "$release_json")" = "CLIO Kit $TAG_NAME" || return
+          test "$(jq -r .author.login "$release_json")" = \
+            'github-actions[bot]' || return
+          target_commitish="$(jq -r '.target_commitish // empty' "$release_json")"
+          test -n "$target_commitish" || return
+          # GitHub ignores target_commitish when the tag already exists, so the
+          # resolved tag commit is the authoritative release target.
+          test "$(resolve_remote_tag)" = "$GITHUB_SHA"
+        }
+
+        fetch_published_release() {
+          gh api "repos/$REPOSITORY/releases/tags/$TAG_NAME" \
+            >"$release_json" || return
+          verify_release_identity || return
+          release_id="$(jq -r .id "$release_json")"
+          [[ "$release_id" =~ ^[0-9]+$ ]]
+        }
+
+        fetch_release_by_id() {
+          [[ "$release_id" =~ ^[0-9]+$ ]] || return
+          gh api "repos/$REPOSITORY/releases/$release_id" \
+            >"$release_json" || return
+          test "$(jq -r .id "$release_json")" = "$release_id" || return
+          verify_release_identity
+        }
+
+        resolve_exact_draft_release() {
+          local id tag
+          local -a draft_ids=()
+          local draft_list="$release_tmp/draft-releases.tsv"
+
+          if ! gh api --paginate \
+            "repos/$REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.draft == true) | [.id, .tag_name] | @tsv' \
+            >"$draft_list"; then
+            return 2
+          fi
+          while IFS=$'\t' read -r id tag; do
+            [ "$tag" = "$TAG_NAME" ] || continue
+            if [[ ! "$id" =~ ^[0-9]+$ ]]; then
+              echo "invalid draft release id for $TAG_NAME: $id" >&2
+              return 2
+            fi
+            draft_ids+=("$id")
+          done <"$draft_list"
+
+          if [ "${#draft_ids[@]}" -eq 0 ]; then
+            return 1
+          fi
+          if [ "${#draft_ids[@]}" -ne 1 ]; then
+            echo "expected one draft release for $TAG_NAME, found ${#draft_ids[@]}" >&2
+            return 2
+          fi
+
+          release_id="${draft_ids[0]}"
+          fetch_release_by_id || return 2
+          test "$(jq -r .draft "$release_json")" = true || return 2
+          test "$(jq -r .immutable "$release_json")" = false || return 2
         }
 
         load_and_verify_assets() {
           local allow_missing="$1" id name declared_digest downloaded
+          local encoded_name http_status upload_json
           declare -gA asset_ids=()
           while IFS=$'\t' read -r id name declared_digest; do
             [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]
@@ -561,7 +624,31 @@ jobs:
           for name in "${artifacts[@]}"; do
             if [[ ! -v "asset_ids[$name]" ]]; then
               if [ "$allow_missing" = true ]; then
-                gh release upload "$TAG_NAME" "dist/$name" --repo "$REPOSITORY"
+                encoded_name="$(jq -nr --arg name "$name" '$name | @uri')"
+                upload_json="$release_tmp/upload-$name.json"
+                http_status="$(
+                  curl --silent --show-error \
+                    --location \
+                    --proto '=https' \
+                    --tlsv1.2 \
+                    --connect-timeout 30 \
+                    --max-time 600 \
+                    --output "$upload_json" \
+                    --write-out '%{http_code}' \
+                    --request POST \
+                    --header 'Accept: application/vnd.github+json' \
+                    --header "Authorization: Bearer $GH_TOKEN" \
+                    --header 'X-GitHub-Api-Version: 2026-03-10' \
+                    --header 'Content-Type: application/octet-stream' \
+                    --data-binary "@dist/$name" \
+                    "https://uploads.github.com/repos/$REPOSITORY/releases/$release_id/assets?name=$encoded_name"
+                )"
+                if [ "$http_status" != 201 ]; then
+                  cat "$upload_json" >&2
+                  return 1
+                fi
+                test "$(jq -r .name "$upload_json")" = "$name"
+                test "$(jq -r .state "$upload_json")" = uploaded
                 continue
               fi
               echo "missing release asset: $name" >&2
@@ -576,16 +663,26 @@ jobs:
           done
         }
 
-        if fetch_release 2>"$release_error"; then
+        release_id=""
+        if fetch_published_release 2>"$release_error"; then
           :
         elif grep -Fq 'HTTP 404' "$release_error"; then
-          gh release create "$TAG_NAME" \
-            --repo "$REPOSITORY" \
-            --verify-tag \
-            --title "CLIO Kit $TAG_NAME" \
-            --generate-notes \
-            --draft
-          fetch_release
+          if resolve_exact_draft_release; then
+            :
+          else
+            status="$?"
+            if [ "$status" -ne 1 ]; then
+              exit "$status"
+            fi
+            gh release create "$TAG_NAME" \
+              --repo "$REPOSITORY" \
+              --verify-tag \
+              --target "$GITHUB_SHA" \
+              --title "CLIO Kit $TAG_NAME" \
+              --generate-notes \
+              --draft
+            resolve_exact_draft_release
+          fi
         else
           cat "$release_error" >&2
           exit 1
@@ -595,20 +692,41 @@ jobs:
         immutable="$(jq -r .immutable "$release_json")"
         if [ "$draft" = true ]; then
           test "$immutable" = false
+          gh api --method POST \
+            "repos/$REPOSITORY/releases/generate-notes" \
+            --raw-field tag_name="$TAG_NAME" \
+            --raw-field target_commitish="$GITHUB_SHA" \
+            >"$expected_notes_json"
+          jq -e '.body | type == "string"' \
+            "$expected_notes_json" >/dev/null
+          expected_body_json="$(jq -c .body "$expected_notes_json")"
+          jq -n \
+            --arg name "CLIO Kit $TAG_NAME" \
+            --slurpfile notes "$expected_notes_json" \
+            '{name: $name, body: $notes[0].body, draft: false}' \
+            >"$publish_payload"
           load_and_verify_assets true
-          fetch_release
+          fetch_release_by_id
           load_and_verify_assets false
           test "$(resolve_remote_tag)" = "$GITHUB_SHA"
-          gh release edit "$TAG_NAME" --repo "$REPOSITORY" --draft=false
+          gh api --method PATCH \
+            "repos/$REPOSITORY/releases/$release_id" \
+            --input "$publish_payload" >"$release_json"
+          verify_release_identity
+          test "$(jq -r .draft "$release_json")" = false
+          test "$(jq -c .body "$release_json")" = "$expected_body_json"
         else
           test "$immutable" = true
           load_and_verify_assets false
         fi
 
         test "$(resolve_remote_tag)" = "$GITHUB_SHA"
-        fetch_release
+        fetch_published_release
         test "$(jq -r .draft "$release_json")" = false
         test "$(jq -r .immutable "$release_json")" = true
+        if [ -n "$expected_body_json" ]; then
+          test "$(jq -c .body "$release_json")" = "$expected_body_json"
+        fi
         load_and_verify_assets false
         verified=false
         for attempt in {1..12}; do
