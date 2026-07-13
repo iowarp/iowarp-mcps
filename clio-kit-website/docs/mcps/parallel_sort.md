@@ -1,15 +1,15 @@
 ---
 title: Parallel-Sort MCP
-description: "Parallel-Sort MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 13 tools for large file sorting: parallel sort, log analysis, pattern detection, filtering, export. Enables AI agents to process and analyze large log files efficiently."
+description: "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Parallel-Sort"
   icon="🔄"
   category="Data Processing"
-  description="Parallel-Sort MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 13 tools for large file sorting: parallel sort, log analysis, pattern detection, filtering, export. Enables AI agents to process and analyze large log files efficiently."
+  description="Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis"
   version="2.2.3"
   actions={["sort_log_by_timestamp", "parallel_sort_large_file", "analyze_log_statistics", "detect_log_patterns", "filter_logs", "filter_by_time_range", "filter_by_log_level", "filter_by_keyword", "apply_filter_preset", "export_to_json", "export_to_csv", "export_to_text", "generate_summary_report"]}
   platforms={["claude", "cursor", "vscode"]}
@@ -117,4 +117,3 @@ This prompt will:
 - Export findings using `export_to_json` for dashboard integration
 
 </MCPDetail>
-

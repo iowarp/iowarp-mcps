@@ -8,9 +8,9 @@ import sys
 import subprocess
 import re
 import json
+from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional
-from datetime import datetime
 
 try:
     import tomllib  # Python 3.11+
@@ -24,11 +24,60 @@ except ImportError:
         sys.exit(1)
 
 
+# Agentic Search is a first-class CLIO showcase surface, but it is an HTTP/CLI
+# service rather than an embedded MCP server. Keep its tile in the same
+# generated data without pretending it belongs to the MCP Registry inventory.
+NON_MCP_SHOWCASE_ENTRIES = {
+    "agentic_search": {
+        "name": "Agentic Search",
+        "category": "Search & Retrieval",
+        "description": (
+            "Hybrid retrieval engine. Lexical, vector, graph, and scientific "
+            "search over namespaced document corpora. DuckDB storage. FastAPI "
+            "service with async job queue."
+        ),
+        "icon": "🔍",
+        "actions": [
+            "query",
+            "index",
+            "list_documents",
+            "submit_index_job",
+            "get_job_status",
+            "cancel_job",
+            "health",
+            "metrics",
+        ],
+        "stats": {"version": "1.0.0", "updated": "2026-02-23"},
+        "platforms": ["claude", "cursor", "vscode"],
+        "slug": "agentic_search",
+        "docPath": "/docs/agentic-search",
+    }
+}
+
+
+def read_documentation_updated(inventory: dict[str, object]) -> str:
+    """Return the explicit deterministic date for generated website metadata."""
+    raw_documentation = inventory.get("documentation")
+    if not isinstance(raw_documentation, dict):
+        raise ValueError("mcp-server-versions.toml must define [documentation]")
+    raw_updated = raw_documentation.get("updated")
+    if not isinstance(raw_updated, str):
+        raise ValueError("documentation.updated must be an ISO date")
+    try:
+        parsed = date.fromisoformat(raw_updated)
+    except ValueError as exc:
+        raise ValueError("documentation.updated must be an ISO date") from exc
+    if parsed.isoformat() != raw_updated:
+        raise ValueError("documentation.updated must use YYYY-MM-DD")
+    return raw_updated
+
+
 class MCPDataExtractor:
     """Extract MCP data from project files."""
 
-    def __init__(self, server_versions: Dict[str, str]):
+    def __init__(self, server_versions: Dict[str, str], updated_date: str):
         self.server_versions = server_versions
+        self.updated_date = updated_date
         self.icon_mapping = {
             "adios": "📊",
             "arxiv": "📄",
@@ -50,7 +99,7 @@ class MCPDataExtractor:
         """Extract data for all MCPs in the directory."""
         mcps_data = {}
 
-        for mcp_dir in mcps_dir.iterdir():
+        for mcp_dir in sorted(mcps_dir.iterdir(), key=lambda path: path.name):
             if mcp_dir.is_dir() and not mcp_dir.name.startswith("."):
                 print(f"Processing MCP: {mcp_dir.name}")
                 try:
@@ -109,7 +158,7 @@ class MCPDataExtractor:
             "actions": actions,
             "tools": tools,
             "platforms": ["claude", "cursor", "vscode"],
-            "updated": datetime.now().strftime("%Y-%m-%d"),
+            "updated": self.updated_date,
             "path": str(mcp_dir),
             "keywords": keywords,
             "license": license_info,
@@ -230,7 +279,8 @@ class DocusaurusGenerator:
         self.data_output_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate individual MCP markdown files
-        for slug, mcp_data in mcps_data.items():
+        for slug in sorted(mcps_data):
+            mcp_data = mcps_data[slug]
             self._generate_mcp_markdown(mcp_data)
 
         # Generate mcpData.js file
@@ -264,7 +314,7 @@ description: "{description}"
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="{mcp_data["name"]}"
   icon="{mcp_data["icon"]}"
   category="{mcp_data["category"]}"
@@ -280,7 +330,6 @@ import MCPDetail from '@site/src/components/MCPDetail';
 {self._extract_examples_from_readme(mcp_data)}
 
 </MCPDetail>
-
 """
 
         output_file = self.mcps_output_dir / f"{mcp_data['slug']}.md"
@@ -522,46 +571,15 @@ final_result = finalize_output(processed)
 
     def _generate_mcp_data_js(self, mcps_data: Dict):
         """Generate the mcpData.js file for the frontend."""
-        # Load existing mcpData.js to preserve descriptions
-        existing_mcps = {}
-        output_file = self.data_output_dir / "mcpData.js"
-        if output_file.exists():
-            try:
-                with open(output_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    # Extract existing mcpData object (simple extraction)
-                    match = re.search(
-                        r"export const mcpData = ({.*?});", content, re.DOTALL
-                    )
-                    if match:
-                        # This is a simplified extraction - in production use proper JS parser
-                        try:
-                            json_str = match.group(1)
-                            existing_mcps = json.loads(json_str)
-                        except json.JSONDecodeError:
-                            pass
-            except Exception as e:
-                print(f"Warning: Could not load existing mcpData: {e}")
-
-        # Count categories
-        category_counts = {}
-        for mcp_data in mcps_data.values():
-            category = mcp_data["category"]
-            category_counts[category] = category_counts.get(category, 0) + 1
-
-        # Generate JavaScript object, preserving existing descriptions
-        js_mcps = {}
-        for slug, mcp_data in mcps_data.items():
-            # Preserve old description if it exists
-            old_description = None
-            if slug in existing_mcps and "description" in existing_mcps[slug]:
-                old_description = existing_mcps[slug]["description"]
-
+        # Build only from committed source data. Reading a previous generated
+        # file made clean and incremental checkouts produce different output.
+        js_mcps = dict(NON_MCP_SHOWCASE_ENTRIES)
+        for slug in sorted(mcps_data):
+            mcp_data = mcps_data[slug]
             js_mcps[slug] = {
                 "name": mcp_data["name"],
                 "category": mcp_data["category"],
-                "description": old_description
-                or mcp_data["description"],  # Use old description if available
+                "description": mcp_data["description"],
                 "icon": mcp_data["icon"],
                 "actions": mcp_data["actions"],
                 "stats": {
@@ -572,15 +590,19 @@ final_result = finalize_output(processed)
                 "slug": mcp_data["slug"],
             }
 
+        category_counts = {}
+        for showcase_data in js_mcps.values():
+            category = showcase_data["category"]
+            category_counts[category] = category_counts.get(category, 0) + 1
+
         # Generate categories object
-        categories = {
-            "All": {"count": len(mcps_data), "color": "#6b7280", "icon": "🔍"}
-        }
+        categories = {"All": {"count": len(js_mcps), "color": "#6b7280", "icon": "🔍"}}
 
         category_colors = {
             "Data Processing": "#3b82f6",
             "Analysis & Visualization": "#10b981",
             "System Management": "#f59e0b",
+            "Search & Retrieval": "#6366f1",
             "Utilities": "#ef4444",
         }
 
@@ -588,10 +610,12 @@ final_result = finalize_output(processed)
             "Data Processing": "📊",
             "Analysis & Visualization": "📈",
             "System Management": "🖥️",
+            "Search & Retrieval": "🔍",
             "Utilities": "🔧",
         }
 
-        for category, count in category_counts.items():
+        for category in sorted(category_counts):
+            count = category_counts[category]
             categories[category] = {
                 "count": count,
                 "color": category_colors.get(category, "#6b7280"),
@@ -600,13 +624,15 @@ final_result = finalize_output(processed)
 
         # Popular MCPs (those with most actions)
         popular_mcps = sorted(
-            mcps_data.keys(), key=lambda k: len(mcps_data[k]["actions"]), reverse=True
+            js_mcps,
+            key=lambda slug: (-len(js_mcps[slug]["actions"]), slug),
         )[:6]
 
         # Category types for TypeScript/JSDoc
         category_types = {
             "Data Processing": "data",
             "Analysis & Visualization": "analysis",
+            "Search & Retrieval": "search",
             "System Management": "system",
             "Utilities": "util",
         }
@@ -669,7 +695,9 @@ def main():
     try:
         versions_path = mcps_dir.parent / "mcp-server-versions.toml"
         with open(versions_path, "rb") as stream:
-            server_versions = tomllib.load(stream)["servers"]
+            inventory = tomllib.load(stream)
+        server_versions = inventory["servers"]
+        updated_date = read_documentation_updated(inventory)
         discovered_servers = {
             path.name
             for path in mcps_dir.iterdir()
@@ -681,7 +709,7 @@ def main():
             )
 
         # Extract MCP data using each public agent-contract version.
-        extractor = MCPDataExtractor(server_versions)
+        extractor = MCPDataExtractor(server_versions, updated_date)
         mcps_data = extractor.extract_mcp_data(mcps_dir)
 
         if not mcps_data:

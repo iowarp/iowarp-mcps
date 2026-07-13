@@ -1,15 +1,15 @@
 ---
 title: Darshan MCP
-description: "Darshan MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 10 tools for I/O performance analysis: load traces, analyze access patterns, identify bottlenecks, compare logs. Enables AI agents to analyze HPC application I/O performance."
+description: "Darshan I/O profiler MCP server for analyzing I/O trace files"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Darshan"
   icon="⚡"
   category="Analysis & Visualization"
-  description="Darshan MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 10 tools for I/O performance analysis: load traces, analyze access patterns, identify bottlenecks, compare logs. Enables AI agents to analyze HPC application I/O performance."
+  description="Darshan I/O profiler MCP server for analyzing I/O trace files"
   version="2.2.3"
   actions={["load_darshan_log", "get_job_summary", "analyze_file_access_patterns", "get_io_performance_metrics", "analyze_posix_operations", "analyze_mpiio_operations", "identify_io_bottlenecks", "get_timeline_analysis", "compare_darshan_logs", "generate_io_summary_report"]}
   platforms={["claude", "cursor", "vscode"]}
@@ -100,4 +100,3 @@ This prompt will:
 - Provide production-ready performance assessment with actionable insights
 
 </MCPDetail>
-

@@ -1,15 +1,15 @@
 ---
 title: Node-Hardware MCP
-description: "Node-Hardware MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 11 tools for hardware monitoring: CPU, memory, GPU, disk, network info, remote SSH monitoring. Enables AI agents to monitor and analyze system hardware."
+description: "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Node-Hardware"
   icon="💻"
   category="Analysis & Visualization"
-  description="Node-Hardware MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 11 tools for hardware monitoring: CPU, memory, GPU, disk, network info, remote SSH monitoring. Enables AI agents to monitor and analyze system hardware."
+  description="Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics"
   version="2.2.3"
   actions={["get_cpu_info", "get_memory_info", "get_system_info", "get_disk_info", "get_network_info", "get_gpu_info", "get_sensor_info", "get_process_info", "get_performance_info", "get_remote_node_info", "health_check"]}
   platforms={["claude", "cursor", "vscode"]}
@@ -75,4 +75,3 @@ Analyze storage health and network interface performance on multiple systems for
 - Components collected: disk, network, system, summary
 
 </MCPDetail>
-

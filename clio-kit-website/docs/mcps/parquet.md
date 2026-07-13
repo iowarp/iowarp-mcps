@@ -1,15 +1,15 @@
 ---
 title: Parquet MCP
-description: "Parquet MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). Tools for Parquet file operations: read columns, preview data, analyze schemas. Enables AI agents to work with columnar data formats efficiently."
+description: "MCP server for Apache Parquet files"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Parquet"
   icon="📋"
   category="Data Processing"
-  description="Parquet MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). Tools for Parquet file operations: read columns, preview data, analyze schemas. Enables AI agents to work with columnar data formats efficiently."
+  description="MCP server for Apache Parquet files"
   version="2.2.3"
   actions={["summarize_tool", "read_slice_tool", "get_column_preview_tool", "aggregate_column_tool"]}
   platforms={["claude", "cursor", "vscode"]}
@@ -38,4 +38,3 @@ for file in data_files:
 
 
 </MCPDetail>
-

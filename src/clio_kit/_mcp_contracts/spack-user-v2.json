@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-spack-user-v2",
-  "contract_sha256": "d0709c552f6042ce4143d49706ddfbd8d05a80e4425412fbc3393d1eb00a216c",
+  "contract_sha256": "3c5412148c770f4844e98eb893c4db0d0afdbf13afe967df67bd5f7d25e1f7db",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -163,12 +163,13 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Install one Spack spec and verify that a matching install is observable.",
+      "description": "Install one Spack spec with explicit reusable or fresh concretization and verify that a matching install is observable.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "reuse": {
             "default": true,
+            "description": "Choose Spack concretization explicitly: true passes --reuse and may reuse compatible installed packages or buildcaches; false passes --fresh and excludes them while concretizing.",
             "type": "boolean"
           },
           "spec": {
@@ -415,5 +416,5 @@
       }
     }
   ],
-  "wire_sha256": "3e9c36866e10e68858b75cec140b6c759efc1e35bd2d45e9cb1f09d11d613d89"
+  "wire_sha256": "e575c901226a34a1f4286228b3f71966fe55b68d82bae5c6fd6582af0e43fd2d"
 }

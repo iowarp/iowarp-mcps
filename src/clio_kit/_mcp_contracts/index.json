@@ -20,12 +20,12 @@
     },
     {
       "artifact": "spack-user-v2.json",
-      "artifact_sha256": "acaa5347c2f672d00d149e82db3affa1c40e0f585fd3064a9e896c431614c3d0",
+      "artifact_sha256": "6a254d2d6734b71d8069b6806a81a4e237cc682e3bf6dde4b76b61de7464701b",
       "contract_id": "clio-kit-spack-user-v2",
-      "contract_sha256": "d0709c552f6042ce4143d49706ddfbd8d05a80e4425412fbc3393d1eb00a216c",
+      "contract_sha256": "3c5412148c770f4844e98eb893c4db0d0afdbf13afe967df67bd5f7d25e1f7db",
       "profile": "user",
       "server_name": "spack",
-      "wire_sha256": "3e9c36866e10e68858b75cec140b6c759efc1e35bd2d45e9cb1f09d11d613d89"
+      "wire_sha256": "e575c901226a34a1f4286228b3f71966fe55b68d82bae5c6fd6582af0e43fd2d"
     }
   ],
   "schema_version": "clio-kit.mcp-user-contract-index.v1"

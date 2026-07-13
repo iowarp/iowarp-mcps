@@ -1,21 +1,21 @@
 ---
 title: Adios MCP
-description: "ADIOS MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 5 tools for ADIOS2 BP5 file access: list files, inspect variables, read data at specific steps, extract attributes. Enables AI agents to work with high-performance scientific data formats."
+description: "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes."
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Adios"
   icon="📊"
   category="Data Processing"
-  description="ADIOS MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 5 tools for ADIOS2 BP5 file access: list files, inspect variables, read data at specific steps, extract attributes. Enables AI agents to work with high-performance scientific data formats."
+  description="Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes."
   version="2.2.3"
-  actions={[]}
+  actions={["list_bp5", "inspect_variables", "inspect_variables_at_step", "inspect_attributes", "read_variable_at_step"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["mcp", "adios2", "bp5", "scientific data", "data access", "variable inspection", "attribute extraction", "iowarp", "grc"]}
   license="BSD-3-Clause"
-  tools={[]}
+  tools={[{"name": "list_bp5", "description": "Lists all BP5 files in a given directory. The 'directory' parameter must be an absolute path.", "function_name": "list_bp5"}, {"name": "inspect_variables", "description": "Inspects variables in a BP5 file, returning type, shape, and steps. Optionally filters by variable name.", "function_name": "inspect_variables"}, {"name": "inspect_variables_at_step", "description": "Inspects a specific variable at a given step in a BP5 file. All parameters are required.", "function_name": "inspect_variables_at_step"}, {"name": "inspect_attributes", "description": "Reads global or variable-specific attributes from a BP5 file. The 'variable_name' is optional.", "function_name": "inspect_attributes"}, {"name": "read_variable_at_step", "description": "Reads a named variable at a specific step from a BP5 file. All parameters are required.", "function_name": "read_variable_at_step"}]}
 >
 
 ### 1. Scientific Data Structure Analysis
@@ -113,4 +113,3 @@ This prompt will:
 - Suggest optimal data access strategies based on file contents
 
 </MCPDetail>
-

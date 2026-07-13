@@ -60,7 +60,7 @@ jobs:
     # Generate and build documentation
     - name: Generate Docusaurus documentation
       run: |
-        python3 scripts/generate_docs.py clio-kit-mcp-servers clio-kit-website/docs
+        python3 scripts/generate_docs.py clio-kit-mcp-servers clio-kit-website
 
     - name: Setup Node.js
       uses: actions/setup-node@v4

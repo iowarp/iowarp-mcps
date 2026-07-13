@@ -7,11 +7,12 @@ import asyncio
 import os
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
+from typing import Annotated, TypeVar
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+from pydantic import Field
 
 from spack_mcp.backend import (
     SpackBackendError,
@@ -75,7 +76,10 @@ async def spack_locate_tool(spec: str) -> SpackLocateResult:
 
 @mcp.tool(
     name="spack_install",
-    description="Install one Spack spec and verify that a matching install is observable.",
+    description=(
+        "Install one Spack spec with explicit reusable or fresh concretization and "
+        "verify that a matching install is observable."
+    ),
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -86,10 +90,19 @@ async def spack_locate_tool(spec: str) -> SpackLocateResult:
 )
 async def spack_install_tool(
     spec: str,
-    reuse: bool = True,
+    reuse: Annotated[
+        bool,
+        Field(
+            description=(
+                "Choose Spack concretization explicitly: true passes --reuse and may "
+                "reuse compatible installed packages or buildcaches; false passes "
+                "--fresh and excludes them while concretizing."
+            )
+        ),
+    ] = True,
     timeout_seconds: int = 14_400,
 ) -> SpackInstallResult:
-    """Install one spec with bounded output, timeout, and child cleanup."""
+    """Install one spec with explicit concretization, timeout, and child cleanup."""
     return await _call_backend(
         install_spec,
         spec,
