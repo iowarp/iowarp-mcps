@@ -1,15 +1,15 @@
 ---
 title: Compression MCP
-description: "Compression MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). GZIP file compression tool for storage optimization, archival, and network transfer. Enables AI agents to compress files efficiently."
+description: "Compression MCP server implementation using Model Context Protocol"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Compression"
   icon="🗜️"
   category="Utilities"
-  description="Compression MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). GZIP file compression tool for storage optimization, archival, and network transfer. Enables AI agents to compress files efficiently."
+  description="Compression MCP server implementation using Model Context Protocol"
   version="2.2.3"
   actions={["compress_file_tool", "decompress_file_tool"]}
   platforms={["claude", "cursor", "vscode"]}
@@ -97,4 +97,3 @@ This prompt will:
 - Create compressed log files that maintain data accessibility while reducing storage footprint
 
 </MCPDetail>
-

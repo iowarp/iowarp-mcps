@@ -325,7 +325,7 @@ def install_spec(
     reuse: bool = True,
     timeout_seconds: int = 14_400,
 ) -> SpackInstallResult:
-    """Install one Spack spec without invoking a shell."""
+    """Install one Spack spec with explicit reuse semantics and no shell."""
     normalized = _validated_spec(spec)
     if timeout_seconds < 1 or timeout_seconds > _MAX_INSTALL_TIMEOUT_SECONDS:
         raise SpackBackendError(
@@ -333,10 +333,7 @@ def install_spec(
             f"timeout_seconds must be between 1 and {_MAX_INSTALL_TIMEOUT_SECONDS}",
             operation="install",
         )
-    args = ["install"]
-    if reuse:
-        args.append("--reuse")
-    args.append(normalized)
+    args = ["install", "--reuse" if reuse else "--fresh", normalized]
     result = _run_spack(args, operation="install", timeout_seconds=timeout_seconds)
     found = find_installed(normalized)
     if not found.packages:

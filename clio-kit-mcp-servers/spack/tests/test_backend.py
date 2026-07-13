@@ -196,7 +196,7 @@ def test_install_can_explicitly_disable_reuse(monkeypatch: pytest.MonkeyPatch) -
 
     result = backend.install_spec("demo@1.0", reuse=False, timeout_seconds=5)
 
-    assert observed[0] == ["install", "demo@1.0"]
+    assert observed[0] == ["install", "--fresh", "demo@1.0"]
     assert result.reuse is False
 
 

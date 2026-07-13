@@ -17,10 +17,24 @@ persists it in the pipeline, and reloads it inside direct or scheduled execution
 value to `jarvis_run` so a later install cannot make the runtime selection
 ambiguous.
 
+## Install concretization
+
+`spack_install` always selects the Spack concretization policy explicitly:
+
+- `spack_install(spec, reuse=true)` runs `spack install --reuse <spec>` and may
+  reuse compatible installed packages or buildcaches while concretizing.
+- `spack_install(spec, reuse=false)` runs `spack install --fresh <spec>` and
+  excludes installed packages and buildcaches while concretizing.
+
+Fresh concretization does not mean "blindly reinstall an existing concrete
+hash." Agents should first call `spack_find`, install only when the required
+software is absent, then call `spack_locate` and pass its canonical `load_spec`
+to `jarvis_run`.
+
 Run the default server with:
 
 ```bash
-uv tool install 'clio-kit==2.3.0'
+uv tool install 'clio-kit==2.3.2'
 clio-kit mcp-server spack
 ```
 

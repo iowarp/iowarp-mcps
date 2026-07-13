@@ -30,12 +30,18 @@ export const mcpData = {
   "adios": {
     "name": "Adios",
     "category": "Data Processing",
-    "description": "Read BP5 files. Inspect variables. Check attributes. Read at timestep. 5 tools for ADIOS2 scientific data I/O.",
+    "description": "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes.",
     "icon": "\ud83d\udcca",
-    "actions": [],
+    "actions": [
+      "list_bp5",
+      "inspect_variables",
+      "inspect_variables_at_step",
+      "inspect_attributes",
+      "read_variable_at_step"
+    ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -47,7 +53,7 @@ export const mcpData = {
   "arxiv": {
     "name": "Arxiv",
     "category": "Data Processing",
-    "description": "Search papers. Download PDFs. Export BibTeX. Find by author, title, date, subject. 13 tools for academic research. ArXiv.org integration through AI.",
+    "description": "ArXiv MCP server implementation using Model Context Protocol",
     "icon": "\ud83d\udcc4",
     "actions": [
       "search_arxiv",
@@ -66,7 +72,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -78,12 +84,17 @@ export const mcpData = {
   "chronolog": {
     "name": "Chronolog",
     "category": "Data Processing",
-    "description": "Start logging sessions. Record AI interactions. Stop and save. Retrieve historical data. 4 tools for distributed logging on HPC systems.",
+    "description": "ChronoLog MCP server implementation using Model Context Protocol",
     "icon": "\u23f0",
-    "actions": [],
+    "actions": [
+      "start_chronolog",
+      "record_interaction",
+      "stop_chronolog",
+      "retrieve_interaction"
+    ],
     "stats": {
       "version": "2.0.1",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -95,7 +106,7 @@ export const mcpData = {
   "compression": {
     "name": "Compression",
     "category": "Utilities",
-    "description": "Compress files with GZIP. Reduce storage. Fast compression. Decompress archives. 1 simple tool for file compression operations.",
+    "description": "Compression MCP server implementation using Model Context Protocol",
     "icon": "\ud83d\udddc\ufe0f",
     "actions": [
       "compress_file_tool",
@@ -103,7 +114,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -115,7 +126,7 @@ export const mcpData = {
   "darshan": {
     "name": "Darshan",
     "category": "Analysis & Visualization",
-    "description": "Load logs. Analyze I/O patterns. Identify bottlenecks. Performance metrics. Compare runs. 10 tools for I/O profiling. Darshan log analysis via AI.",
+    "description": "Darshan I/O profiler MCP server for analyzing I/O trace files",
     "icon": "\u26a1",
     "actions": [
       "load_darshan_log",
@@ -131,7 +142,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -140,10 +151,56 @@ export const mcpData = {
     ],
     "slug": "darshan"
   },
+  "geo": {
+    "name": "Geo",
+    "category": "Data Processing",
+    "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "render_feature_map",
+      "points_in_polygons",
+      "bounding_box",
+      "query_arcgis_features",
+      "geocode",
+      "filter_points_by_radius"
+    ],
+    "stats": {
+      "version": "2.2.3",
+      "updated": "2026-07-13"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "geo"
+  },
+  "geojson": {
+    "name": "Geojson",
+    "category": "Utilities",
+    "description": "MCP server for inspecting, validating, and summarizing GeoJSON documents (stdlib only)",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "inspect_geojson",
+      "validate_geojson",
+      "summarize_geojson",
+      "feature_bbox"
+    ],
+    "stats": {
+      "version": "2.2.3",
+      "updated": "2026-07-13"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "geojson"
+  },
   "hdf5": {
     "name": "Hdf5",
     "category": "Data Processing",
-    "description": "Read HDF5 files. Explore datasets. Extract data. AI-powered insights. Parallel batch ops (4-8x faster). LRU cache (1000x faster). 27 tools for scientific HDF5 data.",
+    "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
     "icon": "\ud83d\uddc2\ufe0f",
     "actions": [
       "open_file",
@@ -176,7 +233,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -188,42 +245,19 @@ export const mcpData = {
   "jarvis": {
     "name": "Jarvis",
     "category": "Data Processing",
-    "description": "Create pipelines. Build environments. Configure packages. Run workflows. 27 tools for data pipeline management. Jarvis-CD integration for HPC.",
+    "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
     "icon": "\ud83e\udd16",
     "actions": [
-      "update_pipeline",
-      "build_pipeline_env",
-      "create_pipeline",
-      "load_pipeline",
-      "get_pkg_config",
-      "append_pkg",
-      "configure_pkg",
-      "unlink_pkg",
-      "remove_pkg",
-      "run_pipeline",
-      "destroy_pipeline",
-      "jm_create_config",
-      "jm_load_config",
-      "jm_save_config",
-      "jm_set_hostfile",
-      "jm_bootstrap_from",
-      "jm_bootstrap_list",
-      "jm_reset",
-      "jm_list_pipelines",
-      "jm_cd",
-      "jm_list_repos",
-      "jm_add_repo",
-      "jm_remove_repo",
-      "jm_promote_repo",
-      "jm_get_repo",
-      "jm_construct_pkg",
-      "jm_graph_show",
-      "jm_graph_build",
-      "jm_graph_modify"
+      "jarvis_create_pipeline",
+      "jarvis_describe",
+      "jarvis_add_step",
+      "jarvis_edit_step",
+      "jarvis_run",
+      "jarvis_get_execution"
     ],
     "stats": {
       "version": "3.0.0",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -235,7 +269,7 @@ export const mcpData = {
   "lmod": {
     "name": "Lmod",
     "category": "System Management",
-    "description": "Load modules. Swap environments. Save collections. Spider search. 10 tools for environment module management on HPC clusters.",
+    "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
     "icon": "\ud83d\udce6",
     "actions": [
       "module_list",
@@ -251,7 +285,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -263,16 +297,17 @@ export const mcpData = {
   "ndp": {
     "name": "Ndp",
     "category": "Data Processing",
-    "description": "List organizations. Search datasets. Get metadata. Discover research data through CKAN API. 3 tools for dataset discovery and exploration.",
+    "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances",
     "icon": "\ud83d\udd27",
     "actions": [
       "list_organizations",
       "search_datasets",
-      "get_dataset_details"
+      "get_dataset_details",
+      "stage_resource"
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -284,7 +319,7 @@ export const mcpData = {
   "node_hardware": {
     "name": "Node-Hardware",
     "category": "Analysis & Visualization",
-    "description": "CPU info. Memory stats. GPU details. Disk usage. Network metrics. 11 tools for hardware monitoring. Real-time system analysis.",
+    "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics",
     "icon": "\ud83d\udcbb",
     "actions": [
       "get_cpu_info",
@@ -301,7 +336,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -313,7 +348,7 @@ export const mcpData = {
   "pandas": {
     "name": "Pandas",
     "category": "Data Processing",
-    "description": "Load CSV/Excel/Parquet. Statistical analysis. Data cleaning. Correlations. Groupby operations. Time series. 15 tools for tabular data. Pandas through natural language.",
+    "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
     "icon": "\ud83d\udc3c",
     "actions": [
       "load_data",
@@ -330,11 +365,12 @@ export const mcpData = {
       "validate_data",
       "filter_data",
       "optimize_memory",
-      "profile_data"
+      "profile_data",
+      "profile_csv"
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -346,7 +382,7 @@ export const mcpData = {
   "parallel_sort": {
     "name": "Parallel-Sort",
     "category": "Data Processing",
-    "description": "Sort massive log files. Parallel processing. Pattern detection. Time-range filtering. Export JSON/CSV. 13 tools for large file operations.",
+    "description": "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis",
     "icon": "\ud83d\udd04",
     "actions": [
       "sort_log_by_timestamp",
@@ -365,7 +401,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -377,7 +413,7 @@ export const mcpData = {
   "paraview": {
     "name": "Paraview",
     "category": "Analysis & Visualization",
-    "description": "Load scientific data. Generate isosurfaces. Create data slices. Volume rendering. Flow streamlines. 12 tools for 3D scientific visualization with ADIOS2/BP5 support.",
+    "description": "MCP server for ParaView scientific visualization",
     "icon": "\ud83d\udd27",
     "actions": [
       "load_scientific_data",
@@ -409,7 +445,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -421,7 +457,7 @@ export const mcpData = {
   "parquet": {
     "name": "Parquet",
     "category": "Data Processing",
-    "description": "Read columnar data. Write Parquet files. Schema inspection. Pandas integration. Efficient for large datasets. Apache Parquet format operations.",
+    "description": "MCP server for Apache Parquet files",
     "icon": "\ud83d\udccb",
     "actions": [
       "summarize_tool",
@@ -431,7 +467,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -443,7 +479,7 @@ export const mcpData = {
   "plot": {
     "name": "Plot",
     "category": "Data Processing",
-    "description": "Generate line plots. Create bar charts. Scatter visualizations. Histograms and heatmaps. 6 plotting tools for CSV data visualization through AI.",
+    "description": "MCP server for advanced data visualization and plotting operations",
     "icon": "\ud83d\udcc8",
     "actions": [
       "line_plot",
@@ -451,11 +487,12 @@ export const mcpData = {
       "scatter_plot",
       "histogram_plot",
       "heatmap_plot",
+      "plot_timeseries",
       "data_info"
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -464,29 +501,62 @@ export const mcpData = {
     ],
     "slug": "plot"
   },
+  "sac": {
+    "name": "Sac",
+    "category": "Analysis & Visualization",
+    "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "inspect_archive",
+      "compute_trace_statistics",
+      "plot_traces"
+    ],
+    "stats": {
+      "version": "2.2.3",
+      "updated": "2026-07-13"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "sac"
+  },
+  "seismic": {
+    "name": "Seismic",
+    "category": "Analysis & Visualization",
+    "description": "MCP server for earthquake-sequence analysis on saved catalogs: completeness magnitude, Gutenberg-Richter b-value, Bath gap, Omori decay, and a three-panel figure",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "analyze_sequence",
+      "plot_sequence"
+    ],
+    "stats": {
+      "version": "2.2.3",
+      "updated": "2026-07-13"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "seismic"
+  },
   "slurm": {
     "name": "Slurm",
     "category": "System Management",
-    "description": "Submit jobs. Check status. Allocate nodes. Read output. Full HPC cluster management through AI assistants. 13 tools for Slurm workload manager.",
+    "description": "MCP server for Slurm workload management and HPC job scheduling",
     "icon": "\ud83d\udda5\ufe0f",
     "actions": [
-      "submit_slurm_job",
-      "check_job_status",
-      "cancel_slurm_job",
-      "list_slurm_jobs",
-      "get_slurm_info",
-      "get_job_details",
-      "get_job_output",
-      "get_queue_info",
-      "submit_array_job",
-      "get_node_info",
-      "allocate_slurm_nodes",
-      "deallocate_slurm_nodes",
-      "get_allocation_status"
+      "slurm_submit",
+      "slurm_list",
+      "slurm_describe",
+      "slurm_cluster",
+      "slurm_cancel"
     ],
     "stats": {
       "version": "3.0.0",
-      "updated": "2026-02-19"
+      "updated": "2026-07-13"
     },
     "platforms": [
       "claude",
@@ -494,51 +564,92 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "slurm"
+  },
+  "spack": {
+    "name": "Spack",
+    "category": "Utilities",
+    "description": "Structured Spack discovery and installation tools for scientific agents",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "spack_find",
+      "spack_locate",
+      "spack_install"
+    ],
+    "stats": {
+      "version": "2.0.1",
+      "updated": "2026-07-13"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "spack"
+  },
+  "terrain": {
+    "name": "Terrain",
+    "category": "Analysis & Visualization",
+    "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "dem_terrain",
+      "pointcloud_read"
+    ],
+    "stats": {
+      "version": "2.2.3",
+      "updated": "2026-07-13"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "terrain"
   }
 };
 
 // Categories with counts and colors
 export const categories = {
   "All": {
-    "count": 17,
+    "count": 23,
     "color": "#6b7280",
     "icon": "\ud83d\udd0d"
+  },
+  "Analysis & Visualization": {
+    "count": 6,
+    "color": "#10b981",
+    "icon": "\ud83d\udcc8"
+  },
+  "Data Processing": {
+    "count": 11,
+    "color": "#3b82f6",
+    "icon": "\ud83d\udcca"
   },
   "Search & Retrieval": {
     "count": 1,
     "color": "#6366f1",
     "icon": "\ud83d\udd0d"
   },
-  "Data Processing": {
-    "count": 10,
-    "color": "#3b82f6",
-    "icon": "\ud83d\udcca"
-  },
-  "Utilities": {
-    "count": 1,
-    "color": "#ef4444",
-    "icon": "\ud83d\udd27"
-  },
-  "Analysis & Visualization": {
-    "count": 3,
-    "color": "#10b981",
-    "icon": "\ud83d\udcc8"
-  },
   "System Management": {
     "count": 2,
     "color": "#f59e0b",
     "icon": "\ud83d\udda5\ufe0f"
+  },
+  "Utilities": {
+    "count": 3,
+    "color": "#ef4444",
+    "icon": "\ud83d\udd27"
   }
 };
 
 // Popular MCPs for featured section
 export const popularMcps = [
-  "jarvis",
   "hdf5",
   "paraview",
   "pandas",
   "arxiv",
-  "parallel_sort"
+  "parallel_sort",
+  "node_hardware"
 ];
 
 // Category type mappings

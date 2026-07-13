@@ -1,15 +1,15 @@
 ---
 title: Lmod MCP
-description: "Lmod MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 10 tools for environment module management: load/unload modules, search available modules, save/restore configurations. Enables AI agents to manage HPC software environments."
+description: "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Lmod"
   icon="📦"
   category="System Management"
-  description="Lmod MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 10 tools for environment module management: load/unload modules, search available modules, save/restore configurations. Enables AI agents to manage HPC software environments."
+  description="Lmod MCP - Environment Module Management for LLMs with comprehensive module operations"
   version="2.2.3"
   actions={["module_list", "module_avail", "module_show", "module_load", "module_unload", "module_swap", "module_spider", "module_save", "module_restore", "module_savelist"]}
   platforms={["claude", "cursor", "vscode"]}
@@ -100,4 +100,3 @@ This prompt will:
 - Optimize environment for performance computing
 
 </MCPDetail>
-

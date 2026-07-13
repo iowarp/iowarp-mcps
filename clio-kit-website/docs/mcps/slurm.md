@@ -5,7 +5,7 @@ description: "MCP server for Slurm workload management and HPC job scheduling"
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Slurm"
   icon="🖥️"
   category="System Management"
@@ -76,4 +76,3 @@ Analyze the current cluster queue status, identify bottlenecks, and suggest opti
 - `slurm_list` - Review the user's pending jobs and scheduler-native IDs
 
 </MCPDetail>
-

@@ -127,6 +127,24 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     assert "load_spec" in cast(list[str], output_schema["required"])
 
 
+def test_spack_install_contract_exposes_explicit_concretization_modes() -> None:
+    """Agents can choose Spack reuse or fresh concretization without guessing."""
+    artifact = load_mcp_user_contract("clio-kit-spack-user-v2")
+    tools = {
+        cast(str, tool["name"]): cast(JSON, tool)
+        for tool in cast(list[JSON], artifact["tools"])
+    }
+
+    install_input = cast(JSON, tools["spack_install"]["inputSchema"])
+    properties = cast(JSON, install_input["properties"])
+    reuse = cast(JSON, properties["reuse"])
+    description = cast(str, reuse["description"])
+    assert reuse["default"] is True
+    assert reuse["type"] == "boolean"
+    assert "--reuse" in description
+    assert "--fresh" in description
+
+
 def test_jarvis_contract_combines_mutations_and_execution_observation() -> None:
     """JARVIS gives agents one mutation and one durable observation semantic."""
     artifact = load_mcp_user_contract("clio-kit-jarvis-user-v3")

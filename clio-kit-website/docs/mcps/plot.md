@@ -1,21 +1,21 @@
 ---
 title: Plot MCP
-description: "Plot MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 6 tools for data visualization: line plots, bar charts, scatter plots, histograms, heatmaps. Enables AI agents to generate publication-quality visualizations from CSV/Excel data."
+description: "MCP server for advanced data visualization and plotting operations"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Plot"
   icon="📈"
   category="Data Processing"
-  description="Plot MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 6 tools for data visualization: line plots, bar charts, scatter plots, histograms, heatmaps. Enables AI agents to generate publication-quality visualizations from CSV/Excel data."
+  description="MCP server for advanced data visualization and plotting operations"
   version="2.2.3"
-  actions={["line_plot", "bar_plot", "scatter_plot", "histogram_plot", "heatmap_plot", "data_info"]}
+  actions={["line_plot", "bar_plot", "scatter_plot", "histogram_plot", "heatmap_plot", "plot_timeseries", "data_info"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["MCP", "plotting", "visualization", "analytics", "matplotlib", "seaborn", "data-science"]}
   license="BSD-3-Clause"
-  tools={[{"name": "line_plot", "description": "Create a line plot from CSV or Excel data with customizable styling.", "function_name": "line_plot"}, {"name": "bar_plot", "description": "Create a bar chart from CSV or Excel data with categorical grouping.", "function_name": "bar_plot"}, {"name": "scatter_plot", "description": "Create a scatter plot from CSV or Excel data for correlation analysis.", "function_name": "scatter_plot"}, {"name": "histogram_plot", "description": "Create a histogram from CSV or Excel data showing value distribution.", "function_name": "histogram_plot"}, {"name": "heatmap_plot", "description": "Create a correlation heatmap from numeric columns in CSV or Excel data.", "function_name": "heatmap_plot"}, {"name": "data_info", "description": "Get schema, column types, and summary statistics for a CSV or Excel file.", "function_name": "data_info"}]}
+  tools={[{"name": "line_plot", "description": "Create a line plot from CSV or Excel data with customizable styling.", "function_name": "line_plot"}, {"name": "bar_plot", "description": "Create a bar chart from CSV or Excel data with categorical grouping.", "function_name": "bar_plot"}, {"name": "scatter_plot", "description": "Create a scatter plot from CSV or Excel data for correlation analysis.", "function_name": "scatter_plot"}, {"name": "histogram_plot", "description": "Create a histogram from CSV or Excel data showing value distribution.", "function_name": "histogram_plot"}, {"name": "heatmap_plot", "description": "Create a correlation heatmap from numeric columns in CSV or Excel data.", "function_name": "heatmap_plot"}, {"name": "plot_timeseries", "description": "Create a multi-series line chart PNG from one or more y columns of a CSV or Excel file, auto-detecting a time, numeric, or categorical x axis.", "function_name": "plot_timeseries"}, {"name": "data_info", "description": "Get schema, column types, and summary statistics for a CSV or Excel file.", "function_name": "data_info"}]}
 >
 
 ### 1. Data Exploration and Analysis
@@ -148,4 +148,3 @@ This prompt will:
 <!-- ![Data Completeness Report](images/example6_completeness_report.png) -->
 
 </MCPDetail>
-

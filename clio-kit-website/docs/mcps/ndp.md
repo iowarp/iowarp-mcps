@@ -1,21 +1,21 @@
 ---
 title: Ndp MCP
-description: "NDP MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 3 tools for dataset discovery: list organizations, search datasets, get details. Enables AI agents to discover and access datasets across CKAN instances."
+description: "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
 
-<MCPDetail 
+<MCPDetail
   name="Ndp"
   icon="🔧"
   category="Data Processing"
-  description="NDP MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 3 tools for dataset discovery: list organizations, search datasets, get details. Enables AI agents to discover and access datasets across CKAN instances."
+  description="National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances"
   version="2.2.3"
-  actions={["list_organizations", "search_datasets", "get_dataset_details"]}
+  actions={["list_organizations", "search_datasets", "get_dataset_details", "stage_resource"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["ndp", "dataset-search", "ckan", "mcp", "llm-integration", "scientific-data"]}
   license="BSD-3-Clause"
-  tools={[{"name": "list_organizations", "description": "List organizations available in the National Data Platform.", "function_name": "list_organizations"}, {"name": "search_datasets", "description": "Search for datasets in the NDP using term-based or field-specific criteria.", "function_name": "search_datasets"}, {"name": "get_dataset_details", "description": "Retrieve detailed metadata for a specific dataset by ID or name.", "function_name": "get_dataset_details"}]}
+  tools={[{"name": "list_organizations", "description": "List organizations available in the National Data Platform.", "function_name": "list_organizations"}, {"name": "search_datasets", "description": "Search for datasets in the NDP using term-based or field-specific criteria.", "function_name": "search_datasets"}, {"name": "get_dataset_details", "description": "Retrieve detailed metadata for a specific dataset by ID or name.", "function_name": "get_dataset_details"}, {"name": "stage_resource", "description": "Download/stage an HTTP(S) or OSDF/Pelican dataset resource to a local file and return its local_path, size, and content-type.", "function_name": "stage_resource"}]}
 >
 
 ### 1. Discover Available Organizations
@@ -105,4 +105,3 @@ This prompt will:
 - Return highly targeted results matching specific research criteria
 
 </MCPDetail>
-
