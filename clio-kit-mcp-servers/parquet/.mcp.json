@@ -1,8 +1,8 @@
 {
   "clio-parquet": {
-    "command": "uvx",
+    "command": "clio-kit",
     "args": [
-      "clio-kit",
+      "mcp-server",
       "parquet"
     ]
   }

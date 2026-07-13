@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
-  "description": "JARVIS-CD MCP server with a compact user pipeline surface and a separate admin entry point.",
-  "version": "2.2.4",
+  "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
+  "version": "3.0.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,21 +12,26 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.4",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },
-      "arguments": [
-        "clio-kit",
-        "mcp-server",
-        "jarvis"
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "jarvis"
+        }
       ]
     }
   ],
   "tools": [
     {
       "name": "jarvis_create_pipeline",
-      "description": "Create a JARVIS pipeline for normal agent-driven workflows."
+      "description": "Create a JARVIS pipeline. Optionally pass execution intent such as local, cluster, or hostfile mode; backend details are resolved where the MCP server runs."
     },
     {
       "name": "jarvis_describe",
@@ -34,19 +39,19 @@
     },
     {
       "name": "jarvis_add_step",
-      "description": "Add a package-backed step to a JARVIS pipeline and optionally configure it."
+      "description": "Add a package-backed step to a JARVIS pipeline and optionally configure that step with package-owned settings."
     },
     {
       "name": "jarvis_edit_step",
-      "description": "Edit the configuration of a step in a JARVIS pipeline."
-    },
-    {
-      "name": "jarvis_remove_step",
-      "description": "Remove a step from a JARVIS pipeline without deleting package files."
+      "description": "Edit or remove a step in a JARVIS pipeline. Use operation='edit' with config, or operation='remove' without config."
     },
     {
       "name": "jarvis_run",
-      "description": "Run a configured JARVIS pipeline."
+      "description": "Run a configured JARVIS pipeline. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. Optional spack_specs are resolved into a filtered environment that JARVIS persists before direct or scheduler execution."
+    },
+    {
+      "name": "jarvis_get_execution",
+      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest."
     }
   ],
   "resources": [

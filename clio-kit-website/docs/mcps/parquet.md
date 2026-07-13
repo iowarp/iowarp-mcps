@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="📋"
   category="Data Processing"
   description="Parquet MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). Tools for Parquet file operations: read columns, preview data, analyze schemas. Enables AI agents to work with columnar data formats efficiently."
-  version="1.0.0"
+  version="2.2.3"
   actions={["summarize_tool", "read_slice_tool", "get_column_preview_tool", "aggregate_column_tool"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["parquet", "columnar-data", "data-analysis", "scientific-computing", "mcp", "llm-integration", "apache-arrow"]}

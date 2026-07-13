@@ -4,14 +4,28 @@
   "title": "CLIO Chronolog",
   "description": "ChronoLog MCP server implementation using Model Context Protocol",
   "version": "2.0.1",
-  "repository": {"url": "https://github.com/iowarp/clio-kit", "source": "github"},
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.0.1",
-      "transport": {"type": "stdio"},
-      "arguments": ["clio-kit", "chronolog"]
+      "version": "2.3.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "chronolog"
+        }
+      ]
     }
   ],
   "tools": [

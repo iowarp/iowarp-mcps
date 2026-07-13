@@ -12,13 +12,19 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.3",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },
-      "arguments": [
-        "clio-kit",
-        "paraview"
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "paraview"
+        }
       ]
     }
   ],
@@ -29,47 +35,47 @@
     },
     {
       "name": "save_contour_as_stl",
-      "description": "Save the active contour or surface as an STL file in the data directory.\n\nArgs:\n    stl_filename: The STL file name to use, defaults to 'contour.stl'.\n\nReturns:\n    Status message."
+      "description": "Save the active contour or surface as an STL file in the data directory."
     },
     {
       "name": "create_geometric_shape",
-      "description": "Create a geometric source (Sphere, Cone, Cylinder, Plane, or Box).\n\nArgs:\n    source_type: Type of source to create.\n\nReturns:\n    Status message with source name."
+      "description": "Create a geometric source (Sphere, Cone, Cylinder, Plane, or Box)."
     },
     {
       "name": "generate_isosurface",
-      "description": "Create an isosurface visualization of the active source at the given isovalue.\n\nArgs:\n    value: Isovalue.\n    field: Optional field name to contour by.\n\nReturns:\n    Status message with filter name."
+      "description": "Create an isosurface visualization of the active source at the given isovalue."
     },
     {
       "name": "create_data_slice",
-      "description": "Create a slice plane through the loaded volume data.\n\nArgs:\n    origin_x, origin_y, origin_z: Slice origin coordinates (defaults to data center).\n    normal_x, normal_y, normal_z: Normal vector for the slice plane (default [0, 0, 1]).\n\nReturns:\n    Status message with pipeline name."
+      "description": "Create a slice plane through the loaded volume data."
     },
     {
       "name": "configure_volume_display",
-      "description": "Toggle volume rendering visibility for the active source.\n\nArgs:\n    enable: Whether to show (True) or hide (False) volume rendering.\n\nReturns:\n    Status message with source name."
+      "description": "Toggle volume rendering visibility for the active source."
     },
     {
       "name": "toggle_visibility",
-      "description": "Toggle visibility for the active source.\n\nArgs:\n    enable: Whether to show (True) or hide (False) the active source.\n\nReturns:\n    Status message with source name."
+      "description": "Toggle visibility for the active source."
     },
     {
       "name": "set_active_source",
-      "description": "Set the active pipeline object by its registered name.\n\nArgs:\n    name: The pipeline source name (e.g., 'Contour1').\n\nReturns:\n    Status message."
+      "description": "Set the active pipeline object by its registered name."
     },
     {
       "name": "get_active_source_names_by_type",
-      "description": "List pipeline source names, optionally filtered by type.\n\nArgs:\n    source_type: Filter by type (e.g., 'Sphere', 'Contour'). None returns all.\n\nReturns:\n    Formatted list of source names."
+      "description": "List pipeline source names, optionally filtered by type."
     },
     {
       "name": "edit_volume_opacity",
-      "description": "Edit the opacity transfer function for a scalar field.\n\nArgs:\n    field_name: The scalar field to modify.\n    opacity_points: List of dicts like [{\"value\": 0.0, \"alpha\": 0.0}, ...].\n\nReturns:\n    Status message."
+      "description": "Edit the opacity transfer function for a scalar field."
     },
     {
       "name": "set_color_map",
-      "description": "Set a custom color transfer function for volume rendering.\n\nArgs:\n    field_name: The field/array name in ParaView.\n    color_points: List of dicts: {\"value\": float, \"rgb\": [r, g, b]}.\n\nReturns:\n    Status message."
+      "description": "Set a custom color transfer function for volume rendering."
     },
     {
       "name": "apply_field_coloring",
-      "description": "Color the active visualization by a specific data field.\n\nArgs:\n    field: Field name to color by.\n    component: Component index (-1 for magnitude).\n\nReturns:\n    Status message."
+      "description": "Color the active visualization by a specific data field."
     },
     {
       "name": "compute_surface_area",
@@ -77,11 +83,11 @@
     },
     {
       "name": "set_color_map_preset",
-      "description": "Apply a predefined color map preset (e.g., Viridis, Plasma, Cool to Warm).\n\nArgs:\n    preset_name: Name of the color map preset.\n\nReturns:\n    Status message."
+      "description": "Apply a predefined color map preset (e.g., Viridis, Plasma, Cool to Warm)."
     },
     {
       "name": "set_representation_type",
-      "description": "Set the representation type for the active source (Surface, Wireframe, Points, etc.).\n\nArgs:\n    rep_type: Representation type.\n\nReturns:\n    Status message."
+      "description": "Set the representation type for the active source (Surface, Wireframe, Points, etc.)."
     },
     {
       "name": "get_pipeline",
@@ -93,11 +99,11 @@
     },
     {
       "name": "get_histogram",
-      "description": "Compute histogram data for a field in the active source.\n\nArgs:\n    field: Field name (auto-selected if only one exists).\n    num_bins: Number of bins (default: 256).\n    data_location: 'POINTS' or 'CELLS'.\n\nReturns:\n    Formatted histogram data."
+      "description": "Compute histogram data for a field in the active source."
     },
     {
       "name": "generate_flow_streamlines",
-      "description": "Create streamlines from a vector volume using the StreamTracer filter.\n\nArgs:\n    seed_point_number: Number of seed points to generate.\n    vector_field: Vector field name (auto-detected if None).\n    integration_direction: 'FORWARD', 'BACKWARD', or 'BOTH'.\n    max_steps: Maximum integration steps.\n    initial_step: Initial step length.\n    maximum_step: Maximum streamline length.\n\nReturns:\n    Status message with tube name."
+      "description": "Create streamlines from a vector volume using the StreamTracer filter."
     },
     {
       "name": "take_viewport_screenshot",
@@ -109,7 +115,7 @@
     },
     {
       "name": "rotate_camera",
-      "description": "Rotate the camera by azimuth and elevation angles in degrees.\n\nArgs:\n    azimuth: Rotation around vertical axis.\n    elevation: Rotation around horizontal axis.\n\nReturns:\n    Status message."
+      "description": "Rotate the camera by azimuth and elevation angles in degrees."
     },
     {
       "name": "reset_camera",
@@ -117,11 +123,11 @@
     },
     {
       "name": "plot_over_line",
-      "description": "Create a 'Plot Over Line' filter to sample data between two points.\n\nArgs:\n    point1: Start [x, y, z] coordinates (defaults to data bounds).\n    point2: End [x, y, z] coordinates (defaults to data bounds).\n    resolution: Number of sample points (default: 100).\n\nReturns:\n    Status message."
+      "description": "Create a 'Plot Over Line' filter to sample data between two points."
     },
     {
       "name": "warp_by_vector",
-      "description": "Apply a 'Warp By Vector' filter to the active source.\n\nArgs:\n    vector_field: Vector field name (auto-detected if None).\n    scale_factor: Scale factor for the warp.\n\nReturns:\n    Status message."
+      "description": "Apply a 'Warp By Vector' filter to the active source."
     },
     {
       "name": "list_commands",

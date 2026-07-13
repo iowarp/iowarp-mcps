@@ -8,7 +8,15 @@ import subprocess
 import re
 import tempfile
 from typing import Optional
-from .utils import check_slurm_available, ensure_logs_directory
+from .utils import (
+    check_slurm_available,
+    ensure_logs_directory,
+    read_regular_job_script,
+    run_slurm_command,
+    validate_sbatch_memory,
+    validate_sbatch_time_limit,
+    validate_sbatch_token,
+)
 
 
 def _create_sbatch_script(
@@ -18,6 +26,8 @@ def _create_sbatch_script(
     time_limit: Optional[str] = None,
     job_name: Optional[str] = None,
     partition: Optional[str] = None,
+    *,
+    original_content: Optional[str] = None,
 ) -> str:
     """
     Create a proper Slurm job script with SBATCH directives.
@@ -33,8 +43,17 @@ def _create_sbatch_script(
     Returns:
         Path to the modified script with SBATCH directives
     """
-    with open(original_script, "r") as f:
-        content = f.read()
+    if cores <= 0:
+        raise ValueError("Core count must be positive")
+    memory = validate_sbatch_memory(memory)
+    time_limit = validate_sbatch_time_limit(time_limit)
+    job_name = validate_sbatch_token(job_name, field="job_name")
+    partition = validate_sbatch_token(partition, field="partition")
+    content = (
+        read_regular_job_script(original_script)
+        if original_content is None
+        else original_content
+    )
 
     # Create a temporary script with SBATCH directives
     fd, temp_script = tempfile.mkstemp(suffix=".sh", prefix="slurm_job_")
@@ -78,17 +97,25 @@ def _submit_real_slurm_job(
     time_limit: Optional[str] = None,
     job_name: Optional[str] = None,
     partition: Optional[str] = None,
+    *,
+    original_content: Optional[str] = None,
 ) -> dict:
     """Submit a real Slurm job using sbatch."""
     # Create a proper SBATCH script
     sbatch_script = _create_sbatch_script(
-        script_path, cores, memory, time_limit, job_name, partition
+        script_path,
+        cores,
+        memory,
+        time_limit,
+        job_name,
+        partition,
+        original_content=original_content,
     )
 
     try:
         # Submit the job using sbatch
         cmd = ["sbatch", sbatch_script]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = run_slurm_command(cmd, test_runner=subprocess.run)
 
         if result.returncode != 0:
             raise RuntimeError(f"sbatch failed: {result.stderr}")
@@ -152,10 +179,9 @@ def submit_slurm_job(
         RuntimeError: If job submission fails or Slurm is not available
     """
     # Validate inputs
-    if not os.path.isfile(script_path):
-        raise FileNotFoundError(f"Script file '{script_path}' not found")
     if cores <= 0:
         raise ValueError("Core count must be positive")
+    original_content = read_regular_job_script(script_path)
 
     if not check_slurm_available():
         raise RuntimeError(
@@ -163,5 +189,11 @@ def submit_slurm_job(
         )
 
     return _submit_real_slurm_job(
-        script_path, cores, memory, time_limit, job_name, partition
+        script_path,
+        cores,
+        memory,
+        time_limit,
+        job_name,
+        partition,
+        original_content=original_content,
     )

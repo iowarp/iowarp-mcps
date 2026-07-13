@@ -1,0 +1,9 @@
+{
+  "clio-spack": {
+    "command": "clio-kit",
+    "args": [
+      "mcp-server",
+      "spack"
+    ]
+  }
+}

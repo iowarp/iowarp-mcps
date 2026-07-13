@@ -15,18 +15,23 @@ Usage:
 """
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from clio_kit.mcp_contracts import generate_user_contract_artifacts
 
 try:
     import tomllib
 except ImportError:
-    import tomli as tomllib  # type: ignore[no-redef]
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 REPO_URL = "https://github.com/iowarp/clio-kit"
 MAX_DESCRIPTION_LENGTH = 100
+SERVER_VERSIONS_FILE = "mcp-server-versions.toml"
+STABLE_VERSION_PATTERN = re.compile(r"[1-9][0-9]*\.[0-9]+\.[0-9]+")
 
 # Domain-specific tags for each server
 SERVER_TAGS: dict[str, list[str]] = {
@@ -46,6 +51,7 @@ SERVER_TAGS: dict[str, list[str]] = {
     "parquet": ["parquet", "apache-arrow", "columnar-data", "data-analysis"],
     "plot": ["data-visualization", "matplotlib", "plotting", "charts"],
     "slurm": ["hpc", "slurm", "job-scheduling", "cluster-management"],
+    "spack": ["package-management", "hpc", "scientific-computing"],
 }
 
 
@@ -55,6 +61,56 @@ def read_root_version(repo_root: Path) -> str:
     with open(pyproject_path, "rb") as f:
         data = tomllib.load(f)
     return data.get("project", {}).get("version", "1.0.0")
+
+
+def read_server_versions(repo_root: Path) -> dict[str, str]:
+    """Read the independent MCP Registry contract versions."""
+    versions_path = repo_root / SERVER_VERSIONS_FILE
+    with open(versions_path, "rb") as f:
+        data = tomllib.load(f)
+
+    if data.get("schema-version") != 1:
+        raise ValueError(f"{versions_path} must use schema-version = 1")
+    raw_versions = data.get("servers")
+    if not isinstance(raw_versions, dict) or not raw_versions:
+        raise ValueError(f"{versions_path} must define a nonempty [servers] table")
+
+    versions: dict[str, str] = {}
+    for raw_name, raw_version in raw_versions.items():
+        if not isinstance(raw_name, str) or not raw_name:
+            raise ValueError(f"{versions_path} contains an invalid server name")
+        if (
+            not isinstance(raw_version, str)
+            or STABLE_VERSION_PATTERN.fullmatch(raw_version) is None
+        ):
+            raise ValueError(
+                f"{versions_path} has an invalid stable version for {raw_name!r}"
+            )
+        versions[raw_name] = raw_version
+    if list(versions) != sorted(versions):
+        raise ValueError(f"{versions_path} server inventory must be sorted")
+    return versions
+
+
+def read_registry_publish_servers(repo_root: Path) -> tuple[str, ...]:
+    """Read the MCP servers whose contract versions this release publishes."""
+    versions_path = repo_root / SERVER_VERSIONS_FILE
+    with open(versions_path, "rb") as f:
+        data = tomllib.load(f)
+    release = data.get("mcp-registry-release")
+    raw_servers = release.get("publish") if isinstance(release, dict) else None
+    if not isinstance(raw_servers, list) or not raw_servers:
+        raise ValueError(
+            f"{versions_path} must define a nonempty mcp-registry-release.publish"
+        )
+    if not all(isinstance(server, str) and server for server in raw_servers):
+        raise ValueError(f"{versions_path} has an invalid publish server")
+    servers = tuple(cast(str, server) for server in raw_servers)
+    if len(set(servers)) != len(servers):
+        raise ValueError(f"{versions_path} has duplicate publish servers")
+    if servers != tuple(sorted(servers)):
+        raise ValueError(f"{versions_path} publish inventory must be sorted")
+    return servers
 
 
 def read_pyproject(server_dir: Path) -> dict[str, Any]:
@@ -90,7 +146,7 @@ def extract_metadata(server_dir: Path) -> dict[str, Any] | None:
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     """Write a dict as formatted JSON to a file, creating parent dirs."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
 
@@ -102,13 +158,16 @@ def build_server_json(
     server_name: str,
     project: dict[str, Any],
     metadata: dict[str, Any],
-    pypi_version: str = "1.0.0",
+    *,
+    server_version: str,
+    pypi_version: str,
 ) -> dict[str, Any]:
-    """Build the server.json manifest for the official MCP registry."""
-    version = project.get("version", "1.0.0")
+    """Build a registry manifest with independent server and wheel versions."""
     description = project.get("description", "")
     if len(description) > MAX_DESCRIPTION_LENGTH:
-        description = description[: MAX_DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0] + "..."
+        description = (
+            description[: MAX_DESCRIPTION_LENGTH - 3].rsplit(" ", 1)[0] + "..."
+        )
 
     tools = [
         {"name": t["name"], "description": t["description"]}
@@ -136,7 +195,7 @@ def build_server_json(
         "name": f"io.github.iowarp/{server_name}-mcp",
         "title": f"CLIO {server_name.replace('-', ' ').title()}",
         "description": description,
-        "version": pypi_version,
+        "version": server_version,
         "repository": {"url": REPO_URL, "source": "github"},
         "packages": [
             {
@@ -144,7 +203,10 @@ def build_server_json(
                 "identifier": "clio-kit",
                 "version": pypi_version,
                 "transport": {"type": "stdio"},
-                "arguments": ["clio-kit", server_name],
+                "packageArguments": [
+                    {"type": "positional", "value": "mcp-server"},
+                    {"type": "positional", "value": server_name},
+                ],
             }
         ],
         "tools": tools,
@@ -168,22 +230,23 @@ def write_claude_plugin_files(
     server_dir: Path,
     server_name: str,
     project: dict[str, Any],
+    *,
+    server_version: str,
 ) -> None:
-    """Write .claude-plugin/plugin.json and .mcp.json for a server."""
+    """Write one contract-versioned plugin and its persistent MCP config."""
     description = project.get("description", "")
-    version = project.get("version", "1.0.0")
 
     plugin_json = {
         "name": f"clio-{server_name}",
         "description": description,
-        "version": version,
+        "version": server_version,
     }
     _write_json(server_dir / ".claude-plugin" / "plugin.json", plugin_json)
 
     mcp_json = {
         f"clio-{server_name}": {
-            "command": "uvx",
-            "args": ["clio-kit", server_name],
+            "command": "clio-kit",
+            "args": ["mcp-server", server_name],
         }
     }
     _write_json(server_dir / ".mcp.json", mcp_json)
@@ -191,8 +254,10 @@ def write_claude_plugin_files(
 
 def build_marketplace_json(
     server_entries: list[dict[str, Any]],
+    *,
+    pypi_version: str,
 ) -> dict[str, Any]:
-    """Build the .claude-plugin/marketplace.json for the repo root."""
+    """Build the root-versioned marketplace of contract-versioned plugins."""
     return {
         "name": "clio-kit",
         "owner": {
@@ -201,7 +266,7 @@ def build_marketplace_json(
         },
         "metadata": {
             "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-            "version": "1.0.0",
+            "version": pypi_version,
             "pluginRoot": "./clio-kit-mcp-servers",
         },
         "plugins": server_entries,
@@ -216,8 +281,8 @@ def build_claude_desktop_config(server_names: list[str]) -> dict[str, Any]:
     servers: dict[str, Any] = {}
     for name in sorted(server_names):
         servers[f"clio-{name}"] = {
-            "command": "uvx",
-            "args": ["clio-kit", name],
+            "command": "clio-kit",
+            "args": ["mcp-server", name],
         }
     return {"mcpServers": servers}
 
@@ -225,17 +290,21 @@ def build_claude_desktop_config(server_names: list[str]) -> dict[str, Any]:
 # --- Gemini CLI Extension ---
 
 
-def build_gemini_extension(server_names: list[str]) -> dict[str, Any]:
-    """Build gemini-extension.json bundling all servers."""
+def build_gemini_extension(
+    server_names: list[str],
+    *,
+    pypi_version: str,
+) -> dict[str, Any]:
+    """Build the root-versioned Gemini extension bundling all servers."""
     mcp_servers: dict[str, Any] = {}
     for name in sorted(server_names):
         mcp_servers[f"clio-{name}"] = {
-            "command": "uvx",
-            "args": ["clio-kit", name],
+            "command": "clio-kit",
+            "args": ["mcp-server", name],
         }
     return {
         "name": "clio-kit",
-        "version": "1.0.0",
+        "version": pypi_version,
         "mcpServers": mcp_servers,
     }
 
@@ -252,12 +321,37 @@ def generate_all(mcps_dir: str) -> None:
 
     repo_root = mcps_path.parent
     pypi_version = read_root_version(repo_root)
+    server_versions = read_server_versions(repo_root)
+    registry_publish_servers = read_registry_publish_servers(repo_root)
     print(f"Root PyPI version: {pypi_version}")
     generated: list[str] = []
     failed: list[str] = []
     marketplace_plugins: list[dict[str, Any]] = []
 
-    for server_dir in sorted(mcps_path.iterdir()):
+    server_dirs = sorted(
+        server_dir
+        for server_dir in mcps_path.iterdir()
+        if server_dir.is_dir()
+        and not server_dir.name.startswith(".")
+        and (server_dir / "pyproject.toml").exists()
+    )
+    discovered_servers = {server_dir.name for server_dir in server_dirs}
+    configured_servers = set(server_versions)
+    if discovered_servers != configured_servers:
+        missing = sorted(discovered_servers - configured_servers)
+        unknown = sorted(configured_servers - discovered_servers)
+        raise ValueError(
+            "MCP server version inventory differs from shipped projects: "
+            f"missing={missing}, unknown={unknown}"
+        )
+    unknown_publish_servers = set(registry_publish_servers) - discovered_servers
+    if unknown_publish_servers:
+        raise ValueError(
+            "MCP Registry release inventory contains unknown projects: "
+            f"{sorted(unknown_publish_servers)}"
+        )
+
+    for server_dir in server_dirs:
         if not server_dir.is_dir() or server_dir.name.startswith("."):
             continue
 
@@ -274,7 +368,11 @@ def generate_all(mcps_dir: str) -> None:
         metadata = extract_metadata(server_dir)
         if metadata is not None:
             server_json = build_server_json(
-                server_name, project, metadata, pypi_version=pypi_version
+                server_name,
+                project,
+                metadata,
+                server_version=server_versions[server_name],
+                pypi_version=pypi_version,
             )
             _write_json(server_dir / "server.json", server_json)
             tool_count = len(server_json.get("tools", []))
@@ -287,18 +385,22 @@ def generate_all(mcps_dir: str) -> None:
             print("  Skipped server.json (using existing, extraction failed)")
 
         # Claude Code plugin files: always write (no metadata needed)
-        write_claude_plugin_files(server_dir, server_name, project)
+        write_claude_plugin_files(
+            server_dir,
+            server_name,
+            project,
+            server_version=server_versions[server_name],
+        )
         print("  Wrote .claude-plugin/plugin.json + .mcp.json")
 
         # Collect marketplace entry
         description = project.get("description", "")
-        version = project.get("version", "1.0.0")
         marketplace_plugins.append(
             {
                 "name": f"clio-{server_name}",
                 "source": f"./clio-kit-mcp-servers/{server_name}",
                 "description": description,
-                "version": version,
+                "version": server_versions[server_name],
                 "category": "development",
                 "keywords": SERVER_TAGS.get(server_name, []),
                 "license": "BSD-3-Clause",
@@ -309,7 +411,10 @@ def generate_all(mcps_dir: str) -> None:
         generated.append(server_name)
 
     # Claude Code marketplace manifest
-    marketplace = build_marketplace_json(marketplace_plugins)
+    marketplace = build_marketplace_json(
+        marketplace_plugins,
+        pypi_version=pypi_version,
+    )
     _write_json(repo_root / ".claude-plugin" / "marketplace.json", marketplace)
     print(
         f"\nWrote .claude-plugin/marketplace.json ({len(marketplace_plugins)} plugins)"
@@ -321,9 +426,19 @@ def generate_all(mcps_dir: str) -> None:
     print(f"Wrote claude_desktop_config.json ({len(generated)} servers)")
 
     # Gemini CLI extension manifest
-    gemini_ext = build_gemini_extension(generated)
+    gemini_ext = build_gemini_extension(generated, pypi_version=pypi_version)
     _write_json(repo_root / "gemini-extension.json", gemini_ext)
     print(f"Wrote gemini-extension.json ({len(generated)} servers)")
+
+    # The registry manifest intentionally carries only abbreviated tool metadata.
+    # Bind the full locked JARVIS, SLURM, and Spack user schemas from actual stdio
+    # tools/list responses in separately shipped canonical artifacts.
+    contracts = generate_user_contract_artifacts(repo_root)
+    for contract in contracts:
+        print(
+            "Wrote MCP user contract "
+            f"{contract['contract_id']} ({contract['contract_sha256']})"
+        )
 
     # Summary
     print(f"\nGenerated: {len(generated)} servers")

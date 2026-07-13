@@ -9,12 +9,13 @@ async def stop_chronolog() -> str:
     """Release the story and disconnect from ChronoLog."""
     if config._story_handle is None:
         raise ToolError("No active ChronoLog session to stop.")
+    client = config.get_client()
 
-    ret = config.client.ReleaseStory(config._active_chronicle, config._active_story)
+    ret = client.ReleaseStory(config._active_chronicle, config._active_story)
     if ret != 0:
         raise ToolError(f"Failed to release story '{config._active_story}': {ret}")
 
-    ret = config.client.Disconnect()
+    ret = client.Disconnect()
     if ret != 0:
         raise ToolError(f"Failed to disconnect from ChronoLog: {ret}")
 

@@ -1,5 +1,5 @@
 {
   "name": "clio-hdf5",
   "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
-  "version": "1.0.0"
+  "version": "2.2.3"
 }

@@ -1,5 +1,5 @@
 {
   "name": "clio-paraview",
   "description": "MCP server for ParaView scientific visualization",
-  "version": "1.0.0"
+  "version": "2.2.3"
 }

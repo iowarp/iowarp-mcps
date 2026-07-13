@@ -1,5 +1,5 @@
 {
   "name": "clio-adios",
   "description": "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes.",
-  "version": "1.0.0"
+  "version": "2.2.3"
 }

@@ -12,13 +12,19 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.2.3",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },
-      "arguments": [
-        "clio-kit",
-        "ndp"
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "ndp"
+        }
       ]
     }
   ],

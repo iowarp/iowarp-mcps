@@ -5,11 +5,75 @@ Tests actual function bodies by patching handlers at the capabilities layer.
 
 import pytest
 import importlib
+import os
 import runpy
 import sys
-from unittest.mock import Mock, patch
+from copy import deepcopy
+from unittest.mock import Mock, call, patch
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+
+
+def test_progress_response_models_are_closed_and_identity_checked():
+    """Public progress models expose the exact stable JARVIS package schema."""
+    from jarvis_mcp.server import (
+        JarvisPackageProgressDocument,
+        JarvisProgressEventDocument,
+        JarvisProgressSnapshotDocument,
+    )
+
+    event = {
+        "schema_version": "jarvis.progress.v1",
+        "package_name": "builtin.gray_scott",
+        "package_id": "simulation",
+        "execution_id": "execution-1",
+        "label": "timestep",
+        "state": "running",
+        "current": 4.0,
+        "total": 10.0,
+        "unit": "step",
+        "message": "advanced simulation",
+        "sequence": 3,
+        "observed_at_epoch": 1.0,
+        "determinate": True,
+        "metadata": {"output": "gray-scott.bp"},
+    }
+    document = {
+        "schema_version": "jarvis.execution.progress.v1",
+        "execution_id": "execution-1",
+        "pipeline_id": "pipeline-1",
+        "execution_state": "running",
+        "terminal": False,
+        "packages": [
+            {
+                "package_id": "simulation",
+                "package_name": "builtin.gray_scott",
+                "event_count": 4,
+                "latest": event,
+            }
+        ],
+    }
+
+    snapshot = JarvisProgressSnapshotDocument.model_validate(document)
+
+    assert isinstance(snapshot.packages[0], JarvisPackageProgressDocument)
+    assert isinstance(snapshot.packages[0].latest, JarvisProgressEventDocument)
+    assert snapshot.packages[0].latest.current == 4.0
+
+    extended = deepcopy(document)
+    extended["packages"][0]["untrusted"] = True
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        JarvisProgressSnapshotDocument.model_validate(extended)
+
+    forged = deepcopy(document)
+    forged["packages"][0]["latest"]["execution_id"] = "other-execution"
+    with pytest.raises(ValueError, match="execution identity did not match"):
+        JarvisProgressSnapshotDocument.model_validate(forged)
+
+    inconsistent = deepcopy(document)
+    inconsistent["packages"][0]["latest"]["determinate"] = False
+    with pytest.raises(ValueError, match="determinate must match"):
+        JarvisProgressSnapshotDocument.model_validate(inconsistent)
 
 
 class TestServerProfiles:
@@ -350,21 +414,16 @@ class TestPipelineToolsDirect:
             result = await jarvis_create_pipeline_tool("new")
 
             assert result["status"] == "created"
-            mock_handler.assert_called_once_with("new")
+            mock_handler.assert_called_once_with("new", initial_config=None)
 
     @pytest.mark.asyncio
     async def test_jarvis_create_pipeline_with_cluster_execution(self):
         """Cluster execution intent configures native scheduler state."""
         with (
             patch("jarvis_mcp.server.create_pipeline") as create_handler,
-            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
             patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}),
         ):
             create_handler.return_value = {"pipeline_id": "new", "status": "created"}
-            configure_handler.return_value = {
-                "pipeline_id": "new",
-                "status": "configured",
-            }
 
             from jarvis_mcp.server import jarvis_create_pipeline_tool
 
@@ -379,10 +438,10 @@ class TestPipelineToolsDirect:
                 },
             )
 
-            assert result["created"]["status"] == "created"
-            configure_handler.assert_called_once_with(
+            assert result["status"] == "created"
+            create_handler.assert_called_once_with(
                 "new",
-                {
+                initial_config={
                     "scheduler": {
                         "name": "slurm",
                         "nodes": 4,
@@ -434,17 +493,29 @@ class TestPipelineToolsDirect:
             mock_handler.assert_called_once_with("test", "lammps_1", nodes=2)
 
     @pytest.mark.asyncio
-    async def test_jarvis_remove_step_tool_direct(self):
-        """Test user-facing step removal unlinks the package."""
+    async def test_jarvis_edit_step_remove_operation_unlinks(self):
+        """The compact edit tool owns user-facing remove semantics."""
         with patch("jarvis_mcp.server.unlink_pkg") as mock_handler:
-            mock_handler.return_value = {"pipeline_id": "test", "unlinked": "lammps_1"}
+            mock_handler.return_value = {"pipeline_id": "test", "unlinked": "step"}
 
-            from jarvis_mcp.server import jarvis_remove_step_tool
+            from jarvis_mcp.server import jarvis_edit_step_tool
 
-            result = await jarvis_remove_step_tool("test", "lammps_1")
+            result = await jarvis_edit_step_tool("test", "step", operation="remove")
 
-            assert result["unlinked"] == "lammps_1"
-            mock_handler.assert_called_once_with("test", "lammps_1")
+        assert result["unlinked"] == "step"
+        mock_handler.assert_called_once_with("test", "step")
+
+    @pytest.mark.asyncio
+    async def test_jarvis_edit_step_enforces_conditional_config(self):
+        """Edit requires config and remove rejects it."""
+        from jarvis_mcp.server import jarvis_edit_step_tool
+
+        with pytest.raises(ToolError, match="config is required"):
+            await jarvis_edit_step_tool("test", "step", operation="edit")
+        with pytest.raises(ToolError, match="config is not accepted"):
+            await jarvis_edit_step_tool(
+                "test", "step", {"nodes": 2}, operation="remove"
+            )
 
     @pytest.mark.asyncio
     async def test_jarvis_run_tool_direct(self):
@@ -458,18 +529,94 @@ class TestPipelineToolsDirect:
 
             assert result["status"] == "running"
             mock_handler.assert_called_once_with(
-                "test", mode="auto", submit=True, wait=False
+                "test",
+                mode="auto",
+                submit=True,
+                wait=False,
+                execution_id=None,
+                spack_specs=None,
+                pipeline_config=None,
             )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_only_enables_progress_for_an_explicit_token(self):
+        """A Context without a negotiated progress token keeps execution unchanged."""
+        from types import SimpleNamespace
+        from typing import cast
+
+        from fastmcp import Context
+
+        from jarvis_mcp.server import jarvis_run_tool
+
+        class FakeContext:
+            request_context = SimpleNamespace(meta=SimpleNamespace(progressToken=None))
+
+            async def report_progress(self, *_args: object, **_kwargs: object) -> None:
+                raise AssertionError("progress must not be reported without a token")
+
+        with patch("jarvis_mcp.server.run_pipeline") as run_handler:
+            run_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            await jarvis_run_tool("test", ctx=cast(Context, FakeContext()))
+
+        run_handler.assert_called_once_with(
+            "test",
+            mode="auto",
+            submit=True,
+            wait=False,
+            execution_id=None,
+            spack_specs=None,
+            pipeline_config=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_forwards_progress_for_an_explicit_token(self):
+        """A negotiated token attaches a reporter to the JARVIS operation."""
+        from types import SimpleNamespace
+        from typing import cast
+
+        from fastmcp import Context
+
+        from jarvis_mcp.server import jarvis_run_tool
+
+        reports: list[tuple[float, float | None, str]] = []
+
+        class FakeContext:
+            request_context = SimpleNamespace(
+                meta=SimpleNamespace(progressToken="live-token")
+            )
+
+            async def report_progress(
+                self, current: float, total: float | None, message: str
+            ) -> None:
+                reports.append((current, total, message))
+
+        with patch("jarvis_mcp.server.run_pipeline") as run_handler:
+            run_handler.return_value = {"pipeline_id": "test", "status": "running"}
+
+            await jarvis_run_tool("test", ctx=cast(Context, FakeContext()))
+
+        arguments = dict(run_handler.call_args.kwargs)
+        reporter = arguments.pop("progress_reporter")
+        await reporter(1.0, 2.0, "live")
+        assert run_handler.call_args.args == ("test",)
+        assert arguments == {
+            "mode": "auto",
+            "submit": True,
+            "wait": False,
+            "execution_id": None,
+            "spack_specs": None,
+            "pipeline_config": None,
+        }
+        assert reports == [(1.0, 2.0, "live")]
 
     @pytest.mark.asyncio
     async def test_jarvis_run_tool_maps_execution_intent(self):
         """User execution intent maps to JARVIS-native configuration."""
         with (
-            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
             patch("jarvis_mcp.server.run_pipeline") as run_handler,
             patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}),
         ):
-            configure_handler.return_value = {"status": "configured"}
             run_handler.return_value = {"pipeline_id": "test", "status": "submitted"}
 
             from jarvis_mcp.server import jarvis_run_tool
@@ -485,9 +632,14 @@ class TestPipelineToolsDirect:
             )
 
             assert result["status"] == "submitted"
-            configure_handler.assert_called_once_with(
+            run_handler.assert_called_once_with(
                 "test",
-                {
+                mode="scheduler",
+                submit=True,
+                wait=False,
+                execution_id=None,
+                spack_specs=None,
+                pipeline_config={
                     "scheduler": {
                         "name": "slurm",
                         "nodes": 2,
@@ -496,18 +648,11 @@ class TestPipelineToolsDirect:
                     }
                 },
             )
-            run_handler.assert_called_once_with(
-                "test", mode="scheduler", submit=True, wait=False
-            )
 
     @pytest.mark.asyncio
     async def test_jarvis_run_tool_maps_hostfile_hosts(self):
         """Hostfile intent can be supplied as semantic host names."""
-        with (
-            patch("jarvis_mcp.server.configure_pipeline") as configure_handler,
-            patch("jarvis_mcp.server.run_pipeline") as run_handler,
-        ):
-            configure_handler.return_value = {"status": "configured"}
+        with patch("jarvis_mcp.server.run_pipeline") as run_handler:
             run_handler.return_value = {"pipeline_id": "test", "status": "running"}
 
             from jarvis_mcp.server import jarvis_run_tool
@@ -517,13 +662,124 @@ class TestPipelineToolsDirect:
                 execution={"mode": "hostfile", "hosts": ["node-a", "node-b"]},
             )
 
-            configure_handler.assert_called_once_with(
-                "test",
-                {"scheduler": None, "hostfile_entries": ["node-a", "node-b"]},
-            )
             run_handler.assert_called_once_with(
-                "test", mode="direct", submit=True, wait=False
+                "test",
+                mode="direct",
+                submit=True,
+                wait=False,
+                execution_id=None,
+                spack_specs=None,
+                pipeline_config={
+                    "scheduler": None,
+                    "hostfile_entries": ["node-a", "node-b"],
+                },
             )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_run_forwards_spack_specs(self):
+        """Runtime package specs are owned by jarvis_run and persisted by JARVIS."""
+        with patch("jarvis_mcp.server.run_pipeline") as run_handler:
+            run_handler.return_value = {"pipeline_id": "test", "status": "completed"}
+
+            from jarvis_mcp.server import jarvis_run_tool
+
+            await jarvis_run_tool("test", spack_specs=["lammps@2025 +mpi"])
+
+        run_handler.assert_called_once_with(
+            "test",
+            mode="auto",
+            submit=True,
+            wait=False,
+            execution_id=None,
+            spack_specs=["lammps@2025 +mpi"],
+            pipeline_config=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_execution_query_tools_delegate_to_native_handlers(self):
+        """One user tool selects progress and artifact views in one query."""
+        from jarvis_mcp.server import (
+            ExecutionArtifactQuery,
+            jarvis_get_execution_tool,
+        )
+
+        with patch("jarvis_mcp.server.get_execution") as get_handler:
+            get_handler.return_value = {
+                "schema_version": "clio-kit.jarvis-execution.v1",
+                "pipeline_id": "pipeline",
+                "execution_id": "execution-1",
+                "execution_handle": {
+                    "schema_version": "jarvis.execution.handle.v1",
+                    "execution_id": "execution-1",
+                    "pipeline_id": "pipeline",
+                    "mode": "direct",
+                    "scheduler_provider": None,
+                    "scheduler_native_id": None,
+                    "cluster": None,
+                },
+                "execution_record": {
+                    "schema_version": "jarvis.execution.record.v1",
+                    "execution_id": "execution-1",
+                    "pipeline_id": "pipeline",
+                    "pipeline_name": "pipeline",
+                    "mode": "direct",
+                    "scheduler_provider": None,
+                    "scheduler_native_id": None,
+                    "cluster": None,
+                    "state": "running",
+                    "submitted": False,
+                    "terminal": False,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "return_code": None,
+                    "error": None,
+                    "metadata": {},
+                },
+                "runtime_metadata": {},
+                "progress": None,
+                "artifact_page": None,
+            }
+
+            record = await jarvis_get_execution_tool("pipeline", "execution-1")
+            filtered = await jarvis_get_execution_tool(
+                "pipeline",
+                "execution-1",
+                include_progress=False,
+                artifacts=ExecutionArtifactQuery(
+                    package_id="jarvis-core",
+                    role="log",
+                    state="finalized",
+                    artifact_id="art_AAAAAAAAAAAAAAAAAAAAAA",
+                    page_size=25,
+                    cursor="opaque-cursor",
+                ),
+            )
+
+        assert record.schema_version == "clio-kit.jarvis-execution.v1"
+        assert record.progress is None
+        assert record.artifact_page is None
+        assert filtered.schema_version == "clio-kit.jarvis-execution.v1"
+        assert get_handler.await_args_list == [
+            call(
+                "pipeline",
+                "execution-1",
+                include_progress=True,
+                artifacts=None,
+            ),
+            call(
+                "pipeline",
+                "execution-1",
+                include_progress=False,
+                artifacts={
+                    "package_id": "jarvis-core",
+                    "role": "log",
+                    "state": "finalized",
+                    "artifact_id": "art_AAAAAAAAAAAAAAAAAAAAAA",
+                    "page_size": 25,
+                    "cursor": "opaque-cursor",
+                },
+            ),
+        ]
 
     def test_execution_intent_local_and_direct_disable_scheduler(self):
         """Local and direct modes select single-node execution without a scheduler."""
@@ -550,7 +806,7 @@ class TestPipelineToolsDirect:
         """Hostfile mode needs either a hostfile path or explicit host names."""
         from jarvis_mcp.server import _execution_intent_to_pipeline_config
 
-        with pytest.raises(ToolError, match="execution.hostfile is required"):
+        with pytest.raises(ToolError, match="exactly one of hostfile or hosts"):
             _execution_intent_to_pipeline_config({"mode": "hostfile"})
 
     def test_execution_intent_rejects_unknown_mode(self):
@@ -559,6 +815,66 @@ class TestPipelineToolsDirect:
 
         with pytest.raises(ToolError, match="execution.mode must be one of"):
             _execution_intent_to_pipeline_config({"mode": "magic"})
+
+    def test_execution_intent_schema_is_closed_and_typed(self):
+        """The MCP schema advertises a finite mode enum and forbids unknown keys."""
+        from jarvis_mcp.server import ExecutionIntent
+
+        schema = ExecutionIntent.model_json_schema()
+
+        assert schema["additionalProperties"] is False
+        assert set(schema["properties"]["mode"]["enum"]) == {
+            "auto",
+            "local",
+            "direct",
+            "cluster",
+            "scheduler",
+            "hostfile",
+        }
+
+    def test_execution_intent_rejects_unknown_and_incompatible_fields(self):
+        """Typos and fields that a selected backend cannot honor fail closed."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with pytest.raises(ToolError, match="Extra inputs are not permitted"):
+            _execution_intent_to_pipeline_config({"mode": "cluster", "nodez": 2})
+        with pytest.raises(ToolError, match="does not accept fields: nodes"):
+            _execution_intent_to_pipeline_config({"mode": "local", "nodes": 2})
+        with pytest.raises(ToolError, match="exactly one of hostfile or hosts"):
+            _execution_intent_to_pipeline_config(
+                {
+                    "mode": "hostfile",
+                    "hostfile": "/tmp/hosts",
+                    "hosts": ["n1"],
+                }
+            )
+
+    def test_execution_intent_rejects_nonpositive_resources(self):
+        """Invalid resource counts fail before scheduler configuration is persisted."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with pytest.raises(ToolError, match="greater than 0"):
+            _execution_intent_to_pipeline_config({"mode": "cluster", "nodes": 0})
+
+    @pytest.mark.parametrize(
+        "execution",
+        [
+            {"mode": "cluster", "job_name": "safe\n#SBATCH --exclusive"},
+            {"mode": "cluster", "output": "out.log\nrm -rf /"},
+            {"mode": "hostfile", "hostfile": "/tmp/hosts\nmalicious"},
+            {"mode": "hostfile", "hosts": ["node-a\nattacker"]},
+            {"mode": "hostfile", "hosts": ["--malicious"]},
+        ],
+    )
+    def test_execution_intent_rejects_scheduler_and_host_injection(
+        self,
+        execution: dict[str, object],
+    ) -> None:
+        """Controls and option-shaped hosts fail before files or YAML are written."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with pytest.raises(ToolError):
+            _execution_intent_to_pipeline_config(execution)
 
     def test_execution_intent_cluster_requires_scheduler(self):
         """Explicit cluster mode fails if no scheduler exists on the MCP host."""
@@ -580,6 +896,17 @@ class TestPipelineToolsDirect:
             from jarvis_mcp.server import _execution_intent_to_pipeline_config
 
             assert _execution_intent_to_pipeline_config({"mode": "auto"}) == {}
+
+    def test_execution_intent_auto_does_not_discard_resource_fields(self):
+        """Auto mode fails if resource intent cannot be represented on this host."""
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value=None),
+        ):
+            from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+            with pytest.raises(ToolError, match="no supported cluster scheduler"):
+                _execution_intent_to_pipeline_config({"mode": "auto", "nodes": 2})
 
     def test_detect_scheduler_name_from_env_and_path(self):
         """Scheduler detection prefers explicit env and otherwise probes sbatch."""
@@ -683,6 +1010,34 @@ class TestPipelineToolsDirect:
             assert _find_package_description("missing") is None
             packages = await jarvis_describe_tool("packages")
             assert packages["target"] == "packages"
+
+    @pytest.mark.asyncio
+    async def test_package_discovery_supports_package_py_layout(self, tmp_path):
+        """JARVIS repositories using package.py are exposed like pkg.py repositories."""
+        repo = tmp_path / "repo"
+        package_dir = repo / "site" / "solver"
+        package_dir.mkdir(parents=True)
+        package_file = package_dir / "package.py"
+        package_file.write_text('"""Site solver."""\n', encoding="utf-8")
+        manager = Mock()
+        manager.list_repos.return_value = [repo]
+
+        with (
+            patch("jarvis_mcp.server.get_manager", return_value=manager),
+            patch("jarvis_mcp.server._package_settings", return_value=None),
+        ):
+            from jarvis_mcp.server import jarvis_describe_tool
+
+            result = await jarvis_describe_tool("packages")
+
+        assert result["packages"] == [
+            {
+                "name": "site.solver",
+                "short_name": "solver",
+                "description": "Site solver.",
+                "path": str(package_file),
+            }
+        ]
 
     @pytest.mark.asyncio
     async def test_jarvis_describe_pipeline_tool_direct(self):
@@ -1214,6 +1569,21 @@ class TestMainFunctionDirect:
             # Should be called with stdio transport (default)
             mock_run.assert_called_once_with(transport="stdio")
 
+    @pytest.mark.parametrize("profile", ["admin", "all"])
+    def test_main_accepts_compatibility_profile_overrides(self, profile):
+        """The packaged jarvis-mcp entry point can select admin and all surfaces."""
+        with (
+            patch("sys.argv", ["jarvis-mcp", "--profile", profile]),
+            patch("jarvis_mcp.server.apply_tool_profile") as mock_profile,
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            from jarvis_mcp.server import main
+
+            main()
+
+        mock_profile.assert_called_once_with(profile)
+        mock_run.assert_called_once_with(transport="stdio")
+
     def test_admin_main_uses_admin_profile(self):
         """Test admin entry point selects the admin profile."""
         with (
@@ -1278,6 +1648,28 @@ class TestMainFunctionDirect:
             mock_profile.assert_called_once_with("user")
             mock_run.assert_called_once_with(transport="stdio")
 
+    def test_user_server_sets_validated_spack_command(self, tmp_path):
+        """The packaged user entrypoint accepts an explicit audited Spack path."""
+        command = tmp_path / "spack"
+        command.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        command.chmod(0o755)
+        sys.modules.pop("jarvis_mcp.user_server", None)
+        with (
+            patch(
+                "sys.argv",
+                ["jarvis-mcp", "--spack-command", str(command)],
+            ),
+            patch.dict("os.environ", {}, clear=True),
+            patch("jarvis_mcp.server.apply_tool_profile"),
+            patch("jarvis_mcp.server.mcp.run") as mock_run,
+        ):
+            module = importlib.import_module("jarvis_mcp.user_server")
+
+            module.main()
+
+            assert os.environ["JARVIS_MCP_SPACK_COMMAND"] == str(command.resolve())
+            mock_run.assert_called_once_with(transport="stdio")
+
     def test_admin_server_entrypoint_runs_http(self):
         """The admin entrypoint supports HTTP transport when requested."""
         sys.modules.pop("jarvis_mcp.admin_server", None)
@@ -1294,6 +1686,26 @@ class TestMainFunctionDirect:
             mock_run.assert_called_once_with(
                 transport="http", host="0.0.0.0", port=8000
             )
+
+    def test_admin_server_rejects_missing_spack_command(self, tmp_path):
+        """The packaged admin entrypoint validates an explicit Spack path."""
+        sys.modules.pop("jarvis_mcp.admin_server", None)
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "jarvis-admin-mcp",
+                    "--spack-command",
+                    str(tmp_path / "missing-spack"),
+                ],
+            ),
+            patch("jarvis_mcp.server.apply_tool_profile"),
+        ):
+            module = importlib.import_module("jarvis_mcp.admin_server")
+            with pytest.raises(SystemExit) as error:
+                module.main()
+
+        assert error.value.code == 2
 
     def test_user_server_module_main_guard(self):
         """Running the user module as __main__ delegates through its main guard."""

@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="🔄"
   category="Data Processing"
   description="Parallel-Sort MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 13 tools for large file sorting: parallel sort, log analysis, pattern detection, filtering, export. Enables AI agents to process and analyze large log files efficiently."
-  version="1.0.0"
+  version="2.2.3"
   actions={["sort_log_by_timestamp", "parallel_sort_large_file", "analyze_log_statistics", "detect_log_patterns", "filter_logs", "filter_by_time_range", "filter_by_log_level", "filter_by_keyword", "apply_filter_preset", "export_to_json", "export_to_csv", "export_to_text", "generate_summary_report"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["parallel-sorting", "log-processing", "log-analysis", "high-performance", "timestamp-sorting", "pattern-detection", "log-filtering", "data-export"]}

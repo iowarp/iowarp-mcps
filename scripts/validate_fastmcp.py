@@ -14,7 +14,6 @@ Checks:
 
 import asyncio
 import importlib
-import json
 import sys
 from pathlib import Path
 
@@ -76,7 +75,9 @@ async def validate(module_path: str) -> list[str]:
                 ann = tool.annotations.model_dump()
                 for hint in ("readOnlyHint", "destructiveHint", "idempotentHint"):
                     if ann.get(hint) is None:
-                        errors.append(f"Tool '{tool.name}': annotation '{hint}' not set")
+                        errors.append(
+                            f"Tool '{tool.name}': annotation '{hint}' not set"
+                        )
 
             if not hasattr(tool, "tags") or not tool.tags:
                 errors.append(f"Tool '{tool.name}': missing tags")

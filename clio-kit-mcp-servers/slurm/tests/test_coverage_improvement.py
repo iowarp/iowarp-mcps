@@ -8,6 +8,8 @@ import threading
 import time
 from unittest.mock import patch, Mock, mock_open
 
+import pytest
+
 
 def test_implementation_init():
     """Test the implementation package __init__.py."""
@@ -554,6 +556,10 @@ def test_job_submission_error_paths():
             return_value=True,
         ),
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
+        patch(
+            "slurm_mcp.implementation.job_submission.read_regular_job_script",
+            return_value="#!/bin/bash\necho 'test'",
+        ),
         patch("tempfile.mkstemp", return_value=(1, "/tmp/test.sh")),
         patch("os.close"),
         patch("os.chmod"),
@@ -594,6 +600,10 @@ def test_job_submission_specific_error_lines():
             return_value=True,
         ),
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
+        patch(
+            "slurm_mcp.implementation.job_submission.read_regular_job_script",
+            return_value="#!/bin/bash\necho 'test'",
+        ),
         patch("tempfile.mkstemp", return_value=(1, "/tmp/test.sh")),
         patch("os.close"),
         patch("os.chmod"),
@@ -616,6 +626,10 @@ def test_job_submission_specific_error_lines():
             return_value=True,
         ),
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
+        patch(
+            "slurm_mcp.implementation.job_submission.read_regular_job_script",
+            return_value="#!/bin/bash\necho 'test'",
+        ),
         patch("tempfile.mkstemp", return_value=(1, "/tmp/test.sh")),
         patch("os.fdopen", mock_open()),
         patch("os.close"),
@@ -880,11 +894,15 @@ def test_array_jobs_comprehensive():
     with patch("os.path.exists", return_value=False):
         result = submit_array_job("/nonexistent/script.sh", "1-10", 2)
         assert "error" in result
-        assert "no such file" in result["error"].lower()
+        assert "not found" in result["error"].lower()
 
     # Test successful array job submission
     with (
         patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
+        patch(
+            "slurm_mcp.implementation.array_jobs.read_regular_job_script",
+            return_value="#!/bin/bash\necho 'test'",
+        ),
         patch("subprocess.run") as mock_run,
     ):
         mock_run.return_value.returncode = 0
@@ -895,15 +913,8 @@ def test_array_jobs_comprehensive():
         assert result["cores"] == 2
 
     # Test array job submission failure
-    with (
-        patch("builtins.open", mock_open(read_data="#!/bin/bash\necho 'test'")),
-        patch("subprocess.run") as mock_run,
-    ):
-        mock_run.return_value.returncode = 1
-        mock_run.return_value.stderr = "Invalid array range"
-        result = submit_array_job("/test/script.sh", "invalid", 2)
-        assert "error" in result
-        assert "Invalid array range" in result["error"]
+    with pytest.raises(ValueError, match="array_range must be"):
+        submit_array_job("/test/script.sh", "invalid", 2)
 
 
 def test_node_allocation_comprehensive():

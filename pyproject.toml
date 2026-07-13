@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clio-kit"
-version = "2.2.6"
+version = "2.3.0"
 description = "CLIO Kit - MCP Servers, Clients, and Tools for AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,7 +15,7 @@ authors = [
 
 # Only dependencies needed for the launcher
 dependencies = [
-  "click>=8.1.0",
+  "click>=8.3.3",
 ]
 
 keywords = ["mcp", "model-context-protocol", "ai-agents", "llm-tools", "scientific-computing", "hpc", "hdf5", "slurm", "parquet", "research-tools"]
@@ -43,6 +43,13 @@ Issues = "https://github.com/iowarp/clio-kit/issues"
 # Only the unified launcher entry point
 clio-kit = "clio_kit:cli"
 
+[dependency-groups]
+dev = [
+  "mypy>=1.17.0",
+  "pytest>=8.3",
+  "ruff>=0.12.5",
+]
+
 [tool.hatch.build]
 # NB: do NOT set a global `sources = ["src"]` — it strips `src/` from the sdist
 # (cli lands at `clio_kit/` root), then the wheel-from-sdist build looks under
@@ -65,7 +72,7 @@ exclude = [
     "**/.gitignore",
 ]
 
-# Include all server directories in the wheel for uvx execution
+# Include every server project for persistent-tool and one-shot execution
 [tool.hatch.build.targets.wheel]
 packages = ["src/clio_kit"]
 
@@ -81,5 +88,6 @@ include = [
     "clio-agentic-search/",
     "prompts/",
     "README.md",
+    "mcp-server-versions.toml",
     "pyproject.toml"
 ]

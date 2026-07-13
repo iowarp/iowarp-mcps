@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="📈"
   category="Data Processing"
   description="Plot MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 6 tools for data visualization: line plots, bar charts, scatter plots, histograms, heatmaps. Enables AI agents to generate publication-quality visualizations from CSV/Excel data."
-  version="1.0.0"
+  version="2.2.3"
   actions={["line_plot", "bar_plot", "scatter_plot", "histogram_plot", "heatmap_plot", "data_info"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["MCP", "plotting", "visualization", "analytics", "matplotlib", "seaborn", "data-science"]}

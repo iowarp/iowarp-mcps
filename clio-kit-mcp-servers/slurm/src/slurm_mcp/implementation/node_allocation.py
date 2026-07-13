@@ -8,7 +8,12 @@ import re
 import time
 import os
 from typing import Optional, Dict, Any
-from .utils import check_slurm_available
+from .utils import (
+    SLURM_FIELD_SEPARATOR,
+    check_slurm_available,
+    run_slurm_command,
+    split_slurm_fields,
+)
 
 
 def allocate_nodes(
@@ -92,12 +97,10 @@ def _allocate_real_slurm_nodes(
 
     try:
         # Run salloc command with proper timeout handling
-        result = subprocess.run(
+        result = run_slurm_command(
             cmd,
-            capture_output=True,
-            text=True,
             timeout=timeout_duration,
-            check=False,  # Don't raise on non-zero return codes, handle manually
+            test_runner=subprocess.run,
         )
 
         print(f"🔍 salloc return code: {result.returncode}")
@@ -288,7 +291,12 @@ def _get_allocation_nodes(allocation_id: str) -> Optional[Dict[str, Any]]:
     """
     try:
         cmd = ["squeue", "-j", allocation_id, "--format=%N", "--noheader"]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        result = run_slurm_command(
+            cmd,
+            timeout=5,
+            max_stdout_bytes=64 * 1024,
+            test_runner=subprocess.run,
+        )
 
         if result.returncode == 0 and result.stdout.strip():
             nodelist = result.stdout.strip()
@@ -361,7 +369,11 @@ def _deallocate_real_slurm_nodes(allocation_id: str) -> Dict[str, Any]:
     """Deallocate real Slurm allocation using scancel."""
     try:
         cmd = ["scancel", allocation_id]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = run_slurm_command(
+            cmd,
+            max_stdout_bytes=4096,
+            test_runner=subprocess.run,
+        )
 
         if result.returncode != 0:
             error_msg = result.stderr.strip()
@@ -410,8 +422,19 @@ def get_allocation_status(allocation_id: str) -> Dict[str, Any]:
 def _get_real_allocation_status(allocation_id: str) -> Dict[str, Any]:
     """Get real Slurm allocation status using squeue."""
     try:
-        cmd = ["squeue", "-j", allocation_id, "--format=%i,%T,%M,%N", "--noheader"]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        delimiter = SLURM_FIELD_SEPARATOR
+        cmd = [
+            "squeue",
+            "-j",
+            allocation_id,
+            f"--format=%i{delimiter}%T{delimiter}%M{delimiter}%N",
+            "--noheader",
+        ]
+        result = run_slurm_command(
+            cmd,
+            max_stdout_bytes=64 * 1024,
+            test_runner=subprocess.run,
+        )
 
         if result.returncode != 0:
             return {
@@ -431,7 +454,7 @@ def _get_real_allocation_status(allocation_id: str) -> Dict[str, Any]:
             }
 
         # Parse squeue output
-        parts = output.split(",")
+        parts = split_slurm_fields(output)
         if len(parts) >= 4:
             job_id, state, time_used, nodelist = parts
 
@@ -469,16 +492,21 @@ def _get_recent_allocation_id() -> Optional[str]:
             "squeue",
             "-u",
             os.getenv("USER", "unknown"),
-            "--format=%i,%T,%j",
+            f"--format=%i{SLURM_FIELD_SEPARATOR}%T{SLURM_FIELD_SEPARATOR}%j",
             "--noheader",
             "--sort=-i",
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        result = run_slurm_command(
+            cmd,
+            timeout=5,
+            max_stdout_bytes=64 * 1024,
+            test_runner=subprocess.run,
+        )
 
         if result.returncode == 0 and result.stdout.strip():
             lines = result.stdout.strip().split("\n")
             for line in lines:
-                parts = line.split(",")
+                parts = split_slurm_fields(line)
                 if len(parts) >= 3:
                     job_id, state, job_name = parts[0], parts[1], parts[2]
                     # Look for our allocation jobs that are running

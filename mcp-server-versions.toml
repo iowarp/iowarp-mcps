@@ -1,0 +1,34 @@
+schema-version = 1
+
+# Only these server records have a new contract version in this wheel release.
+# Existing Registry versions are immutable and must not be republished merely
+# because a newer clio-kit wheel also contains their unchanged implementation.
+[mcp-registry-release]
+publish = ["jarvis", "slurm", "spack"]
+
+# MCP Registry server versions describe each agent-facing contract. They are
+# intentionally independent of the clio-kit PyPI distribution version, which
+# only identifies the wheel containing the server implementations.
+[servers]
+adios = "2.2.3"
+arxiv = "2.2.3"
+chronolog = "2.0.1"
+compression = "2.2.3"
+darshan = "2.2.3"
+geo = "2.2.3"
+geojson = "2.2.3"
+hdf5 = "2.2.3"
+jarvis = "3.0.0"
+lmod = "2.2.3"
+ndp = "2.2.3"
+node-hardware = "2.2.3"
+pandas = "2.2.3"
+parallel-sort = "2.2.3"
+paraview = "2.2.3"
+parquet = "2.2.3"
+plot = "2.2.3"
+sac = "2.2.3"
+seismic = "2.2.3"
+slurm = "3.0.0"
+spack = "2.0.0"
+terrain = "2.2.3"

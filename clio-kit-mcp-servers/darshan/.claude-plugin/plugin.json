@@ -1,5 +1,5 @@
 {
   "name": "clio-darshan",
   "description": "Darshan I/O profiler MCP server for analyzing I/O trace files",
-  "version": "1.0.0"
+  "version": "2.2.3"
 }

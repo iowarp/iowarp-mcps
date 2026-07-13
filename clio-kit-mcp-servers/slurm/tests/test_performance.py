@@ -28,7 +28,8 @@ class TestSlurmMCPPerformance:
     """Performance test suite for Slurm MCP server."""
 
     @pytest.fixture(scope="class")
-    def quick_script(self):
+    @classmethod
+    def quick_script(cls):
         """Create a minimal test script for quick execution."""
         script_content = """#!/bin/bash
 #SBATCH --time=00:01:00
@@ -48,7 +49,8 @@ echo "Done: $(date)"
             os.unlink(script_path)
 
     @pytest.fixture(scope="class")
-    def medium_script(self):
+    @classmethod
+    def medium_script(cls):
         """Create a medium-duration test script."""
         script_content = """#!/bin/bash
 #SBATCH --time=00:03:00
@@ -71,7 +73,8 @@ echo "Done: $(date)"
             os.unlink(script_path)
 
     @pytest.fixture(scope="class")
-    def cpu_intensive_script(self):
+    @classmethod
+    def cpu_intensive_script(cls):
         """Create a CPU-intensive test script."""
         script_content = """#!/bin/bash
 #SBATCH --time=00:02:00
@@ -138,7 +141,7 @@ echo "Done: $(date)"
         # First submit a job
         result = submit_slurm_job(quick_script, cores=1)
         if result.get("isError"):
-            pytest.skip("Could not submit job for status testing")
+            pytest.fail(f"Could not submit job for status testing: {result}")
 
         job_id = str(result["job_id"])
 
@@ -362,7 +365,7 @@ echo "Done: $(date)"
         submit_end = time.time()
 
         if result.get("isError"):
-            pytest.skip("Could not submit job for lifecycle testing")
+            pytest.fail(f"Could not submit job for lifecycle testing: {result}")
 
         job_id = str(result["job_id"])
         submit_time = submit_end - submit_start

@@ -36,7 +36,7 @@ const PlatformButton = ({ platform, mcpName, onCopy }) => {
   };
 
   const config = platformConfig[platform];
-  const installCommand = `uvx clio-kit ${mcpName.toLowerCase().replace(/ /g, '-')}`;
+  const installCommand = `clio-kit mcp-server ${mcpName.toLowerCase().replace(/ /g, '-')}`;
 
   const handleClick = (e) => {
     e.preventDefault();

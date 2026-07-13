@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="🐼"
   category="Data Processing"
   description="Pandas MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 15 tools for data analysis: load CSV/Excel/Parquet, statistical analysis, data cleaning, time series operations. Enables AI agents to process and analyze tabular data."
-  version="1.0.0"
+  version="2.2.3"
   actions={["load_data", "save_data", "statistical_summary", "correlation_analysis", "hypothesis_testing", "handle_missing_data", "clean_data", "groupby_operations", "merge_datasets", "pivot_table", "time_series_operations", "validate_data", "filter_data", "optimize_memory", "profile_data"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["pandas", "data-analysis", "statistical-analysis", "data-science", "data-manipulation", "time-series", "data-cleaning", "data-transformation", "mcp", "llm-integration"]}

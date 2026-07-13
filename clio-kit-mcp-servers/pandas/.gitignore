@@ -203,6 +203,7 @@ cache/
 # UV (Python package manager)
 .uv/
 uv.lock
+!uv.lock
 
 # Ruff
 .ruff_cache/

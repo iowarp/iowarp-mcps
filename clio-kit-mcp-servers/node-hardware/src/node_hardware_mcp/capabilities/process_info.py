@@ -34,7 +34,11 @@ def get_process_info(limit: int = 10) -> Dict[str, Any]:
             ]
         ):
             try:
-                process_info = proc.as_dict()
+                # ``process_iter(attrs=...)`` has already collected this bounded
+                # field set. Calling ``as_dict()`` without attrs re-queries every
+                # psutil property and can block on unrelated OS metadata (notably
+                # the Windows-wide parent PID map).
+                process_info = dict(proc.info)
                 # Convert memory info to more readable format
                 if process_info["memory_info"]:
                     process_info["memory_rss_formatted"] = format_bytes(

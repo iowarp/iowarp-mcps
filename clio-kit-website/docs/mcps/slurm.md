@@ -1,6 +1,6 @@
 ---
 title: Slurm MCP
-description: "Slurm MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 13 tools for HPC cluster job management: submit jobs, monitor status, allocate nodes, manage queues. Enables AI agents to operate Slurm clusters through natural language."
+description: "MCP server for Slurm workload management and HPC job scheduling"
 ---
 
 import MCPDetail from '@site/src/components/MCPDetail';
@@ -9,13 +9,13 @@ import MCPDetail from '@site/src/components/MCPDetail';
   name="Slurm"
   icon="🖥️"
   category="System Management"
-  description="Slurm MCP v1.0.0 - Part of CLIO Kit (IoWarp Platform). 13 tools for HPC cluster job management: submit jobs, monitor status, allocate nodes, manage queues. Enables AI agents to operate Slurm clusters through natural language."
-  version="1.0.0"
-  actions={["submit_slurm_job", "check_job_status", "cancel_slurm_job", "list_slurm_jobs", "get_slurm_info", "get_job_details", "get_job_output", "get_queue_info", "submit_array_job", "get_node_info", "allocate_slurm_nodes", "deallocate_slurm_nodes", "get_allocation_status"]}
+  description="MCP server for Slurm workload management and HPC job scheduling"
+  version="3.0.0"
+  actions={["slurm_submit", "slurm_list", "slurm_describe", "slurm_cluster", "slurm_cancel"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["MCP", "Slurm", "HPC", "job-management", "cluster-monitoring", "workload-management", "scientific-computing", "high-performance-computing"]}
   license="BSD-3-Clause"
-  tools={[{"name": "submit_slurm_job", "description": "Submit a job script to the Slurm scheduler with resource requirements.", "function_name": "submit_slurm_job"}, {"name": "check_job_status", "description": "Check the status of a Slurm job by its ID.", "function_name": "check_job_status"}, {"name": "cancel_slurm_job", "description": "Cancel a running or pending Slurm job.", "function_name": "cancel_slurm_job"}, {"name": "list_slurm_jobs", "description": "List Slurm jobs with optional filtering by user and state.", "function_name": "list_slurm_jobs"}, {"name": "get_slurm_info", "description": "Get Slurm cluster configuration, partitions, and resource availability.", "function_name": "get_slurm_info"}, {"name": "get_job_details", "description": "Get detailed information about a specific Slurm job.", "function_name": "get_job_details"}, {"name": "get_job_output", "description": "Retrieve stdout or stderr output from a Slurm job.", "function_name": "get_job_output"}, {"name": "get_queue_info", "description": "Get Slurm queue status and partition information.", "function_name": "get_queue_info"}, {"name": "submit_array_job", "description": "Submit a Slurm array job for parallel task execution.", "function_name": "submit_array_job"}, {"name": "get_node_info", "description": "Get information about Slurm cluster nodes and their resources.", "function_name": "get_node_info"}, {"name": "allocate_slurm_nodes", "description": "Allocate Slurm nodes for an interactive session using salloc.", "function_name": "allocate_slurm_nodes"}, {"name": "deallocate_slurm_nodes", "description": "Release a Slurm node allocation by canceling it.", "function_name": "deallocate_slurm_nodes"}, {"name": "get_allocation_status", "description": "Check the status of a Slurm node allocation.", "function_name": "get_allocation_status"}]}
+  tools={[{"name": "slurm_submit", "description": "Submit one Slurm job or array and return its scheduler-native job ID. Set array only for an array submission.", "function_name": "slurm_submit"}, {"name": "slurm_list", "description": "List a bounded number of Slurm jobs with optional user, state, and partition filters. Returns native IDs and explicit truncation state.", "function_name": "slurm_list"}, {"name": "slurm_describe", "description": "Describe one scheduler-native Slurm job: lifecycle state, terminality, scheduler properties, and optional bounded stdout/stderr tails.", "function_name": "slurm_describe"}, {"name": "slurm_cluster", "description": "Inspect bounded Slurm partition and queue records in one snapshot. Node details are excluded by default and bounded when requested.", "function_name": "slurm_cluster"}, {"name": "slurm_cancel", "description": "Request destructive cancellation of one Slurm job. confirm_job_id must exactly repeat job_id; omission or mismatch is rejected without calling scancel.", "function_name": "slurm_cancel"}]}
 >
 
 ### 1. Job Submission and Monitoring
@@ -24,8 +24,8 @@ I need to submit a Python simulation script to Slurm with 16 cores and 32GB memo
 ```
 
 **Tools called:**
-- `submit_slurm_job` - Submit job with resource specification
-- `check_job_status` - Monitor job progress and performance
+- `slurm_submit` - Submit the job with its resource request
+- `slurm_describe` - Query lifecycle state and scheduler details
 
 ### 2. Array Job Management
 ```
@@ -33,16 +33,16 @@ Submit an array job for parameter sweep analysis with 100 tasks, each requiring 
 ```
 
 **Tools called:**
-- `submit_array_job` - Submit parallel array job
-- `list_slurm_jobs` - Monitor array job progress
-- `get_job_details` - Get detailed array job information
+- `slurm_submit` with `array` - Submit the parallel array
+- `slurm_list` - Find its scheduler-native job ID
+- `slurm_describe` - Query array state and details
 
 ### 3. Interactive Session Management
 ```
 Allocate 2 compute nodes with 8 cores each for an interactive analysis session, then deallocate when finished.
 ```
 
-**Tools called:**
+**Admin/legacy tools called:**
 - `allocate_slurm_nodes` - Allocate interactive nodes
 - `get_node_info` - Check node status and resources
 - `deallocate_slurm_nodes` - Clean up allocated resources
@@ -53,16 +53,15 @@ I have a long-running job that needs to be cancelled, and I want to retrieve the
 ```
 
 **Tools called:**
-- `cancel_slurm_job` - Cancel running job with cleanup
-- `get_job_output` - Retrieve completed job outputs
-- `get_job_details` - Get final job performance metrics
+- `slurm_describe` with bounded output - Review job state and logs
+- `slurm_cancel` with exact ID confirmation - Request cancellation
 
 ### 5. Allocation Status and Monitoring
 ```
 Check the status of my current interactive allocation and monitor its resource usage efficiency.
 ```
 
-**Tools called:**
+**Admin/legacy tools called:**
 - `get_allocation_status` - Monitor allocation efficiency
 - `get_node_info` - Check node resource usage
 - `deallocate_slurm_nodes` - Clean up when finished
@@ -73,9 +72,8 @@ Analyze the current cluster queue status, identify bottlenecks, and suggest opti
 ```
 
 **Tools called:**
-- `get_slurm_info` - Get cluster status and capacity
-- `get_queue_info` - Analyze queue performance and bottlenecks
-- `list_slurm_jobs` - Review pending job queue and priorities
+- `slurm_cluster` - Inspect partitions, queue state, and capacity
+- `slurm_list` - Review the user's pending jobs and scheduler-native IDs
 
 </MCPDetail>
 

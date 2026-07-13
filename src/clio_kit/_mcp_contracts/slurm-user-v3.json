@@ -1,0 +1,959 @@
+{
+  "canonicalization": "json-sort-keys-compact-utf8-v1",
+  "contract_id": "clio-kit-slurm-user-v3",
+  "contract_sha256": "8557f6dbbf5d88ca0a617e06581056d61a363e21ec7fac01f8e31f65e66736a8",
+  "profile": "user",
+  "projection": "mcp-agent-tool-schema-v1",
+  "schema_version": "clio-kit.mcp-user-contract.v1",
+  "server_name": "slurm",
+  "source": {
+    "method": "tools/list",
+    "protocol_version": "2024-11-05",
+    "transport": "stdio"
+  },
+  "tool_names": [
+    "slurm_cancel",
+    "slurm_cluster",
+    "slurm_describe",
+    "slurm_list",
+    "slurm_submit"
+  ],
+  "tools": [
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "destructive",
+            "jobs",
+            "slurm",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Request destructive cancellation of one Slurm job. confirm_job_id must exactly repeat job_id; omission or mismatch is rejected without calling scancel.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm_job_id": {
+            "description": "Slurm's scheduler-native job identifier, for example '12345', '12345_7', '12345+1', or '12345.batch'.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "job_id": {
+            "description": "Slurm's scheduler-native job identifier, for example '12345', '12345_7', '12345+1', or '12345.batch'.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "job_id",
+          "confirm_job_id"
+        ],
+        "type": "object"
+      },
+      "name": "slurm_cancel",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Stable acknowledgement returned after Slurm accepts cancellation.",
+        "properties": {
+          "confirmation_matched": {
+            "const": true,
+            "default": true,
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "const": "cancellation_requested",
+            "default": "cancellation_requested",
+            "type": "string"
+          },
+          "scheduler": {
+            "const": "slurm",
+            "default": "slurm",
+            "type": "string"
+          },
+          "scheduler_native_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "clio-kit.slurm-cancellation.v1",
+            "default": "clio-kit.slurm-cancellation.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduler_native_id",
+          "reason"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "cluster",
+            "slurm",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Inspect bounded Slurm partition and queue records in one snapshot. Node details are excluded by default and bounded when requested.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "include_nodes": {
+            "default": false,
+            "type": "boolean"
+          },
+          "node_limit": {
+            "default": 100,
+            "description": "Maximum number of scheduler records returned by this call.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "partition": {
+            "anyOf": [
+              {
+                "description": "A scheduler name or filter containing no shell metacharacters.",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "queue_limit": {
+            "default": 100,
+            "description": "Maximum number of scheduler records returned by this call.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "slurm_cluster",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Unified partition, queue, and optional node snapshot.",
+        "properties": {
+          "cluster_name": {
+            "type": "string"
+          },
+          "node_limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "nodes": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Normalized Slurm node summary.",
+              "properties": {
+                "cpus": {
+                  "type": "string"
+                },
+                "features": {
+                  "type": "string"
+                },
+                "gres": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "state",
+                "cpus",
+                "memory",
+                "features",
+                "gres"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nodes_included": {
+            "type": "boolean"
+          },
+          "nodes_truncated": {
+            "type": "boolean"
+          },
+          "partition_filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partition_limit": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "partitions": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Normalized Slurm partition summary.",
+              "properties": {
+                "availability": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "node_list": {
+                  "type": "string"
+                },
+                "nodes": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "time_limit": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "availability",
+                "time_limit",
+                "nodes",
+                "state",
+                "node_list"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "partitions_truncated": {
+            "type": "boolean"
+          },
+          "queue": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Normalized job record included in a queue snapshot.",
+              "properties": {
+                "cpus": {
+                  "type": "string"
+                },
+                "elapsed": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "nodes": {
+                  "type": "string"
+                },
+                "partition": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "string"
+                },
+                "scheduler_native_id": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "time_limit": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "scheduler_native_id",
+                "state",
+                "name",
+                "user",
+                "partition",
+                "elapsed",
+                "time_limit",
+                "nodes",
+                "cpus",
+                "priority"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "queue_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queue_limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "queue_truncated": {
+            "type": "boolean"
+          },
+          "scheduler": {
+            "const": "slurm",
+            "default": "slurm",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "clio-kit.slurm-cluster.v1",
+            "default": "clio-kit.slurm-cluster.v1",
+            "type": "string"
+          },
+          "state_counts": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Count of queue jobs in one native Slurm state.",
+              "properties": {
+                "count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "state_counts_complete": {
+            "type": "boolean"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cluster_name",
+          "version",
+          "partition_filter",
+          "partitions",
+          "partition_limit",
+          "partitions_truncated",
+          "queue",
+          "queue_count",
+          "queue_limit",
+          "queue_truncated",
+          "state_counts",
+          "state_counts_complete",
+          "nodes_included",
+          "nodes",
+          "node_limit",
+          "nodes_truncated"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jobs",
+            "slurm",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Describe one scheduler-native Slurm job: lifecycle state, terminality, scheduler properties, and optional bounded stdout/stderr tails.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "description": "Slurm's scheduler-native job identifier, for example '12345', '12345_7', '12345+1', or '12345.batch'.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "max_output_chars": {
+            "default": 20000,
+            "description": "Maximum number of trailing characters returned per output stream.",
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "output": {
+            "default": "none",
+            "enum": [
+              "none",
+              "stdout",
+              "stderr",
+              "both"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "slurm_describe",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Unified status, detail, and optional output view for one Slurm job.",
+        "properties": {
+          "diagnostics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "outputs": {
+            "items": {
+              "additionalProperties": false,
+              "description": "A bounded stdout or stderr result for a Slurm job.",
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "stream": {
+                  "enum": [
+                    "stdout",
+                    "stderr"
+                  ],
+                  "type": "string"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "stream",
+                "path",
+                "content",
+                "truncated"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "properties": {
+            "items": {
+              "additionalProperties": false,
+              "description": "One scheduler property from ``scontrol`` or ``sacct``.",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheduler": {
+            "const": "slurm",
+            "default": "slurm",
+            "type": "string"
+          },
+          "scheduler_native_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "clio-kit.slurm-job.v1",
+            "default": "clio-kit.slurm-job.v1",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "terminal": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scheduler_native_id",
+          "state",
+          "terminal",
+          "reason",
+          "properties",
+          "outputs",
+          "diagnostics"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jobs",
+            "slurm",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": true
+      },
+      "description": "List a bounded number of Slurm jobs with optional user, state, and partition filters. Returns native IDs and explicit truncation state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of scheduler records returned by this call.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "partition": {
+            "anyOf": [
+              {
+                "description": "A scheduler name or filter containing no shell metacharacters.",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "state": {
+            "anyOf": [
+              {
+                "description": "A scheduler name or filter containing no shell metacharacters.",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "user": {
+            "anyOf": [
+              {
+                "description": "A scheduler name or filter containing no shell metacharacters.",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "slurm_list",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Stable result returned by ``slurm_list``.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "filters": {
+            "additionalProperties": false,
+            "description": "Filters applied to a Slurm job-list query.",
+            "properties": {
+              "partition": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "user": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "user",
+              "state",
+              "partition"
+            ],
+            "type": "object"
+          },
+          "jobs": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Small scheduler-native job summary suitable for agent selection.",
+              "properties": {
+                "cpus": {
+                  "type": "string"
+                },
+                "elapsed": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "nodes": {
+                  "type": "string"
+                },
+                "scheduler_native_id": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "time_limit": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "scheduler_native_id",
+                "state",
+                "name",
+                "user",
+                "elapsed",
+                "time_limit",
+                "nodes",
+                "cpus"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "scheduler": {
+            "const": "slurm",
+            "default": "slurm",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "clio-kit.slurm-job-list.v1",
+            "default": "clio-kit.slurm-job-list.v1",
+            "type": "string"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "filters",
+          "jobs",
+          "count",
+          "limit",
+          "truncated"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "jobs",
+            "slurm",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Submit one Slurm job or array and return its scheduler-native job ID. Set array only for an array submission.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "array": {
+            "anyOf": [
+              {
+                "description": "Slurm array task expression such as 0-31 or 0-99%8.",
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "cores": {
+            "default": 1,
+            "description": "CPU cores requested per task.",
+            "maximum": 1048576,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "job_name": {
+            "anyOf": [
+              {
+                "description": "A scheduler name or filter containing no shell metacharacters.",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "memory": {
+            "default": "1G",
+            "description": "Positive Slurm memory request such as 4096M or 16G.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "partition": {
+            "anyOf": [
+              {
+                "description": "A scheduler name or filter containing no shell metacharacters.",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "script_path": {
+            "description": "Path to an existing executable or shell job script.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "time_limit": {
+            "default": "01:00:00",
+            "description": "Slurm walltime in [days-]hours:minutes:seconds syntax.",
+            "maxLength": 64,
+            "minLength": 7,
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_path"
+        ],
+        "type": "object"
+      },
+      "name": "slurm_submit",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Stable result returned by ``slurm_submit``.",
+        "properties": {
+          "array": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "job",
+              "array"
+            ],
+            "type": "string"
+          },
+          "resources": {
+            "additionalProperties": false,
+            "description": "Resources recorded for a submitted Slurm job or array.",
+            "properties": {
+              "cores": {
+                "maximum": 1048576,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "job_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "memory": {
+                "type": "string"
+              },
+              "partition": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "time_limit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cores",
+              "memory",
+              "time_limit",
+              "partition",
+              "job_name"
+            ],
+            "type": "object"
+          },
+          "scheduler": {
+            "const": "slurm",
+            "default": "slurm",
+            "type": "string"
+          },
+          "scheduler_native_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "clio-kit.slurm-submission.v1",
+            "default": "clio-kit.slurm-submission.v1",
+            "type": "string"
+          },
+          "script_path": {
+            "type": "string"
+          },
+          "state": {
+            "const": "submitted",
+            "default": "submitted",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduler_native_id",
+          "kind",
+          "script_path",
+          "array",
+          "resources"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "wire_sha256": "ca778ab69178009c8ca56e9d1be52b23fff95833fdb30e1ef47b818aaa335bcf"
+}

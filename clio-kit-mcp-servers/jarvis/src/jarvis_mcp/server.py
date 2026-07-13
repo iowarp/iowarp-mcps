@@ -1,14 +1,27 @@
-from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
-from fastmcp.prompts import Message
+import argparse
 import importlib
 import os
+import re
 from pathlib import Path
+from typing import Any, Literal, Optional, cast
+
+from typing_extensions import NotRequired, TypedDict
+
 from dotenv import load_dotenv
-from typing import Any, Optional
+from fastmcp import Context, FastMCP
+from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
 from .capabilities.jarvis_handler import (
     create_pipeline,
-    configure_pipeline,
     load_pipeline,
     export_pipeline,
     append_pkg,
@@ -16,6 +29,7 @@ from .capabilities.jarvis_handler import (
     unlink_pkg,
     remove_pkg,
     run_pipeline,
+    get_execution,
     destroy_pipeline,
     get_pkg_config,
     update_pipeline,
@@ -171,6 +185,287 @@ mcp: FastMCP = FastMCP(
     ),
     list_page_size=10,
 )
+MCP_METADATA_PROFILE = "user"
+
+
+class JarvisExecutionHandleDocument(TypedDict):
+    """Stable JARVIS-CD execution-handle document."""
+
+    schema_version: Literal["jarvis.execution.handle.v1"]
+    execution_id: str
+    pipeline_id: str
+    mode: Literal["direct", "scheduler"]
+    scheduler_provider: str | None
+    scheduler_native_id: str | None
+    cluster: str | None
+
+
+class JarvisExecutionRecordDocument(TypedDict):
+    """Stable JARVIS-CD durable execution-record document."""
+
+    schema_version: Literal["jarvis.execution.record.v1"]
+    execution_id: str
+    pipeline_id: str
+    pipeline_name: str
+    mode: Literal["direct", "scheduler"]
+    scheduler_provider: str | None
+    scheduler_native_id: str | None
+    cluster: str | None
+    state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    submitted: bool
+    terminal: bool
+    created_at: str
+    updated_at: str
+    return_code: int | None
+    error: str | None
+    metadata: dict[str, Any]
+
+
+class JarvisProgressEventDocument(BaseModel):
+    """One closed, JARVIS-owned package progress observation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal["jarvis.progress.v1"]
+    package_name: str = Field(min_length=1, max_length=256)
+    package_id: str = Field(min_length=1, max_length=256)
+    execution_id: str = Field(min_length=1, max_length=256)
+    label: str = Field(min_length=1, max_length=256)
+    state: Literal[
+        "pending",
+        "starting",
+        "running",
+        "ready",
+        "completed",
+        "failed",
+        "canceled",
+    ]
+    current: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    total: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    unit: str | None = Field(default=None, min_length=1, max_length=256)
+    message: str | None = Field(default=None, min_length=1, max_length=4096)
+    sequence: int = Field(ge=0)
+    observed_at_epoch: float = Field(ge=0, allow_inf_nan=False)
+    determinate: bool
+    metadata: dict[str, Any]
+
+    @field_validator(
+        "package_name",
+        "package_id",
+        "execution_id",
+        "label",
+        "unit",
+        "message",
+        mode="after",
+    )
+    @classmethod
+    def validate_nonblank_text(cls, value: str | None) -> str | None:
+        """Reject whitespace-only text while preserving producer spelling."""
+        if value is not None and not value.strip():
+            raise ValueError("progress text fields must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def validate_quantitative_progress(self) -> "JarvisProgressEventDocument":
+        """Keep the public determination flag consistent with numeric fields."""
+        if self.total is not None and self.current is None:
+            raise ValueError("progress total requires current")
+        if (
+            self.current is not None
+            and self.total is not None
+            and self.current > self.total
+        ):
+            raise ValueError("progress current cannot exceed total")
+        expected = self.current is not None and self.total is not None
+        if self.determinate is not expected:
+            raise ValueError(
+                "progress determinate must match the presence of current and total"
+            )
+        return self
+
+
+class JarvisPackageProgressDocument(BaseModel):
+    """Latest stable progress observation for one package alias."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    package_id: str = Field(min_length=1, max_length=256)
+    package_name: str = Field(min_length=1, max_length=256)
+    event_count: int = Field(ge=0)
+    latest: JarvisProgressEventDocument | None
+
+    @model_validator(mode="after")
+    def validate_latest_event(self) -> "JarvisPackageProgressDocument":
+        """Cross-check the package identity and event-count sentinel."""
+        if self.latest is None:
+            if self.event_count != 0:
+                raise ValueError("progress event count requires a latest event")
+            return self
+        if self.event_count == 0:
+            raise ValueError("latest progress event requires a positive event count")
+        if (
+            self.latest.package_id != self.package_id
+            or self.latest.package_name != self.package_name
+        ):
+            raise ValueError("latest progress event package identity did not match")
+        return self
+
+
+class JarvisProgressSnapshotDocument(BaseModel):
+    """Stable aggregate returned by JARVIS-CD's execution progress API."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal["jarvis.execution.progress.v1"]
+    execution_id: str = Field(min_length=1, max_length=256)
+    pipeline_id: str = Field(min_length=1, max_length=256)
+    execution_state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    terminal: bool
+    packages: list[JarvisPackageProgressDocument] = Field(max_length=4096)
+
+    @model_validator(mode="after")
+    def validate_package_identities(self) -> "JarvisProgressSnapshotDocument":
+        """Bind every package event to this execution and reject aliases twice."""
+        package_ids: set[str] = set()
+        for package in self.packages:
+            if package.package_id in package_ids:
+                raise ValueError("progress package aliases must be unique")
+            package_ids.add(package.package_id)
+            if (
+                package.latest is not None
+                and package.latest.execution_id != self.execution_id
+            ):
+                raise ValueError("progress event execution identity did not match")
+        return self
+
+
+class JarvisArtifactLocationDocument(TypedDict):
+    """Transport-neutral location in a JARVIS artifact manifest."""
+
+    kind: Literal["execution_path", "cluster_path", "external_uri"]
+    value: str
+
+
+class JarvisArtifactDocument(TypedDict):
+    """Current JARVIS-owned lifecycle observation for one generated artifact."""
+
+    schema_version: Literal["jarvis.artifact.v1"]
+    package_name: str
+    package_id: str
+    execution_id: str
+    artifact_id: str
+    logical_name: str
+    kind: str
+    role: Literal[
+        "intermediate",
+        "output",
+        "log",
+        "checkpoint",
+        "provenance",
+        "validation",
+    ]
+    structure: Literal["file", "directory", "collection", "stream"]
+    ownership: Literal["execution", "external", "shared"]
+    state: Literal["producing", "available", "finalized", "incomplete", "failed"]
+    revision: int
+    sequence: int
+    observed_at_epoch: float
+    metadata: dict[str, Any]
+    location: NotRequired[JarvisArtifactLocationDocument]
+    media_type: NotRequired[str]
+    format: NotRequired[str]
+    size_bytes: NotRequired[int]
+    checksum: NotRequired[str]
+    message: NotRequired[str]
+
+
+class JarvisRunResult(TypedDict):
+    """Frozen top-level result envelope for ``jarvis_run``."""
+
+    schema_version: Literal["clio-kit.jarvis-run.v1"]
+    pipeline_id: str
+    execution_id: str
+    status: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    mode: Literal["direct", "scheduler"]
+    scheduler: dict[str, Any] | None
+    script_path: str | None
+    wait: bool
+    execution_handle: JarvisExecutionHandleDocument
+    execution_record: JarvisExecutionRecordDocument
+    progress: JarvisProgressSnapshotDocument
+    runtime_metadata: dict[str, Any]
+
+
+class JarvisExecutionArtifactPageDocument(BaseModel):
+    """Bounded artifact page nested in a unified execution query."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    producer_schema_version: Literal["jarvis.execution.artifacts.v1"]
+    pipeline_id: str
+    execution_id: str
+    execution_state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    terminal: bool
+    artifacts: list[JarvisArtifactDocument]
+    matching_artifact_count: int
+    returned_artifact_count: int
+    next_cursor: str | None
+
+
+class JarvisExecutionResult(BaseModel):
+    """Frozen top-level result envelope for a selectable execution query."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal["clio-kit.jarvis-execution.v1"]
+    pipeline_id: str
+    execution_id: str
+    execution_handle: JarvisExecutionHandleDocument
+    execution_record: JarvisExecutionRecordDocument
+    runtime_metadata: dict[str, Any]
+    progress: JarvisProgressSnapshotDocument | None
+    artifact_page: JarvisExecutionArtifactPageDocument | None
+
 
 # Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
 # functional JARVIS-CD installation. Admin tools still fail clearly at call time
@@ -195,8 +490,8 @@ USER_TOOLS = {
     "jarvis_describe",
     "jarvis_add_step",
     "jarvis_edit_step",
-    "jarvis_remove_step",
     "jarvis_run",
+    "jarvis_get_execution",
 }
 
 ADMIN_TOOLS = {
@@ -231,6 +526,209 @@ ADMIN_TOOLS = {
     "jm_graph_modify",
     "destroy_pipeline",
 }
+
+
+_EXECUTION_MODES = {
+    "auto",
+    "local",
+    "direct",
+    "cluster",
+    "scheduler",
+    "hostfile",
+}
+_SCHEDULER_EXECUTION_FIELDS = {
+    "job_name",
+    "nodes",
+    "tasks",
+    "tasks_per_node",
+    "cpus_per_task",
+    "walltime",
+    "partition",
+    "account",
+    "qos",
+    "output",
+    "error",
+    "exclusive",
+    "gpus",
+    "gpus_per_node",
+}
+_SCHEDULER_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@%+,-]{0,255}$")
+_HOST_ENTRY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$")
+
+
+def _bounded_single_line(value: str, *, field: str, limit: int = 4096) -> str:
+    """Reject control characters and unbounded scheduler/path text."""
+    if not value or len(value.encode("utf-8")) > limit:
+        raise ValueError(f"execution.{field} must be a non-empty bounded string")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError(f"execution.{field} cannot contain control characters")
+    return value
+
+
+class ExecutionIntent(BaseModel):
+    """Validated, backend-neutral execution request for a JARVIS pipeline."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    mode: Literal["auto", "local", "direct", "cluster", "scheduler", "hostfile"] = (
+        "auto"
+    )
+    hostfile: str | None = None
+    hosts: list[str] | None = Field(default=None, min_length=1)
+    job_name: str | None = None
+    nodes: int | None = Field(default=None, gt=0)
+    tasks: int | None = Field(default=None, gt=0)
+    tasks_per_node: int | None = Field(default=None, gt=0)
+    cpus_per_task: int | None = Field(default=None, gt=0)
+    walltime: str | None = None
+    partition: str | None = None
+    account: str | None = None
+    qos: str | None = None
+    output: str | None = None
+    error: str | None = None
+    exclusive: bool | None = None
+    gpus: int | None = Field(default=None, gt=0)
+    gpus_per_node: int | None = Field(default=None, gt=0)
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def normalize_mode(cls, value: object) -> object:
+        """Normalize a textual mode while preserving strict rejection of other types."""
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("hostfile", mode="after")
+    @classmethod
+    def validate_hostfile(cls, value: str | None) -> str | None:
+        """Validate a hostfile path without forbidding platform separators."""
+        if value is None:
+            return None
+        return _bounded_single_line(value, field="hostfile")
+
+    @field_validator("output", "error", mode="after")
+    @classmethod
+    def validate_scheduler_path(cls, value: str | None, info: Any) -> str | None:
+        """Require a single printable directive path token."""
+        if value is None:
+            return None
+        rendered = _bounded_single_line(value, field=info.field_name)
+        if any(character.isspace() for character in rendered) or "#" in rendered:
+            raise ValueError(
+                f"execution.{info.field_name} must be one printable path token"
+            )
+        return rendered
+
+    @field_validator(
+        "job_name",
+        "walltime",
+        "partition",
+        "account",
+        "qos",
+        mode="after",
+    )
+    @classmethod
+    def validate_scheduler_token(cls, value: str | None, info: Any) -> str | None:
+        """Reject whitespace/control injection in scheduler directive values."""
+        if value is None:
+            return None
+        rendered = _bounded_single_line(value, field=info.field_name, limit=256)
+        if _SCHEDULER_TOKEN.fullmatch(rendered) is None:
+            raise ValueError(
+                f"execution.{info.field_name} is not a valid scheduler token"
+            )
+        return rendered
+
+    @field_validator("hosts", mode="after")
+    @classmethod
+    def validate_hosts(cls, value: list[str] | None) -> list[str] | None:
+        """Validate semantic host names before writing a scheduler hostfile."""
+        if value is None:
+            return None
+        if len(value) > 4096:
+            raise ValueError("execution.hosts cannot contain more than 4096 entries")
+        if any(_HOST_ENTRY.fullmatch(host) is None for host in value):
+            raise ValueError("execution.hosts contains an invalid host name")
+        return value
+
+    @model_validator(mode="after")
+    def validate_mode_fields(self) -> "ExecutionIntent":
+        """Reject fields that cannot be represented by the selected execution mode."""
+        populated = self.model_fields_set
+        scheduler_fields = sorted(populated & _SCHEDULER_EXECUTION_FIELDS)
+        host_fields = sorted(populated & {"hostfile", "hosts"})
+
+        if self.mode in {"local", "direct"} and (scheduler_fields or host_fields):
+            incompatible = ", ".join(scheduler_fields + host_fields)
+            raise ValueError(
+                f"execution.mode='{self.mode}' does not accept fields: {incompatible}"
+            )
+        if self.mode == "hostfile":
+            if scheduler_fields:
+                raise ValueError(
+                    "execution.mode='hostfile' does not accept scheduler fields: "
+                    + ", ".join(scheduler_fields)
+                )
+            if (self.hostfile is None) == (self.hosts is None):
+                raise ValueError(
+                    "execution.hostfile requires exactly one of hostfile or hosts "
+                    "when execution.mode='hostfile'"
+                )
+        elif host_fields:
+            raise ValueError(
+                f"execution.mode='{self.mode}' does not accept fields: "
+                + ", ".join(host_fields)
+            )
+        return self
+
+
+class ExecutionArtifactQuery(BaseModel):
+    """Optional filters for one bounded page of execution artifacts."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    package_id: str | None = Field(
+        default=None,
+        description="Exact JARVIS package alias filter.",
+        max_length=256,
+    )
+    role: (
+        Literal[
+            "intermediate",
+            "output",
+            "log",
+            "checkpoint",
+            "provenance",
+            "validation",
+        ]
+        | None
+    ) = None
+    state: (
+        Literal[
+            "producing",
+            "available",
+            "finalized",
+            "incomplete",
+            "failed",
+        ]
+        | None
+    ) = None
+    artifact_id: str | None = Field(
+        default=None,
+        description="Exact opaque JARVIS artifact ID filter.",
+        max_length=90,
+    )
+    page_size: int = Field(
+        default=50,
+        description="Maximum artifacts to return in this page.",
+        ge=1,
+        le=100,
+    )
+    cursor: str | None = Field(
+        default=None,
+        description="Opaque next-page cursor.",
+        max_length=1024,
+    )
 
 
 # ─── RESOURCE ────────────────────────────────────────────────────────────────
@@ -414,7 +912,10 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 
 @mcp.tool(
     name="remove_pkg",
-    description="Remove a package entirely from a pipeline.",
+    description=(
+        "Delete a package through JARVIS-CD's destructive removal API. Fails "
+        "explicitly when the installed JARVIS-CD only supports non-destructive unlinking."
+    ),
     annotations={
         "readOnlyHint": False,
         "destructiveHint": True,
@@ -423,7 +924,7 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
     tags={"jarvis", "pipeline"},
 )
 async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
-    """Remove a package and its files from a pipeline."""
+    """Delete a package only when JARVIS-CD provides destructive removal semantics."""
     return await remove_pkg(pipeline_id, pkg_id)
 
 
@@ -457,16 +958,15 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_create_pipeline_tool(
-    pipeline_id: str, execution: Optional[dict[str, Any]] = None
+    pipeline_id: str, execution: ExecutionIntent | None = None
 ) -> dict:
     """Create a new JARVIS pipeline, optionally seeding execution intent."""
-    created = await create_pipeline(pipeline_id)
-    if execution:
-        configured = await configure_pipeline(
-            pipeline_id, _execution_intent_to_pipeline_config(execution)
-        )
-        return {"created": created, "configured": configured}
-    return created
+    initial_config = (
+        _execution_intent_to_pipeline_config(execution)
+        if execution is not None
+        else None
+    )
+    return await create_pipeline(pipeline_id, initial_config=initial_config)
 
 
 @mcp.tool(
@@ -480,7 +980,7 @@ async def jarvis_create_pipeline_tool(
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_describe_tool(
-    target: str,
+    target: Literal["packages", "package", "pipeline", "step"],
     pipeline_id: Optional[str] = None,
     step_id: Optional[str] = None,
     package_name: Optional[str] = None,
@@ -546,33 +1046,30 @@ async def jarvis_add_step_tool(
 
 @mcp.tool(
     name="jarvis_edit_step",
-    description="Edit the configuration of a step in a JARVIS pipeline.",
+    description=(
+        "Edit or remove a step in a JARVIS pipeline. Use operation='edit' with "
+        "config, or operation='remove' without config."
+    ),
     annotations={
         "readOnlyHint": False,
-        "destructiveHint": False,
+        "destructiveHint": True,
         "idempotentHint": False,
     },
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_edit_step_tool(
-    pipeline_id: str, step_id: str, config: dict[str, Any]
+    pipeline_id: str,
+    step_id: str,
+    config: Optional[dict[str, Any]] = None,
+    operation: Literal["edit", "remove"] = "edit",
 ) -> dict:
-    """Edit a step configuration in a pipeline."""
-    return await configure_pkg(pipeline_id, step_id, **config)
-
-
-@mcp.tool(
-    name="jarvis_remove_step",
-    description="Remove a step from a JARVIS pipeline without deleting package files.",
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-    },
-    tags={"jarvis", "pipeline", "user"},
-)
-async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
-    """Remove a step from a pipeline by unlinking its package."""
+    """Edit or remove one pipeline step with explicit conditional arguments."""
+    if operation == "edit":
+        if config is None:
+            raise ToolError("config is required when operation='edit'")
+        return await configure_pkg(pipeline_id, step_id, **config)
+    if config not in (None, {}):
+        raise ToolError("config is not accepted when operation='remove'")
     return await unlink_pkg(pipeline_id, step_id)
 
 
@@ -580,7 +1077,9 @@ async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
     name="jarvis_run",
     description=(
         "Run a configured JARVIS pipeline. Optional execution intent selects "
-        "local, cluster, or hostfile mode without exposing scheduler internals."
+        "local, cluster, or hostfile mode without exposing scheduler internals. "
+        "Optional spack_specs are resolved into a filtered environment that JARVIS "
+        "persists before direct or scheduler execution."
     ),
     annotations={
         "readOnlyHint": False,
@@ -591,23 +1090,90 @@ async def jarvis_remove_step_tool(pipeline_id: str, step_id: str) -> dict:
 )
 async def jarvis_run_tool(
     pipeline_id: str,
-    execution: Optional[dict[str, Any]] = None,
+    execution: ExecutionIntent | None = None,
     submit: bool = True,
     wait: bool = False,
-) -> dict:
-    """Run or submit a configured JARVIS pipeline using native JARVIS semantics."""
+    execution_id: str | None = None,
+    spack_specs: Optional[list[str]] = None,
+    ctx: Context | None = None,
+) -> JarvisRunResult:
+    """Run or submit a pipeline after persisting any requested Spack environment."""
     mode = "auto"
-    if execution:
-        requested_mode = str(execution.get("mode", "auto")).strip().lower()
+    if execution is not None:
+        intent = _validated_execution_intent(execution)
+        requested_mode = intent.mode
         mode = {
             "cluster": "scheduler",
             "local": "direct",
             "hostfile": "direct",
         }.get(requested_mode, requested_mode)
-        await configure_pipeline(
-            pipeline_id, _execution_intent_to_pipeline_config(execution)
+        run_arguments_config = _execution_intent_to_pipeline_config(intent)
+    else:
+        run_arguments_config = None
+
+    async def report_progress(
+        current: float,
+        total: float | None,
+        message: str,
+    ) -> None:
+        if ctx is not None:
+            await ctx.report_progress(current, total, message)
+
+    run_arguments: dict[str, Any] = {
+        "mode": mode,
+        "submit": submit,
+        "wait": wait,
+        "execution_id": execution_id,
+        "spack_specs": spack_specs,
+        "pipeline_config": run_arguments_config,
+    }
+    if _context_has_progress_token(ctx):
+        run_arguments["progress_reporter"] = report_progress
+    return cast(JarvisRunResult, await run_pipeline(pipeline_id, **run_arguments))
+
+
+@mcp.tool(
+    name="jarvis_get_execution",
+    description=(
+        "Query one JARVIS execution handle, durable lifecycle record, and "
+        "runtime metadata. Progress is included by default and can be omitted. "
+        "Set artifacts to {} or filters to include one bounded artifact page; "
+        "omit artifacts to avoid querying the artifact manifest."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+    },
+    tags={"jarvis", "pipeline", "execution", "user"},
+)
+async def jarvis_get_execution_tool(
+    pipeline_id: str,
+    execution_id: str,
+    include_progress: bool = True,
+    artifacts: ExecutionArtifactQuery | None = None,
+) -> JarvisExecutionResult:
+    """Query a selectable JARVIS-owned execution view in one locked load."""
+    return JarvisExecutionResult.model_validate(
+        await get_execution(
+            pipeline_id,
+            execution_id,
+            include_progress=include_progress,
+            artifacts=artifacts.model_dump() if artifacts is not None else None,
         )
-    return await run_pipeline(pipeline_id, mode=mode, submit=submit, wait=wait)
+    )
+
+
+def _context_has_progress_token(ctx: Context | None) -> bool:
+    """Return whether this MCP request explicitly negotiated live progress."""
+    if ctx is None:
+        return False
+    request_context = ctx.request_context
+    return (
+        request_context is not None
+        and request_context.meta is not None
+        and request_context.meta.progressToken is not None
+    )
 
 
 @mcp.tool(
@@ -1004,7 +1570,11 @@ def _discover_packages() -> list[dict[str, Any]]:
     for repo in repos:
         if not repo.exists():
             continue
-        for pkg_file in repo.rglob("pkg.py"):
+        package_files = sorted(
+            (*repo.rglob("pkg.py"), *repo.rglob("package.py")),
+            key=lambda path: (path.parent.as_posix(), path.name != "pkg.py"),
+        )
+        for pkg_file in package_files:
             package = _package_from_pkg_file(repo, pkg_file)
             name = str(package.get("name", ""))
             if not name or name in seen:
@@ -1125,32 +1695,54 @@ def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in setting.items() if value is not None}
 
 
-def _execution_intent_to_pipeline_config(execution: dict[str, Any]) -> dict[str, Any]:
-    mode = str(execution.get("mode", "auto")).strip().lower()
-    if mode not in {"auto", "local", "direct", "cluster", "scheduler", "hostfile"}:
+def _validated_execution_intent(
+    execution: ExecutionIntent | dict[str, Any],
+) -> ExecutionIntent:
+    if isinstance(execution, ExecutionIntent):
+        return execution
+    raw_mode = execution.get("mode", "auto")
+    if (
+        not isinstance(raw_mode, str)
+        or raw_mode.strip().lower() not in _EXECUTION_MODES
+    ):
         raise ToolError(
             "execution.mode must be one of: auto, local, direct, cluster, scheduler, hostfile"
         )
+    try:
+        return ExecutionIntent.model_validate(execution)
+    except ValidationError as error:
+        details = []
+        for item in error.errors(include_url=False, include_context=False):
+            location = ".".join(str(part) for part in item["loc"])
+            prefix = f"{location}: " if location else ""
+            details.append(f"{prefix}{item['msg']}")
+        raise ToolError("invalid execution intent: " + "; ".join(details)) from error
+
+
+def _execution_intent_to_pipeline_config(
+    execution: ExecutionIntent | dict[str, Any],
+) -> dict[str, Any]:
+    intent = _validated_execution_intent(execution)
+    values = intent.model_dump(exclude_none=True)
+    mode = intent.mode
     if mode in {"local", "direct"}:
         return {"scheduler": None, "hostfile": None}
     if mode == "hostfile":
-        hostfile = execution.get("hostfile")
-        hosts = execution.get("hosts")
-        if hostfile:
-            return {"scheduler": None, "hostfile": str(hostfile)}
-        if isinstance(hosts, list) and hosts:
+        if intent.hostfile is not None:
+            return {"scheduler": None, "hostfile": intent.hostfile}
+        if intent.hosts is not None:
             return {
                 "scheduler": None,
-                "hostfile_entries": [str(host) for host in hosts],
+                "hostfile_entries": intent.hosts,
             }
-        raise ToolError("execution.hostfile is required when execution.mode='hostfile'")
+        raise AssertionError("validated hostfile intent has no target")
     if mode in {"cluster", "scheduler", "auto"}:
         scheduler_name = _detect_scheduler_name()
         if scheduler_name is None:
-            if mode == "auto":
+            if mode == "auto" and set(values) <= {"mode"}:
                 return {}
             raise ToolError("no supported cluster scheduler detected on this machine")
-        if set(execution) <= {"mode"}:
+        if set(values) <= {"mode"}:
             return {}
         scheduler: dict[str, Any] = {"name": scheduler_name}
         mapping = {
@@ -1170,10 +1762,10 @@ def _execution_intent_to_pipeline_config(execution: dict[str, Any]) -> dict[str,
             "gpus_per_node": "gpus_per_node",
         }
         for public_key, scheduler_key in mapping.items():
-            if public_key in execution and execution[public_key] is not None:
-                scheduler[scheduler_key] = execution[public_key]
+            if public_key in values:
+                scheduler[scheduler_key] = values[public_key]
         return {"scheduler": scheduler}
-    return {}
+    raise AssertionError(f"validated execution intent has unsupported mode: {mode}")
 
 
 def _detect_scheduler_name() -> str | None:
@@ -1194,10 +1786,40 @@ def _protocol_stdout_to_stderr() -> Any:
     return redirect_stdout(sys.stderr)
 
 
+def add_spack_command_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the shared validated Spack executable option to a CLI parser."""
+    parser.add_argument(
+        "--spack-command",
+        type=_spack_command_path,
+        default=None,
+        help="Absolute or user-relative path to the audited Spack executable.",
+    )
+
+
+def configure_spack_command(spack_command: str | None) -> None:
+    """Apply an explicitly validated Spack command for later JARVIS runs."""
+    if spack_command is not None:
+        os.environ["JARVIS_MCP_SPACK_COMMAND"] = spack_command
+
+
+def _spack_command_path(value: str) -> str:
+    """Resolve and validate an operator-supplied Spack executable path."""
+    candidate = Path(value).expanduser()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"Spack command does not exist: {candidate}"
+        ) from exc
+    if not resolved.is_file():
+        raise argparse.ArgumentTypeError(f"Spack command is not a file: {resolved}")
+    if os.name != "nt" and not os.access(resolved, os.X_OK):
+        raise argparse.ArgumentTypeError(f"Spack command is not executable: {resolved}")
+    return str(resolved)
+
+
 def main() -> None:
     """Main entry point for the Jarvis MCP server."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http"], default=None)
     parser.add_argument(
@@ -1212,7 +1834,9 @@ def main() -> None:
     )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
+    add_spack_command_argument(parser)
     args = parser.parse_args()
+    configure_spack_command(args.spack_command)
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "user")
     apply_tool_profile(profile)

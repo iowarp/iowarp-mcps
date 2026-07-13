@@ -4,7 +4,7 @@ Handles detailed job information retrieval.
 """
 
 import subprocess
-from .utils import check_slurm_available
+from .utils import check_slurm_available, run_slurm_command
 
 
 def get_job_details(job_id: str) -> dict:
@@ -25,9 +25,10 @@ def get_job_details(job_id: str) -> dict:
     try:
         # Use scontrol to get detailed job information
         cmd = ["scontrol", "show", "job", job_id]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = run_slurm_command(cmd, test_runner=subprocess.run)
+        detail_truncated = result.stdout_truncated
 
-        if result.returncode == 0:
+        if result.returncode == 0 and not result.stdout_truncated:
             job_info = {}
             output = result.stdout.strip()
 
@@ -49,9 +50,14 @@ def get_job_details(job_id: str) -> dict:
                 "--parsable2",
                 "--noheader",
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = run_slurm_command(cmd, test_runner=subprocess.run)
+            detail_truncated = detail_truncated or result.stdout_truncated
 
-            if result.returncode == 0 and result.stdout.strip():
+            if (
+                result.returncode == 0
+                and result.stdout.strip()
+                and not result.stdout_truncated
+            ):
                 lines = result.stdout.strip().split("\n")
                 if lines:
                     fields = [
@@ -82,6 +88,11 @@ def get_job_details(job_id: str) -> dict:
                         "source": "accounting",
                     }
 
-            return {"job_id": job_id, "error": "Job not found", "real_slurm": True}
+            error = (
+                "scheduler detail output exceeded the response limit"
+                if detail_truncated
+                else "Job not found"
+            )
+            return {"job_id": job_id, "error": error, "real_slurm": True}
     except Exception as e:
         return {"job_id": job_id, "error": str(e), "real_slurm": True}

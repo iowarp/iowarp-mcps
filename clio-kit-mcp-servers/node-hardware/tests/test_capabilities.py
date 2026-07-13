@@ -2,7 +2,8 @@
 Comprehensive test coverage for hardware capabilities - CPU, memory, disk, network, system, processes, GPU, sensors.
 """
 
-import pytest
+import json
+
 from unittest.mock import patch, Mock, mock_open
 
 from node_hardware_mcp.capabilities.cpu_info import get_cpu_info
@@ -15,6 +16,7 @@ from node_hardware_mcp.capabilities.sensor_info import get_sensor_info
 from node_hardware_mcp.capabilities.performance_monitor import monitor_performance
 from node_hardware_mcp.capabilities.gpu_info import get_gpu_info
 from node_hardware_mcp.capabilities.hardware_summary import get_hardware_summary
+from node_hardware_mcp.capabilities.remote_node_info import get_remote_node_info
 from node_hardware_mcp.capabilities.utils import (
     run_command,
     check_command_available,
@@ -695,9 +697,38 @@ model name : AMD Ryzen 7 3700X
             assert result["success"] is False
             assert "timed out" in result["stderr"]
 
-    @pytest.mark.skip(
-        reason="Remote node info causes hanging due to subprocess and psutil interactions"
-    )
     def test_remote_node_info_comprehensive(self):
-        """Test remote node info functionality - SKIPPED due to hanging issues."""
-        pass
+        """Test remote collection without opening an external SSH connection."""
+        remote_payload = {
+            "cpu": {"logical_cores": 32},
+            "_metadata": {"collection_method": "remote_basic"},
+        }
+        with patch(
+            "node_hardware_mcp.capabilities.remote_node_info.subprocess.run"
+        ) as run:
+            run.return_value = Mock(
+                returncode=0,
+                stdout=json.dumps(remote_payload),
+                stderr="",
+            )
+
+            result = get_remote_node_info(
+                "cluster.example",
+                username="alice",
+                port=2222,
+                timeout=5,
+                include_filters=["cpu"],
+            )
+
+        assert result["cpu"] == {"logical_cores": 32}
+        assert result["_metadata"] == {
+            "collection_method": "remote_ssh",
+            "ssh_hostname": "cluster.example",
+            "ssh_username": "alice",
+            "ssh_port": 2222,
+            "ssh_key_used": False,
+            "ssh_timeout": 5,
+        }
+        command = run.call_args.args[0]
+        assert command[:2] == ["ssh", "-o"]
+        assert "alice@cluster.example" in command

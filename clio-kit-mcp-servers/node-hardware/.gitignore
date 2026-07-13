@@ -45,6 +45,7 @@ venv.bak/
 
 # UV specific files
 uv.lock
+!uv.lock
 .python-version
 
 # Other package managers

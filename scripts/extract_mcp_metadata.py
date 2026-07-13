@@ -14,11 +14,12 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any, Callable, cast
 
 try:
     import tomllib
 except ImportError:
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 
 def find_server_module() -> str:
@@ -40,9 +41,15 @@ def find_server_module() -> str:
     return entry_point.split(":")[0]
 
 
-async def extract(module_path: str) -> dict:
+async def extract(module_path: str) -> dict[str, Any]:
     """Import the server and extract all metadata."""
     module = importlib.import_module(module_path)
+    metadata_profile = getattr(module, "MCP_METADATA_PROFILE", None)
+    if metadata_profile is not None:
+        profile_applier = getattr(module, "apply_tool_profile", None)
+        if not isinstance(metadata_profile, str) or not callable(profile_applier):
+            raise RuntimeError("invalid MCP_METADATA_PROFILE contract")
+        cast(Callable[[str], None], profile_applier)(metadata_profile)
     mcp = getattr(module, "mcp")
 
     tools = await mcp.list_tools()

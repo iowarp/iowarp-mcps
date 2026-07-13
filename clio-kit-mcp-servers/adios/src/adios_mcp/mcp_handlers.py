@@ -1,14 +1,42 @@
 # mcp_handlers.py
+import importlib
+from collections.abc import Callable
 from typing import Any, Dict, Optional
 
 from fastmcp.exceptions import ToolError
 
-from .implementation import (
-    bp5_list,
-    bp5_inspect_variables,
-    bp5_attributes,
-    bp5_read_variable_at_step,
-    bp5_inspect_variables_at_step,
+
+class _LazyImplementation:
+    """Load an ADIOS2-backed implementation only when a tool is invoked."""
+
+    def __init__(self, module_name: str, export_name: str) -> None:
+        self._module_name = module_name
+        self._export_name = export_name
+
+    def __getattr__(self, name: str) -> Callable[..., Any]:
+        if name != self._export_name:
+            raise AttributeError(name)
+        return self._invoke
+
+    def _invoke(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module(self._module_name)
+        function = getattr(module, self._export_name)
+        return function(*args, **kwargs)
+
+
+bp5_list = _LazyImplementation("adios_mcp.implementation.bp5_list", "list_bp5")
+bp5_inspect_variables = _LazyImplementation(
+    "adios_mcp.implementation.bp5_inspect_variables", "inspect_variables"
+)
+bp5_attributes = _LazyImplementation(
+    "adios_mcp.implementation.bp5_attributes", "inspect_attributes"
+)
+bp5_read_variable_at_step = _LazyImplementation(
+    "adios_mcp.implementation.bp5_read_variable_at_step", "read_variable_at_step"
+)
+bp5_inspect_variables_at_step = _LazyImplementation(
+    "adios_mcp.implementation.bp5_inspect_variables_at_step",
+    "inspect_variables_at_step",
 )
 
 

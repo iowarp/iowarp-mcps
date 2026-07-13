@@ -1,61 +1,109 @@
 #!/usr/bin/env python3
+import hashlib
+import importlib.metadata as importlib_metadata
+import json
 import os
 import shutil
 import sys
 import subprocess
+import sysconfig
+import tempfile
 from pathlib import Path
 import click
 
+from clio_kit.mcp_contracts import (
+    load_mcp_user_contract,
+    load_mcp_user_contract_index,
+)
+
 # Determine if we're running from development or installed package
 MODULE_DIR = Path(__file__).parent
+LOCKED_SERVER_LAUNCH_SCHEMA = "clio-kit.locked-server.v4"
+_LOCKED_SERVER_RUNTIME_POLICY = "uv-run:materialized:frozen:no-editable:no-dev:v3"
+LOCKED_SERVER_SCHEMA_ENV = "CLIO_KIT_LOCKED_SERVER_SCHEMA"
+LOCKED_SERVER_PROJECT_SHA_ENV = "CLIO_KIT_LOCKED_SERVER_PROJECT_SHA256"
+LOCKED_SERVER_LOCK_SHA_ENV = "CLIO_KIT_LOCKED_SERVER_LOCK_SHA256"
+_RUNTIME_PROJECT_EXCLUDED_NAMES = frozenset(
+    {
+        ".git",
+        ".coverage",
+        ".DS_Store",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".venv",
+        ".virtualenv-app-data",
+        "__pycache__",
+        "dist",
+        "coverage.xml",
+        "htmlcov",
+        "junit.xml",
+        "tests",
+    }
+)
+_MAX_RUNTIME_PROJECT_FILES = 20_000
+_MAX_RUNTIME_PROJECT_BYTES = 512 * 1024 * 1024
 
 
-def get_servers_path():
-    """Get the path to servers directory (dev or installed)"""
-    # First try development path (../../clio-kit-mcp-servers from module)
-    dev_path = MODULE_DIR.parent.parent / "clio-kit-mcp-servers"
-    if dev_path.exists():
-        return dev_path
-
-    # Try to find shared data in the installed package
-    # When installed via wheel, shared data goes to site-packages/
-    # Look for clio-kit-mcp-servers directory in various possible locations
-    possible_paths = [
-        # Standard site-packages installation
-        MODULE_DIR.parent
-        / "clio-kit-mcp-servers",  # ../clio-kit-mcp-servers from module
-        # Alternative installation paths
-        MODULE_DIR
-        / "clio-kit-mcp-servers",  # ./clio-kit-mcp-servers from module (if included directly)
-        # System-wide data directory
-        Path(sys.prefix) / "share" / "clio-kit" / "clio-kit-mcp-servers",
-        # Local data directory
-        Path.home() / ".local" / "share" / "clio-kit" / "clio-kit-mcp-servers",
+def get_servers_path() -> Path:
+    """Return server data owned by the active clio-kit installation."""
+    shared_name = "clio-kit-mcp-servers"
+    dev_path = MODULE_DIR.parent.parent / shared_name
+    candidates = [
+        # In an editable source checkout, the repository copy is authoritative.
+        # The active environment may still contain shared data from an older
+        # wheel build, so consulting distribution records first can silently
+        # launch stale server code during contract generation and development.
+        dev_path,
+        *_distribution_shared_data_roots(shared_name),
+        Path(sysconfig.get_path("data")) / shared_name,
+        MODULE_DIR.parent / shared_name,
+        MODULE_DIR / shared_name,
+        Path(sys.prefix) / "share" / "clio-kit" / shared_name,
+        Path(sys.executable).parent.parent / shared_name,
+        Path(sys.executable).parent.parent / "share" / shared_name,
+        Path(sys.executable).parent.parent / "purelib" / shared_name,
+        Path(sys.executable).parent.parent / "data" / shared_name,
     ]
-
-    # Try each possible path
-    for path in possible_paths:
-        if path.exists() and path.is_dir():
-            return path
-
-    # If none found, check if we're in an isolated environment (like uvx)
-    # and try to find the data directory relative to the Python executable
-    python_path = Path(sys.executable)
-    isolated_paths = [
-        # uvx style isolated environment - clio-kit-mcp-servers is at the root level
-        python_path.parent.parent / "clio-kit-mcp-servers",
-        python_path.parent.parent / "share" / "clio-kit-mcp-servers",
-        python_path.parent.parent / "purelib" / "clio-kit-mcp-servers",
-        python_path.parent.parent / "data" / "clio-kit-mcp-servers",
-    ]
-
-    for path in isolated_paths:
-        if path.exists() and path.is_dir():
-            return path
-
-    # Last resort: return the dev path even if it doesn't exist
-    # so the caller can handle the missing directory appropriately
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if _is_servers_root(resolved):
+            return resolved
+    # A mutable user-home compatibility directory is deliberately not a
+    # fallback. Installed wheels must not be shadowed by legacy data.
     return dev_path
+
+
+def _distribution_shared_data_roots(shared_name: str) -> list[Path]:
+    """Locate shared data recorded by the active clio-kit distribution."""
+    try:
+        distribution = importlib_metadata.distribution("clio-kit")
+    except importlib_metadata.PackageNotFoundError:
+        return []
+    for record in distribution.files or ():
+        record_path = Path(str(record))
+        if shared_name not in record_path.parts:
+            continue
+        try:
+            located = Path(str(distribution.locate_file(record))).resolve(strict=True)
+        except OSError:
+            continue
+        for parent in (located, *located.parents):
+            if parent.name == shared_name and _is_servers_root(parent):
+                return [parent]
+    return []
+
+
+def _is_servers_root(path: Path) -> bool:
+    """Return whether a directory contains at least one embedded server project."""
+    return path.is_dir() and any(path.glob("*/pyproject.toml"))
 
 
 def get_prompts_path():
@@ -244,6 +292,219 @@ def uvx_command() -> str:
     return "uvx"
 
 
+def uv_command() -> str:
+    """Return a usable uv executable path for locked embedded projects."""
+    found = shutil.which("uv")
+    if found is not None:
+        return found
+    local_uv = Path.home() / ".local" / "bin" / "uv"
+    if local_uv.exists():
+        return str(local_uv)
+    return "uv"
+
+
+def locked_server_command(server_path: Path, entry_command: str) -> list[str]:
+    """Build a command that executes an embedded server from its exact lock."""
+    lock_path = server_path / "uv.lock"
+    if not lock_path.is_file():
+        raise click.ClickException(
+            f"Embedded MCP server '{server_path.name}' has no uv.lock; "
+            "refusing an unpinned runtime dependency resolution."
+        )
+    return [
+        uv_command(),
+        "run",
+        "--no-dev",
+        "--no-editable",
+        "--frozen",
+        "--project",
+        str(server_path),
+        entry_command,
+    ]
+
+
+def locked_server_environment(server_path: Path) -> Path:
+    """Return a reusable environment path keyed by locked server source bytes."""
+    identity = locked_server_project_identity(server_path)
+    return _locked_server_environment_path(
+        server_path,
+        project_sha256=identity["project_sha256"],
+    )
+
+
+def _runtime_project_files(server_path: Path) -> list[Path]:
+    """Return bounded regular files that define one embedded server runtime."""
+    try:
+        root = server_path.resolve(strict=True)
+    except OSError as exc:
+        raise click.ClickException(
+            f"Embedded MCP server path is unavailable: {server_path}"
+        ) from exc
+    is_junction = getattr(server_path, "is_junction", lambda: False)
+    if not root.is_dir() or server_path.is_symlink() or is_junction():
+        raise click.ClickException(
+            f"Embedded MCP server '{server_path.name}' is not a real directory."
+        )
+
+    inputs: list[Path] = []
+    total_bytes = 0
+    for current_root, directory_names, file_names in os.walk(
+        root,
+        topdown=True,
+        followlinks=False,
+    ):
+        current = Path(current_root)
+        retained_directories: list[str] = []
+        for directory_name in sorted(directory_names):
+            if directory_name in _RUNTIME_PROJECT_EXCLUDED_NAMES:
+                continue
+            directory = current / directory_name
+            directory_is_junction = getattr(directory, "is_junction", lambda: False)
+            if directory.is_symlink() or directory_is_junction():
+                raise click.ClickException(
+                    f"Embedded MCP server '{server_path.name}' contains a linked path: "
+                    f"{directory.relative_to(root)}"
+                )
+            retained_directories.append(directory_name)
+        directory_names[:] = retained_directories
+        for file_name in sorted(file_names):
+            if file_name in _RUNTIME_PROJECT_EXCLUDED_NAMES:
+                continue
+            path = current / file_name
+            file_is_junction = getattr(path, "is_junction", lambda: False)
+            if path.is_symlink() or file_is_junction() or not path.is_file():
+                raise click.ClickException(
+                    f"Embedded MCP server '{server_path.name}' contains a non-regular "
+                    f"runtime file: {path.relative_to(root)}"
+                )
+            inputs.append(path)
+            total_bytes += path.stat().st_size
+            if (
+                len(inputs) > _MAX_RUNTIME_PROJECT_FILES
+                or total_bytes > _MAX_RUNTIME_PROJECT_BYTES
+            ):
+                raise click.ClickException(
+                    f"Embedded MCP server '{server_path.name}' exceeds the runtime "
+                    "materialization bound."
+                )
+    for required_name in ("pyproject.toml", "uv.lock"):
+        if root / required_name not in inputs:
+            raise click.ClickException(
+                f"Embedded MCP server '{server_path.name}' is incomplete: "
+                f"missing {required_name}."
+            )
+    return inputs
+
+
+def locked_server_project_identity(server_path: Path) -> dict[str, str]:
+    """Hash the embedded server source and lock that define its child runtime."""
+    root = server_path.resolve(strict=True)
+    digest = hashlib.sha256()
+    policy = _LOCKED_SERVER_RUNTIME_POLICY.encode("utf-8")
+    digest.update(len(policy).to_bytes(8, "big"))
+    digest.update(policy)
+    inputs = _runtime_project_files(root)
+    ordered_inputs = sorted(inputs, key=lambda item: item.relative_to(root).as_posix())
+    digest.update(len(ordered_inputs).to_bytes(8, "big"))
+    for path in ordered_inputs:
+        relative_path = path.relative_to(root).as_posix().encode("utf-8")
+        digest.update(len(relative_path).to_bytes(8, "big"))
+        digest.update(relative_path)
+        content_digest = hashlib.sha256()
+        content_length = 0
+        with path.open("rb") as stream:
+            while chunk := stream.read(1024 * 1024):
+                content_length += len(chunk)
+                content_digest.update(chunk)
+        digest.update(content_length.to_bytes(8, "big"))
+        digest.update(content_digest.digest())
+    lock_sha256 = hashlib.sha256((root / "uv.lock").read_bytes()).hexdigest()
+    return {
+        "schema_version": LOCKED_SERVER_LAUNCH_SCHEMA,
+        "server_name": server_path.name,
+        "project_sha256": digest.hexdigest(),
+        "lock_sha256": lock_sha256,
+    }
+
+
+def materialize_locked_server_project(
+    server_path: Path,
+    *,
+    identity: dict[str, str] | None = None,
+) -> Path:
+    """Atomically copy a wheel-embedded project outside uv's archive cache."""
+    expected = identity or locked_server_project_identity(server_path)
+    project_sha256 = expected["project_sha256"]
+    target = (
+        _clio_cache_root() / "mcp-projects" / server_path.name / project_sha256
+    ).resolve()
+
+    def verify_materialized(path: Path) -> None:
+        actual = locked_server_project_identity(path)
+        if (
+            actual["schema_version"] != expected["schema_version"]
+            or actual["project_sha256"] != project_sha256
+            or actual["lock_sha256"] != expected["lock_sha256"]
+        ):
+            raise click.ClickException(
+                f"Cached MCP server project failed identity verification: {path}"
+            )
+
+    if target.exists():
+        verify_materialized(target)
+        return target
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(
+        tempfile.mkdtemp(
+            dir=target.parent,
+            prefix=f".{project_sha256}.",
+            suffix=".tmp",
+        )
+    )
+    source_root = server_path.resolve(strict=True)
+    try:
+        for source in _runtime_project_files(source_root):
+            destination = temporary / source.relative_to(source_root)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+        verify_materialized(temporary)
+        try:
+            os.replace(temporary, target)
+        except OSError:
+            if not target.is_dir():
+                raise
+        verify_materialized(target)
+        return target
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+
+
+def _clio_cache_root() -> Path:
+    """Return the operator-configurable cache root used by child runtimes."""
+    configured_cache = os.getenv("CLIO_KIT_CACHE_DIR")
+    if configured_cache:
+        return Path(configured_cache).expanduser().resolve()
+    return (
+        Path(os.getenv("XDG_CACHE_HOME", str(Path.home() / ".cache"))).expanduser()
+        / "clio-kit"
+    ).resolve()
+
+
+def _locked_server_environment_path(
+    server_path: Path,
+    *,
+    project_sha256: str,
+) -> Path:
+    """Resolve one source-addressed child environment without mutating it."""
+    return (
+        _clio_cache_root()
+        / "mcp-environments"
+        / f"{server_path.name}-{project_sha256[:24]}"
+    ).resolve()
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx):
@@ -261,10 +522,10 @@ def main(ctx):
         click.echo("  prompt       Print a prompt to stdout")
         click.echo("  prompts      List all available prompts")
         click.echo("\nUsage:")
-        click.echo("  uvx clio-kit mcp-server <server-name>")
-        click.echo("  uvx clio-kit search <subcommand>")
-        click.echo("  uvx clio-kit prompt <prompt-name>")
-        click.echo("\nFor more help: uvx clio-kit <command> --help")
+        click.echo("  clio-kit mcp-server <server-name>")
+        click.echo("  clio-kit search <subcommand>")
+        click.echo("  clio-kit prompt <prompt-name>")
+        click.echo("\nFor more help: clio-kit <command> --help")
 
 
 @main.command(
@@ -283,8 +544,7 @@ def mcp_server(server, branch, args):
         click.echo("Available MCP servers:")
         for s in sorted(server_command_map.keys()):
             click.echo(f"  - {s}")
-        click.echo("\nUsage: uvx clio-kit mcp-server <server-name>")
-        click.echo("   or: clio-kit mcp-server <server-name> (if installed)")
+        click.echo("\nUsage: clio-kit mcp-server <server-name>")
         return
 
     # Normalize server name to lowercase
@@ -299,7 +559,9 @@ def mcp_server(server, branch, args):
     entry_command = server_command_map[server_lower]
     actual_dir = dir_name_map[server_lower]
 
-    # Build uvx command
+    child_environment = subprocess_env_with_github_https_rewrite()
+
+    # Build the child launcher command.
     if branch:
         # Run from git branch
         cmd = [
@@ -314,8 +576,34 @@ def mcp_server(server, branch, args):
         server_path = servers_path / actual_dir
 
         if server_path.exists():
-            # Development mode - run from local path
-            cmd = [uvx_command(), "--from", str(server_path), entry_command]
+            # The root wheel includes each server's project and uv.lock. Use an
+            # immutable install in a source-and-lock-keyed cache so the exact
+            # outer wheel also binds the child dependency closure.
+            runtime_identity = locked_server_project_identity(server_path)
+            runtime_project = materialize_locked_server_project(
+                server_path,
+                identity=runtime_identity,
+            )
+            cmd = locked_server_command(runtime_project, entry_command)
+            child_environment["UV_PROJECT_ENVIRONMENT"] = str(
+                _locked_server_environment_path(
+                    server_path,
+                    project_sha256=runtime_identity["project_sha256"],
+                )
+            )
+            child_environment[LOCKED_SERVER_SCHEMA_ENV] = runtime_identity[
+                "schema_version"
+            ]
+            child_environment[LOCKED_SERVER_PROJECT_SHA_ENV] = runtime_identity[
+                "project_sha256"
+            ]
+            child_environment[LOCKED_SERVER_LOCK_SHA_ENV] = runtime_identity[
+                "lock_sha256"
+            ]
+            child_environment["UV_CACHE_DIR"] = str(
+                (_clio_cache_root() / "uv-cache").resolve()
+            )
+            child_environment.pop("VIRTUAL_ENV", None)
         else:
             # Not in development, try to run the command directly (if installed)
             cmd = [entry_command]
@@ -325,7 +613,7 @@ def mcp_server(server, branch, args):
 
     # Execute the command
     try:
-        subprocess.run(cmd, check=True, env=subprocess_env_with_github_https_rewrite())
+        subprocess.run(cmd, check=True, env=child_environment)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except FileNotFoundError:
@@ -352,6 +640,22 @@ def list_mcp_servers():
         click.echo("No MCP servers found.")
 
 
+@main.command("mcp-contracts")
+def list_mcp_contracts() -> None:
+    """List shipped locked-server user contracts and their canonical digests."""
+    index = load_mcp_user_contract_index()
+    for entry in index["contracts"]:
+        click.echo(f"{entry['contract_id']} {entry['contract_sha256']}")
+
+
+@main.command("mcp-contract")
+@click.argument("contract_id")
+def show_mcp_contract(contract_id: str) -> None:
+    """Print one verified locked-server user contract as machine-readable JSON."""
+    artifact = load_mcp_user_contract(contract_id)
+    click.echo(json.dumps(artifact, separators=(",", ":"), sort_keys=True))
+
+
 @main.command("prompt")
 @click.argument("prompt_name", required=False)
 def prompt(prompt_name):
@@ -368,8 +672,7 @@ def prompt(prompt_name):
                 click.echo(f"  - {p}")
         else:
             click.echo("No prompts found.")
-        click.echo("\nUsage: uvx clio-kit prompt <prompt-name>")
-        click.echo("   or: clio-kit prompt <prompt-name> (if installed)")
+        click.echo("\nUsage: clio-kit prompt <prompt-name>")
         return
 
     # Normalize prompt name (support both dash and underscore)
@@ -422,13 +725,13 @@ def search(args):
         click.echo("  serve   Start the FastAPI server")
         click.echo("  list    List indexed documents")
         click.echo("  seed    Seed sample data")
-        click.echo("\nUsage: uvx clio-kit search <subcommand> [options]")
+        click.echo("\nUsage: clio-kit search <subcommand> [options]")
         click.echo("\nExamples:")
         click.echo(
-            '  uvx clio-kit search query --namespace local_fs --q "pressure > 200 kPa"'
+            '  clio-kit search query --namespace local_fs --q "pressure > 200 kPa"'
         )
-        click.echo("  uvx clio-kit search index --namespace local_fs")
-        click.echo("  uvx clio-kit search serve --port 8080")
+        click.echo("  clio-kit search index --namespace local_fs")
+        click.echo("  clio-kit search serve --port 8080")
         return
 
     search_path = get_search_path()

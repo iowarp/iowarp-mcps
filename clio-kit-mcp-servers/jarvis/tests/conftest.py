@@ -11,6 +11,50 @@ from typing import Dict, Any
 from fastmcp import FastMCP
 
 
+class _NativeHandle:
+    def __init__(self, execution_id: str, pipeline_id: str) -> None:
+        self.document = {
+            "schema_version": "jarvis.execution.handle.v1",
+            "execution_id": execution_id,
+            "pipeline_id": pipeline_id,
+            "mode": "direct",
+            "scheduler_provider": None,
+            "scheduler_native_id": None,
+            "cluster": None,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return dict(self.document)
+
+
+class _NativeRecord:
+    def __init__(self, handle: _NativeHandle, *, terminal: bool) -> None:
+        self.handle = handle
+        self.state = "completed" if terminal else "running"
+        self.terminal = terminal
+
+    def to_dict(self) -> dict[str, object]:
+        handle = self.handle.to_dict()
+        return {
+            "schema_version": "jarvis.execution.record.v1",
+            "execution_id": handle["execution_id"],
+            "pipeline_id": handle["pipeline_id"],
+            "pipeline_name": handle["pipeline_id"],
+            "mode": "direct",
+            "scheduler_provider": None,
+            "scheduler_native_id": None,
+            "cluster": None,
+            "state": self.state,
+            "submitted": False,
+            "terminal": self.terminal,
+            "created_at": "2026-07-12T12:00:00Z",
+            "updated_at": "2026-07-12T12:01:00Z",
+            "return_code": 0 if self.terminal else None,
+            "error": None,
+            "metadata": {},
+        }
+
+
 @pytest.fixture(autouse=True)
 def reset_server_manager_cache():
     """Clear the lazy server manager cache around every test."""
@@ -78,7 +122,6 @@ def mock_pipeline():
         mock_pipeline.configure.return_value = None
         mock_pipeline.unlink.return_value = mock_pipeline
         mock_pipeline.remove.return_value = mock_pipeline
-        mock_pipeline.run.return_value = None
         mock_pipeline.destroy.return_value = None
         mock_pipeline.update.return_value = None
 
@@ -100,6 +143,43 @@ def mock_pipeline():
         mock_pkg.config = {"test_config": "test_value"}
         mock_pipeline.get_pkg.return_value = mock_pkg
         mock_pipeline.sub_pkgs = [mock_pkg]
+
+        records: dict[str, _NativeRecord] = {}
+
+        def run(*, execution_id: str, wait: bool) -> _NativeHandle:
+            handle = _NativeHandle(execution_id, "test_pipeline")
+            records[execution_id] = _NativeRecord(handle, terminal=wait)
+            return handle
+
+        def get_execution(execution_id: str) -> _NativeRecord:
+            return records[execution_id]
+
+        def get_progress(execution_id: str) -> dict[str, object]:
+            record = records[execution_id]
+            return {
+                "schema_version": "jarvis.execution.progress.v1",
+                "execution_id": execution_id,
+                "pipeline_id": "test_pipeline",
+                "execution_state": record.state,
+                "terminal": record.terminal,
+                "packages": [],
+            }
+
+        def get_artifacts(execution_id: str) -> dict[str, object]:
+            record = records[execution_id]
+            return {
+                "schema_version": "jarvis.execution.artifacts.v1",
+                "execution_id": execution_id,
+                "pipeline_id": "test_pipeline",
+                "execution_state": record.state,
+                "terminal": record.terminal,
+                "artifacts": [],
+            }
+
+        mock_pipeline.run.side_effect = run
+        mock_pipeline.get_execution.side_effect = get_execution
+        mock_pipeline.get_execution_progress.side_effect = get_progress
+        mock_pipeline.get_execution_artifacts.side_effect = get_artifacts
 
         yield mock_pipeline
 

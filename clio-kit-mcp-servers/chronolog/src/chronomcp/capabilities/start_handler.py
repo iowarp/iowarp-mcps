@@ -11,21 +11,22 @@ async def start_chronolog(
     """Connect to ChronoLog and acquire a story handle for logging."""
     chronicle = chronicle_name or config.DEFAULT_CHRONICLE
     story = story_name or config.DEFAULT_STORY
+    client = config.get_client()
 
-    ret = config.client.Connect()
+    ret = client.Connect()
     if ret != 0:
         raise ToolError(f"Failed to connect to ChronoLog: {ret}")
 
     attrs: dict[str, str] = {}
-    ret = config.client.CreateChronicle(chronicle, attrs, 1)
+    ret = client.CreateChronicle(chronicle, attrs, 1)
     if ret != 0:
-        config.client.Disconnect()
+        client.Disconnect()
         raise ToolError(f"Failed to create chronicle '{chronicle}': {ret}")
 
-    ret, handle = config.client.AcquireStory(chronicle, story, attrs, 1)
+    ret, handle = client.AcquireStory(chronicle, story, attrs, 1)
     if ret != 0:
-        config.client.ReleaseStory(chronicle, story)
-        config.client.Disconnect()
+        client.ReleaseStory(chronicle, story)
+        client.Disconnect()
         raise ToolError(
             f"Failed to acquire story '{story}' in chronicle '{chronicle}': {ret}"
         )

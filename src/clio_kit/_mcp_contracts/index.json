@@ -1,0 +1,32 @@
+{
+  "contracts": [
+    {
+      "artifact": "jarvis-user-v3.json",
+      "artifact_sha256": "68182b6bfcd8600f66ce452f58c737a1cf258e6b63cb395e62d9ee4fb8463869",
+      "contract_id": "clio-kit-jarvis-user-v3",
+      "contract_sha256": "c70e350d919e0f3fa0c116d7eaf861e23b4087a18a06b2704ddbf7384f8d1f82",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "756c1a7233b9d843c931e7d539644fac61d88d147b53b535fc6340b16562a108"
+    },
+    {
+      "artifact": "slurm-user-v3.json",
+      "artifact_sha256": "b8298532d7d5670be445361dd6dad090b89ba2d466a4de57acce3570b4ed1c41",
+      "contract_id": "clio-kit-slurm-user-v3",
+      "contract_sha256": "8557f6dbbf5d88ca0a617e06581056d61a363e21ec7fac01f8e31f65e66736a8",
+      "profile": "user",
+      "server_name": "slurm",
+      "wire_sha256": "ca778ab69178009c8ca56e9d1be52b23fff95833fdb30e1ef47b818aaa335bcf"
+    },
+    {
+      "artifact": "spack-user-v2.json",
+      "artifact_sha256": "acaa5347c2f672d00d149e82db3affa1c40e0f585fd3064a9e896c431614c3d0",
+      "contract_id": "clio-kit-spack-user-v2",
+      "contract_sha256": "d0709c552f6042ce4143d49706ddfbd8d05a80e4425412fbc3393d1eb00a216c",
+      "profile": "user",
+      "server_name": "spack",
+      "wire_sha256": "3e9c36866e10e68858b75cec140b6c759efc1e35bd2d45e9cb1f09d11d613d89"
+    }
+  ],
+  "schema_version": "clio-kit.mcp-user-contract-index.v1"
+}

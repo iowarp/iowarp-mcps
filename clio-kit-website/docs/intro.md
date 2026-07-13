@@ -26,14 +26,17 @@ sidebar_position: 1
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### Run a Server
+### Install and Run a Server
 
 ```bash
-# List all 15 available servers
-uvx clio-kit
+# Install the released CLI into its own persistent tool environment
+uv tool install 'clio-kit==2.3.0'
+
+# List all available servers
+clio-kit mcp-servers
 
 # Example: Run HDF5 server
-uvx clio-kit hdf5
+clio-kit mcp-server hdf5
 ```
 
 This launches the server via stdio transport. Your AI assistant can now use it.
@@ -44,21 +47,21 @@ This launches the server via stdio transport. Your AI assistant can now use it.
 ```json
 {
   "mcpServers": {
-    "hdf5": {"command": "uvx", "args": ["clio-kit", "hdf5"]}
+    "hdf5": {"command": "clio-kit", "args": ["mcp-server", "hdf5"]}
   }
 }
 ```
 
 **Claude Code:**
 ```bash
-claude mcp add hdf5 -- uvx clio-kit hdf5
+claude mcp add hdf5 -- clio-kit mcp-server hdf5
 ```
 
 **VS Code:** Add to settings
 ```json
 "mcp": {
   "servers": {
-    "hdf5": {"type": "stdio", "command": "uvx", "args": ["clio-kit", "hdf5"]}
+    "hdf5": {"type": "stdio", "command": "clio-kit", "args": ["mcp-server", "hdf5"]}
   }
 }
 ```
@@ -133,7 +136,9 @@ Example prompt: *"Find recent diffusion model papers and export top 5 to BibTeX"
 
 ## Architecture
 
-Each MCP server is an independent Python package with its own dependencies. The `clio-kit` launcher uses `uvx` to run servers in isolated environments.
+Each MCP server is an independent Python package with its own dependencies. The
+persistently installed `clio-kit` launcher materializes each shipped project and
+runs it from its exact lock in a source-addressed isolated environment.
 
 **Repository structure:**
 ```
@@ -150,7 +155,7 @@ clio-kit/
 **Design benefits:**
 - Dependency isolation (each server has own requirements)
 - Independent development (students work on separate servers)
-- Unified user experience (single `uvx clio-kit <name>` command)
+- Unified user experience (single `clio-kit mcp-server <name>` command)
 - Auto-discovery (launcher scans for servers via pyproject.toml)
 
 ---
