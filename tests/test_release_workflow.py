@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import argparse
 import re
+import runpy
+import tomllib
 from pathlib import Path
+
+import pytest
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +18,13 @@ WORKFLOW = (REPOSITORY_ROOT / ".github" / "workflows" / "publish.yml").read_text
 QUALITY_WORKFLOW = (
     REPOSITORY_ROOT / ".github" / "workflows" / "quality_control.yml"
 ).read_text(encoding="utf-8")
+EXPECTED_JARVIS_RELEASE_URL = (
+    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/"
+    "jarvis_cd-1.2.2-py3-none-any.whl"
+)
+EXPECTED_JARVIS_RELEASE_SHA256 = (
+    "f05454718a4efe4dadebefb98c83511ba3dcc662238c0c05430a1b621a8ab8b7"
+)
 
 
 def test_external_actions_are_immutable_commit_pins() -> None:
@@ -141,6 +153,126 @@ def test_wheel_smoke_exercises_persistent_uv_tool_installation() -> None:
     assert "uvx" not in smoke_block
 
 
+def test_ares_probe_exercises_persistent_uv_tool_installation() -> None:
+    """Live Ares acceptance must use the same supported persistent tool path."""
+    probe = (
+        REPOSITORY_ROOT
+        / "clio-kit-mcp-servers"
+        / "jarvis"
+        / "scripts"
+        / "live_ares_semantic_mcp_probe.py"
+    ).read_text(encoding="utf-8")
+    probe_module = runpy.run_path(
+        str(
+            REPOSITORY_ROOT
+            / "clio-kit-mcp-servers"
+            / "jarvis"
+            / "scripts"
+            / "live_ares_semantic_mcp_probe.py"
+        )
+    )
+    assert '[uv, "tool", "install", "--force", "--no-cache", wheel]' in probe
+    assert '"UV_TOOL_DIR"' in probe
+    assert '"UV_TOOL_BIN_DIR"' in probe
+    assert '"UV_CACHE_DIR"' in probe
+    assert '"CLIO_KIT_CACHE_DIR"' in probe
+    assert "env.pop(inherited_name, None)" in probe
+    assert '"PYTHONPATH"' in probe
+    assert '"VIRTUAL_ENV"' in probe
+    assert 'base_cmd = [str(clio_kit), "mcp-server", "jarvis"]' in probe
+    assert 'server_args = ["--spack-command", str(spack_command)]' in probe
+    assert '"--spack-command",' in probe
+    assert '"spack_command": str(spack_command)' in probe
+    assert 'env["JARVIS_ROOT"] = str(jarvis_root)' in probe
+    assert '"jarvis_root": str(jarvis_root)' in probe
+    assert '"locked_jarvis": locked_jarvis' in probe
+    assert 'assert "%" not in log_path.name' in probe
+    assert "assert log_path.is_file()" in probe
+    assert probe_module["EXPECTED_JARVIS_VERSION"] == "1.2.2"
+    assert probe_module["EXPECTED_JARVIS_URL"] == EXPECTED_JARVIS_RELEASE_URL
+    assert probe_module["EXPECTED_JARVIS_SHA256"] == EXPECTED_JARVIS_RELEASE_SHA256
+    assert "uvx" not in probe
+
+
+def test_ares_probe_validates_explicit_spack_command(tmp_path: Path) -> None:
+    """Live validation must bind its Spack semantics to an executable path."""
+    probe_module = runpy.run_path(
+        str(
+            REPOSITORY_ROOT
+            / "clio-kit-mcp-servers"
+            / "jarvis"
+            / "scripts"
+            / "live_ares_semantic_mcp_probe.py"
+        )
+    )
+    validate = probe_module["_spack_command_path"]
+    command = tmp_path / "spack"
+    command.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    command.chmod(0o700)
+
+    assert validate(str(command)) == command.resolve()
+    with pytest.raises(argparse.ArgumentTypeError, match="does not exist"):
+        validate(str(tmp_path / "missing-spack"))
+
+
+def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
+    """The installed JARVIS child must expose artifacts from the locked release."""
+    jarvis_project = tomllib.loads(
+        (
+            REPOSITORY_ROOT / "clio-kit-mcp-servers" / "jarvis" / "pyproject.toml"
+        ).read_text(encoding="utf-8")
+    )
+    dependency = next(
+        value
+        for value in jarvis_project["project"]["dependencies"]
+        if value.startswith("jarvis-cd @ ")
+    )
+    match = re.fullmatch(
+        r"jarvis-cd @ "
+        r"(https://github\.com/grc-iit/jarvis-cd/releases/download/v1\.2\.2/"
+        r"jarvis_cd-1\.2\.2-py3-none-any\.whl)"
+        r"#sha256=([0-9a-f]{64})",
+        dependency,
+    )
+    assert match is not None
+    expected_url, expected_digest = match.groups()
+    jarvis_lock = tomllib.loads(
+        (REPOSITORY_ROOT / "clio-kit-mcp-servers" / "jarvis" / "uv.lock").read_text(
+            encoding="utf-8"
+        )
+    )
+    jarvis_package = next(
+        package for package in jarvis_lock["package"] if package["name"] == "jarvis-cd"
+    )
+    assert jarvis_package["version"] == "1.2.2"
+    assert jarvis_package["source"] == {"url": expected_url}
+    assert jarvis_package["wheels"] == [
+        {"url": expected_url, "hash": f"sha256:{expected_digest}"}
+    ]
+
+    start = WORKFLOW.index("    - name: Smoke installed root wheel")
+    end = WORKFLOW.index("    - name: Attest release distributions", start)
+    smoke_block = WORKFLOW[start:end]
+    assert "mcp-contract clio-kit-jarvis-user-v3" in smoke_block
+    assert '"jarvis_get_execution"' in smoke_block
+    assert '"jarvis_get_execution_progress"' not in smoke_block
+    assert '"jarvis_get_execution_artifacts"' not in smoke_block
+    assert 'get_servers_path() / "jarvis"' in smoke_block
+    assert 'distribution("jarvis-cd")' in smoke_block
+    assert 'installed.version == "1.2.2"' in smoke_block
+    assert expected_url in smoke_block
+    assert expected_digest in smoke_block
+    assert "expected_requirement in project" in smoke_block
+    assert 'package["name"] == "jarvis-cd"' in smoke_block
+    assert 'jarvis_package["version"] == "1.2.2"' in smoke_block
+    assert 'jarvis_package["source"] == {"url": expected_url}' in smoke_block
+    assert '"hash": f"sha256:{expected_digest}"' in smoke_block
+    assert 'installed.read_text("direct_url.json")' in smoke_block
+    assert 'direct_url["url"] == expected_url' in smoke_block
+    assert 'getattr(Pipeline, "get_execution_artifacts", None)' in smoke_block
+    assert "pipeline_source.is_relative_to(Path(sys.prefix).resolve())" in smoke_block
+
+
 def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     """Release quality and wheel smoke bind the live locked-server contracts."""
     quality_block = WORKFLOW[WORKFLOW.index("  quality:") : WORKFLOW.index("  build:")]
@@ -164,6 +296,7 @@ def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     )
     smoke_block = WORKFLOW[smoke_start:smoke_end]
     assert '"$clio_kit" mcp-contracts' in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3" in smoke_block
     assert "mcp-contract clio-kit-slurm-user-v3" in smoke_block
     assert "mcp-contract clio-kit-spack-user-v2" in smoke_block
     assert "clio-kit-jarvis-user-v3" in smoke_block

@@ -42,10 +42,13 @@ protected PyPI job immediately before upload, so queueing or environment-review
 time cannot bypass the one-hour limit.
 
 The `pypi` environment must remain an administrator-managed production boundary:
-require an independent reviewer, prevent self-review, and restrict deployments
-to release tags. PyPI trusted publishing must remain scoped to this repository,
-`publish.yml`, and the `pypi` environment. These controls prevent a repository
-writer from bypassing the authorization step in a modified workflow.
+require approval from one explicitly configured maintainer, allow a configured
+maintainer to approve their own release deployment, disable administrator
+bypass, and restrict deployments to release tags. PyPI trusted publishing must
+remain scoped to this repository, `publish.yml`, and the `pypi` environment.
+These controls keep publication limited to named release maintainers while
+preventing a repository writer from bypassing the authorization step in a
+modified workflow.
 
 Do not tag unless the release PR is merged, all required checks pass, the local
 commit equals remote `main`, and the tag matches the project version:

@@ -249,6 +249,10 @@ jobs:
         grep -Fq 'clio-kit-jarvis-user-v3' <<< "$listed_contracts"
         grep -Fq 'clio-kit-slurm-user-v3' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2' <<< "$listed_contracts"
+        jarvis_contract="$("$clio_kit" \
+          mcp-contract clio-kit-jarvis-user-v3)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3"; assert {tool["name"] for tool in value["tools"]} == {"jarvis_create_pipeline", "jarvis_describe", "jarvis_add_step", "jarvis_edit_step", "jarvis_run", "jarvis_get_execution"}' \
+          <<< "$jarvis_contract"
         slurm_contract="$("$clio_kit" \
           mcp-contract clio-kit-slurm-user-v3)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-slurm-user-v3"' \
@@ -314,6 +318,54 @@ jobs:
         test "$second_child_identity" = "$first_child_identity"
         jarvis_help="$("$clio_kit" mcp-server jarvis -- --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_help"
+        jarvis_environment="$("$tool_python" - <<'PY'
+        import tomllib
+
+        from clio_kit import get_servers_path, locked_server_environment
+
+        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/jarvis_cd-1.2.2-py3-none-any.whl"
+        expected_digest = "f05454718a4efe4dadebefb98c83511ba3dcc662238c0c05430a1b621a8ab8b7"
+        expected_requirement = f"jarvis-cd @ {expected_url}#sha256={expected_digest}"
+        server = get_servers_path() / "jarvis"
+        project = tomllib.loads(
+            (server / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        assert expected_requirement in project["project"]["dependencies"]
+        jarvis_lock = tomllib.loads((server / "uv.lock").read_text(encoding="utf-8"))
+        jarvis_package = next(
+            package
+            for package in jarvis_lock["package"]
+            if package["name"] == "jarvis-cd"
+        )
+        assert jarvis_package["version"] == "1.2.2"
+        assert jarvis_package["source"] == {"url": expected_url}
+        assert jarvis_package["wheels"] == [
+            {"url": expected_url, "hash": f"sha256:{expected_digest}"}
+        ]
+        print(locked_server_environment(server))
+        PY
+        )"
+        test -x "$jarvis_environment/bin/python"
+        "$jarvis_environment/bin/python" - <<'PY'
+        import inspect
+        import json
+        import sys
+        from importlib.metadata import distribution
+        from pathlib import Path
+
+        from jarvis_cd.core.pipeline import Pipeline
+
+        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/jarvis_cd-1.2.2-py3-none-any.whl"
+        installed = distribution("jarvis-cd")
+        assert installed.version == "1.2.2"
+        direct_url_text = installed.read_text("direct_url.json")
+        assert direct_url_text is not None
+        direct_url = json.loads(direct_url_text)
+        assert direct_url["url"] == expected_url
+        pipeline_source = Path(inspect.getfile(Pipeline)).resolve()
+        assert pipeline_source.is_relative_to(Path(sys.prefix).resolve())
+        assert callable(getattr(Pipeline, "get_execution_artifacts", None))
+        PY
         jarvis_admin_help="$("$clio_kit" \
           mcp-server jarvis -- --profile admin --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_admin_help"

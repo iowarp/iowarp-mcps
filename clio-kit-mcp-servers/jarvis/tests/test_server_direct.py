@@ -8,9 +8,72 @@ import importlib
 import os
 import runpy
 import sys
-from unittest.mock import Mock, patch
+from copy import deepcopy
+from unittest.mock import Mock, call, patch
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+
+
+def test_progress_response_models_are_closed_and_identity_checked():
+    """Public progress models expose the exact stable JARVIS package schema."""
+    from jarvis_mcp.server import (
+        JarvisPackageProgressDocument,
+        JarvisProgressEventDocument,
+        JarvisProgressSnapshotDocument,
+    )
+
+    event = {
+        "schema_version": "jarvis.progress.v1",
+        "package_name": "builtin.gray_scott",
+        "package_id": "simulation",
+        "execution_id": "execution-1",
+        "label": "timestep",
+        "state": "running",
+        "current": 4.0,
+        "total": 10.0,
+        "unit": "step",
+        "message": "advanced simulation",
+        "sequence": 3,
+        "observed_at_epoch": 1.0,
+        "determinate": True,
+        "metadata": {"output": "gray-scott.bp"},
+    }
+    document = {
+        "schema_version": "jarvis.execution.progress.v1",
+        "execution_id": "execution-1",
+        "pipeline_id": "pipeline-1",
+        "execution_state": "running",
+        "terminal": False,
+        "packages": [
+            {
+                "package_id": "simulation",
+                "package_name": "builtin.gray_scott",
+                "event_count": 4,
+                "latest": event,
+            }
+        ],
+    }
+
+    snapshot = JarvisProgressSnapshotDocument.model_validate(document)
+
+    assert isinstance(snapshot.packages[0], JarvisPackageProgressDocument)
+    assert isinstance(snapshot.packages[0].latest, JarvisProgressEventDocument)
+    assert snapshot.packages[0].latest.current == 4.0
+
+    extended = deepcopy(document)
+    extended["packages"][0]["untrusted"] = True
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        JarvisProgressSnapshotDocument.model_validate(extended)
+
+    forged = deepcopy(document)
+    forged["packages"][0]["latest"]["execution_id"] = "other-execution"
+    with pytest.raises(ValueError, match="execution identity did not match"):
+        JarvisProgressSnapshotDocument.model_validate(forged)
+
+    inconsistent = deepcopy(document)
+    inconsistent["packages"][0]["latest"]["determinate"] = False
+    with pytest.raises(ValueError, match="determinate must match"):
+        JarvisProgressSnapshotDocument.model_validate(inconsistent)
 
 
 class TestServerProfiles:
@@ -634,34 +697,89 @@ class TestPipelineToolsDirect:
 
     @pytest.mark.asyncio
     async def test_execution_query_tools_delegate_to_native_handlers(self):
-        """User tools expose separate lifecycle and package-progress queries."""
-        with (
-            patch("jarvis_mcp.server.get_execution") as get_handler,
-            patch("jarvis_mcp.server.get_execution_progress") as progress_handler,
-        ):
+        """One user tool selects progress and artifact views in one query."""
+        from jarvis_mcp.server import (
+            ExecutionArtifactQuery,
+            jarvis_get_execution_tool,
+        )
+
+        with patch("jarvis_mcp.server.get_execution") as get_handler:
             get_handler.return_value = {
-                "schema_version": "clio-kit.jarvis-execution.v1"
+                "schema_version": "clio-kit.jarvis-execution.v1",
+                "pipeline_id": "pipeline",
+                "execution_id": "execution-1",
+                "execution_handle": {
+                    "schema_version": "jarvis.execution.handle.v1",
+                    "execution_id": "execution-1",
+                    "pipeline_id": "pipeline",
+                    "mode": "direct",
+                    "scheduler_provider": None,
+                    "scheduler_native_id": None,
+                    "cluster": None,
+                },
+                "execution_record": {
+                    "schema_version": "jarvis.execution.record.v1",
+                    "execution_id": "execution-1",
+                    "pipeline_id": "pipeline",
+                    "pipeline_name": "pipeline",
+                    "mode": "direct",
+                    "scheduler_provider": None,
+                    "scheduler_native_id": None,
+                    "cluster": None,
+                    "state": "running",
+                    "submitted": False,
+                    "terminal": False,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "return_code": None,
+                    "error": None,
+                    "metadata": {},
+                },
+                "runtime_metadata": {},
+                "progress": None,
+                "artifact_page": None,
             }
-            progress_handler.return_value = {
-                "schema_version": "clio-kit.jarvis-execution-progress-query.v1"
-            }
-            from jarvis_mcp.server import (
-                jarvis_get_execution_progress_tool,
-                jarvis_get_execution_tool,
-            )
 
             record = await jarvis_get_execution_tool("pipeline", "execution-1")
-            progress = await jarvis_get_execution_progress_tool(
+            filtered = await jarvis_get_execution_tool(
                 "pipeline",
                 "execution-1",
+                include_progress=False,
+                artifacts=ExecutionArtifactQuery(
+                    package_id="jarvis-core",
+                    role="log",
+                    state="finalized",
+                    artifact_id="art_AAAAAAAAAAAAAAAAAAAAAA",
+                    page_size=25,
+                    cursor="opaque-cursor",
+                ),
             )
 
-        assert record["schema_version"] == "clio-kit.jarvis-execution.v1"
-        assert progress["schema_version"] == (
-            "clio-kit.jarvis-execution-progress-query.v1"
-        )
-        get_handler.assert_awaited_once_with("pipeline", "execution-1")
-        progress_handler.assert_awaited_once_with("pipeline", "execution-1")
+        assert record.schema_version == "clio-kit.jarvis-execution.v1"
+        assert record.progress is None
+        assert record.artifact_page is None
+        assert filtered.schema_version == "clio-kit.jarvis-execution.v1"
+        assert get_handler.await_args_list == [
+            call(
+                "pipeline",
+                "execution-1",
+                include_progress=True,
+                artifacts=None,
+            ),
+            call(
+                "pipeline",
+                "execution-1",
+                include_progress=False,
+                artifacts={
+                    "package_id": "jarvis-core",
+                    "role": "log",
+                    "state": "finalized",
+                    "artifact_id": "art_AAAAAAAAAAAAAAAAAAAAAA",
+                    "page_size": 25,
+                    "cursor": "opaque-cursor",
+                },
+            ),
+        ]
 
     def test_execution_intent_local_and_direct_disable_scheduler(self):
         """Local and direct modes select single-node execution without a scheduler."""

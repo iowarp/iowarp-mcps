@@ -25,6 +25,12 @@ from uuid import uuid4
 from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
 
+from jarvis_mcp.artifacts import (
+    ArtifactQueryError,
+    ArtifactSnapshotError,
+    artifact_query_page,
+    artifact_snapshot_document,
+)
 from jarvis_mcp.progress import (
     NativeProgressExecution,
     ProgressReporter,
@@ -36,7 +42,8 @@ RUNTIME_METADATA_SCHEMA = "jarvis.runtime.v1"
 RUNTIME_ERROR_SCHEMA = "jarvis.error.v1"
 RUN_RESULT_SCHEMA = "clio-kit.jarvis-run.v1"
 EXECUTION_QUERY_SCHEMA = "clio-kit.jarvis-execution.v1"
-EXECUTION_PROGRESS_QUERY_SCHEMA = "clio-kit.jarvis-execution-progress-query.v1"
+_EXECUTION_QUERY_CONSISTENCY_ATTEMPTS = 4
+_EXECUTION_QUERY_RETRY_DELAY_SECONDS = 0.02
 _MAX_SPACK_SPECS = 32
 _MAX_SPACK_SPEC_LENGTH = 1024
 _MAX_ENVIRONMENT_VARIABLES = 512
@@ -462,15 +469,56 @@ async def append_pkg(
                 pipeline.append(
                     pkg_type, pkg_id=pkg_id, do_configure=config_flag, **raw_kwargs
                 ).save()
+                resolved_pkg_id = pkg_id or pkg_type.rsplit(".", 1)[-1]
+                persisted_config = _package_config(
+                    _get_package(pipeline, resolved_pkg_id)
+                )
             else:
                 config_args = _kwargs_to_config_args(raw_kwargs)
-                if config_flag is not None:
-                    config_args.append(f"do_configure={str(config_flag).lower()}")
+                resolved_pkg_id = pkg_id or pkg_type.rsplit(".", 1)[-1]
                 pipeline.append(pkg_type, package_alias=pkg_id, config_args=config_args)
-                _save_pipeline(pipeline)
-        return {"pipeline_id": pipeline_id, "appended": pkg_type}
+                try:
+                    expected = _normalize_package_config_request(
+                        pipeline, resolved_pkg_id, raw_kwargs
+                    )
+                    persisted_config = _package_config(
+                        _get_package(pipeline, resolved_pkg_id)
+                    )
+                    _require_persisted_package_config(
+                        resolved_pkg_id, expected, persisted_config
+                    )
+                    if config_flag:
+                        pipeline.configure_package(resolved_pkg_id, config_args)
+                        persisted = _load_pipeline(pipeline_id)
+                        persisted_config = _package_config(
+                            _get_package(persisted, resolved_pkg_id)
+                        )
+                        _require_persisted_package_config(
+                            resolved_pkg_id, expected, persisted_config
+                        )
+                except BaseException as exc:
+                    try:
+                        rollback = _load_pipeline(pipeline_id)
+                        rollback.rm(resolved_pkg_id)
+                    except BaseException as rollback_exc:
+                        raise RuntimeError(
+                            "Append failed and JARVIS could not roll back newly "
+                            f"appended package '{resolved_pkg_id}': {rollback_exc}"
+                        ) from exc
+                    raise
+        return {
+            "pipeline_id": pipeline_id,
+            "appended": pkg_type,
+            "step_id": resolved_pkg_id,
+            "configured": bool(config_flag),
+            "config": _jsonable(persisted_config),
+        }
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Append rejected: {e}") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Append failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Append failed: {e}") from e
 
 
 @_locked_pipeline_operation
@@ -510,14 +558,27 @@ async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs: Any) -> dict:
     try:
         with _protocol_stdout_to_stderr():
             pipeline = _load_pipeline(pipeline_id)
-            if hasattr(pipeline, "configure"):
+            if _is_legacy_pipeline(pipeline):
                 pipeline.configure(pkg_id, **kwargs)
+                _save_pipeline(pipeline)
+                persisted_config = _package_config(_get_package(pipeline, pkg_id))
             else:
+                expected = _normalize_package_config_request(pipeline, pkg_id, kwargs)
                 pipeline.configure_package(pkg_id, _kwargs_to_config_args(kwargs))
-            _save_pipeline(pipeline)
-        return {"pipeline_id": pipeline_id, "configured": pkg_id}
+                persisted = _load_pipeline(pipeline_id)
+                persisted_config = _package_config(_get_package(persisted, pkg_id))
+                _require_persisted_package_config(pkg_id, expected, persisted_config)
+        return {
+            "pipeline_id": pipeline_id,
+            "configured": pkg_id,
+            "config": _jsonable(persisted_config),
+        }
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Configure rejected: {e}") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Configure failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Configure failed: {e}") from e
 
 
 @_locked_pipeline_operation
@@ -705,34 +766,102 @@ async def run_pipeline(
         ) from e
 
 
-async def get_execution(pipeline_id: str, execution_id: str) -> dict[str, Any]:
-    """Return the durable JARVIS record and generic package progress snapshot."""
+async def get_execution(
+    pipeline_id: str,
+    execution_id: str,
+    *,
+    include_progress: bool = True,
+    artifacts: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return one durable execution view with optional progress and artifacts."""
     validated_pipeline = _validate_pipeline_id(pipeline_id)
     try:
         validated_execution = _native_execution_id(execution_id)
     except Exception as exc:
-        raise ToolError(f"Execution query failed: {exc}") from exc
+        raise ToolError(
+            _structured_runtime_error(
+                code="jarvis_execution_id_invalid",
+                message=f"Execution query failed: {exc}",
+                pipeline_id=validated_pipeline,
+                execution_id=_safe_error_execution_id(execution_id),
+                retryable=False,
+            )
+        ) from exc
     async with _pipeline_operation_lock(validated_pipeline):
         try:
             with _protocol_stdout_to_stderr():
                 pipeline = _load_pipeline(validated_pipeline)
-            record = pipeline.get_execution(validated_execution)
-            record_document = _execution_record_document(
-                record,
-                expected_execution_id=validated_execution,
-                expected_pipeline_id=validated_pipeline,
-            )
-            handle_document = _execution_handle_document(
-                getattr(record, "handle", None),
-                expected_execution_id=validated_execution,
-                expected_pipeline_id=validated_pipeline,
-            )
+            for attempt in range(_EXECUTION_QUERY_CONSISTENCY_ATTEMPTS):
+                progress_document = (
+                    progress_snapshot_document(
+                        pipeline.get_execution_progress(validated_execution),
+                        expected_execution_id=validated_execution,
+                        expected_pipeline_id=validated_pipeline,
+                    )
+                    if include_progress
+                    else None
+                )
+                artifact_snapshot = (
+                    artifact_snapshot_document(
+                        pipeline.get_execution_artifacts(validated_execution),
+                        expected_execution_id=validated_execution,
+                        expected_pipeline_id=validated_pipeline,
+                    )
+                    if artifacts is not None
+                    else None
+                )
+                record = pipeline.get_execution(validated_execution)
+                record_document = _execution_record_document(
+                    record,
+                    expected_execution_id=validated_execution,
+                    expected_pipeline_id=validated_pipeline,
+                )
+                handle_document = _execution_handle_document(
+                    getattr(record, "handle", None),
+                    expected_execution_id=validated_execution,
+                    expected_pipeline_id=validated_pipeline,
+                )
+                if _execution_snapshots_match_record(
+                    record_document,
+                    progress_document=progress_document,
+                    artifact_snapshot=artifact_snapshot,
+                ):
+                    break
+                if attempt + 1 < _EXECUTION_QUERY_CONSISTENCY_ATTEMPTS:
+                    await asyncio.sleep(_EXECUTION_QUERY_RETRY_DELAY_SECONDS)
+            else:
+                raise ToolError(
+                    _structured_runtime_error(
+                        code="jarvis_execution_snapshot_unstable",
+                        message=(
+                            "Execution changed while its progress and artifact "
+                            "snapshots were being read; retry the query"
+                        ),
+                        pipeline_id=validated_pipeline,
+                        execution_id=validated_execution,
+                        retryable=True,
+                    )
+                )
+
+            artifact_page = None
+            if artifacts is not None:
+                if artifact_snapshot is None:
+                    raise RuntimeError("JARVIS artifact query omitted its snapshot")
+                artifact_page = artifact_query_page(
+                    artifact_snapshot,
+                    package_id=artifacts.get("package_id"),
+                    role=artifacts.get("role"),
+                    state=artifacts.get("state"),
+                    artifact_id=artifacts.get("artifact_id"),
+                    page_size=artifacts.get("page_size", 50),
+                    cursor=artifacts.get("cursor"),
+                )
             query_submit, query_wait = _execution_query_flags(record_document)
             runtime_metadata = _runtime_metadata_from_documents(
                 pipeline,
                 handle_document=handle_document,
                 record_document=record_document,
-                progress_document=None,
+                progress_document=progress_document,
                 submit=query_submit,
                 wait=query_wait,
                 environment_metadata=None,
@@ -744,38 +873,58 @@ async def get_execution(pipeline_id: str, execution_id: str) -> dict[str, Any]:
                 "execution_handle": handle_document,
                 "execution_record": record_document,
                 "runtime_metadata": runtime_metadata,
+                "progress": progress_document,
+                "artifact_page": artifact_page,
             }
+        except ToolError:
+            raise
+        except ArtifactQueryError as exc:
+            raise ToolError(
+                _structured_runtime_error(
+                    code=exc.code,
+                    message=exc.message,
+                    pipeline_id=validated_pipeline,
+                    execution_id=validated_execution,
+                    retryable=exc.retryable,
+                )
+            ) from exc
+        except ArtifactSnapshotError as exc:
+            raise ToolError(
+                _structured_runtime_error(
+                    code=exc.code,
+                    message=exc.message,
+                    pipeline_id=validated_pipeline,
+                    execution_id=validated_execution,
+                    retryable=False,
+                )
+            ) from exc
         except Exception as exc:
-            raise ToolError(f"Execution query failed: {exc}") from exc
+            raise ToolError(
+                _structured_runtime_error(
+                    code="jarvis_execution_query_failed",
+                    message=f"Execution query failed: {exc}",
+                    pipeline_id=validated_pipeline,
+                    execution_id=validated_execution,
+                    retryable=False,
+                )
+            ) from exc
 
 
-async def get_execution_progress(
-    pipeline_id: str,
-    execution_id: str,
-) -> dict[str, Any]:
-    """Return one identity-checked JARVIS package progress snapshot."""
-    validated_pipeline = _validate_pipeline_id(pipeline_id)
-    try:
-        validated_execution = _native_execution_id(execution_id)
-    except Exception as exc:
-        raise ToolError(f"Execution progress query failed: {exc}") from exc
-    async with _pipeline_operation_lock(validated_pipeline):
-        try:
-            with _protocol_stdout_to_stderr():
-                pipeline = _load_pipeline(validated_pipeline)
-            snapshot = progress_snapshot_document(
-                pipeline.get_execution_progress(validated_execution),
-                expected_execution_id=validated_execution,
-                expected_pipeline_id=validated_pipeline,
-            )
-            return {
-                "schema_version": EXECUTION_PROGRESS_QUERY_SCHEMA,
-                "pipeline_id": validated_pipeline,
-                "execution_id": validated_execution,
-                "progress": snapshot,
-            }
-        except Exception as exc:
-            raise ToolError(f"Execution progress query failed: {exc}") from exc
+def _execution_snapshots_match_record(
+    record_document: dict[str, Any],
+    *,
+    progress_document: dict[str, Any] | None,
+    artifact_snapshot: dict[str, Any] | None,
+) -> bool:
+    """Return whether optional producer snapshots share one lifecycle state."""
+    state = record_document["state"]
+    terminal = record_document["terminal"]
+    for snapshot in (progress_document, artifact_snapshot):
+        if snapshot is not None and (
+            snapshot["execution_state"] != state or snapshot["terminal"] is not terminal
+        ):
+            return False
+    return True
 
 
 async def _run_pipeline_operation(
@@ -2556,19 +2705,15 @@ def _runtime_metadata_from_documents(
         ),
         "output_path": (
             _optional_str(scheduler_document.get("output"))
-            if progress_document is not None and isinstance(scheduler_document, dict)
+            if isinstance(scheduler_document, dict)
             else None
         ),
         "error_path": (
             _optional_str(scheduler_document.get("error"))
-            if progress_document is not None and isinstance(scheduler_document, dict)
+            if isinstance(scheduler_document, dict)
             else None
         ),
-        "package_provenance": (
-            _pipeline_package_provenance(pipeline)
-            if progress_document is not None
-            else []
-        ),
+        "package_provenance": _pipeline_package_provenance(pipeline),
         "terminal": {
             "state": record_document["state"],
             "terminal": record_document["terminal"],
@@ -2734,6 +2879,7 @@ def _structured_runtime_error(
     pipeline_id: str,
     execution_id: str,
     runtime_metadata: dict[str, Any] | None = None,
+    retryable: bool | None = None,
 ) -> str:
     document: dict[str, Any] = {
         "schema_version": RUNTIME_ERROR_SCHEMA,
@@ -2744,6 +2890,8 @@ def _structured_runtime_error(
             "execution_id": execution_id,
         },
     }
+    if retryable is not None:
+        cast(dict[str, Any], document["error"])["retryable"] = retryable
     if runtime_metadata is not None:
         document["runtime_metadata"] = runtime_metadata
     return json.dumps(document, separators=(",", ":"), sort_keys=True)
@@ -2967,6 +3115,96 @@ def _package_config(pkg: Any) -> Any:
     if isinstance(pkg, dict):
         return pkg.get("config", {})
     return getattr(pkg, "config", {})
+
+
+def _normalize_package_config_request(
+    pipeline: Any, pkg_id: str, kwargs: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate and normalize structured settings with the package-owned parser."""
+    pkg = _get_package(pipeline, pkg_id)
+    if pkg is None:
+        raise ValueError(f"Package '{pkg_id}' not found")
+    loader = getattr(pipeline, "_load_package_instance", None)
+    instance = loader(pkg, getattr(pipeline, "env", {})) if callable(loader) else pkg
+    configure_menu = getattr(instance, "configure_menu", None)
+    get_argparse = getattr(instance, "get_argparse", None)
+    if not callable(configure_menu) or not callable(get_argparse):
+        raise RuntimeError(
+            f"Package '{pkg_id}' does not expose structured configuration metadata"
+        )
+
+    menu = configure_menu()
+    if not isinstance(menu, list):
+        raise RuntimeError(f"Package '{pkg_id}' returned an invalid configuration menu")
+    canonical_names: dict[str, str] = {}
+    for spec in menu:
+        if not isinstance(spec, dict):
+            raise RuntimeError(
+                f"Package '{pkg_id}' returned an invalid configuration option"
+            )
+        name = spec.get("name")
+        if not isinstance(name, str) or not name:
+            raise RuntimeError(
+                f"Package '{pkg_id}' returned an invalid configuration option name"
+            )
+        canonical_names[name] = name
+        aliases = spec.get("aliases", [])
+        if not isinstance(aliases, list) or not all(
+            isinstance(alias, str) and alias for alias in aliases
+        ):
+            raise RuntimeError(
+                f"Package '{pkg_id}' returned invalid aliases for '{name}'"
+            )
+        canonical_names.update({alias: name for alias in aliases})
+
+    unknown = sorted(set(kwargs) - set(canonical_names))
+    if unknown:
+        raise ValueError(
+            f"Package '{pkg_id}' does not support settings: {', '.join(unknown)}"
+        )
+    null_names = sorted(name for name, value in kwargs.items() if value is None)
+    if null_names:
+        raise ValueError(
+            "Package settings cannot be null; provide a concrete value for: "
+            + ", ".join(null_names)
+        )
+
+    parser = get_argparse()
+    try:
+        parser.parse(["configure", *_kwargs_to_config_args(kwargs)])
+    except SystemExit as exc:
+        raise ValueError(
+            f"Package '{pkg_id}' rejected its configuration values"
+        ) from exc
+    converted = getattr(parser, "kwargs", None)
+    if not isinstance(converted, dict):
+        raise RuntimeError(f"Package '{pkg_id}' parser returned invalid settings")
+    normalized: dict[str, Any] = {}
+    for requested_name in kwargs:
+        canonical = canonical_names[requested_name]
+        if canonical not in converted:
+            raise ValueError(
+                f"Package '{pkg_id}' did not accept setting '{requested_name}'"
+            )
+        normalized[canonical] = converted[canonical]
+    return normalized
+
+
+def _require_persisted_package_config(
+    pkg_id: str, expected: dict[str, Any], persisted: Any
+) -> None:
+    """Fail unless every normalized setting survived a durable pipeline reload."""
+    if not isinstance(persisted, dict):
+        raise RuntimeError(f"Package '{pkg_id}' persisted an invalid configuration")
+    mismatches = [
+        name
+        for name, value in expected.items()
+        if name not in persisted or _jsonable(persisted[name]) != _jsonable(value)
+    ]
+    if mismatches:
+        raise ValueError(
+            f"Package '{pkg_id}' did not persist settings: {', '.join(mismatches)}"
+        )
 
 
 def _kwargs_to_config_args(kwargs: dict[str, Any]) -> list[str]:

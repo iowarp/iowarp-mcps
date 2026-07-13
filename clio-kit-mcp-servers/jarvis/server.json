@@ -51,11 +51,7 @@
     },
     {
       "name": "jarvis_get_execution",
-      "description": "Query one JARVIS execution handle and durable lifecycle record by pipeline and execution ID."
-    },
-    {
-      "name": "jarvis_get_execution_progress",
-      "description": "Query the latest JARVIS-owned package progress snapshot for one pipeline execution."
+      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest."
     }
   ],
   "resources": [

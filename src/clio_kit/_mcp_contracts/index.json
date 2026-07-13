@@ -2,12 +2,12 @@
   "contracts": [
     {
       "artifact": "jarvis-user-v3.json",
-      "artifact_sha256": "4051e784923c687ba2c5e7caefa5644e2ff93c214a5c893a06ee394e9c0821ad",
+      "artifact_sha256": "68182b6bfcd8600f66ce452f58c737a1cf258e6b63cb395e62d9ee4fb8463869",
       "contract_id": "clio-kit-jarvis-user-v3",
-      "contract_sha256": "d2365800cc38bffeecafcfade1288423a57f356eab8bad0bd6d55dbf52d172e3",
+      "contract_sha256": "c70e350d919e0f3fa0c116d7eaf861e23b4087a18a06b2704ddbf7384f8d1f82",
       "profile": "user",
       "server_name": "jarvis",
-      "wire_sha256": "2bd6d7a701fbe86db6caa8bdf3d7bf2adeda7456a2c9c5895405a9955a9c53f3"
+      "wire_sha256": "756c1a7233b9d843c931e7d539644fac61d88d147b53b535fc6340b16562a108"
     },
     {
       "artifact": "slurm-user-v3.json",

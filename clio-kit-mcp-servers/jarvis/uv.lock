@@ -791,12 +791,23 @@ wheels = [
 
 [[package]]
 name = "jarvis-cd"
-version = "1.0.0.post1.dev393+g1aa4456"
-source = { git = "https://github.com/grc-iit/jarvis-cd.git?rev=1aa4456e84154841fc6ba2c9c6193f44f545d952#1aa4456e84154841fc6ba2c9c6193f44f545d952" }
+version = "1.2.2"
+source = { url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/jarvis_cd-1.2.2-py3-none-any.whl" }
 dependencies = [
     { name = "pandas" },
     { name = "podman-compose" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
+    { name = "pyyaml" },
+]
+wheels = [
+    { url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/jarvis_cd-1.2.2-py3-none-any.whl", hash = "sha256:f05454718a4efe4dadebefb98c83511ba3dcc662238c0c05430a1b621a8ab8b7" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pandas" },
+    { name = "podman-compose" },
+    { name = "pywin32", marker = "sys_platform == 'win32'", specifier = ">=311" },
     { name = "pyyaml" },
 ]
 
@@ -842,7 +853,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp", specifier = ">=3.2.0" },
     { name = "idna", specifier = ">=3.15" },
-    { name = "jarvis-cd", git = "https://github.com/grc-iit/jarvis-cd.git?rev=1aa4456e84154841fc6ba2c9c6193f44f545d952" },
+    { name = "jarvis-cd", url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/jarvis_cd-1.2.2-py3-none-any.whl" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pygments", specifier = ">=2.20.0" },

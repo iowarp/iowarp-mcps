@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-jarvis-user-v3",
-  "contract_sha256": "d2365800cc38bffeecafcfade1288423a57f356eab8bad0bd6d55dbf52d172e3",
+  "contract_sha256": "c70e350d919e0f3fa0c116d7eaf861e23b4087a18a06b2704ddbf7384f8d1f82",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -17,7 +17,6 @@
     "jarvis_describe",
     "jarvis_edit_step",
     "jarvis_get_execution",
-    "jarvis_get_execution_progress",
     "jarvis_run"
   ],
   "tools": [
@@ -484,12 +483,114 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "Query one JARVIS execution handle and durable lifecycle record by pipeline and execution ID.",
+      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
+          "artifacts": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Optional filters for one bounded page of execution artifacts.",
+                "properties": {
+                  "artifact_id": {
+                    "anyOf": [
+                      {
+                        "maxLength": 90,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Exact opaque JARVIS artifact ID filter."
+                  },
+                  "cursor": {
+                    "anyOf": [
+                      {
+                        "maxLength": 1024,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Opaque next-page cursor."
+                  },
+                  "package_id": {
+                    "anyOf": [
+                      {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Exact JARVIS package alias filter."
+                  },
+                  "page_size": {
+                    "default": 50,
+                    "description": "Maximum artifacts to return in this page.",
+                    "maximum": 100,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "role": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "intermediate",
+                          "output",
+                          "log",
+                          "checkpoint",
+                          "provenance",
+                          "validation"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "state": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "producing",
+                          "available",
+                          "finalized",
+                          "incomplete",
+                          "failed"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "execution_id": {
             "type": "string"
+          },
+          "include_progress": {
+            "default": true,
+            "type": "boolean"
           },
           "pipeline_id": {
             "type": "string"
@@ -503,9 +604,216 @@
       },
       "name": "jarvis_get_execution",
       "outputSchema": {
-        "description": "Frozen top-level result envelope for an execution query.",
+        "additionalProperties": false,
+        "description": "Frozen top-level result envelope for a selectable execution query.",
         "properties": {
+          "artifact_page": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Bounded artifact page nested in a unified execution query.",
+                "properties": {
+                  "artifacts": {
+                    "items": {
+                      "additionalProperties": false,
+                      "description": "Current JARVIS-owned lifecycle observation for one generated artifact.",
+                      "properties": {
+                        "artifact_id": {
+                          "type": "string"
+                        },
+                        "checksum": {
+                          "type": "string"
+                        },
+                        "execution_id": {
+                          "type": "string"
+                        },
+                        "format": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "location": {
+                          "additionalProperties": false,
+                          "description": "Transport-neutral location in a JARVIS artifact manifest.",
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "execution_path",
+                                "cluster_path",
+                                "external_uri"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "value"
+                          ],
+                          "type": "object"
+                        },
+                        "logical_name": {
+                          "type": "string"
+                        },
+                        "media_type": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        "observed_at_epoch": {
+                          "type": "number"
+                        },
+                        "ownership": {
+                          "enum": [
+                            "execution",
+                            "external",
+                            "shared"
+                          ],
+                          "type": "string"
+                        },
+                        "package_id": {
+                          "type": "string"
+                        },
+                        "package_name": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "role": {
+                          "enum": [
+                            "intermediate",
+                            "output",
+                            "log",
+                            "checkpoint",
+                            "provenance",
+                            "validation"
+                          ],
+                          "type": "string"
+                        },
+                        "schema_version": {
+                          "const": "jarvis.artifact.v1",
+                          "type": "string"
+                        },
+                        "sequence": {
+                          "type": "integer"
+                        },
+                        "size_bytes": {
+                          "type": "integer"
+                        },
+                        "state": {
+                          "enum": [
+                            "producing",
+                            "available",
+                            "finalized",
+                            "incomplete",
+                            "failed"
+                          ],
+                          "type": "string"
+                        },
+                        "structure": {
+                          "enum": [
+                            "file",
+                            "directory",
+                            "collection",
+                            "stream"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "schema_version",
+                        "package_name",
+                        "package_id",
+                        "execution_id",
+                        "artifact_id",
+                        "logical_name",
+                        "kind",
+                        "role",
+                        "structure",
+                        "ownership",
+                        "state",
+                        "revision",
+                        "sequence",
+                        "observed_at_epoch",
+                        "metadata"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "execution_id": {
+                    "type": "string"
+                  },
+                  "execution_state": {
+                    "enum": [
+                      "preparing",
+                      "scripted",
+                      "submitting",
+                      "submitted",
+                      "running",
+                      "completed",
+                      "failed",
+                      "canceled",
+                      "unknown"
+                    ],
+                    "type": "string"
+                  },
+                  "matching_artifact_count": {
+                    "type": "integer"
+                  },
+                  "next_cursor": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "producer_schema_version": {
+                    "const": "jarvis.execution.artifacts.v1",
+                    "type": "string"
+                  },
+                  "returned_artifact_count": {
+                    "type": "integer"
+                  },
+                  "terminal": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "producer_schema_version",
+                  "pipeline_id",
+                  "execution_id",
+                  "execution_state",
+                  "terminal",
+                  "artifacts",
+                  "matching_artifact_count",
+                  "returned_artifact_count",
+                  "next_cursor"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "execution_handle": {
+            "additionalProperties": false,
             "description": "Stable JARVIS-CD execution-handle document.",
             "properties": {
               "cluster": {
@@ -571,6 +879,7 @@
             "type": "string"
           },
           "execution_record": {
+            "additionalProperties": false,
             "description": "Stable JARVIS-CD durable execution-record document.",
             "properties": {
               "cluster": {
@@ -697,6 +1006,217 @@
           "pipeline_id": {
             "type": "string"
           },
+          "progress": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Stable aggregate returned by JARVIS-CD's execution progress API.",
+                "properties": {
+                  "execution_id": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "execution_state": {
+                    "enum": [
+                      "preparing",
+                      "scripted",
+                      "submitting",
+                      "submitted",
+                      "running",
+                      "completed",
+                      "failed",
+                      "canceled",
+                      "unknown"
+                    ],
+                    "type": "string"
+                  },
+                  "packages": {
+                    "items": {
+                      "additionalProperties": false,
+                      "description": "Latest stable progress observation for one package alias.",
+                      "properties": {
+                        "event_count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "description": "One closed, JARVIS-owned package progress observation.",
+                              "properties": {
+                                "current": {
+                                  "anyOf": [
+                                    {
+                                      "minimum": 0,
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "default": null
+                                },
+                                "determinate": {
+                                  "type": "boolean"
+                                },
+                                "execution_id": {
+                                  "maxLength": 256,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "maxLength": 256,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "message": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "minLength": 1,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "default": null
+                                },
+                                "metadata": {
+                                  "additionalProperties": true,
+                                  "type": "object"
+                                },
+                                "observed_at_epoch": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "package_id": {
+                                  "maxLength": 256,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "package_name": {
+                                  "maxLength": 256,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "schema_version": {
+                                  "const": "jarvis.progress.v1",
+                                  "type": "string"
+                                },
+                                "sequence": {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                "state": {
+                                  "enum": [
+                                    "pending",
+                                    "starting",
+                                    "running",
+                                    "ready",
+                                    "completed",
+                                    "failed",
+                                    "canceled"
+                                  ],
+                                  "type": "string"
+                                },
+                                "total": {
+                                  "anyOf": [
+                                    {
+                                      "exclusiveMinimum": 0,
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "default": null
+                                },
+                                "unit": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 256,
+                                      "minLength": 1,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "default": null
+                                }
+                              },
+                              "required": [
+                                "schema_version",
+                                "package_name",
+                                "package_id",
+                                "execution_id",
+                                "label",
+                                "state",
+                                "sequence",
+                                "observed_at_epoch",
+                                "determinate",
+                                "metadata"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "package_id": {
+                          "maxLength": 256,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "package_name": {
+                          "maxLength": 256,
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "package_id",
+                        "package_name",
+                        "event_count",
+                        "latest"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4096,
+                    "type": "array"
+                  },
+                  "pipeline_id": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "schema_version": {
+                    "const": "jarvis.execution.progress.v1",
+                    "type": "string"
+                  },
+                  "terminal": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "execution_id",
+                  "pipeline_id",
+                  "execution_state",
+                  "terminal",
+                  "packages"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "runtime_metadata": {
             "additionalProperties": true,
             "type": "object"
@@ -712,113 +1232,9 @@
           "execution_id",
           "execution_handle",
           "execution_record",
-          "runtime_metadata"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "_meta": {
-        "fastmcp": {
-          "tags": [
-            "execution",
-            "jarvis",
-            "pipeline",
-            "progress",
-            "user"
-          ]
-        }
-      },
-      "annotations": {
-        "destructiveHint": false,
-        "idempotentHint": true,
-        "readOnlyHint": true
-      },
-      "description": "Query the latest JARVIS-owned package progress snapshot for one pipeline execution.",
-      "inputSchema": {
-        "additionalProperties": false,
-        "properties": {
-          "execution_id": {
-            "type": "string"
-          },
-          "pipeline_id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "pipeline_id",
-          "execution_id"
-        ],
-        "type": "object"
-      },
-      "name": "jarvis_get_execution_progress",
-      "outputSchema": {
-        "description": "Frozen top-level result envelope for an execution-progress query.",
-        "properties": {
-          "execution_id": {
-            "type": "string"
-          },
-          "pipeline_id": {
-            "type": "string"
-          },
-          "progress": {
-            "description": "Stable aggregate returned by JARVIS-CD's execution progress API.",
-            "properties": {
-              "execution_id": {
-                "type": "string"
-              },
-              "execution_state": {
-                "enum": [
-                  "preparing",
-                  "scripted",
-                  "submitting",
-                  "submitted",
-                  "running",
-                  "completed",
-                  "failed",
-                  "canceled",
-                  "unknown"
-                ],
-                "type": "string"
-              },
-              "packages": {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "pipeline_id": {
-                "type": "string"
-              },
-              "schema_version": {
-                "const": "jarvis.execution.progress.v1",
-                "type": "string"
-              },
-              "terminal": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "schema_version",
-              "execution_id",
-              "pipeline_id",
-              "execution_state",
-              "terminal",
-              "packages"
-            ],
-            "type": "object"
-          },
-          "schema_version": {
-            "const": "clio-kit.jarvis-execution-progress-query.v1",
-            "type": "string"
-          }
-        },
-        "required": [
-          "schema_version",
-          "pipeline_id",
-          "execution_id",
-          "progress"
+          "runtime_metadata",
+          "progress",
+          "artifact_page"
         ],
         "type": "object"
       }
@@ -1301,9 +1717,12 @@
             "type": "string"
           },
           "progress": {
+            "additionalProperties": false,
             "description": "Stable aggregate returned by JARVIS-CD's execution progress API.",
             "properties": {
               "execution_id": {
+                "maxLength": 256,
+                "minLength": 1,
                 "type": "string"
               },
               "execution_state": {
@@ -1322,12 +1741,165 @@
               },
               "packages": {
                 "items": {
-                  "additionalProperties": true,
+                  "additionalProperties": false,
+                  "description": "Latest stable progress observation for one package alias.",
+                  "properties": {
+                    "event_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "latest": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "description": "One closed, JARVIS-owned package progress observation.",
+                          "properties": {
+                            "current": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            },
+                            "determinate": {
+                              "type": "boolean"
+                            },
+                            "execution_id": {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "label": {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "message": {
+                              "anyOf": [
+                                {
+                                  "maxLength": 4096,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            },
+                            "metadata": {
+                              "additionalProperties": true,
+                              "type": "object"
+                            },
+                            "observed_at_epoch": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "package_id": {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "package_name": {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "schema_version": {
+                              "const": "jarvis.progress.v1",
+                              "type": "string"
+                            },
+                            "sequence": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "state": {
+                              "enum": [
+                                "pending",
+                                "starting",
+                                "running",
+                                "ready",
+                                "completed",
+                                "failed",
+                                "canceled"
+                              ],
+                              "type": "string"
+                            },
+                            "total": {
+                              "anyOf": [
+                                {
+                                  "exclusiveMinimum": 0,
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            },
+                            "unit": {
+                              "anyOf": [
+                                {
+                                  "maxLength": 256,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            }
+                          },
+                          "required": [
+                            "schema_version",
+                            "package_name",
+                            "package_id",
+                            "execution_id",
+                            "label",
+                            "state",
+                            "sequence",
+                            "observed_at_epoch",
+                            "determinate",
+                            "metadata"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "package_id": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "package_name": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "package_id",
+                    "package_name",
+                    "event_count",
+                    "latest"
+                  ],
                   "type": "object"
                 },
+                "maxItems": 4096,
                 "type": "array"
               },
               "pipeline_id": {
+                "maxLength": 256,
+                "minLength": 1,
                 "type": "string"
               },
               "schema_version": {
@@ -1413,5 +1985,5 @@
       }
     }
   ],
-  "wire_sha256": "2bd6d7a701fbe86db6caa8bdf3d7bf2adeda7456a2c9c5895405a9955a9c53f3"
+  "wire_sha256": "756c1a7233b9d843c931e7d539644fac61d88d147b53b535fc6340b16562a108"
 }

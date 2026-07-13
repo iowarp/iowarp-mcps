@@ -45,6 +45,7 @@ jarvis_describe
 jarvis_add_step
 jarvis_edit_step
 jarvis_run
+jarvis_get_execution
 ```
 
 `jarvis_edit_step(operation="edit", config={...})` updates a step.
@@ -92,7 +93,7 @@ A normal agent should work at the pipeline level:
 4. `jarvis_edit_step`
 5. `jarvis_describe(target="pipeline")`
 6. `jarvis_run`
-7. `jarvis_get_execution` or `jarvis_get_execution_progress` for a nonterminal handle
+7. Query the returned handle with `jarvis_get_execution`
 
 If the agent needs to remove a pipeline step, call
 `jarvis_edit_step(operation="remove")`. Do not use raw `remove_pkg` from the
@@ -117,7 +118,7 @@ returned by `Pipeline.submit`. The authoritative scheduler fields are
 `scheduler_job_id` remains a temporary relay compatibility alias and is never
 inferred from application stdout.
 
-### Runtime and progress contracts
+### Runtime, progress, and artifact contracts
 
 Every authoritative `jarvis_run` result carries producer schema
 `jarvis.runtime.v1`. A claimed scheduler identity is accompanied by
@@ -139,15 +140,34 @@ application stdout. Notifications are capped at 64 KiB each, 10,000 per run,
 and 4 MiB total. Reporter failure does not orphan the JARVIS operation: the
 operation is awaited before the error is returned.
 
-`jarvis_get_execution(pipeline_id=..., execution_id=...)` returns the exact
-handle and latest execution record. `jarvis_get_execution_progress` returns the
-generic package progress snapshot separately. Both queries work for direct
-executions with no scheduler, scheduler executions before or after allocation,
-and terminal executions. Successful `jarvis_run` results also include the
-current exact JARVIS `progress` snapshot and use
-`clio-kit.jarvis-run.v1`; execution and progress query results use
-`clio-kit.jarvis-execution.v1` and
-`clio-kit.jarvis-execution-progress-query.v1`, respectively.
+`jarvis_get_execution(pipeline_id=..., execution_id=...)` is the single durable
+query for an execution. It always returns the exact handle, latest record, and
+runtime metadata, and includes the generic package progress snapshot by
+default. Set `include_progress=false` when only lifecycle state is needed.
+
+Artifacts are opt-in so routine polling stays compact. Pass `artifacts={}` for
+the default bounded page, or provide exact `package_id`, `role`, `state`, and
+`artifact_id` filters plus `page_size` and `cursor`. The page size defaults to
+50 and cannot exceed 100. Follow `next_cursor` with the same filters. The opaque
+cursor is bound to the filtered producer snapshot and fails explicitly if
+artifact or execution state changed between pages. References include opaque
+artifact IDs, lifecycle state, role, structure, ownership, metadata, and
+transport-neutral locations. The MCP does not read or transfer artifact
+content or interpret application-specific formats. The fixed response always
+contains nullable `progress` and `artifact_page` keys, so selecting less data
+does not change its shape. `include_progress=false` suppresses only the progress
+snapshot; runtime paths and package provenance remain available.
+
+The query retries boundedly if execution state changes while JARVIS is reading
+the record, progress, and artifact manifests, so one response cannot mix
+running and completed lifecycle states. Expected artifact failures use the
+machine-readable `jarvis.error.v1` envelope. Cursor errors distinguish invalid,
+filter-mismatched, and stale cursors; stale cursors set `retryable=true` so the
+agent can restart pagination from the first page without parsing prose. This
+works for direct executions with no scheduler, scheduler executions before or
+after allocation, and terminal executions.
+Successful `jarvis_run` results use `clio-kit.jarvis-run.v1`; unified execution
+queries use `clio-kit.jarvis-execution.v1`.
 
 ## Claude Code
 
@@ -208,6 +228,11 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 ### `jarvis_run`
 **Description**: Run a configured JARVIS pipeline, optionally persisting the runtime environment for `spack_specs`, and return structured execution metadata.
 **Tags**: jarvis, pipeline, user
+
+### `jarvis_get_execution`
+**Description**: Query a durable JARVIS execution, optionally including package progress and one bounded page of generated-artifact references.
+**Hints**: read-only, idempotent
+**Tags**: jarvis, pipeline, execution, user
 
 ### Resources
 

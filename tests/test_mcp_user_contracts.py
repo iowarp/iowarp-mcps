@@ -75,7 +75,6 @@ def test_contract_probe_uses_a_fresh_isolated_child_environment(
                 "jarvis_edit_step",
                 "jarvis_run",
                 "jarvis_get_execution",
-                "jarvis_get_execution_progress",
             },
         ),
         (
@@ -128,8 +127,8 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     assert "load_spec" in cast(list[str], output_schema["required"])
 
 
-def test_jarvis_contract_combines_edit_remove_and_exposes_execution_queries() -> None:
-    """JARVIS keeps mutations compact while exposing native execution queries."""
+def test_jarvis_contract_combines_mutations_and_execution_observation() -> None:
+    """JARVIS gives agents one mutation and one durable observation semantic."""
     artifact = load_mcp_user_contract("clio-kit-jarvis-user-v3")
     tools = {
         cast(str, tool["name"]): cast(JSON, tool)
@@ -141,8 +140,14 @@ def test_jarvis_contract_combines_edit_remove_and_exposes_execution_queries() ->
     properties = cast(JSON, edit_input["properties"])
     operation = cast(JSON, properties["operation"])
     assert operation["enum"] == ["edit", "remove"]
-    assert "jarvis_get_execution" in tools
-    assert "jarvis_get_execution_progress" in tools
+    assert set(tools) == {
+        "jarvis_create_pipeline",
+        "jarvis_describe",
+        "jarvis_add_step",
+        "jarvis_edit_step",
+        "jarvis_run",
+        "jarvis_get_execution",
+    }
     run_input = cast(JSON, tools["jarvis_run"]["inputSchema"])
     run_properties = cast(JSON, run_input["properties"])
     execution_id = cast(JSON, run_properties["execution_id"])
@@ -150,19 +155,42 @@ def test_jarvis_contract_combines_edit_remove_and_exposes_execution_queries() ->
         "anyOf": [{"type": "string"}, {"type": "null"}],
         "default": None,
     }
-    for tool_name in ("jarvis_get_execution", "jarvis_get_execution_progress"):
-        query_input = cast(JSON, tools[tool_name]["inputSchema"])
-        assert query_input["required"] == ["pipeline_id", "execution_id"]
-        assert set(cast(JSON, query_input["properties"])) == {
-            "pipeline_id",
-            "execution_id",
-        }
+    query_input = cast(JSON, tools["jarvis_get_execution"]["inputSchema"])
+    assert query_input["required"] == ["pipeline_id", "execution_id"]
+    query_properties = cast(JSON, query_input["properties"])
+    assert set(query_properties) == {
+        "pipeline_id",
+        "execution_id",
+        "include_progress",
+        "artifacts",
+    }
+    assert query_properties["include_progress"] == {
+        "default": True,
+        "type": "boolean",
+    }
+    artifact_query = cast(JSON, query_properties["artifacts"])
+    assert artifact_query["default"] is None
+    artifact_object = cast(JSON, cast(list[JSON], artifact_query["anyOf"])[0])
+    assert artifact_object["additionalProperties"] is False
+    artifact_query_properties = cast(JSON, artifact_object["properties"])
+    assert set(artifact_query_properties) == {
+        "package_id",
+        "role",
+        "state",
+        "artifact_id",
+        "page_size",
+        "cursor",
+    }
+    assert artifact_query_properties["page_size"] == {
+        "default": 50,
+        "description": "Maximum artifacts to return in this page.",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer",
+    }
     expected_result_schemas = {
         "jarvis_run": "clio-kit.jarvis-run.v1",
         "jarvis_get_execution": "clio-kit.jarvis-execution.v1",
-        "jarvis_get_execution_progress": (
-            "clio-kit.jarvis-execution-progress-query.v1"
-        ),
     }
     for tool_name, schema_version in expected_result_schemas.items():
         output = cast(JSON, tools[tool_name]["outputSchema"])
@@ -197,6 +225,123 @@ def test_jarvis_contract_combines_edit_remove_and_exposes_execution_queries() ->
         "type": "string",
     }
     assert "progress" in cast(list[str], run_output["required"])
+    execution_output = cast(JSON, tools["jarvis_get_execution"]["outputSchema"])
+    assert execution_output["additionalProperties"] is False
+    execution_output_properties = cast(JSON, execution_output["properties"])
+    assert set(cast(list[str], execution_output["required"])) == {
+        "schema_version",
+        "pipeline_id",
+        "execution_id",
+        "execution_handle",
+        "execution_record",
+        "runtime_metadata",
+        "progress",
+        "artifact_page",
+    }
+    progress_options = cast(
+        list[JSON], cast(JSON, execution_output_properties["progress"])["anyOf"]
+    )
+    progress_output = next(
+        option for option in progress_options if "properties" in option
+    )
+    assert progress_output["additionalProperties"] is False
+    progress_properties = cast(JSON, progress_output["properties"])
+    assert progress_properties["schema_version"] == {
+        "const": "jarvis.execution.progress.v1",
+        "type": "string",
+    }
+    packages = cast(JSON, progress_properties["packages"])
+    assert packages["maxItems"] == 4096
+    package = cast(JSON, packages["items"])
+    assert package["additionalProperties"] is False
+    package_properties = cast(JSON, package["properties"])
+    assert set(package_properties) == {
+        "package_id",
+        "package_name",
+        "event_count",
+        "latest",
+    }
+    assert set(cast(list[str], package["required"])) == set(package_properties)
+    assert cast(JSON, package_properties["event_count"])["minimum"] == 0
+    latest_options = cast(list[JSON], cast(JSON, package_properties["latest"])["anyOf"])
+    latest = next(option for option in latest_options if "properties" in option)
+    assert latest["additionalProperties"] is False
+    latest_properties = cast(JSON, latest["properties"])
+    assert set(latest_properties) == {
+        "schema_version",
+        "package_name",
+        "package_id",
+        "execution_id",
+        "label",
+        "state",
+        "current",
+        "total",
+        "unit",
+        "message",
+        "sequence",
+        "observed_at_epoch",
+        "determinate",
+        "metadata",
+    }
+    assert set(cast(list[str], latest["required"])) == {
+        "schema_version",
+        "package_name",
+        "package_id",
+        "execution_id",
+        "label",
+        "state",
+        "sequence",
+        "observed_at_epoch",
+        "determinate",
+        "metadata",
+    }
+    assert latest_properties["schema_version"] == {
+        "const": "jarvis.progress.v1",
+        "type": "string",
+    }
+    assert cast(JSON, latest_properties["state"])["enum"] == [
+        "pending",
+        "starting",
+        "running",
+        "ready",
+        "completed",
+        "failed",
+        "canceled",
+    ]
+    assert latest_properties["metadata"] == {
+        "additionalProperties": True,
+        "type": "object",
+    }
+    artifact_options = cast(
+        list[JSON], cast(JSON, execution_output_properties["artifact_page"])["anyOf"]
+    )
+    artifact_output = next(
+        option for option in artifact_options if "properties" in option
+    )
+    assert artifact_output["additionalProperties"] is False
+    artifact_output_properties = cast(JSON, artifact_output["properties"])
+    assert artifact_output_properties["producer_schema_version"] == {
+        "const": "jarvis.execution.artifacts.v1",
+        "type": "string",
+    }
+    assert "schema_version" not in cast(JSON, artifact_output_properties["artifacts"])
+    item = cast(JSON, artifact_output_properties["artifacts"])["items"]
+    artifact_properties = cast(JSON, cast(JSON, item)["properties"])
+    assert artifact_properties["schema_version"] == {
+        "const": "jarvis.artifact.v1",
+        "type": "string",
+    }
+    assert set(cast(list[str], artifact_output["required"])) == {
+        "producer_schema_version",
+        "pipeline_id",
+        "execution_id",
+        "execution_state",
+        "terminal",
+        "artifacts",
+        "matching_artifact_count",
+        "returned_artifact_count",
+        "next_cursor",
+    }
 
 
 def test_contract_projection_matches_downstream_schema_digest_shape() -> None:

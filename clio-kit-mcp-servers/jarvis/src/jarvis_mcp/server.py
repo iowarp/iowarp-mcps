@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Literal, Optional, cast
 
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
@@ -30,7 +30,6 @@ from .capabilities.jarvis_handler import (
     remove_pkg,
     run_pipeline,
     get_execution,
-    get_execution_progress,
     destroy_pipeline,
     get_pkg_config,
     update_pipeline,
@@ -232,12 +231,104 @@ class JarvisExecutionRecordDocument(TypedDict):
     metadata: dict[str, Any]
 
 
-class JarvisProgressSnapshotDocument(TypedDict):
+class JarvisProgressEventDocument(BaseModel):
+    """One closed, JARVIS-owned package progress observation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal["jarvis.progress.v1"]
+    package_name: str = Field(min_length=1, max_length=256)
+    package_id: str = Field(min_length=1, max_length=256)
+    execution_id: str = Field(min_length=1, max_length=256)
+    label: str = Field(min_length=1, max_length=256)
+    state: Literal[
+        "pending",
+        "starting",
+        "running",
+        "ready",
+        "completed",
+        "failed",
+        "canceled",
+    ]
+    current: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    total: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    unit: str | None = Field(default=None, min_length=1, max_length=256)
+    message: str | None = Field(default=None, min_length=1, max_length=4096)
+    sequence: int = Field(ge=0)
+    observed_at_epoch: float = Field(ge=0, allow_inf_nan=False)
+    determinate: bool
+    metadata: dict[str, Any]
+
+    @field_validator(
+        "package_name",
+        "package_id",
+        "execution_id",
+        "label",
+        "unit",
+        "message",
+        mode="after",
+    )
+    @classmethod
+    def validate_nonblank_text(cls, value: str | None) -> str | None:
+        """Reject whitespace-only text while preserving producer spelling."""
+        if value is not None and not value.strip():
+            raise ValueError("progress text fields must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def validate_quantitative_progress(self) -> "JarvisProgressEventDocument":
+        """Keep the public determination flag consistent with numeric fields."""
+        if self.total is not None and self.current is None:
+            raise ValueError("progress total requires current")
+        if (
+            self.current is not None
+            and self.total is not None
+            and self.current > self.total
+        ):
+            raise ValueError("progress current cannot exceed total")
+        expected = self.current is not None and self.total is not None
+        if self.determinate is not expected:
+            raise ValueError(
+                "progress determinate must match the presence of current and total"
+            )
+        return self
+
+
+class JarvisPackageProgressDocument(BaseModel):
+    """Latest stable progress observation for one package alias."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    package_id: str = Field(min_length=1, max_length=256)
+    package_name: str = Field(min_length=1, max_length=256)
+    event_count: int = Field(ge=0)
+    latest: JarvisProgressEventDocument | None
+
+    @model_validator(mode="after")
+    def validate_latest_event(self) -> "JarvisPackageProgressDocument":
+        """Cross-check the package identity and event-count sentinel."""
+        if self.latest is None:
+            if self.event_count != 0:
+                raise ValueError("progress event count requires a latest event")
+            return self
+        if self.event_count == 0:
+            raise ValueError("latest progress event requires a positive event count")
+        if (
+            self.latest.package_id != self.package_id
+            or self.latest.package_name != self.package_name
+        ):
+            raise ValueError("latest progress event package identity did not match")
+        return self
+
+
+class JarvisProgressSnapshotDocument(BaseModel):
     """Stable aggregate returned by JARVIS-CD's execution progress API."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
     schema_version: Literal["jarvis.execution.progress.v1"]
-    execution_id: str
-    pipeline_id: str
+    execution_id: str = Field(min_length=1, max_length=256)
+    pipeline_id: str = Field(min_length=1, max_length=256)
     execution_state: Literal[
         "preparing",
         "scripted",
@@ -250,7 +341,62 @@ class JarvisProgressSnapshotDocument(TypedDict):
         "unknown",
     ]
     terminal: bool
-    packages: list[dict[str, Any]]
+    packages: list[JarvisPackageProgressDocument] = Field(max_length=4096)
+
+    @model_validator(mode="after")
+    def validate_package_identities(self) -> "JarvisProgressSnapshotDocument":
+        """Bind every package event to this execution and reject aliases twice."""
+        package_ids: set[str] = set()
+        for package in self.packages:
+            if package.package_id in package_ids:
+                raise ValueError("progress package aliases must be unique")
+            package_ids.add(package.package_id)
+            if (
+                package.latest is not None
+                and package.latest.execution_id != self.execution_id
+            ):
+                raise ValueError("progress event execution identity did not match")
+        return self
+
+
+class JarvisArtifactLocationDocument(TypedDict):
+    """Transport-neutral location in a JARVIS artifact manifest."""
+
+    kind: Literal["execution_path", "cluster_path", "external_uri"]
+    value: str
+
+
+class JarvisArtifactDocument(TypedDict):
+    """Current JARVIS-owned lifecycle observation for one generated artifact."""
+
+    schema_version: Literal["jarvis.artifact.v1"]
+    package_name: str
+    package_id: str
+    execution_id: str
+    artifact_id: str
+    logical_name: str
+    kind: str
+    role: Literal[
+        "intermediate",
+        "output",
+        "log",
+        "checkpoint",
+        "provenance",
+        "validation",
+    ]
+    structure: Literal["file", "directory", "collection", "stream"]
+    ownership: Literal["execution", "external", "shared"]
+    state: Literal["producing", "available", "finalized", "incomplete", "failed"]
+    revision: int
+    sequence: int
+    observed_at_epoch: float
+    metadata: dict[str, Any]
+    location: NotRequired[JarvisArtifactLocationDocument]
+    media_type: NotRequired[str]
+    format: NotRequired[str]
+    size_bytes: NotRequired[int]
+    checksum: NotRequired[str]
+    message: NotRequired[str]
 
 
 class JarvisRunResult(TypedDict):
@@ -280,8 +426,36 @@ class JarvisRunResult(TypedDict):
     runtime_metadata: dict[str, Any]
 
 
-class JarvisExecutionResult(TypedDict):
-    """Frozen top-level result envelope for an execution query."""
+class JarvisExecutionArtifactPageDocument(BaseModel):
+    """Bounded artifact page nested in a unified execution query."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    producer_schema_version: Literal["jarvis.execution.artifacts.v1"]
+    pipeline_id: str
+    execution_id: str
+    execution_state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    terminal: bool
+    artifacts: list[JarvisArtifactDocument]
+    matching_artifact_count: int
+    returned_artifact_count: int
+    next_cursor: str | None
+
+
+class JarvisExecutionResult(BaseModel):
+    """Frozen top-level result envelope for a selectable execution query."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     schema_version: Literal["clio-kit.jarvis-execution.v1"]
     pipeline_id: str
@@ -289,15 +463,8 @@ class JarvisExecutionResult(TypedDict):
     execution_handle: JarvisExecutionHandleDocument
     execution_record: JarvisExecutionRecordDocument
     runtime_metadata: dict[str, Any]
-
-
-class JarvisExecutionProgressResult(TypedDict):
-    """Frozen top-level result envelope for an execution-progress query."""
-
-    schema_version: Literal["clio-kit.jarvis-execution-progress-query.v1"]
-    pipeline_id: str
-    execution_id: str
-    progress: JarvisProgressSnapshotDocument
+    progress: JarvisProgressSnapshotDocument | None
+    artifact_page: JarvisExecutionArtifactPageDocument | None
 
 
 # Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
@@ -325,7 +492,6 @@ USER_TOOLS = {
     "jarvis_edit_step",
     "jarvis_run",
     "jarvis_get_execution",
-    "jarvis_get_execution_progress",
 }
 
 ADMIN_TOOLS = {
@@ -514,6 +680,55 @@ class ExecutionIntent(BaseModel):
                 + ", ".join(host_fields)
             )
         return self
+
+
+class ExecutionArtifactQuery(BaseModel):
+    """Optional filters for one bounded page of execution artifacts."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    package_id: str | None = Field(
+        default=None,
+        description="Exact JARVIS package alias filter.",
+        max_length=256,
+    )
+    role: (
+        Literal[
+            "intermediate",
+            "output",
+            "log",
+            "checkpoint",
+            "provenance",
+            "validation",
+        ]
+        | None
+    ) = None
+    state: (
+        Literal[
+            "producing",
+            "available",
+            "finalized",
+            "incomplete",
+            "failed",
+        ]
+        | None
+    ) = None
+    artifact_id: str | None = Field(
+        default=None,
+        description="Exact opaque JARVIS artifact ID filter.",
+        max_length=90,
+    )
+    page_size: int = Field(
+        default=50,
+        description="Maximum artifacts to return in this page.",
+        ge=1,
+        le=100,
+    )
+    cursor: str | None = Field(
+        default=None,
+        description="Opaque next-page cursor.",
+        max_length=1024,
+    )
 
 
 # ─── RESOURCE ────────────────────────────────────────────────────────────────
@@ -920,8 +1135,10 @@ async def jarvis_run_tool(
 @mcp.tool(
     name="jarvis_get_execution",
     description=(
-        "Query one JARVIS execution handle and durable lifecycle record by "
-        "pipeline and execution ID."
+        "Query one JARVIS execution handle, durable lifecycle record, and "
+        "runtime metadata. Progress is included by default and can be omitted. "
+        "Set artifacts to {} or filters to include one bounded artifact page; "
+        "omit artifacts to avoid querying the artifact manifest."
     ),
     annotations={
         "readOnlyHint": True,
@@ -933,32 +1150,17 @@ async def jarvis_run_tool(
 async def jarvis_get_execution_tool(
     pipeline_id: str,
     execution_id: str,
+    include_progress: bool = True,
+    artifacts: ExecutionArtifactQuery | None = None,
 ) -> JarvisExecutionResult:
-    """Query JARVIS-owned lifecycle state without scraping process output."""
-    return cast(JarvisExecutionResult, await get_execution(pipeline_id, execution_id))
-
-
-@mcp.tool(
-    name="jarvis_get_execution_progress",
-    description=(
-        "Query the latest JARVIS-owned package progress snapshot for one "
-        "pipeline execution."
-    ),
-    annotations={
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-    },
-    tags={"jarvis", "pipeline", "execution", "progress", "user"},
-)
-async def jarvis_get_execution_progress_tool(
-    pipeline_id: str,
-    execution_id: str,
-) -> JarvisExecutionProgressResult:
-    """Query JARVIS-owned package progress without application-specific logic."""
-    return cast(
-        JarvisExecutionProgressResult,
-        await get_execution_progress(pipeline_id, execution_id),
+    """Query a selectable JARVIS-owned execution view in one locked load."""
+    return JarvisExecutionResult.model_validate(
+        await get_execution(
+            pipeline_id,
+            execution_id,
+            include_progress=include_progress,
+            artifacts=artifacts.model_dump() if artifacts is not None else None,
+        )
     )
 
 

@@ -126,7 +126,6 @@ USER_CONTRACT_SPECS: Final = (
                 "jarvis_edit_step",
                 "jarvis_run",
                 "jarvis_get_execution",
-                "jarvis_get_execution_progress",
             }
         ),
     ),

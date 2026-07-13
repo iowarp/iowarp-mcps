@@ -165,9 +165,21 @@ def mock_pipeline():
                 "packages": [],
             }
 
+        def get_artifacts(execution_id: str) -> dict[str, object]:
+            record = records[execution_id]
+            return {
+                "schema_version": "jarvis.execution.artifacts.v1",
+                "execution_id": execution_id,
+                "pipeline_id": "test_pipeline",
+                "execution_state": record.state,
+                "terminal": record.terminal,
+                "artifacts": [],
+            }
+
         mock_pipeline.run.side_effect = run
         mock_pipeline.get_execution.side_effect = get_execution
         mock_pipeline.get_execution_progress.side_effect = get_progress
+        mock_pipeline.get_execution_artifacts.side_effect = get_artifacts
 
         yield mock_pipeline
 
