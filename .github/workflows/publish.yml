@@ -421,6 +421,21 @@ jobs:
         name: python-package-distributions
         path: dist/
 
+    - name: Stage immutable copies for post-publish verification
+      shell: bash
+      run: |
+        mkdir verification-dist
+        mapfile -t artifacts < <(
+          find dist -maxdepth 1 -type f \
+            \( -name '*.whl' -o -name '*.tar.gz' \) -print | sort
+        )
+        test "${#artifacts[@]}" -eq 2
+        cp -- "${artifacts[@]}" verification-dist/
+        for artifact in "${artifacts[@]}"; do
+          cmp --silent \
+            "$artifact" "verification-dist/$(basename "$artifact")"
+        done
+
     - name: Require fresh exact admin authorization at publication
       env:
         RELEASE_AUTHORIZATION: ${{ secrets.CLIO_KIT_RELEASE_AUTHORIZATION }}
@@ -448,7 +463,7 @@ jobs:
         python scripts/verify_pypi_release.py \
           --project clio-kit \
           --version "$RELEASE_VERSION" \
-          --dist-dir dist
+          --dist-dir verification-dist
 
   github-release:
     name: Create GitHub Release

@@ -115,6 +115,23 @@ def test_release_recovery_is_exact_byte_and_fail_closed() -> None:
     assert "--clobber" not in WORKFLOW
 
 
+def test_pypi_verification_uses_pre_publish_immutable_copies() -> None:
+    """Publisher-generated sidecars must not contaminate exact-byte discovery."""
+    publish_block = WORKFLOW[
+        WORKFLOW.index("  publish-to-pypi:") : WORKFLOW.index("  github-release:")
+    ]
+    stage_index = publish_block.index(
+        "Stage immutable copies for post-publish verification"
+    )
+    upload_index = publish_block.index("pypa/gh-action-pypi-publish@")
+    verify_index = publish_block.index("Verify exact published PyPI bytes")
+
+    assert stage_index < upload_index < verify_index
+    assert "mkdir verification-dist" in publish_block
+    assert "cmp --silent" in publish_block
+    assert "--dist-dir verification-dist" in publish_block
+
+
 def test_final_release_requires_attestation_and_immutability() -> None:
     """Publishing remains gated by provenance, immutable state, and release verification."""
     assert "gh attestation verify" in WORKFLOW
