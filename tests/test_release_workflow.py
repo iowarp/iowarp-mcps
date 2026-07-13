@@ -54,6 +54,20 @@ def test_release_workflow_triggers_on_every_shipped_lock() -> None:
     assert "uv lock --check --directory clio-agentic-search" in quality_block
 
 
+def test_release_security_audits_unmatrixed_shipped_environments() -> None:
+    """Release validation audits shipped environments outside the MCP matrix."""
+    quality_block = WORKFLOW[WORKFLOW.index("  quality:") : WORKFLOW.index("  build:")]
+    assert "uv run --with 'pip-audit==2.10.1' pip-audit" in quality_block
+    assert (
+        "uv run --directory clio-agentic-search \\\n"
+        "          --with 'pip-audit==2.10.1' pip-audit" in quality_block
+    )
+    assert (
+        "uv run --directory clio-kit-mcp-servers/chronolog \\\n"
+        "          --with 'pip-audit==2.10.1' pip-audit" in quality_block
+    )
+
+
 def test_testpypi_advisory_publish_path_is_removed() -> None:
     """Only exact-verified production tags may publish package bytes."""
     assert "publish-to-testpypi:" not in WORKFLOW

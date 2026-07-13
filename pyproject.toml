@@ -15,7 +15,7 @@ authors = [
 
 # Only dependencies needed for the launcher
 dependencies = [
-  "click>=8.1.0",
+  "click>=8.3.3",
 ]
 
 keywords = ["mcp", "model-context-protocol", "ai-agents", "llm-tools", "scientific-computing", "hpc", "hdf5", "slurm", "parquet", "research-tools"]

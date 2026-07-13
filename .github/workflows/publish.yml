@@ -77,6 +77,9 @@ jobs:
           scripts/verify_mcp_registry_release.py src
         uv run pytest -q tests --junitxml="$RUNNER_TEMP/root-junit.xml"
         python scripts/assert_no_skipped_tests.py "$RUNNER_TEMP/root-junit.xml"
+        uv run --with 'pip-audit==2.10.1' pip-audit
+        uv run --directory clio-agentic-search \
+          --with 'pip-audit==2.10.1' pip-audit
         for server in jarvis slurm spack; do
           uv lock --check --directory "clio-kit-mcp-servers/$server"
           uv run --directory "clio-kit-mcp-servers/$server" ruff check .
@@ -97,6 +100,8 @@ jobs:
           --junitxml="$RUNNER_TEMP/chronolog-junit.xml"
         python scripts/assert_no_skipped_tests.py \
           "$RUNNER_TEMP/chronolog-junit.xml"
+        uv run --directory clio-kit-mcp-servers/chronolog \
+          --with 'pip-audit==2.10.1' pip-audit
         uv lock --check --directory clio-kit-mcp-servers/adios
         uv run --directory clio-kit-mcp-servers/adios \
           ruff check src tests/test_lazy_import.py
