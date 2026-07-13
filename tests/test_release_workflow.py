@@ -203,6 +203,7 @@ def test_registry_duplicate_versions_require_exact_live_verification() -> None:
     registry_block = WORKFLOW[WORKFLOW.index("  publish-to-mcp-registry:") :]
     assert "scripts/verify_mcp_registry_release.py" in registry_block
     assert '--manifest "$server_dir/server.json"' in registry_block
+    assert "--timeout 60" in registry_block
     assert "publish_result=duplicate" in registry_block
     duplicate_index = registry_block.index("publish_result=duplicate")
     verify_index = registry_block.index("scripts/verify_mcp_registry_release.py")
