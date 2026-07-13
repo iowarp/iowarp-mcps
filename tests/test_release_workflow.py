@@ -115,6 +115,41 @@ def test_release_recovery_is_exact_byte_and_fail_closed() -> None:
     assert "--clobber" not in WORKFLOW
 
 
+def test_draft_release_is_resolved_and_mutated_only_by_exact_id() -> None:
+    """Draft recovery must not use the published-release tag endpoint."""
+    release_block = WORKFLOW[
+        WORKFLOW.index("  github-release:") : WORKFLOW.index(
+            "  publish-to-mcp-registry:"
+        )
+    ]
+    create_index = release_block.index('gh release create "$TAG_NAME"')
+    publish_index = release_block.index("gh api --method PATCH", create_index)
+    final_fetch_index = release_block.index("fetch_published_release", publish_index)
+
+    assert "resolve_exact_draft_release()" in release_block
+    assert '"repos/$REPOSITORY/releases?per_page=100"' in release_block
+    assert "--paginate" in release_block
+    assert "expected one draft release" in release_block
+    assert "fetch_release_by_id()" in release_block
+    assert '"repos/$REPOSITORY/releases/$release_id"' in release_block
+    assert "verify_release_identity || return" in release_block
+    assert (
+        '"https://uploads.github.com/repos/$REPOSITORY/releases/'
+        '$release_id/assets?name=$encoded_name"' in release_block
+    )
+    assert '"repos/$REPOSITORY/releases/generate-notes"' in release_block
+    assert '"$(jq -r .author.login "$release_json")"' in release_block
+    assert "'github-actions[bot]' || return" in release_block
+    assert "{name: $name, body: $notes[0].body, draft: false}" in release_block
+    assert '--input "$publish_payload"' in release_block
+    assert "gh release upload" not in release_block
+    assert "gh release edit" not in release_block
+    assert release_block.count("repos/$REPOSITORY/releases/tags/$TAG_NAME") == 1
+    assert release_block.count("fetch_published_release") == 3
+    assert "fetch_published_release" not in release_block[create_index:publish_index]
+    assert publish_index < final_fetch_index
+
+
 def test_pypi_verification_uses_pre_publish_immutable_copies() -> None:
     """Publisher-generated sidecars must not contaminate exact-byte discovery."""
     publish_block = WORKFLOW[
