@@ -150,6 +150,27 @@ def test_draft_release_is_resolved_and_mutated_only_by_exact_id() -> None:
     assert publish_index < final_fetch_index
 
 
+def test_new_draft_release_waits_for_bounded_list_consistency() -> None:
+    """A newly created draft may take time to appear in the list endpoint."""
+    release_block = WORKFLOW[
+        WORKFLOW.index("  github-release:") : WORKFLOW.index(
+            "  publish-to-mcp-registry:"
+        )
+    ]
+    create_index = release_block.index('gh release create "$TAG_NAME"')
+    wait_index = release_block.index("wait_for_exact_draft_release", create_index)
+
+    assert "wait_for_exact_draft_release()" in release_block
+    assert "for attempt in {1..12}; do" in release_block
+    assert "if resolve_exact_draft_release; then" in release_block
+    assert 'else\n              status="$?"' in release_block
+    assert 'if [ "$status" -ne 1 ]; then' in release_block
+    assert "sleep 5" in release_block
+    assert "did not become list-visible after 12 attempts" in release_block
+    assert release_block.count('gh release create "$TAG_NAME"') == 1
+    assert create_index < wait_index
+
+
 def test_pypi_verification_uses_pre_publish_immutable_copies() -> None:
     """Publisher-generated sidecars must not contaminate exact-byte discovery."""
     publish_block = WORKFLOW[

@@ -596,6 +596,26 @@ jobs:
           test "$(jq -r .immutable "$release_json")" = false || return 2
         }
 
+        wait_for_exact_draft_release() {
+          local attempt status
+          for attempt in {1..12}; do
+            if resolve_exact_draft_release; then
+              return 0
+            else
+              status="$?"
+            fi
+            if [ "$status" -ne 1 ]; then
+              return "$status"
+            fi
+            if [ "$attempt" -lt 12 ]; then
+              echo "draft release is not list-visible yet (attempt $attempt/12)" >&2
+              sleep 5
+            fi
+          done
+          echo "draft release did not become list-visible after 12 attempts" >&2
+          return 1
+        }
+
         load_and_verify_assets() {
           local allow_missing="$1" id name declared_digest downloaded
           local encoded_name http_status upload_json
@@ -681,7 +701,7 @@ jobs:
               --title "CLIO Kit $TAG_NAME" \
               --generate-notes \
               --draft
-            resolve_exact_draft_release
+            wait_for_exact_draft_release
           fi
         else
           cat "$release_error" >&2
