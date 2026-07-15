@@ -97,7 +97,7 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     assert manifests == [project / "server.json" for project in projects]
     assert list(expected_server_versions) == sorted(expected_server_versions)
     assert set(expected_server_versions) == {project.name for project in projects}
-    assert publish_servers == ("jarvis", "scientific-catalog")
+    assert publish_servers == ("scientific-catalog",)
     assert marketplace["metadata"]["version"] == expected_version
     assert set(marketplace_plugins) == set(expected_server_versions)
     assert gemini_extension["version"] == expected_version
@@ -117,6 +117,7 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
             f"| **`{server_name}`** | {expected_server_versions[server_name]} |"
             in readme
         )
+        assert f"<!-- mcp-name: {manifest['name']} -->" in readme
         assert manifest["packages"] == [
             {
                 "registryType": "pypi",
