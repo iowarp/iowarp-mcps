@@ -1,0 +1,9 @@
+{
+  "clio-scientific-catalog": {
+    "command": "clio-kit",
+    "args": [
+      "mcp-server",
+      "scientific-catalog"
+    ]
+  }
+}

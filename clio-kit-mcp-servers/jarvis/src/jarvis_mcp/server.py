@@ -1,8 +1,10 @@
 import argparse
+import hashlib
 import importlib
+import json
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal, Optional, cast
 
 from typing_extensions import NotRequired, TypedDict
@@ -452,12 +454,231 @@ class JarvisExecutionArtifactPageDocument(BaseModel):
     next_cursor: str | None
 
 
+class JarvisDatasetMemberDocument(BaseModel):
+    """One ordered member in a JARVIS service dataset descriptor."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    index: int = Field(ge=0)
+    location: str = Field(min_length=1, max_length=4096)
+    timestep: float | None = Field(default=None, allow_inf_nan=False)
+
+    @field_validator("location")
+    @classmethod
+    def validate_cluster_location(cls, value: str) -> str:
+        """Require the normalized absolute POSIX path emitted by JARVIS."""
+        path = PurePosixPath(value)
+        if (
+            "\\" in value
+            or not path.is_absolute()
+            or path.as_posix() != value
+            or ".." in path.parts
+        ):
+            raise ValueError(
+                "dataset member location must be a normalized absolute path"
+            )
+        return value
+
+
+class JarvisDatasetArrayDocument(BaseModel):
+    """One intrinsic array exposed by a JARVIS-owned service."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    name: str = Field(min_length=1, max_length=512)
+    association: Literal["point", "cell", "field"]
+    components: int = Field(ge=1, le=64)
+    units: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class JarvisDatasetFingerprintDocument(BaseModel):
+    """Canonical identity digest for one bounded dataset descriptor."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    algorithm: Literal["sha256"]
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class JarvisDatasetSourceArtifactDocument(BaseModel):
+    """Optional content identity of a JARVIS-generated source artifact."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    artifact_id: str = Field(pattern=r"^art_[A-Za-z0-9_-]{22,86}$")
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class JarvisDatasetDescriptorDocument(BaseModel):
+    """Intrinsic, recipe-free dataset identity owned by JARVIS."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal["jarvis.dataset-descriptor.v1"]
+    dataset_id: str = Field(min_length=1, max_length=256)
+    kind: str = Field(min_length=1, max_length=256)
+    format: str = Field(min_length=1, max_length=256)
+    members: list[JarvisDatasetMemberDocument] = Field(min_length=1, max_length=512)
+    arrays: list[JarvisDatasetArrayDocument] = Field(max_length=256)
+    bounds: list[float] | None = Field(default=None, min_length=6, max_length=6)
+    fingerprint: JarvisDatasetFingerprintDocument
+    source_artifact: JarvisDatasetSourceArtifactDocument | None
+
+    @model_validator(mode="after")
+    def validate_intrinsic_identity(self) -> "JarvisDatasetDescriptorDocument":
+        """Reject ambiguous ordering and verify the canonical fingerprint."""
+        if [member.index for member in self.members] != list(range(len(self.members))):
+            raise ValueError("dataset member indexes must be contiguous and ordered")
+        locations = [member.location for member in self.members]
+        if len(locations) != len(set(locations)):
+            raise ValueError("dataset member locations must be unique")
+        array_keys = [(array.association, array.name) for array in self.arrays]
+        if len(array_keys) != len(set(array_keys)):
+            raise ValueError("dataset array identities must be unique")
+        if self.bounds is not None:
+            for lower, upper in zip(self.bounds[::2], self.bounds[1::2]):
+                if lower > upper:
+                    raise ValueError("dataset bounds must be ordered")
+        members: list[dict[str, Any]] = []
+        for member in self.members:
+            value: dict[str, Any] = {
+                "index": member.index,
+                "location": member.location,
+            }
+            if member.timestep is not None:
+                value["timestep"] = member.timestep
+            members.append(value)
+        arrays: list[dict[str, Any]] = []
+        for array in self.arrays:
+            value = {
+                "name": array.name,
+                "association": array.association,
+                "components": array.components,
+            }
+            if array.units is not None:
+                value["units"] = array.units
+            arrays.append(value)
+        canonical = {
+            "schema_version": self.schema_version,
+            "dataset_id": self.dataset_id,
+            "kind": self.kind,
+            "format": self.format,
+            "members": members,
+            "arrays": arrays,
+            "bounds": list(self.bounds) if self.bounds is not None else None,
+            "source_artifact": (
+                self.source_artifact.model_dump(mode="json")
+                if self.source_artifact is not None
+                else None
+            ),
+        }
+        digest = hashlib.sha256(
+            json.dumps(
+                canonical,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        if digest != self.fingerprint.digest:
+            raise ValueError("dataset fingerprint did not match its descriptor")
+        return self
+
+
+class JarvisServiceRuntimeDocument(BaseModel):
+    """Latest durable observation of one execution-owned service."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal["jarvis.service-runtime.v1"]
+    execution_id: str = Field(min_length=1, max_length=256)
+    package_name: str = Field(min_length=1, max_length=256)
+    package_id: str = Field(min_length=1, max_length=256)
+    service_instance_id: str = Field(min_length=1, max_length=256)
+    revision: int = Field(ge=1)
+    lifecycle: Literal["starting", "ready", "degraded", "stopping", "stopped", "failed"]
+    host: str = Field(min_length=1, max_length=255)
+    port: int = Field(ge=1, le=65535)
+    protocol: Literal["http", "https"]
+    health_path: str = Field(min_length=1, max_length=256)
+    live_data_path: str = Field(min_length=1, max_length=256)
+    events_path: str = Field(min_length=1, max_length=256)
+    state_path: str = Field(min_length=1, max_length=256)
+    command_path: str = Field(min_length=1, max_length=256)
+    delivery_mode: Literal["push"]
+    dataset_descriptor: JarvisDatasetDescriptorDocument
+    message: str | None = Field(default=None, min_length=1, max_length=4096)
+    observed_at_epoch: float = Field(ge=0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_private_endpoint_metadata(self) -> "JarvisServiceRuntimeDocument":
+        """Reject wildcard hosts and ambiguous or duplicated HTTP paths."""
+        if self.host in {"0.0.0.0", "::", "*", "localhost"}:
+            raise ValueError("service runtime host cannot be a wildcard or alias")
+        paths = (
+            self.health_path,
+            self.live_data_path,
+            self.events_path,
+            self.state_path,
+            self.command_path,
+        )
+        if len(set(paths)) != len(paths):
+            raise ValueError("service runtime endpoint paths must be distinct")
+        for value in paths:
+            path = PurePosixPath(value)
+            if (
+                not value.startswith("/")
+                or value.startswith("//")
+                or path.as_posix() != value
+                or ".." in path.parts
+                or any(character in value for character in "?#\\")
+            ):
+                raise ValueError("service runtime endpoint path is invalid")
+        return self
+
+
+class JarvisServiceRuntimeSnapshotDocument(BaseModel):
+    """Execution-bound current service runtimes returned by JARVIS."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal["jarvis.execution.service-runtimes.v1"]
+    execution_id: str = Field(min_length=1, max_length=256)
+    pipeline_id: str = Field(min_length=1, max_length=256)
+    execution_state: Literal[
+        "preparing",
+        "scripted",
+        "submitting",
+        "submitted",
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "unknown",
+    ]
+    terminal: bool
+    service_runtimes: list[JarvisServiceRuntimeDocument] = Field(max_length=4096)
+
+    @model_validator(mode="after")
+    def validate_runtime_identities(self) -> "JarvisServiceRuntimeSnapshotDocument":
+        """Bind every service to this execution and reject duplicate instances."""
+        identities: set[str] = set()
+        for runtime in self.service_runtimes:
+            if runtime.execution_id != self.execution_id:
+                raise ValueError("service runtime execution identity did not match")
+            if runtime.service_instance_id in identities:
+                raise ValueError("service runtime instance identities must be unique")
+            identities.add(runtime.service_instance_id)
+        return self
+
+
 class JarvisExecutionResult(BaseModel):
     """Frozen top-level result envelope for a selectable execution query."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal["clio-kit.jarvis-execution.v1"]
+    schema_version: Literal["clio-kit.jarvis-execution.v2"]
     pipeline_id: str
     execution_id: str
     execution_handle: JarvisExecutionHandleDocument
@@ -465,6 +686,7 @@ class JarvisExecutionResult(BaseModel):
     runtime_metadata: dict[str, Any]
     progress: JarvisProgressSnapshotDocument | None
     artifact_page: JarvisExecutionArtifactPageDocument | None
+    service_runtimes: JarvisServiceRuntimeSnapshotDocument | None
 
 
 # Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
@@ -1137,6 +1359,8 @@ async def jarvis_run_tool(
     description=(
         "Query one JARVIS execution handle, durable lifecycle record, and "
         "runtime metadata. Progress is included by default and can be omitted. "
+        "Set include_service_runtimes=true to include execution-owned network "
+        "services such as an interactive ParaView runtime. "
         "Set artifacts to {} or filters to include one bounded artifact page; "
         "omit artifacts to avoid querying the artifact manifest."
     ),
@@ -1151,6 +1375,7 @@ async def jarvis_get_execution_tool(
     pipeline_id: str,
     execution_id: str,
     include_progress: bool = True,
+    include_service_runtimes: bool = False,
     artifacts: ExecutionArtifactQuery | None = None,
 ) -> JarvisExecutionResult:
     """Query a selectable JARVIS-owned execution view in one locked load."""
@@ -1159,6 +1384,7 @@ async def jarvis_get_execution_tool(
             pipeline_id,
             execution_id,
             include_progress=include_progress,
+            include_service_runtimes=include_service_runtimes,
             artifacts=artifacts.model_dump() if artifacts is not None else None,
         )
     )

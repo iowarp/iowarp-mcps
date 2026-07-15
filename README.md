@@ -81,11 +81,11 @@ CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI
 
 ```bash
 # Install the released CLI into its own persistent tool environment
-uv tool install 'clio-kit==2.3.2'
+uv tool install 'clio-kit==2.4.0'
 # If uv reports that its executable directory is not on PATH:
 uv tool update-shell
 
-# List all 22 available MCP servers
+# List all 23 available MCP servers
 clio-kit mcp-servers
 
 # Run any installed server
@@ -103,7 +103,7 @@ clio-kit prompt code-coverage-prompt # Use a prompt
 ```
 
 `uv tool install` keeps CLIO Kit in a persistent, isolated tool environment.
-Use `uvx --from 'clio-kit==2.3.2' clio-kit ...` only for a temporary, one-shot
+Use `uvx --from 'clio-kit==2.4.0' clio-kit ...` only for a temporary, one-shot
 invocation.
 
 Released `clio-kit` wheels execute each embedded MCP server from that server's
@@ -114,14 +114,16 @@ option is an explicit development path and is not an immutable
 release-artifact path.
 
 The root wheel also ships machine-readable user contracts for the locked
-JARVIS, SLURM, and Spack servers. These artifacts are generated from real stdio
+JARVIS, SLURM, Spack, and Scientific Catalog servers. These artifacts are generated from real stdio
 `tools/list` exchanges and include canonical SHA-256 digests for downstream
 federation gates:
 
 ```bash
 clio-kit mcp-contracts
+clio-kit mcp-contract clio-kit-jarvis-user-v3.1
 clio-kit mcp-contract clio-kit-slurm-user-v3
 clio-kit mcp-contract clio-kit-spack-user-v2
+clio-kit mcp-contract clio-kit-scientific-catalog-user-v1
 ```
 
 <details>
@@ -223,8 +225,8 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 ## Available Packages
 
 The version below is each MCP server's agent-facing contract version, not the
-containing `clio-kit` wheel version. JARVIS and SLURM are 3.0 because their
-contracts were redesigned for agent use. Spack is at 2.0, while the other
+containing `clio-kit` wheel version. JARVIS 3.1 and SLURM 3.0 have contracts
+redesigned for agent use. Spack is at 2.0, while the other
 contracts retain their existing 2.x identities until a focused upgrade.
 
 The Spack install contract makes concretization explicit: `reuse=true` passes
@@ -244,7 +246,7 @@ Agents should discover first, install only when needed, then pass the exact
 | **`geo`** | 2.2.3 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
 | **`geojson`** | 2.2.3 | Geospatial | Inspect, validate, and summarize GeoJSON | `clio-kit mcp-server geojson` |
 | **`hdf5`** | 2.2.3 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `clio-kit mcp-server hdf5` |
-| **`jarvis`** | 3.0.0 | Workflow | Data pipeline lifecycle management | `clio-kit mcp-server jarvis` |
+| **`jarvis`** | 3.1.0 | Workflow | Durable pipeline, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
 | **`lmod`** | 2.2.3 | Environment | Environment module management | `clio-kit mcp-server lmod` |
 | **`ndp`** | 2.2.3 | Data Protocol | Search and discover datasets across CKAN instances | `clio-kit mcp-server ndp` |
 | **`node-hardware`** | 2.2.3 | System | System hardware information | `clio-kit mcp-server node-hardware` |
@@ -255,6 +257,7 @@ Agents should discover first, install only when needed, then pass the exact
 | **`plot`** | 2.2.3 | Visualization | Generate plots from CSV data | `clio-kit mcp-server plot` |
 | **`sac`** | 2.2.3 | Seismology | Analyze SAC waveforms and archives | `clio-kit mcp-server sac` |
 | **`seismic`** | 2.2.3 | Seismology | Analyze earthquake catalogs and sequences | `clio-kit mcp-server seismic` |
+| **`scientific-catalog`** | 1.0.0 | Discovery | Operator-owned scientific dataset discovery | `clio-kit mcp-server scientific-catalog` |
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
 | **`spack`** | 2.0.1 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
 | **`terrain`** | 2.2.3 | Geospatial | Analyze DEMs and terrain point clouds | `clio-kit mcp-server terrain` |
@@ -384,7 +387,7 @@ pip install uv
 Then install CLIO Kit persistently and expose uv's tool directory:
 
 ```bash
-uv tool install 'clio-kit==2.3.2'
+uv tool install 'clio-kit==2.4.0'
 uv tool update-shell
 ```
 

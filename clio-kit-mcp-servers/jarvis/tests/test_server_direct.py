@@ -4,7 +4,9 @@ Tests actual function bodies by patching handlers at the capabilities layer.
 """
 
 import pytest
+import hashlib
 import importlib
+import json
 import os
 import runpy
 import sys
@@ -12,6 +14,92 @@ from copy import deepcopy
 from unittest.mock import Mock, call, patch
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+
+
+def test_service_runtime_response_model_is_closed_and_fingerprint_bound() -> None:
+    """The MCP response preserves JARVIS's exact service and dataset identity."""
+    from jarvis_mcp.server import JarvisServiceRuntimeSnapshotDocument
+
+    intrinsic = {
+        "schema_version": "jarvis.dataset-descriptor.v1",
+        "dataset_id": "asteroid-subset",
+        "kind": "temporal-volume-series",
+        "format": "vtk-image-data",
+        "members": [
+            {
+                "index": 0,
+                "location": "/datasets/asteroid/frame-0000.vti",
+                "timestep": 0.0,
+            }
+        ],
+        "arrays": [
+            {
+                "name": "pressure",
+                "association": "point",
+                "components": 1,
+            }
+        ],
+        "bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "source_artifact": None,
+    }
+    fingerprint = hashlib.sha256(
+        json.dumps(
+            intrinsic,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    descriptor = {
+        **intrinsic,
+        "fingerprint": {"algorithm": "sha256", "digest": fingerprint},
+    }
+    snapshot = {
+        "schema_version": "jarvis.execution.service-runtimes.v1",
+        "execution_id": "execution-1",
+        "pipeline_id": "pipeline",
+        "execution_state": "running",
+        "terminal": False,
+        "service_runtimes": [
+            {
+                "schema_version": "jarvis.service-runtime.v1",
+                "execution_id": "execution-1",
+                "package_name": "builtin.paraview",
+                "package_id": "viewer",
+                "service_instance_id": "service-1",
+                "revision": 1,
+                "lifecycle": "ready",
+                "host": "127.0.0.1",
+                "port": 21000,
+                "protocol": "http",
+                "health_path": "/healthz",
+                "live_data_path": "/live-data",
+                "events_path": "/events",
+                "state_path": "/state",
+                "command_path": "/commands",
+                "delivery_mode": "push",
+                "dataset_descriptor": descriptor,
+                "message": None,
+                "observed_at_epoch": 1.0,
+            }
+        ],
+    }
+
+    parsed = JarvisServiceRuntimeSnapshotDocument.model_validate(snapshot)
+    assert (
+        parsed.service_runtimes[0].dataset_descriptor.fingerprint.digest == fingerprint
+    )
+
+    changed = deepcopy(snapshot)
+    changed["service_runtimes"][0]["dataset_descriptor"]["dataset_id"] = "changed"
+    with pytest.raises(ValueError, match="fingerprint"):
+        JarvisServiceRuntimeSnapshotDocument.model_validate(changed)
+
+    extended = deepcopy(snapshot)
+    extended["service_runtimes"][0]["unversioned"] = True
+    with pytest.raises(ValueError, match="Extra inputs"):
+        JarvisServiceRuntimeSnapshotDocument.model_validate(extended)
 
 
 def test_progress_response_models_are_closed_and_identity_checked():
@@ -705,7 +793,7 @@ class TestPipelineToolsDirect:
 
         with patch("jarvis_mcp.server.get_execution") as get_handler:
             get_handler.return_value = {
-                "schema_version": "clio-kit.jarvis-execution.v1",
+                "schema_version": "clio-kit.jarvis-execution.v2",
                 "pipeline_id": "pipeline",
                 "execution_id": "execution-1",
                 "execution_handle": {
@@ -738,6 +826,7 @@ class TestPipelineToolsDirect:
                 "runtime_metadata": {},
                 "progress": None,
                 "artifact_page": None,
+                "service_runtimes": None,
             }
 
             record = await jarvis_get_execution_tool("pipeline", "execution-1")
@@ -755,21 +844,23 @@ class TestPipelineToolsDirect:
                 ),
             )
 
-        assert record.schema_version == "clio-kit.jarvis-execution.v1"
+        assert record.schema_version == "clio-kit.jarvis-execution.v2"
         assert record.progress is None
         assert record.artifact_page is None
-        assert filtered.schema_version == "clio-kit.jarvis-execution.v1"
+        assert filtered.schema_version == "clio-kit.jarvis-execution.v2"
         assert get_handler.await_args_list == [
             call(
                 "pipeline",
                 "execution-1",
                 include_progress=True,
+                include_service_runtimes=False,
                 artifacts=None,
             ),
             call(
                 "pipeline",
                 "execution-1",
                 include_progress=False,
+                include_service_runtimes=False,
                 artifacts={
                     "package_id": "jarvis-core",
                     "role": "log",

@@ -1,13 +1,13 @@
 {
   "contracts": [
     {
-      "artifact": "jarvis-user-v3.json",
-      "artifact_sha256": "68182b6bfcd8600f66ce452f58c737a1cf258e6b63cb395e62d9ee4fb8463869",
-      "contract_id": "clio-kit-jarvis-user-v3",
-      "contract_sha256": "c70e350d919e0f3fa0c116d7eaf861e23b4087a18a06b2704ddbf7384f8d1f82",
+      "artifact": "jarvis-user-v3.1.json",
+      "artifact_sha256": "c091ff53c4135c9e45b84cee7d4a9af4aeb30d2e7beaf603d67774dd4bcf7d64",
+      "contract_id": "clio-kit-jarvis-user-v3.1",
+      "contract_sha256": "adc7756025fbcc90b0695bd4eaac00bda5c6cff4eb2f248fd7be263bd90b9b8b",
       "profile": "user",
       "server_name": "jarvis",
-      "wire_sha256": "756c1a7233b9d843c931e7d539644fac61d88d147b53b535fc6340b16562a108"
+      "wire_sha256": "b2a6e531399c5a24678adf55e5133c1234718363661bde0636d81d0b1ae5db11"
     },
     {
       "artifact": "slurm-user-v3.json",
@@ -26,6 +26,24 @@
       "profile": "user",
       "server_name": "spack",
       "wire_sha256": "e575c901226a34a1f4286228b3f71966fe55b68d82bae5c6fd6582af0e43fd2d"
+    },
+    {
+      "artifact": "scientific-catalog-user-v1.json",
+      "artifact_sha256": "86097ef70d5b4e740a93ae0cdd0eb723cae1ac8898cfd8cbbc1911835cb22d56",
+      "contract_id": "clio-kit-scientific-catalog-user-v1",
+      "contract_sha256": "a53006f24f4698f659f0a7c8bf61fc7bd7ad23274b06d2eed2ccfca68b9ecb0a",
+      "profile": "user",
+      "server_name": "scientific-catalog",
+      "wire_sha256": "55bd04f45653c9117b8a1ae41cbc5e79dd6383e86a851b43caa071ae357bb2c4"
+    },
+    {
+      "artifact": "jarvis-user-v3.json",
+      "artifact_sha256": "68182b6bfcd8600f66ce452f58c737a1cf258e6b63cb395e62d9ee4fb8463869",
+      "contract_id": "clio-kit-jarvis-user-v3",
+      "contract_sha256": "c70e350d919e0f3fa0c116d7eaf861e23b4087a18a06b2704ddbf7384f8d1f82",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "756c1a7233b9d843c931e7d539644fac61d88d147b53b535fc6340b16562a108"
     }
   ],
   "schema_version": "clio-kit.mcp-user-contract-index.v1"

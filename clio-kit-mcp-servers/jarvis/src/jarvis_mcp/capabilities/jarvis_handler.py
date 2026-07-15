@@ -41,7 +41,7 @@ from jarvis_mcp.progress import (
 RUNTIME_METADATA_SCHEMA = "jarvis.runtime.v1"
 RUNTIME_ERROR_SCHEMA = "jarvis.error.v1"
 RUN_RESULT_SCHEMA = "clio-kit.jarvis-run.v1"
-EXECUTION_QUERY_SCHEMA = "clio-kit.jarvis-execution.v1"
+EXECUTION_QUERY_SCHEMA = "clio-kit.jarvis-execution.v2"
 _EXECUTION_QUERY_CONSISTENCY_ATTEMPTS = 4
 _EXECUTION_QUERY_RETRY_DELAY_SECONDS = 0.02
 _MAX_SPACK_SPECS = 32
@@ -771,9 +771,10 @@ async def get_execution(
     execution_id: str,
     *,
     include_progress: bool = True,
+    include_service_runtimes: bool = False,
     artifacts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return one durable execution view with optional progress and artifacts."""
+    """Return one durable execution view with selectable owned semantics."""
     validated_pipeline = _validate_pipeline_id(pipeline_id)
     try:
         validated_execution = _native_execution_id(execution_id)
@@ -810,6 +811,15 @@ async def get_execution(
                     if artifacts is not None
                     else None
                 )
+                service_runtime_snapshot = (
+                    _service_runtime_snapshot_document(
+                        pipeline.get_execution_service_runtimes(validated_execution),
+                        expected_execution_id=validated_execution,
+                        expected_pipeline_id=validated_pipeline,
+                    )
+                    if include_service_runtimes
+                    else None
+                )
                 record = pipeline.get_execution(validated_execution)
                 record_document = _execution_record_document(
                     record,
@@ -825,6 +835,7 @@ async def get_execution(
                     record_document,
                     progress_document=progress_document,
                     artifact_snapshot=artifact_snapshot,
+                    service_runtime_snapshot=service_runtime_snapshot,
                 ):
                     break
                 if attempt + 1 < _EXECUTION_QUERY_CONSISTENCY_ATTEMPTS:
@@ -875,6 +886,7 @@ async def get_execution(
                 "runtime_metadata": runtime_metadata,
                 "progress": progress_document,
                 "artifact_page": artifact_page,
+                "service_runtimes": service_runtime_snapshot,
             }
         except ToolError:
             raise
@@ -915,16 +927,59 @@ def _execution_snapshots_match_record(
     *,
     progress_document: dict[str, Any] | None,
     artifact_snapshot: dict[str, Any] | None,
+    service_runtime_snapshot: dict[str, Any] | None,
 ) -> bool:
     """Return whether optional producer snapshots share one lifecycle state."""
     state = record_document["state"]
     terminal = record_document["terminal"]
-    for snapshot in (progress_document, artifact_snapshot):
+    for snapshot in (
+        progress_document,
+        artifact_snapshot,
+        service_runtime_snapshot,
+    ):
         if snapshot is not None and (
             snapshot["execution_state"] != state or snapshot["terminal"] is not terminal
         ):
             return False
     return True
+
+
+def _service_runtime_snapshot_document(
+    snapshot: Any,
+    *,
+    expected_execution_id: str,
+    expected_pipeline_id: str,
+) -> dict[str, Any]:
+    """Normalize and identity-bind one native JARVIS service snapshot."""
+    to_dict = getattr(snapshot, "to_dict", None)
+    document = to_dict() if callable(to_dict) else snapshot
+    if not isinstance(document, dict):
+        raise TypeError("JARVIS service-runtime snapshot must be an object")
+    expected_fields = {
+        "schema_version",
+        "execution_id",
+        "pipeline_id",
+        "execution_state",
+        "terminal",
+        "service_runtimes",
+    }
+    if set(document) != expected_fields:
+        raise ValueError("JARVIS service-runtime snapshot fields are invalid")
+    if document.get("schema_version") != "jarvis.execution.service-runtimes.v1":
+        raise ValueError("JARVIS service-runtime snapshot schema is unsupported")
+    if document.get("execution_id") != expected_execution_id:
+        raise ValueError("JARVIS service-runtime execution identity did not match")
+    if document.get("pipeline_id") != expected_pipeline_id:
+        raise ValueError("JARVIS service-runtime pipeline identity did not match")
+    runtimes = document.get("service_runtimes")
+    if not isinstance(runtimes, list):
+        raise ValueError("JARVIS service-runtime entries must be a list")
+    for runtime in runtimes:
+        if not isinstance(runtime, dict):
+            raise ValueError("JARVIS service-runtime entry must be an object")
+        if runtime.get("execution_id") != expected_execution_id:
+            raise ValueError("JARVIS service-runtime entry identity did not match")
+    return cast(dict[str, Any], document)
 
 
 async def _run_pipeline_operation(
