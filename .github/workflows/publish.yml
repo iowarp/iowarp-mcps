@@ -89,7 +89,8 @@ jobs:
             --junitxml="$RUNNER_TEMP/$server-junit.xml"
           python scripts/assert_no_skipped_tests.py \
             "$RUNNER_TEMP/$server-junit.xml"
-          uv run --directory "clio-kit-mcp-servers/$server" pip-audit
+          uv run --directory "clio-kit-mcp-servers/$server" \
+            --with 'pip-audit==2.10.1' pip-audit
         done
         uv run --directory clio-kit-mcp-servers/chronolog \
           ruff check src tests/test_lazy_client.py
