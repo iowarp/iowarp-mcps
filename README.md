@@ -18,6 +18,7 @@
 <!-- mcp-name: io.github.iowarp/parquet-mcp -->
 <!-- mcp-name: io.github.iowarp/plot-mcp -->
 <!-- mcp-name: io.github.iowarp/sac-mcp -->
+<!-- mcp-name: io.github.iowarp/scientific-catalog-mcp -->
 <!-- mcp-name: io.github.iowarp/seismic-mcp -->
 <!-- mcp-name: io.github.iowarp/slurm-mcp -->
 <!-- mcp-name: io.github.iowarp/spack-mcp -->
@@ -81,7 +82,7 @@ CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI
 
 ```bash
 # Install the released CLI into its own persistent tool environment
-uv tool install 'clio-kit==2.4.0'
+uv tool install 'clio-kit==2.4.2'
 # If uv reports that its executable directory is not on PATH:
 uv tool update-shell
 
@@ -103,7 +104,7 @@ clio-kit prompt code-coverage-prompt # Use a prompt
 ```
 
 `uv tool install` keeps CLIO Kit in a persistent, isolated tool environment.
-Use `uvx --from 'clio-kit==2.4.0' clio-kit ...` only for a temporary, one-shot
+Use `uvx --from 'clio-kit==2.4.2' clio-kit ...` only for a temporary, one-shot
 invocation.
 
 Released `clio-kit` wheels execute each embedded MCP server from that server's
@@ -387,7 +388,7 @@ pip install uv
 Then install CLIO Kit persistently and expose uv's tool directory:
 
 ```bash
-uv tool install 'clio-kit==2.4.0'
+uv tool install 'clio-kit==2.4.2'
 uv tool update-shell
 ```
 
