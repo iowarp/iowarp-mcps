@@ -18,13 +18,13 @@ from urllib.parse import urlsplit
 
 
 Json = dict[str, Any]
-EXPECTED_JARVIS_VERSION = "1.2.2"
+EXPECTED_JARVIS_VERSION = "1.3.1"
 EXPECTED_JARVIS_URL = (
-    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.2.2/"
-    "jarvis_cd-1.2.2-py3-none-any.whl"
+    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.1/"
+    "jarvis_cd-1.3.1-py3-none-any.whl"
 )
 EXPECTED_JARVIS_SHA256 = (
-    "f05454718a4efe4dadebefb98c83511ba3dcc662238c0c05430a1b621a8ab8b7"
+    "08411d49f8d457ec8a1a73ad9eacc71416a17919733682acee7e28e0011d8cea"
 )
 
 
@@ -689,7 +689,7 @@ def main() -> int:
         )
         execution_payload = _tool_payload(execution_result)
         assert execution_payload.get("schema_version") == (
-            "clio-kit.jarvis-execution.v1"
+            "clio-kit.jarvis-execution.v2"
         ), execution_payload
         progress_payload = execution_payload.get("progress")
         assert isinstance(progress_payload, dict), execution_payload

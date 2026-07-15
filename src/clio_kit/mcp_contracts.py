@@ -112,8 +112,8 @@ class UserContractSpec:
 
 USER_CONTRACT_SPECS: Final = (
     UserContractSpec(
-        contract_id="clio-kit-jarvis-user-v3",
-        artifact_name="jarvis-user-v3.json",
+        contract_id="clio-kit-jarvis-user-v3.1",
+        artifact_name="jarvis-user-v3.1.json",
         server_name="jarvis",
         distribution_name="jarvis-mcp",
         entry_command="jarvis-mcp",
@@ -155,7 +155,22 @@ USER_CONTRACT_SPECS: Final = (
         profile_environment="SPACK_MCP_PROFILE",
         expected_tools=frozenset({"spack_find", "spack_install", "spack_locate"}),
     ),
+    UserContractSpec(
+        contract_id="clio-kit-scientific-catalog-user-v1",
+        artifact_name="scientific-catalog-user-v1.json",
+        server_name="scientific-catalog",
+        distribution_name="scientific-catalog-mcp",
+        entry_command="scientific-catalog-mcp",
+        profile_environment="SCIENTIFIC_CATALOG_PROFILE",
+        expected_tools=frozenset(
+            {"scientific_dataset_search", "scientific_dataset_describe"}
+        ),
+    ),
 )
+
+# Historical artifacts remain loadable by exact ID after an additive contract
+# revision. They are immutable evidence, not probed against the current server.
+HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = ("jarvis-user-v3.json",)
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -594,6 +609,34 @@ def generate_user_contract_artifacts(
     output_directory = root / "src" / "clio_kit" / "_mcp_contracts"
     artifacts = [probe_user_contract(root, spec) for spec in USER_CONTRACT_SPECS]
     artifact_payloads = [_formatted_json_bytes(artifact) for artifact in artifacts]
+    historical: list[tuple[Path, bytes, JSON]] = []
+    for artifact_name in HISTORICAL_USER_CONTRACT_ARTIFACTS:
+        path = output_directory / artifact_name
+        payload, artifact = _load_bounded_json_document(path)
+        tools_value = artifact.get("tools")
+        if not isinstance(tools_value, list) or not all(
+            isinstance(tool, dict) for tool in tools_value
+        ):
+            raise ContractGenerationError(
+                f"historical MCP user contract has invalid tools: {path}"
+            )
+        tools = cast(list[JSON], tools_value)
+        observed_contract = mcp_user_contract_digest(tools)
+        observed_wire = hashlib.sha256(
+            canonical_json_bytes({"tools": tools})
+        ).hexdigest()
+        if (
+            artifact.get("schema_version") != MCP_USER_CONTRACT_SCHEMA
+            or artifact.get("profile") != "user"
+            or not isinstance(artifact.get("contract_id"), str)
+            or not isinstance(artifact.get("server_name"), str)
+            or artifact.get("contract_sha256") != observed_contract
+            or artifact.get("wire_sha256") != observed_wire
+        ):
+            raise ContractGenerationError(
+                f"historical MCP user contract is invalid: {path}"
+            )
+        historical.append((path, payload, artifact))
     index: JSON = {
         "schema_version": MCP_USER_CONTRACT_INDEX_SCHEMA,
         "contracts": [
@@ -612,12 +655,25 @@ def generate_user_contract_artifacts(
                 artifact_payloads,
                 strict=True,
             )
+        ]
+        + [
+            {
+                "artifact": path.name,
+                "artifact_sha256": hashlib.sha256(payload).hexdigest(),
+                "contract_id": artifact["contract_id"],
+                "contract_sha256": artifact["contract_sha256"],
+                "profile": "user",
+                "server_name": artifact["server_name"],
+                "wire_sha256": artifact["wire_sha256"],
+            }
+            for path, payload, artifact in historical
         ],
     }
     expected = {
         output_directory / spec.artifact_name: payload
         for spec, payload in zip(USER_CONTRACT_SPECS, artifact_payloads, strict=True)
     }
+    expected.update({path: payload for path, payload, _artifact in historical})
     expected[output_directory / "index.json"] = _formatted_json_bytes(index)
     for path, payload in expected.items():
         if check:

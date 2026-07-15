@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-    "version": "2.3.2",
+    "version": "2.4.0",
     "pluginRoot": "./clio-kit-mcp-servers"
   },
   "plugins": [
@@ -125,7 +125,7 @@
       "name": "clio-jarvis",
       "source": "./clio-kit-mcp-servers/jarvis",
       "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "category": "development",
       "keywords": [
         "pipeline-management",
@@ -259,6 +259,16 @@
       "source": "./clio-kit-mcp-servers/sac",
       "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
       "version": "2.2.3",
+      "category": "development",
+      "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-scientific-catalog",
+      "source": "./clio-kit-mcp-servers/scientific-catalog",
+      "description": "Operator-owned scientific dataset discovery for remote agents",
+      "version": "1.0.0",
       "category": "development",
       "keywords": [],
       "license": "BSD-3-Clause",

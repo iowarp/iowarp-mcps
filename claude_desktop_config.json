@@ -126,6 +126,13 @@
         "sac"
       ]
     },
+    "clio-scientific-catalog": {
+      "command": "clio-kit",
+      "args": [
+        "mcp-server",
+        "scientific-catalog"
+      ]
+    },
     "clio-seismic": {
       "command": "clio-kit",
       "args": [

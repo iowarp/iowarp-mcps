@@ -147,6 +147,20 @@ def native_artifacts(
     }
 
 
+def native_service_runtimes(
+    execution_id: str, pipeline_id: str, state: str, terminal: bool
+) -> dict[str, object]:
+    """Return an empty authoritative JARVIS service-runtime snapshot."""
+    return {
+        "schema_version": "jarvis.execution.service-runtimes.v1",
+        "execution_id": execution_id,
+        "pipeline_id": pipeline_id,
+        "execution_state": state,
+        "terminal": terminal,
+        "service_runtimes": [],
+    }
+
+
 class ModernPipeline:
     """Small stand-in for the current JARVIS Pipeline API."""
 
@@ -268,6 +282,15 @@ class ModernPipeline:
     def get_execution_artifacts(self, execution_id: str) -> dict[str, object]:
         record = self.records[execution_id]
         return native_artifacts(execution_id, self.name, record.state, record.terminal)
+
+    def get_execution_service_runtimes(self, execution_id: str) -> dict[str, object]:
+        record = self.records[execution_id]
+        return native_service_runtimes(
+            execution_id,
+            self.name,
+            record.state,
+            record.terminal,
+        )
 
 
 class TestHandlerHelpers:
@@ -1189,7 +1212,7 @@ class TestPipelineExecutionOperations:
                     artifacts={},
                 )
 
-        assert result["schema_version"] == "clio-kit.jarvis-execution.v1"
+        assert result["schema_version"] == "clio-kit.jarvis-execution.v2"
         assert set(result) == {
             "schema_version",
             "pipeline_id",
@@ -1199,6 +1222,7 @@ class TestPipelineExecutionOperations:
             "runtime_metadata",
             "progress",
             "artifact_page",
+            "service_runtimes",
         }
         assert result["execution_id"] == "query-run-1"
         assert result["execution_record"]["state"] == "running"
@@ -1221,6 +1245,7 @@ class TestPipelineExecutionOperations:
             "returned_artifact_count": 0,
             "next_cursor": None,
         }
+        assert result["service_runtimes"] is None
 
     @pytest.mark.asyncio
     async def test_execution_query_can_omit_optional_native_queries(self) -> None:
@@ -1234,6 +1259,9 @@ class TestPipelineExecutionOperations:
         }
         pipeline.get_execution_progress = Mock(wraps=pipeline.get_execution_progress)
         pipeline.get_execution_artifacts = Mock(wraps=pipeline.get_execution_artifacts)
+        pipeline.get_execution_service_runtimes = Mock(
+            wraps=pipeline.get_execution_service_runtimes
+        )
         with patch(
             "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
             return_value=pipeline,
@@ -1247,6 +1275,7 @@ class TestPipelineExecutionOperations:
 
         assert result["progress"] is None
         assert result["artifact_page"] is None
+        assert result["service_runtimes"] is None
         assert result["runtime_metadata"]["output_path"] == "/tmp/queryable.out"
         assert result["runtime_metadata"]["error_path"] == "/tmp/queryable.err"
         assert result["runtime_metadata"]["package_provenance"] == [
@@ -1261,10 +1290,36 @@ class TestPipelineExecutionOperations:
             "runtime_metadata",
             "progress",
             "artifact_page",
+            "service_runtimes",
         }
         load_pipeline.assert_called_once_with("queryable")
         pipeline.get_execution_progress.assert_not_called()
         pipeline.get_execution_artifacts.assert_not_called()
+        pipeline.get_execution_service_runtimes.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execution_query_can_include_service_runtimes(self) -> None:
+        """The unified query selects JARVIS-owned services without a new tool."""
+        pipeline = ModernPipeline("queryable")
+        pipeline.run(execution_id="query-run-1", wait=False)
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+            return_value=pipeline,
+        ):
+            result = await get_execution(
+                "queryable",
+                "query-run-1",
+                include_service_runtimes=True,
+            )
+
+        assert result["service_runtimes"] == {
+            "schema_version": "jarvis.execution.service-runtimes.v1",
+            "execution_id": "query-run-1",
+            "pipeline_id": "queryable",
+            "execution_state": "running",
+            "terminal": False,
+            "service_runtimes": [],
+        }
 
     @pytest.mark.asyncio
     async def test_execution_query_retries_a_torn_lifecycle_view(self) -> None:

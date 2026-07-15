@@ -1,6 +1,6 @@
 {
   "name": "clio-kit",
-  "version": "2.3.2",
+  "version": "2.4.0",
   "mcpServers": {
     "clio-adios": {
       "command": "clio-kit",
@@ -126,6 +126,13 @@
       "args": [
         "mcp-server",
         "sac"
+      ]
+    },
+    "clio-scientific-catalog": {
+      "command": "clio-kit",
+      "args": [
+        "mcp-server",
+        "scientific-catalog"
       ]
     },
     "clio-seismic": {

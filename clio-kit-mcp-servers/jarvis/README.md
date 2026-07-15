@@ -145,6 +145,14 @@ query for an execution. It always returns the exact handle, latest record, and
 runtime metadata, and includes the generic package progress snapshot by
 default. Set `include_progress=false` when only lifecycle state is needed.
 
+Execution-owned network services are also selectable through this same query,
+not a separate tool. Set `include_service_runtimes=true` to receive the exact
+`jarvis.execution.service-runtimes.v1` snapshot, including durable lifecycle,
+service instance identity, private endpoint metadata, and the intrinsic
+`jarvis.dataset-descriptor.v1`. JARVIS owns and validates these records; the MCP
+does not scrape stdout or infer a service from process text. Private cluster
+endpoints are routing inputs for clio-relay, not browser URLs.
+
 Artifacts are opt-in so routine polling stays compact. Pass `artifacts={}` for
 the default bounded page, or provide exact `package_id`, `role`, `state`, and
 `artifact_id` filters plus `page_size` and `cursor`. The page size defaults to
@@ -154,9 +162,10 @@ artifact or execution state changed between pages. References include opaque
 artifact IDs, lifecycle state, role, structure, ownership, metadata, and
 transport-neutral locations. The MCP does not read or transfer artifact
 content or interpret application-specific formats. The fixed response always
-contains nullable `progress` and `artifact_page` keys, so selecting less data
-does not change its shape. `include_progress=false` suppresses only the progress
-snapshot; runtime paths and package provenance remain available.
+contains nullable `progress`, `artifact_page`, and `service_runtimes` keys, so
+selecting less data does not change its shape. `include_progress=false`
+suppresses only the progress snapshot; runtime paths and package provenance
+remain available.
 
 The query retries boundedly if execution state changes while JARVIS is reading
 the record, progress, and artifact manifests, so one response cannot mix
@@ -167,7 +176,7 @@ agent can restart pagination from the first page without parsing prose. This
 works for direct executions with no scheduler, scheduler executions before or
 after allocation, and terminal executions.
 Successful `jarvis_run` results use `clio-kit.jarvis-run.v1`; unified execution
-queries use `clio-kit.jarvis-execution.v1`.
+queries use `clio-kit.jarvis-execution.v2`.
 
 ## Claude Code
 
@@ -230,7 +239,7 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_get_execution`
-**Description**: Query a durable JARVIS execution, optionally including package progress and one bounded page of generated-artifact references.
+**Description**: Query a durable JARVIS execution, optionally including package progress, execution-owned service runtimes, and one bounded page of generated-artifact references.
 **Hints**: read-only, idempotent
 **Tags**: jarvis, pipeline, execution, user
 

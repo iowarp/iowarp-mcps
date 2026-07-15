@@ -1,0 +1,495 @@
+{
+  "canonicalization": "json-sort-keys-compact-utf8-v1",
+  "contract_id": "clio-kit-scientific-catalog-user-v1",
+  "contract_sha256": "a53006f24f4698f659f0a7c8bf61fc7bd7ad23274b06d2eed2ccfca68b9ecb0a",
+  "profile": "user",
+  "projection": "mcp-agent-tool-schema-v1",
+  "schema_version": "clio-kit.mcp-user-contract.v1",
+  "server_name": "scientific-catalog",
+  "source": {
+    "method": "tools/list",
+    "protocol_version": "2024-11-05",
+    "transport": "stdio"
+  },
+  "tool_names": [
+    "scientific_dataset_describe",
+    "scientific_dataset_search"
+  ],
+  "tools": [
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "catalog",
+            "scientific-data",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return one exact operator catalog record and its jarvis.dataset-descriptor.v1.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id"
+        ],
+        "type": "object"
+      },
+      "name": "scientific_dataset_describe",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Complete catalog record and exact JARVIS descriptor.",
+        "properties": {
+          "catalog_revision": {
+            "type": "string"
+          },
+          "catalog_sha256": {
+            "type": "string"
+          },
+          "dataset": {
+            "additionalProperties": false,
+            "description": "Human-discoverable metadata around one intrinsic dataset descriptor.",
+            "properties": {
+              "dataset_id": {
+                "type": "string"
+              },
+              "descriptor": {
+                "additionalProperties": false,
+                "description": "JARVIS-owned intrinsic dataset descriptor without visualization semantics.",
+                "properties": {
+                  "arrays": {
+                    "items": {
+                      "additionalProperties": false,
+                      "description": "Intrinsic array facts discovered for one dataset.",
+                      "properties": {
+                        "association": {
+                          "enum": [
+                            "point",
+                            "cell",
+                            "field"
+                          ],
+                          "type": "string"
+                        },
+                        "components": {
+                          "maximum": 64,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "name": {
+                          "maxLength": 512,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "units": {
+                          "anyOf": [
+                            {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "association",
+                        "components"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 256,
+                    "type": "array"
+                  },
+                  "bounds": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "number"
+                        },
+                        "maxItems": 6,
+                        "minItems": 6,
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "dataset_id": {
+                    "type": "string"
+                  },
+                  "fingerprint": {
+                    "additionalProperties": false,
+                    "description": "Content or collection identity for one dataset descriptor.",
+                    "properties": {
+                      "algorithm": {
+                        "const": "sha256",
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "algorithm",
+                      "digest"
+                    ],
+                    "type": "object"
+                  },
+                  "format": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "members": {
+                    "items": {
+                      "additionalProperties": false,
+                      "description": "One ordered, cluster-local member in the bounded catalog view.",
+                      "properties": {
+                        "index": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "location": {
+                          "maxLength": 4096,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "timestep": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "index",
+                        "location"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 512,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "schema_version": {
+                    "const": "jarvis.dataset-descriptor.v1",
+                    "type": "string"
+                  },
+                  "source_artifact": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "description": "Optional durable JARVIS artifact that owns a dataset.",
+                        "properties": {
+                          "artifact_id": {
+                            "pattern": "^art_[A-Za-z0-9_-]{22,86}$",
+                            "type": "string"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "artifact_id",
+                          "sha256"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "dataset_id",
+                  "kind",
+                  "format",
+                  "members",
+                  "fingerprint"
+                ],
+                "type": "object"
+              },
+              "summary": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "title": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "dataset_id",
+              "title",
+              "summary",
+              "descriptor"
+            ],
+            "type": "object"
+          },
+          "descriptor_sha256": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "clio-kit.scientific-dataset-description.v1",
+            "default": "clio-kit.scientific-dataset-description.v1",
+            "type": "string"
+          },
+          "site_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "site_id",
+          "catalog_revision",
+          "catalog_sha256",
+          "dataset",
+          "descriptor_sha256"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "catalog",
+            "scientific-data",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Search operator-registered scientific datasets and return bounded intrinsic summaries.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "page_size": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "scientific_dataset_search",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Stable paginated response from scientific dataset search.",
+        "properties": {
+          "catalog_revision": {
+            "type": "string"
+          },
+          "catalog_sha256": {
+            "type": "string"
+          },
+          "datasets": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Bounded discovery record returned by search.",
+              "properties": {
+                "dataset_fingerprint": {
+                  "type": "string"
+                },
+                "dataset_id": {
+                  "type": "string"
+                },
+                "descriptor_sha256": {
+                  "type": "string"
+                },
+                "first_timestep": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "format": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "last_timestep": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "member_count": {
+                  "type": "integer"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "dataset_id",
+                "title",
+                "summary",
+                "tags",
+                "kind",
+                "format",
+                "member_count",
+                "first_timestep",
+                "last_timestep",
+                "dataset_fingerprint",
+                "descriptor_sha256"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": "clio-kit.scientific-dataset-search.v1",
+            "default": "clio-kit.scientific-dataset-search.v1",
+            "type": "string"
+          },
+          "site_id": {
+            "type": "string"
+          },
+          "total_matches": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "site_id",
+          "catalog_revision",
+          "catalog_sha256",
+          "datasets",
+          "total_matches",
+          "next_cursor"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "wire_sha256": "55bd04f45653c9117b8a1ae41cbc5e79dd6383e86a851b43caa071ae357bb2c4"
+}

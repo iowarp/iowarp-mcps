@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scientific-catalog-mcp"
+version = "1.0.0"
+description = "Operator-owned scientific dataset discovery for remote agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "BSD-3-Clause"
+authors = [
+  { name = "IoWarp Team - Gnosis Research Center", email = "grc@illinoistech.edu" },
+]
+dependencies = [
+  "fastmcp>=3.2.0",
+  "pydantic>=2.10",
+]
+
+[project.scripts]
+scientific-catalog-mcp = "scientific_catalog_mcp.server:main"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.17.0",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.12.5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scientific_catalog_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

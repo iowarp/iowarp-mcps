@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/scientific-catalog-mcp",
+  "title": "CLIO Scientific Catalog",
+  "description": "Operator-owned scientific dataset discovery for remote agents",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.4.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "scientific-catalog"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "scientific_dataset_search",
+      "description": "Search operator-registered scientific datasets and return bounded intrinsic summaries."
+    },
+    {
+      "name": "scientific_dataset_describe",
+      "description": "Return one exact operator catalog record and its jarvis.dataset-descriptor.v1."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "scientific-catalog://capabilities",
+      "name": "scientific_catalog_capabilities",
+      "description": "Describe the separation between discovery and runtime visualization."
+    }
+  ],
+  "tags": []
+}

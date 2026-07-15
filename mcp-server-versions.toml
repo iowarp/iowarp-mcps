@@ -4,12 +4,12 @@ schema-version = 1
 # Existing Registry versions are immutable and must not be republished merely
 # because a newer clio-kit wheel also contains their unchanged implementation.
 [mcp-registry-release]
-publish = ["spack"]
+publish = ["jarvis", "scientific-catalog"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
 [documentation]
-updated = "2026-07-13"
+updated = "2026-07-15"
 
 # MCP Registry server versions describe each agent-facing contract. They are
 # intentionally independent of the clio-kit PyPI distribution version, which
@@ -23,7 +23,7 @@ darshan = "2.2.3"
 geo = "2.2.3"
 geojson = "2.2.3"
 hdf5 = "2.2.3"
-jarvis = "3.0.0"
+jarvis = "3.1.0"
 lmod = "2.2.3"
 ndp = "2.2.3"
 node-hardware = "2.2.3"
@@ -33,6 +33,7 @@ paraview = "2.2.3"
 parquet = "2.2.3"
 plot = "2.2.3"
 sac = "2.2.3"
+scientific-catalog = "1.0.0"
 seismic = "2.2.3"
 slurm = "3.0.0"
 spack = "2.0.1"
