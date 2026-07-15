@@ -66,6 +66,10 @@ def test_release_security_audits_unmatrixed_shipped_environments() -> None:
         "uv run --directory clio-kit-mcp-servers/chronolog \\\n"
         "          --with 'pip-audit==2.10.1' pip-audit" in quality_block
     )
+    assert (
+        'uv run --directory "clio-kit-mcp-servers/$server" \\\n'
+        "            --with 'pip-audit==2.10.1' pip-audit" in quality_block
+    )
 
 
 def test_testpypi_advisory_publish_path_is_removed() -> None:
