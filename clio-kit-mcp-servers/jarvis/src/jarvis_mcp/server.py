@@ -1,11 +1,14 @@
 import argparse
+import base64
+import binascii
 import hashlib
 import importlib
 import json
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal, Optional, cast
+from typing import Annotated, Any, Literal, Optional, cast
 
 from typing_extensions import NotRequired, TypedDict
 
@@ -188,6 +191,39 @@ mcp: FastMCP = FastMCP(
     list_page_size=10,
 )
 MCP_METADATA_PROFILE = "user"
+
+PACKAGE_SEARCH_SCHEMA = "jarvis.package-search.v1"
+PACKAGE_SEARCH_CURSOR_SCHEMA = "clio-kit.jarvis-package-search-cursor.v1"
+PACKAGE_SEARCH_DEFAULT_PAGE_SIZE = 10
+PACKAGE_SEARCH_MAX_PAGE_SIZE = 25
+PACKAGE_SEARCH_MAX_RESULT_BYTES = 64 * 1024
+PACKAGE_SEARCH_MAX_CURSOR_LENGTH = 1024
+PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES = 4096
+_PACKAGE_SEARCH_CURSOR_TEXT = re.compile(r"^[A-Za-z0-9_-]+$")
+_PACKAGE_SEARCH_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+@dataclass(frozen=True)
+class _PackageInventoryEntry:
+    """Lightweight package identity discovered from one registered repository."""
+
+    name: str
+    short_name: str
+    repository: str
+    description: str | None
+    repo: Path
+    package_file: Path
+
+    def summary(self) -> dict[str, Any]:
+        """Return the bounded search representation without package settings."""
+
+        summary: dict[str, Any] = {
+            "name": self.name,
+            "short_name": self.short_name,
+            "repository": self.repository,
+            "description": _bounded_package_search_description(self.description),
+        }
+        return {key: value for key, value in summary.items() if value is not None}
 
 
 class JarvisExecutionHandleDocument(TypedDict):
@@ -1193,7 +1229,14 @@ async def jarvis_create_pipeline_tool(
 
 @mcp.tool(
     name="jarvis_describe",
-    description="Describe JARVIS packages, one package, a pipeline, or one pipeline step.",
+    description=(
+        "Describe JARVIS packages, one package, a pipeline, or one pipeline step. "
+        "For a named application, first use target='package' with its unique short name "
+        "or fully qualified package name. Use target='package_search' for bounded "
+        "discovery, then describe the selected canonical name. target='packages' is an "
+        "exhaustive legacy inventory with every package's settings and can be large; "
+        "use it only when the complete installed catalog is explicitly required."
+    ),
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -1202,16 +1245,94 @@ async def jarvis_create_pipeline_tool(
     tags={"jarvis", "pipeline", "user"},
 )
 async def jarvis_describe_tool(
-    target: Literal["packages", "package", "pipeline", "step"],
-    pipeline_id: Optional[str] = None,
-    step_id: Optional[str] = None,
-    package_name: Optional[str] = None,
-    include_yaml: bool = True,
+    target: Annotated[
+        Literal["packages", "package_search", "package", "pipeline", "step"],
+        Field(
+            description=(
+                "Object to describe. Prefer package for a named application and "
+                "package_search for discovery; packages is exhaustive and unbounded."
+            )
+        ),
+    ],
+    pipeline_id: Annotated[
+        Optional[str],
+        Field(
+            min_length=1,
+            max_length=256,
+            description="Pipeline identifier for target='pipeline' or target='step'.",
+        ),
+    ] = None,
+    step_id: Annotated[
+        Optional[str],
+        Field(
+            min_length=1,
+            max_length=256,
+            description="Pipeline step identifier for target='step'.",
+        ),
+    ] = None,
+    package_name: Annotated[
+        Optional[str],
+        Field(
+            min_length=1,
+            max_length=512,
+            description=(
+                "Case-insensitive unique short name or fully qualified package name for "
+                "target='package', for example paraview or builtin.paraview. Ambiguous "
+                "short names fail with canonical candidates."
+            ),
+        ),
+    ] = None,
+    query: Annotated[
+        Optional[str],
+        Field(
+            min_length=1,
+            max_length=256,
+            description=(
+                "Natural-language or package-name query required for "
+                "target='package_search'."
+            ),
+        ),
+    ] = None,
+    page_size: Annotated[
+        int,
+        Field(
+            ge=1,
+            le=PACKAGE_SEARCH_MAX_PAGE_SIZE,
+            description=(
+                "Maximum summary matches returned by target='package_search'; "
+                f"bounded to {PACKAGE_SEARCH_MAX_PAGE_SIZE}."
+            ),
+        ),
+    ] = PACKAGE_SEARCH_DEFAULT_PAGE_SIZE,
+    cursor: Annotated[
+        Optional[str],
+        Field(
+            min_length=1,
+            max_length=PACKAGE_SEARCH_MAX_CURSOR_LENGTH,
+            description=(
+                "Opaque next-page cursor returned by an earlier package_search with "
+                "the identical query."
+            ),
+        ),
+    ] = None,
+    include_yaml: Annotated[
+        bool,
+        Field(
+            description=(
+                "Include stored pipeline YAML only for target='pipeline'; ignored for "
+                "package and package discovery targets."
+            )
+        ),
+    ] = True,
 ) -> dict[str, Any]:
     """Describe user-level JARVIS objects without exposing repository administration."""
     normalized = target.strip().lower()
     if normalized == "packages":
         return {"target": "packages", "packages": _discover_packages()}
+    if normalized == "package_search":
+        if query is None or not query.strip():
+            raise ToolError("query is required when target='package_search'")
+        return _search_packages(query=query, page_size=page_size, cursor=cursor)
     if normalized == "package":
         if not package_name:
             raise ToolError("package_name is required when target='package'")
@@ -1233,7 +1354,9 @@ async def jarvis_describe_tool(
             raise ToolError(f"step not found in pipeline {pipeline_id}: {step_id}")
         config = await get_pkg_config(pipeline_id, step_id)
         return {"target": "step", "step": step, "config": config}
-    raise ToolError("target must be one of: packages, package, pipeline, step")
+    raise ToolError(
+        "target must be one of: packages, package_search, package, pipeline, step"
+    )
 
 
 @mcp.tool(
@@ -1786,7 +1909,18 @@ def jm_graph_modify(net_sleep: float) -> list:
 
 
 def _discover_packages() -> list[dict[str, Any]]:
-    packages: list[dict[str, Any]] = []
+    """Return the legacy exhaustive package descriptions with full settings."""
+
+    return [
+        _package_description_from_inventory(entry)
+        for entry in _discover_package_inventory()
+    ]
+
+
+def _discover_package_inventory() -> list[_PackageInventoryEntry]:
+    """Discover lightweight package identities without importing package classes."""
+
+    packages: list[_PackageInventoryEntry] = []
     seen: set[str] = set()
     try:
         manager = get_manager()
@@ -1801,45 +1935,357 @@ def _discover_packages() -> list[dict[str, Any]]:
             key=lambda path: (path.parent.as_posix(), path.name != "pkg.py"),
         )
         for pkg_file in package_files:
-            package = _package_from_pkg_file(repo, pkg_file)
-            name = str(package.get("name", ""))
+            package = _package_inventory_entry(repo, pkg_file)
+            name = package.name
             if not name or name in seen:
                 continue
             seen.add(name)
             packages.append(package)
-    return sorted(packages, key=lambda package: str(package.get("name", "")))
+    return sorted(packages, key=lambda package: (package.name.casefold(), package.name))
 
 
 def _find_package_description(package_name: str) -> dict[str, Any] | None:
-    normalized = package_name.strip().lower()
-    for package in _discover_packages():
-        names = {
-            str(package.get("name", "")).lower(),
-            str(package.get("short_name", "")).lower(),
-        }
-        if normalized in names:
-            return package
+    """Resolve one exact canonical or short name and load only its settings."""
+
+    normalized = package_name.strip().casefold()
+    inventory = _discover_package_inventory()
+    canonical = next(
+        (package for package in inventory if package.name.casefold() == normalized),
+        None,
+    )
+    if canonical is not None:
+        return _package_description_from_inventory(canonical)
+
+    short_matches = [
+        package for package in inventory if package.short_name.casefold() == normalized
+    ]
+    if len(short_matches) == 1:
+        return _package_description_from_inventory(short_matches[0])
+    if len(short_matches) > 1:
+        candidates = ", ".join(package.name for package in short_matches)
+        raise ToolError(
+            f"package short name is ambiguous: {package_name}; use one of: {candidates}"
+        )
     return None
 
 
 def _package_from_pkg_file(repo: Path, pkg_file: Path) -> dict[str, Any]:
+    """Build one full package description from a repository source file."""
+
+    return _package_description_from_inventory(_package_inventory_entry(repo, pkg_file))
+
+
+def _package_inventory_entry(repo: Path, pkg_file: Path) -> _PackageInventoryEntry:
+    """Build one lightweight package inventory entry from its source location."""
+
     relative = pkg_file.relative_to(repo)
     parts = list(relative.parts[:-1])
     short_name = parts[-1] if parts else repo.name
     dotted = ".".join(parts) if parts else short_name
     description = _first_docstring_or_comment(pkg_file)
+    repository = parts[0] if parts else repo.name
+    return _PackageInventoryEntry(
+        name=dotted,
+        short_name=short_name,
+        repository=repository,
+        description=description,
+        repo=repo,
+        package_file=pkg_file,
+    )
+
+
+def _package_description_from_inventory(
+    entry: _PackageInventoryEntry,
+) -> dict[str, Any]:
+    """Load the package-owned settings for one selected inventory entry."""
+
     package: dict[str, Any] = {
-        "name": dotted,
-        "short_name": short_name,
-        "description": description,
-        "path": str(pkg_file),
+        "name": entry.name,
+        "short_name": entry.short_name,
+        "description": entry.description,
+        "path": str(entry.package_file),
     }
-    menu = _package_settings(dotted)
-    if menu is None and dotted != short_name:
-        menu = _package_settings(short_name)
+    menu = _package_settings(package["name"])
+    if menu is None and package["name"] != package["short_name"]:
+        menu = _package_settings(package["short_name"])
     if menu is not None:
         package["settings"] = menu
     return package
+
+
+def _search_packages(
+    *,
+    query: str,
+    page_size: int = PACKAGE_SEARCH_DEFAULT_PAGE_SIZE,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    """Return a bounded, summary-only page from the registered package inventory."""
+
+    normalized_query = " ".join(query.split())
+    if not normalized_query:
+        raise ToolError("package_search query must not be blank")
+    if (
+        isinstance(page_size, bool)
+        or not isinstance(page_size, int)
+        or not 1 <= page_size <= PACKAGE_SEARCH_MAX_PAGE_SIZE
+    ):
+        raise ToolError(
+            "package_search page_size must be between 1 and "
+            f"{PACKAGE_SEARCH_MAX_PAGE_SIZE}"
+        )
+
+    inventory = _discover_package_inventory()
+    inventory_revision = _package_inventory_revision(inventory)
+    query_sha256 = hashlib.sha256(
+        normalized_query.casefold().encode("utf-8")
+    ).hexdigest()
+    ranked = sorted(
+        (
+            (rank, package)
+            for package in inventory
+            if (rank := _package_search_rank(package, normalized_query)) is not None
+        ),
+        key=lambda item: (item[0], item[1].name.casefold(), item[1].name),
+    )
+    matches = [package for _, package in ranked]
+
+    start = 0
+    if cursor is not None:
+        decoded = _decode_package_search_cursor(cursor)
+        if decoded["query_sha256"] != query_sha256:
+            raise ToolError("package_search cursor does not match the requested query")
+        if decoded["inventory_revision"] != inventory_revision:
+            raise ToolError(
+                "package_search cursor is stale because the package inventory changed"
+            )
+        anchor = decoded["after_package_name"]
+        try:
+            start = next(
+                index + 1
+                for index, package in enumerate(matches)
+                if package.name == anchor
+            )
+        except StopIteration as exc:
+            raise ToolError(
+                "package_search cursor is stale because its package anchor disappeared"
+            ) from exc
+
+    page = [package.summary() for package in matches[start : start + page_size]]
+    while True:
+        has_more = start + len(page) < len(matches)
+        next_cursor = None
+        if has_more and page:
+            next_cursor = _encode_package_search_cursor(
+                after_package_name=str(page[-1]["name"]),
+                query_sha256=query_sha256,
+                inventory_revision=inventory_revision,
+            )
+        result: dict[str, Any] = {
+            "schema_version": PACKAGE_SEARCH_SCHEMA,
+            "target": "package_search",
+            "query": normalized_query,
+            "inventory_revision": inventory_revision,
+            "packages": page,
+            "total_matches": len(matches),
+            "returned_count": len(page),
+            "next_cursor": next_cursor,
+        }
+        if len(_package_search_json_bytes(result)) <= PACKAGE_SEARCH_MAX_RESULT_BYTES:
+            return result
+        if len(page) <= 1:
+            raise ToolError(
+                "one package_search result exceeded the response byte limit"
+            )
+        page.pop()
+
+
+def _package_search_rank(
+    package: _PackageInventoryEntry,
+    query: str,
+) -> int | None:
+    """Return a deterministic relevance rank, or ``None`` when no field matches."""
+
+    folded_query = query.casefold()
+    folded_name = package.name.casefold()
+    folded_short_name = package.short_name.casefold()
+    if folded_query in {folded_name, folded_short_name}:
+        return 0
+    if folded_name.startswith(folded_query) or folded_short_name.startswith(
+        folded_query
+    ):
+        return 1
+    if folded_query in folded_name or folded_query in folded_short_name:
+        return 2
+    folded_description = (package.description or "").casefold()
+    if folded_query in folded_description:
+        return 3
+
+    normalized_query = _package_search_terms(folded_query)
+    if not normalized_query:
+        return None
+    searchable = _package_search_terms(
+        " ".join(
+            (
+                package.name,
+                package.short_name,
+                package.description or "",
+            )
+        ).casefold()
+    )
+    if all(term in searchable for term in normalized_query):
+        return 4
+    return None
+
+
+def _package_search_terms(value: str) -> list[str]:
+    """Tokenize package names and prose without locale-dependent behavior."""
+
+    return [term for term in re.split(r"[^a-z0-9]+", value) if term]
+
+
+def _package_inventory_revision(inventory: list[_PackageInventoryEntry]) -> str:
+    """Hash the full lightweight inventory used to rank and page package search."""
+
+    hasher = hashlib.sha256()
+    hasher.update(b"clio-kit.jarvis-package-inventory.v1\0")
+    for package in inventory:
+        encoded = _package_search_json_bytes(
+            {
+                "name": package.name,
+                "short_name": package.short_name,
+                "repository": package.repository,
+                "description": package.description,
+            }
+        )
+        hasher.update(len(encoded).to_bytes(8, "big"))
+        hasher.update(encoded)
+    return hasher.hexdigest()
+
+
+def _encode_package_search_cursor(
+    *,
+    after_package_name: str,
+    query_sha256: str,
+    inventory_revision: str,
+) -> str:
+    """Encode an opaque cursor bound to one query and inventory revision."""
+
+    payload = _package_search_json_bytes(
+        {
+            "schema_version": PACKAGE_SEARCH_CURSOR_SCHEMA,
+            "after_package_name": after_package_name,
+            "query_sha256": query_sha256,
+            "inventory_revision": inventory_revision,
+        }
+    )
+    cursor = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+    if len(cursor) > PACKAGE_SEARCH_MAX_CURSOR_LENGTH:
+        raise ToolError("package_search cursor exceeded its byte limit")
+    return cursor
+
+
+def _decode_package_search_cursor(cursor: str) -> dict[str, str]:
+    """Decode and strictly validate one package-search cursor."""
+
+    if (
+        not cursor
+        or len(cursor) > PACKAGE_SEARCH_MAX_CURSOR_LENGTH
+        or _PACKAGE_SEARCH_CURSOR_TEXT.fullmatch(cursor) is None
+    ):
+        raise ToolError("package_search cursor is invalid")
+    padding = "=" * (-len(cursor) % 4)
+    try:
+        payload = base64.b64decode(
+            cursor + padding,
+            altchars=b"-_",
+            validate=True,
+        )
+        if len(payload) > PACKAGE_SEARCH_MAX_CURSOR_LENGTH:
+            raise ToolError("package_search cursor exceeded its byte limit")
+        value = json.loads(
+            payload.decode("utf-8"),
+            object_pairs_hook=_reject_package_search_duplicate_keys,
+        )
+    except ToolError:
+        raise
+    except (
+        binascii.Error,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        ValueError,
+    ) as exc:
+        raise ToolError("package_search cursor is invalid") from exc
+    expected_fields = {
+        "schema_version",
+        "after_package_name",
+        "query_sha256",
+        "inventory_revision",
+    }
+    if not isinstance(value, dict) or set(value) != expected_fields:
+        raise ToolError("package_search cursor schema is invalid")
+    if value.get("schema_version") != PACKAGE_SEARCH_CURSOR_SCHEMA:
+        raise ToolError("package_search cursor schema is unsupported")
+    after_package_name = value.get("after_package_name")
+    query_sha256 = value.get("query_sha256")
+    inventory_revision = value.get("inventory_revision")
+    if (
+        not isinstance(after_package_name, str)
+        or not after_package_name
+        or not isinstance(query_sha256, str)
+        or _PACKAGE_SEARCH_SHA256.fullmatch(query_sha256) is None
+        or not isinstance(inventory_revision, str)
+        or _PACKAGE_SEARCH_SHA256.fullmatch(inventory_revision) is None
+    ):
+        raise ToolError("package_search cursor fields are invalid")
+    return {
+        "after_package_name": after_package_name,
+        "query_sha256": query_sha256,
+        "inventory_revision": inventory_revision,
+    }
+
+
+def _bounded_package_search_description(value: str | None) -> str | None:
+    """Truncate only search summaries to their documented UTF-8 byte ceiling."""
+
+    if value is None:
+        return None
+    encoded = value.encode("utf-8")
+    if len(encoded) <= PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES:
+        return value
+    suffix = "..."
+    budget = PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES - len(suffix)
+    prefix = encoded[:budget]
+    while prefix:
+        try:
+            return prefix.decode("utf-8") + suffix
+        except UnicodeDecodeError:
+            prefix = prefix[:-1]
+    return suffix
+
+
+def _package_search_json_bytes(value: object) -> bytes:
+    """Serialize bounded search state using a deterministic UTF-8 encoding."""
+
+    return json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def _reject_package_search_duplicate_keys(
+    pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    """Reject ambiguous JSON objects inside opaque package-search cursors."""
+
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate package_search cursor key: {key}")
+        value[key] = item
+    return value
 
 
 def _first_docstring_or_comment(path: Path) -> str | None:

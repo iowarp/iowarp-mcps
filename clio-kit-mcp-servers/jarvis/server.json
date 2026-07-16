@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
   "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.4.9",
+      "version": "2.5.0",
       "transport": {
         "type": "stdio"
       },
@@ -35,7 +35,7 @@
     },
     {
       "name": "jarvis_describe",
-      "description": "Describe JARVIS packages, one package, a pipeline, or one pipeline step."
+      "description": "Describe JARVIS packages, one package, a pipeline, or one pipeline step. For a named application, first use target='package' with its unique short name or fully qualified package name. Use target='package_search' for bounded discovery, then describe the selected canonical name. target='packages' is an exhaustive legacy inventory with every package's settings and can be large; use it only when the complete installed catalog is explicitly required."
     },
     {
       "name": "jarvis_add_step",

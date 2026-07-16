@@ -112,8 +112,8 @@ class UserContractSpec:
 
 USER_CONTRACT_SPECS: Final = (
     UserContractSpec(
-        contract_id="clio-kit-jarvis-user-v3.1",
-        artifact_name="jarvis-user-v3.1.json",
+        contract_id="clio-kit-jarvis-user-v3.2",
+        artifact_name="jarvis-user-v3.2.json",
         server_name="jarvis",
         distribution_name="jarvis-mcp",
         entry_command="jarvis-mcp",
@@ -170,7 +170,10 @@ USER_CONTRACT_SPECS: Final = (
 
 # Historical artifacts remain loadable by exact ID after an additive contract
 # revision. They are immutable evidence, not probed against the current server.
-HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = ("jarvis-user-v3.json",)
+HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = (
+    "jarvis-user-v3.json",
+    "jarvis-user-v3.1.json",
+)
 
 
 def canonical_json_bytes(value: object) -> bytes:

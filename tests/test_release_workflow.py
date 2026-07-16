@@ -359,7 +359,7 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     start = WORKFLOW.index("    - name: Smoke installed root wheel")
     end = WORKFLOW.index("    - name: Attest release distributions", start)
     smoke_block = WORKFLOW[start:end]
-    assert "mcp-contract clio-kit-jarvis-user-v3.1" in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3.2" in smoke_block
     assert '"jarvis_get_execution"' in smoke_block
     assert '"jarvis_get_execution_progress"' not in smoke_block
     assert '"jarvis_get_execution_artifacts"' not in smoke_block
@@ -409,12 +409,13 @@ def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     )
     smoke_block = WORKFLOW[smoke_start:smoke_end]
     assert '"$clio_kit" mcp-contracts' in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3.2" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.1" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3" in smoke_block
     assert "mcp-contract clio-kit-scientific-catalog-user-v1" in smoke_block
     assert "mcp-contract clio-kit-slurm-user-v3" in smoke_block
     assert "mcp-contract clio-kit-spack-user-v2" in smoke_block
-    assert "clio-kit-jarvis-user-v3.1" in smoke_block
+    assert "clio-kit-jarvis-user-v3.2" in smoke_block
 
 
 def test_quality_matrix_is_required_and_lock_sensitive() -> None:
