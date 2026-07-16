@@ -82,7 +82,7 @@ CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI
 
 ```bash
 # Install the released CLI into its own persistent tool environment
-uv tool install 'clio-kit==2.4.2'
+uv tool install 'clio-kit==2.4.3'
 # If uv reports that its executable directory is not on PATH:
 uv tool update-shell
 
@@ -104,7 +104,7 @@ clio-kit prompt code-coverage-prompt # Use a prompt
 ```
 
 `uv tool install` keeps CLIO Kit in a persistent, isolated tool environment.
-Use `uvx --from 'clio-kit==2.4.2' clio-kit ...` only for a temporary, one-shot
+Use `uvx --from 'clio-kit==2.4.3' clio-kit ...` only for a temporary, one-shot
 invocation.
 
 Released `clio-kit` wheels execute each embedded MCP server from that server's
@@ -247,7 +247,7 @@ Agents should discover first, install only when needed, then pass the exact
 | **`geo`** | 2.2.3 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
 | **`geojson`** | 2.2.3 | Geospatial | Inspect, validate, and summarize GeoJSON | `clio-kit mcp-server geojson` |
 | **`hdf5`** | 2.2.3 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `clio-kit mcp-server hdf5` |
-| **`jarvis`** | 3.1.0 | Workflow | Durable pipeline, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
+| **`jarvis`** | 3.1.1 | Workflow | Durable pipeline, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
 | **`lmod`** | 2.2.3 | Environment | Environment module management | `clio-kit mcp-server lmod` |
 | **`ndp`** | 2.2.3 | Data Protocol | Search and discover datasets across CKAN instances | `clio-kit mcp-server ndp` |
 | **`node-hardware`** | 2.2.3 | System | System hardware information | `clio-kit mcp-server node-hardware` |
@@ -388,7 +388,7 @@ pip install uv
 Then install CLIO Kit persistently and expose uv's tool directory:
 
 ```bash
-uv tool install 'clio-kit==2.4.2'
+uv tool install 'clio-kit==2.4.3'
 uv tool update-shell
 ```
 

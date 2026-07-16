@@ -2,6 +2,7 @@
 Tests for the jarvis_handler module that contains pipeline operation logic.
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -297,7 +298,7 @@ class TestHandlerHelpers:
     """Test helper branches used by the semantic MCP contract."""
 
     def test_jsonable_and_config_arg_helpers(self):
-        """Non-JSON values are normalized and config args preserve bool spelling."""
+        """Structured config args use deterministic, standards-compliant JSON."""
         from jarvis_mcp.capabilities.jarvis_handler import (
             _jsonable,
             _kwargs_to_config_args,
@@ -308,8 +309,73 @@ class TestHandlerHelpers:
             "items": [repr(Path("/tmp/y"))],
         }
         assert _kwargs_to_config_args(
-            {"enabled": True, "disabled": False, "skip": None, "count": 2}
-        ) == ["enabled=true", "disabled=false", "count=2"]
+            {
+                "enabled": True,
+                "disabled": False,
+                "skip": None,
+                "count": 2,
+                "options": {"z": [1, True, None], "a": "value"},
+                "members": ["first", 2],
+            }
+        ) == [
+            "enabled=true",
+            "disabled=false",
+            "count=2",
+            'options={"a":"value","z":[1,true,null]}',
+            'members=["first",2]',
+        ]
+
+        with pytest.raises(ValueError, match="JSON-compatible"):
+            _kwargs_to_config_args({"options": {"bad": float("nan")}})
+
+    def test_catalog_descriptor_config_is_valid_jarvis_json(self):
+        """A catalog descriptor object survives the JARVIS package-argument bridge."""
+        from jarvis_cd.service_runtime.schema import DatasetDescriptor
+        from jarvis_mcp.capabilities.jarvis_handler import _kwargs_to_config_args
+
+        intrinsic = {
+            "schema_version": "jarvis.dataset-descriptor.v1",
+            "dataset_id": "asteroid-first-five",
+            "kind": "temporal-volume",
+            "format": "vti",
+            "members": [
+                {
+                    "index": 0,
+                    "location": "/datasets/asteroid/frame-0000.vti",
+                    "timestep": 0.0,
+                },
+                {
+                    "index": 1,
+                    "location": "/datasets/asteroid/frame-0001.vti",
+                    "timestep": 1.0,
+                },
+            ],
+            "arrays": [{"name": "prs", "association": "point", "components": 1}],
+            "bounds": [-1.0, 1.0, -2.0, 2.0, -3.0, 3.0],
+            "source_artifact": None,
+        }
+        digest = hashlib.sha256(
+            json.dumps(
+                intrinsic,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        descriptor = {
+            **intrinsic,
+            "fingerprint": {"algorithm": "sha256", "digest": digest},
+        }
+
+        [argument] = _kwargs_to_config_args({"dataset_descriptor": descriptor})
+        key, payload = argument.split("=", 1)
+        parsed = DatasetDescriptor.from_json(payload)
+
+        assert key == "dataset_descriptor"
+        assert json.loads(payload) == descriptor
+        assert parsed.dataset_id == descriptor["dataset_id"]
+        assert parsed.fingerprint == digest
 
     def test_pipeline_snapshot_helpers_fallback_to_current_api_fields(self, tmp_path):
         """Current Pipeline objects expose config, package, and path fallbacks."""
