@@ -1190,7 +1190,13 @@ class TestPipelineExecutionOperations:
             "cluster": None,
         }
         assert result["progress"]["schema_version"] == ("jarvis.execution.progress.v1")
-        assert result["runtime_metadata"]["terminal"]["terminal"] is True
+        runtime_metadata = result["runtime_metadata"]
+        assert runtime_metadata["scheduler_provider"] is None
+        assert runtime_metadata["scheduler_native_id"] is None
+        assert runtime_metadata["cluster"] is None
+        assert runtime_metadata["scheduler_phase"] is None
+        assert runtime_metadata["terminal"]["state"] == "completed"
+        assert runtime_metadata["terminal"]["terminal"] is True
 
     @pytest.mark.asyncio
     async def test_run_pipeline_failure(self, mock_pipeline):
@@ -1249,6 +1255,8 @@ class TestPipelineExecutionOperations:
         assert result["runtime_metadata"]["scheduler_native_id"] == "24680"
         assert result["runtime_metadata"]["cluster"] == "ares"
         assert result["runtime_metadata"]["scheduler_job_id"] == "24680"
+        assert result["runtime_metadata"]["scheduler_phase"] == "completed"
+        assert result["runtime_metadata"]["terminal"]["state"] == "completed"
         assert result["runtime_metadata"]["terminal"]["terminal"] is True
         assert (
             result["runtime_metadata"]["details"]["scheduler_submission"]
@@ -1556,6 +1564,8 @@ class TestPipelineExecutionOperations:
         assert result["mode"] == "scheduler"
         assert ModernPipeline.instances[-1].submitted is False
         assert result["runtime_metadata"]["scheduler_job_id"] is None
+        assert result["runtime_metadata"]["scheduler_phase"] is None
+        assert result["runtime_metadata"]["terminal"]["state"] == "scripted"
 
     @pytest.mark.asyncio
     async def test_script_only_run_rejects_unsubmitted_scheduler_identity(self):

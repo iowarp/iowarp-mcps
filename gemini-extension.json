@@ -1,6 +1,6 @@
 {
   "name": "clio-kit",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "mcpServers": {
     "clio-adios": {
       "command": "clio-kit",
