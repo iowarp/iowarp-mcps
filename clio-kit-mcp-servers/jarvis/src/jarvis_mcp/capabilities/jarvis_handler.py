@@ -2739,6 +2739,12 @@ def _runtime_metadata_from_documents(
     scheduler_provider = cast(str | None, handle_document["scheduler_provider"])
     scheduler_native_id = cast(str | None, handle_document["scheduler_native_id"])
     cluster = cast(str | None, handle_document["cluster"])
+    scheduler_owned = (
+        handle_document["mode"] == "scheduler"
+        and scheduler_provider is not None
+        and scheduler_native_id is not None
+        and record_document["submitted"] is True
+    )
     return {
         "schema_version": RUNTIME_METADATA_SCHEMA,
         "source": "jarvis_mcp",
@@ -2752,7 +2758,7 @@ def _runtime_metadata_from_documents(
         # above remain authoritative and are never recovered from stdout.
         "scheduler_type": scheduler_provider,
         "scheduler_job_id": scheduler_native_id,
-        "scheduler_phase": record_document["state"],
+        "scheduler_phase": record_document["state"] if scheduler_owned else None,
         "script_path": script_path,
         "hostfile_path": (
             _native_optional_text(
