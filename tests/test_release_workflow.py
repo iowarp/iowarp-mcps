@@ -136,6 +136,7 @@ def test_draft_release_is_resolved_and_mutated_only_by_exact_id() -> None:
     assert "expected one draft release" in release_block
     assert "fetch_release_by_id()" in release_block
     assert '"repos/$REPOSITORY/releases/$release_id"' in release_block
+    assert '--target "$GITHUB_SHA"' not in release_block
     assert "verify_release_identity || return" in release_block
     assert (
         '"https://uploads.github.com/repos/$REPOSITORY/releases/'
