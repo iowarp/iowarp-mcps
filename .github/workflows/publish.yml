@@ -534,7 +534,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write  # Mandatory for creating releases
-      attestations: read
+      attestations: write  # Immutable publication creates a release attestation
 
     steps:
     - name: Download all the dists
