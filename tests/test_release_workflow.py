@@ -195,6 +195,12 @@ def test_pypi_verification_uses_pre_publish_immutable_copies() -> None:
 
 def test_final_release_requires_attestation_and_immutability() -> None:
     """Publishing remains gated by provenance, immutable state, and release verification."""
+    release_start = WORKFLOW.index("  github-release:")
+    release_steps = WORKFLOW.index("    steps:", release_start)
+    release_permissions = WORKFLOW[release_start:release_steps]
+    assert "contents: write" in release_permissions
+    assert "attestations: write" in release_permissions
+    assert "attestations: read" not in release_permissions
     assert "gh attestation verify" in WORKFLOW
     assert "--deny-self-hosted-runners" in WORKFLOW
     assert 'test "$(jq -r .immutable "$release_json")" = true' in WORKFLOW
