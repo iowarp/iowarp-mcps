@@ -15,7 +15,7 @@ dependencies = [
   "fastmcp>=3.2.0",
   "fastapi",
   "python-dotenv>=1.2.2",
-  "jarvis-cd @ https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.4/jarvis_cd-1.3.4-py3-none-any.whl#sha256=960debefd73b7789a141b5d02e89776fa10317144c357d791e0b843d730e4275",
+  "jarvis-cd @ https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.5/jarvis_cd-1.3.5-py3-none-any.whl#sha256=fd4ead8aa2d053527f9d2ebe85498ca952e99395b5975de50a696a9cc54a9e55",
   "starlette>=1.3.1",
   "authlib>=1.6.12",
   "cryptography>=48.0.1",
