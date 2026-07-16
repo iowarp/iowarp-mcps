@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-    "version": "2.4.9",
+    "version": "2.5.0",
     "pluginRoot": "./clio-kit-mcp-servers"
   },
   "plugins": [
@@ -125,7 +125,7 @@
       "name": "clio-jarvis",
       "source": "./clio-kit-mcp-servers/jarvis",
       "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-      "version": "3.1.1",
+      "version": "3.2.0",
       "category": "development",
       "keywords": [
         "pipeline-management",
