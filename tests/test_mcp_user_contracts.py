@@ -32,6 +32,13 @@ JSON = dict[str, Any]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_contract_artifacts_are_forced_to_lf_in_every_checkout() -> None:
+    """Raw artifact hashes must not vary with the checkout platform."""
+    attributes = (REPOSITORY_ROOT / ".gitattributes").read_text(encoding="utf-8")
+
+    assert "src/clio_kit/_mcp_contracts/*.json text eol=lf" in attributes.splitlines()
+
+
 def test_committed_contracts_match_real_locked_stdio_tools_list() -> None:
     """Committed artifacts must exactly match live FastMCP stdio responses."""
     observed = generate_user_contract_artifacts(REPOSITORY_ROOT, check=True)
