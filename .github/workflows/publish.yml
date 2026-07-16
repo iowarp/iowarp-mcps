@@ -758,7 +758,6 @@ jobs:
             gh release create "$TAG_NAME" \
               --repo "$REPOSITORY" \
               --verify-tag \
-              --target "$GITHUB_SHA" \
               --title "CLIO Kit $TAG_NAME" \
               --generate-notes \
               --draft
