@@ -695,6 +695,7 @@ async def run_pipeline(
                 raise ValueError(
                     "scheduler mode requires a configured pipeline scheduler"
                 )
+        assert pipeline is not None
         resolved_pipeline_id = _pipeline_id(pipeline) or pipeline_id
         if normalized == "scheduler" or (normalized == "auto" and has_scheduler):
             _require_execution_parameters(
@@ -1614,12 +1615,15 @@ def _open_spack_path_descriptor(path: Path, *, nonblocking: bool = False) -> int
         open_osfhandle = getattr(msvcrt, "open_osfhandle", None)
         if not callable(open_osfhandle):
             raise RuntimeError("Windows descriptor conversion APIs are unavailable")
-        return int(
-            open_osfhandle(
-                int(handle),
-                os.O_RDONLY | getattr(os, "O_BINARY", 0),
-            )
+        descriptor = open_osfhandle(
+            int(cast(Any, handle)),
+            os.O_RDONLY | getattr(os, "O_BINARY", 0),
         )
+        if not isinstance(descriptor, int):
+            raise RuntimeError(
+                "Windows descriptor conversion returned an invalid value"
+            )
+        return descriptor
     except BaseException:
         kernel32.CloseHandle(handle)
         raise
@@ -3224,7 +3228,7 @@ def _normalize_package_config_request(
             + ", ".join(null_names)
         )
 
-    parser = get_argparse()
+    parser = cast(Any, get_argparse())
     try:
         parser.parse(["configure", *_kwargs_to_config_args(kwargs)])
     except SystemExit as exc:
@@ -3268,9 +3272,23 @@ def _kwargs_to_config_args(kwargs: dict[str, Any]) -> list[str]:
         if value is None:
             continue
         if isinstance(value, bool):
-            args.append(f"{key}={str(value).lower()}")
+            rendered = str(value).lower()
+        elif isinstance(value, (dict, list)):
+            try:
+                rendered = json.dumps(
+                    value,
+                    allow_nan=False,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Package setting '{key}' must contain JSON-compatible values"
+                ) from exc
         else:
-            args.append(f"{key}={value}")
+            rendered = str(value)
+        args.append(f"{key}={rendered}")
     return args
 
 
