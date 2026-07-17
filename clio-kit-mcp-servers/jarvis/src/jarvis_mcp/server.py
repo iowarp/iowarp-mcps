@@ -2414,7 +2414,7 @@ def _execution_intent_to_pipeline_config(
             if mode == "auto" and set(values) <= {"mode"}:
                 return {}
             raise ToolError("no supported cluster scheduler detected on this machine")
-        if set(values) <= {"mode"}:
+        if mode == "auto" and set(values) <= {"mode"}:
             return {}
         scheduler: dict[str, Any] = {"name": scheduler_name}
         mapping = {
