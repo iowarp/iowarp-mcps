@@ -791,8 +791,8 @@ wheels = [
 
 [[package]]
 name = "jarvis-cd"
-version = "1.3.12"
-source = { url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.12/jarvis_cd-1.3.12-py3-none-any.whl" }
+version = "1.3.13"
+source = { url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.13/jarvis_cd-1.3.13-py3-none-any.whl" }
 dependencies = [
     { name = "pandas" },
     { name = "podman-compose" },
@@ -800,7 +800,7 @@ dependencies = [
     { name = "pyyaml" },
 ]
 wheels = [
-    { url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.12/jarvis_cd-1.3.12-py3-none-any.whl", hash = "sha256:67541dde02e13842ab7a1581717a3577869f3d6ff7db4faf0238fd8c6319d3e3" },
+    { url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.13/jarvis_cd-1.3.13-py3-none-any.whl", hash = "sha256:0c041a145eaa94a0176e6e7fa9fc60cc5b3143b2070237d5c9ee0950bb4931e8" },
 ]
 
 [package.metadata]
@@ -813,7 +813,7 @@ requires-dist = [
 
 [[package]]
 name = "jarvis-mcp"
-version = "3.2.3"
+version = "3.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
@@ -853,7 +853,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp", specifier = ">=3.2.0" },
     { name = "idna", specifier = ">=3.15" },
-    { name = "jarvis-cd", url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.12/jarvis_cd-1.3.12-py3-none-any.whl" },
+    { name = "jarvis-cd", url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.13/jarvis_cd-1.3.13-py3-none-any.whl" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pygments", specifier = ">=2.20.0" },
