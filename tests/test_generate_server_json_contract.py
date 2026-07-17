@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
+import tomllib
 from pathlib import Path
 from types import ModuleType
 from typing import IO, Any
@@ -130,6 +132,68 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
                 ],
             }
         ]
+
+
+def test_jarvis_current_contract_matches_registry_package_and_capability() -> None:
+    """JARVIS contract revisions advance every independently versioned surface."""
+    repository_root = Path(__file__).resolve().parents[1]
+    jarvis_root = repository_root / "clio-kit-mcp-servers" / "jarvis"
+    contract_index = json.loads(
+        (
+            repository_root / "src" / "clio_kit" / "_mcp_contracts" / "index.json"
+        ).read_text(encoding="utf-8")
+    )
+    current_contract = next(
+        contract
+        for contract in contract_index["contracts"]
+        if contract["server_name"] == "jarvis"
+    )
+    contract_match = re.fullmatch(
+        r"clio-kit-jarvis-user-v(?P<major>\d+)\.(?P<minor>\d+)",
+        current_contract["contract_id"],
+    )
+    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.3"
+    assert contract_match is not None
+    contract_major_minor = (
+        int(contract_match.group("major")),
+        int(contract_match.group("minor")),
+    )
+
+    inventory_version = GENERATOR.read_server_versions(repository_root)["jarvis"]
+    package_version = tomllib.loads(
+        (jarvis_root / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]["version"]
+    lock_document = tomllib.loads((jarvis_root / "uv.lock").read_text(encoding="utf-8"))
+    lock_version = next(
+        package["version"]
+        for package in lock_document["package"]
+        if package["name"] == "jarvis-mcp"
+    )
+    registry_version = json.loads(
+        (jarvis_root / "server.json").read_text(encoding="utf-8")
+    )["version"]
+    capability_source = (
+        jarvis_root / "src" / "jarvis_mcp" / "capabilities" / "__init__.py"
+    ).read_text(encoding="utf-8")
+    capability_match = re.search(
+        r'^__version__\s*=\s*"(?P<version>\d+\.\d+\.\d+)"$',
+        capability_source,
+        flags=re.MULTILINE,
+    )
+    assert capability_match is not None
+    capability_version = capability_match.group("version")
+
+    exact_versions = {
+        inventory_version,
+        package_version,
+        lock_version,
+        registry_version,
+        capability_version,
+    }
+    assert exact_versions == {inventory_version}
+    inventory_parts = inventory_version.split(".")
+    assert len(inventory_parts) == 3
+    assert tuple(map(int, inventory_parts[:2])) == contract_major_minor
 
 
 def test_persistent_configs_use_the_installed_tool() -> None:
