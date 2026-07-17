@@ -344,8 +344,8 @@ jobs:
 
         from clio_kit import get_servers_path, locked_server_environment
 
-        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.11/jarvis_cd-1.3.11-py3-none-any.whl"
-        expected_digest = "ebd6ca162bd15f25d80c2ea4e0f5928b0b1575cd811b146f7cd6ef5a61045474"
+        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.12/jarvis_cd-1.3.12-py3-none-any.whl"
+        expected_digest = "67541dde02e13842ab7a1581717a3577869f3d6ff7db4faf0238fd8c6319d3e3"
         expected_requirement = f"jarvis-cd @ {expected_url}#sha256={expected_digest}"
         server = get_servers_path() / "jarvis"
         project = tomllib.loads(
@@ -358,7 +358,7 @@ jobs:
             for package in jarvis_lock["package"]
             if package["name"] == "jarvis-cd"
         )
-        assert jarvis_package["version"] == "1.3.11"
+        assert jarvis_package["version"] == "1.3.12"
         assert jarvis_package["source"] == {"url": expected_url}
         assert jarvis_package["wheels"] == [
             {"url": expected_url, "hash": f"sha256:{expected_digest}"}
@@ -387,9 +387,9 @@ jobs:
         from jarvis_cd.core.pkg import Pkg
         from jarvis_cd.core.pipeline import Pipeline
 
-        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.11/jarvis_cd-1.3.11-py3-none-any.whl"
+        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.12/jarvis_cd-1.3.12-py3-none-any.whl"
         installed = distribution("jarvis-cd")
-        assert installed.version == "1.3.11"
+        assert installed.version == "1.3.12"
         direct_url_text = installed.read_text("direct_url.json")
         assert direct_url_text is not None
         direct_url = json.loads(direct_url_text)

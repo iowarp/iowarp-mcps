@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-mcp"
-version = "3.2.1"
+version = "3.2.2"
 description = "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ dependencies = [
   "fastmcp>=3.2.0",
   "fastapi",
   "python-dotenv>=1.2.2",
-  "jarvis-cd @ https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.11/jarvis_cd-1.3.11-py3-none-any.whl#sha256=ebd6ca162bd15f25d80c2ea4e0f5928b0b1575cd811b146f7cd6ef5a61045474",
+  "jarvis-cd @ https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.12/jarvis_cd-1.3.12-py3-none-any.whl#sha256=67541dde02e13842ab7a1581717a3577869f3d6ff7db4faf0238fd8c6319d3e3",
   "starlette>=1.3.1",
   "authlib>=1.6.12",
   "cryptography>=48.0.1",
