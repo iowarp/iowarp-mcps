@@ -513,17 +513,22 @@ class TestPipelineToolsDirect:
         ):
             create_handler.return_value = {"pipeline_id": "new", "status": "created"}
 
-            from jarvis_mcp.server import jarvis_create_pipeline_tool
+            from jarvis_mcp.server import (
+                ExecutionIntent,
+                jarvis_create_pipeline_tool,
+            )
 
             result = await jarvis_create_pipeline_tool(
                 "new",
-                execution={
-                    "mode": "cluster",
-                    "nodes": 4,
-                    "tasks_per_node": 20,
-                    "walltime": "00:30:00",
-                    "exclusive": True,
-                },
+                execution=ExecutionIntent.model_validate(
+                    {
+                        "mode": "cluster",
+                        "nodes": 4,
+                        "tasks_per_node": 20,
+                        "walltime": "00:30:00",
+                        "exclusive": True,
+                    }
+                ),
             )
 
             assert result["status"] == "created"
@@ -707,16 +712,18 @@ class TestPipelineToolsDirect:
         ):
             run_handler.return_value = {"pipeline_id": "test", "status": "submitted"}
 
-            from jarvis_mcp.server import jarvis_run_tool
+            from jarvis_mcp.server import ExecutionIntent, jarvis_run_tool
 
             result = await jarvis_run_tool(
                 "test",
-                execution={
-                    "mode": "cluster",
-                    "nodes": 2,
-                    "tasks": 40,
-                    "partition": "compute",
-                },
+                execution=ExecutionIntent.model_validate(
+                    {
+                        "mode": "cluster",
+                        "nodes": 2,
+                        "tasks": 40,
+                        "partition": "compute",
+                    }
+                ),
             )
 
             assert result["status"] == "submitted"
@@ -738,16 +745,70 @@ class TestPipelineToolsDirect:
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("requested_mode", "native_mode", "pipeline_config"),
+        [
+            (
+                "scheduler",
+                "scheduler",
+                {"scheduler": {"name": "slurm"}},
+            ),
+            (
+                "cluster",
+                "scheduler",
+                {"scheduler": {"name": "slurm"}},
+            ),
+            ("auto", "auto", {}),
+            (
+                "direct",
+                "direct",
+                {"scheduler": None, "hostfile": None},
+            ),
+        ],
+    )
+    async def test_jarvis_run_tool_preserves_explicit_execution_mode(
+        self,
+        requested_mode: str,
+        native_mode: str,
+        pipeline_config: dict[str, object],
+    ) -> None:
+        """A mode-only intent reaches JARVIS with its complete backend selection."""
+        with (
+            patch("jarvis_mcp.server.run_pipeline") as run_handler,
+            patch.dict("os.environ", {"JARVIS_MCP_SCHEDULER": "slurm"}, clear=True),
+        ):
+            run_handler.return_value = {"pipeline_id": "test", "status": "submitted"}
+
+            from jarvis_mcp.server import ExecutionIntent, jarvis_run_tool
+
+            await jarvis_run_tool(
+                "test",
+                execution=ExecutionIntent.model_validate({"mode": requested_mode}),
+            )
+
+        run_handler.assert_called_once_with(
+            "test",
+            mode=native_mode,
+            submit=True,
+            wait=False,
+            execution_id=None,
+            spack_specs=None,
+            pipeline_config=pipeline_config,
+        )
+
+    @pytest.mark.asyncio
     async def test_jarvis_run_tool_maps_hostfile_hosts(self):
         """Hostfile intent can be supplied as semantic host names."""
         with patch("jarvis_mcp.server.run_pipeline") as run_handler:
             run_handler.return_value = {"pipeline_id": "test", "status": "running"}
 
-            from jarvis_mcp.server import jarvis_run_tool
+            from jarvis_mcp.server import ExecutionIntent, jarvis_run_tool
 
             await jarvis_run_tool(
                 "test",
-                execution={"mode": "hostfile", "hosts": ["node-a", "node-b"]},
+                execution=ExecutionIntent.model_validate(
+                    {"mode": "hostfile", "hosts": ["node-a", "node-b"]}
+                ),
             )
 
             run_handler.assert_called_once_with(
@@ -967,8 +1028,12 @@ class TestPipelineToolsDirect:
         with pytest.raises(ToolError):
             _execution_intent_to_pipeline_config(execution)
 
-    def test_execution_intent_cluster_requires_scheduler(self):
-        """Explicit cluster mode fails if no scheduler exists on the MCP host."""
+    @pytest.mark.parametrize("mode", ["cluster", "scheduler"])
+    def test_explicit_scheduler_intent_requires_detected_scheduler(
+        self,
+        mode: str,
+    ) -> None:
+        """Explicit scheduler modes fail if no scheduler exists on the MCP host."""
         with (
             patch.dict("os.environ", {}, clear=True),
             patch("shutil.which", return_value=None),
@@ -976,7 +1041,7 @@ class TestPipelineToolsDirect:
             from jarvis_mcp.server import _execution_intent_to_pipeline_config
 
             with pytest.raises(ToolError, match="no supported cluster scheduler"):
-                _execution_intent_to_pipeline_config({"mode": "cluster", "nodes": 2})
+                _execution_intent_to_pipeline_config({"mode": mode})
 
     def test_execution_intent_auto_without_scheduler_is_noop(self):
         """Auto mode does not overwrite an existing pipeline on non-scheduler hosts."""
@@ -1011,15 +1076,31 @@ class TestPipelineToolsDirect:
         ):
             assert _detect_scheduler_name() == "slurm"
 
-    def test_execution_intent_cluster_mode_without_options_preserves_pipeline(self):
-        """Cluster auto-detection without resource options leaves pipeline config intact."""
+    @pytest.mark.parametrize("mode", ["cluster", "scheduler"])
+    def test_explicit_scheduler_intent_without_options_selects_detected_scheduler(
+        self,
+        mode: str,
+    ) -> None:
+        """Explicit scheduler modes persist backend selection without resource overrides."""
         from jarvis_mcp.server import _execution_intent_to_pipeline_config
 
         with (
             patch.dict("os.environ", {}, clear=True),
             patch("shutil.which", return_value="/usr/bin/sbatch"),
         ):
-            assert _execution_intent_to_pipeline_config({"mode": "cluster"}) == {}
+            assert _execution_intent_to_pipeline_config({"mode": mode}) == {
+                "scheduler": {"name": "slurm"}
+            }
+
+    def test_execution_intent_auto_with_scheduler_preserves_pipeline(self):
+        """Auto mode without overrides leaves existing scheduler configuration intact."""
+        from jarvis_mcp.server import _execution_intent_to_pipeline_config
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("shutil.which", return_value="/usr/bin/sbatch"),
+        ):
+            assert _execution_intent_to_pipeline_config({"mode": "auto"}) == {}
 
     def test_execution_intent_hostfile_entries(self):
         """Hostfile mode can materialize explicit host entries."""
