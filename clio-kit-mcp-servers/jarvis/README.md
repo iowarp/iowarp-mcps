@@ -53,6 +53,14 @@ jarvis_get_execution
 files. Removal intentionally updates only pipeline membership: it does not invoke
 package cleanup or delete installed or generated package files.
 
+`jarvis_add_step` always runs package-owned configuration and validation on the
+user surface. Use the canonical setting names returned by
+`jarvis_describe(target="package")`; only aliases explicitly listed there are
+also accepted. JSON documents may be passed directly as objects or lists under
+their exact setting name and are canonically serialized before JARVIS validates
+them. The lower-level admin `append_pkg` tool retains its explicit
+`do_configure` compatibility control.
+
 `jarvis_describe` supports:
 
 ```text
@@ -227,7 +235,7 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_add_step`
-**Description**: Add a package-backed step to a JARVIS pipeline and optionally configure that step with package-owned settings.
+**Description**: Add and configure a package-backed step using exact package-owned settings returned by `jarvis_describe`; user-level validation cannot be bypassed.
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_edit_step`

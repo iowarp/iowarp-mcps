@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.5.6",
+      "version": "2.5.7",
       "transport": {
         "type": "stdio"
       },
@@ -39,7 +39,7 @@
     },
     {
       "name": "jarvis_add_step",
-      "description": "Add a package-backed step to a JARVIS pipeline and optionally configure that step with package-owned settings."
+      "description": "Add and configure a package-backed step in a JARVIS pipeline. First use jarvis_describe(target='package') for the selected package; config keys must use its canonical setting names exactly, except for aliases explicitly listed there. User-level step configuration is always validated and cannot be bypassed."
     },
     {
       "name": "jarvis_edit_step",
