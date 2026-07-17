@@ -1362,8 +1362,11 @@ async def jarvis_describe_tool(
 @mcp.tool(
     name="jarvis_add_step",
     description=(
-        "Add a package-backed step to a JARVIS pipeline and optionally configure "
-        "that step with package-owned settings."
+        "Add and configure a package-backed step in a JARVIS pipeline. First use "
+        "jarvis_describe(target='package') for the selected package; config keys "
+        "must use its canonical setting names exactly, except for aliases explicitly "
+        "listed there. User-level step configuration is always validated and cannot "
+        "be bypassed."
     ),
     annotations={
         "readOnlyHint": False,
@@ -1376,15 +1379,27 @@ async def jarvis_add_step_tool(
     pipeline_id: str,
     package_name: str,
     step_id: Optional[str] = None,
-    config: Optional[dict[str, Any]] = None,
-    do_configure: bool = True,
+    config: Annotated[
+        Optional[dict[str, Any]],
+        Field(
+            description=(
+                "Package-owned configuration. Use canonical setting names exactly as "
+                "returned by jarvis_describe(target='package'); only aliases listed "
+                "there are also accepted, and settings must not be renamed or placed "
+                "under invented nesting. JSON documents may be passed directly as "
+                "objects or lists under their exact setting name; clio-kit serializes "
+                "them canonically before JARVIS package validation. Omit config to use "
+                "the package defaults."
+            )
+        ),
+    ] = None,
 ) -> dict:
-    """Add a step to a pipeline."""
+    """Add and configure one package step without a user-level validation bypass."""
     return await append_pkg(
         pipeline_id,
         package_name,
         pkg_id=step_id,
-        do_configure=do_configure,
+        do_configure=True,
         **(config or {}),
     )
 
@@ -2364,6 +2379,17 @@ def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
         setting["type"] = str(kind)
     if "default" in item:
         setting["default"] = item["default"]
+    choices = item.get("choices")
+    if isinstance(choices, (list, tuple)):
+        setting["choices"] = list(choices)
+    required = item.get("required")
+    if isinstance(required, bool):
+        setting["required"] = required
+    aliases = item.get("aliases")
+    if isinstance(aliases, (list, tuple)) and all(
+        isinstance(alias, str) and alias for alias in aliases
+    ):
+        setting["aliases"] = list(aliases)
     return {key: value for key, value in setting.items() if value is not None}
 
 

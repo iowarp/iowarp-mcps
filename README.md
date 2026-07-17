@@ -121,7 +121,7 @@ federation gates:
 
 ```bash
 clio-kit mcp-contracts
-clio-kit mcp-contract clio-kit-jarvis-user-v3.2
+clio-kit mcp-contract clio-kit-jarvis-user-v3.3
 clio-kit mcp-contract clio-kit-slurm-user-v3
 clio-kit mcp-contract clio-kit-spack-user-v2
 clio-kit mcp-contract clio-kit-scientific-catalog-user-v1

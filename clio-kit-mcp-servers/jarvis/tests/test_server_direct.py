@@ -547,7 +547,7 @@ class TestPipelineToolsDirect:
 
     @pytest.mark.asyncio
     async def test_jarvis_add_step_tool_direct(self):
-        """Test user-facing step addition maps to package append."""
+        """User-facing step addition always runs package-owned validation."""
         with patch("jarvis_mcp.server.append_pkg") as mock_handler:
             mock_handler.return_value = {"pipeline_id": "test", "appended": "lammps"}
 
@@ -567,6 +567,36 @@ class TestPipelineToolsDirect:
                 pkg_id="lammps_1",
                 do_configure=True,
                 nodes=4,
+            )
+
+    @pytest.mark.asyncio
+    async def test_jarvis_add_step_preserves_structured_json_config(self):
+        """JSON documents stay structured until the generic handler serializes them."""
+        descriptor = {
+            "schema_version": "jarvis.dataset-descriptor.v1",
+            "dataset_id": "scientific-run",
+            "members": [{"index": 0, "location": "/data/frame-0000.vti"}],
+        }
+        with patch("jarvis_mcp.server.append_pkg") as mock_handler:
+            mock_handler.return_value = {
+                "pipeline_id": "test",
+                "appended": "builtin.paraview",
+            }
+
+            from jarvis_mcp.server import jarvis_add_step_tool
+
+            await jarvis_add_step_tool(
+                "test",
+                "builtin.paraview",
+                config={"dataset_descriptor": descriptor},
+            )
+
+            mock_handler.assert_called_once_with(
+                "test",
+                "builtin.paraview",
+                pkg_id=None,
+                do_configure=True,
+                dataset_descriptor=descriptor,
             )
 
     @pytest.mark.asyncio

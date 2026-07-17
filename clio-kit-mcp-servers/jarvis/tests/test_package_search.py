@@ -11,6 +11,7 @@ from fastmcp.exceptions import ToolError
 
 from jarvis_mcp.server import (
     PACKAGE_SEARCH_MAX_RESULT_BYTES,
+    _setting_from_menu_item,
     jarvis_describe_tool,
     mcp,
 )
@@ -276,3 +277,46 @@ async def test_jarvis_describe_schema_teaches_exact_then_bounded_discovery() -> 
         "type": "integer",
     }
     assert "only for target='pipeline'" in properties["include_yaml"]["description"]
+
+
+def test_package_setting_preserves_agent_relevant_parser_metadata() -> None:
+    """Package-owned choices, requirements, and aliases survive discovery."""
+
+    assert _setting_from_menu_item(
+        {
+            "name": "mode",
+            "msg": "Execution mode",
+            "type": str,
+            "default": "service",
+            "choices": ("service", "batch"),
+            "required": True,
+            "aliases": ("execution_mode",),
+        }
+    ) == {
+        "name": "mode",
+        "description": "Execution mode",
+        "type": "str",
+        "default": "service",
+        "choices": ["service", "batch"],
+        "required": True,
+        "aliases": ["execution_mode"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_jarvis_add_step_schema_is_exact_and_has_no_user_bypass() -> None:
+    """The compact user mutation teaches exact keys and always configures."""
+
+    tools = await mcp.list_tools()
+    add_step = next(tool for tool in tools if tool.name == "jarvis_add_step")
+    legacy_append = next(tool for tool in tools if tool.name == "append_pkg")
+    properties = add_step.parameters["properties"]
+
+    assert "do_configure" not in properties
+    assert "do_configure" in legacy_append.parameters["properties"]
+    assert isinstance(add_step.description, str)
+    assert "canonical setting names exactly" in add_step.description
+    config_description = properties["config"]["description"]
+    assert "must not be renamed" in config_description
+    assert "objects or lists" in config_description
+    assert "serializes them canonically" in config_description
