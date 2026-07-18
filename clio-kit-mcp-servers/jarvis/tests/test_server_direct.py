@@ -6,6 +6,7 @@ Tests actual function bodies by patching handlers at the capabilities layer.
 import pytest
 import hashlib
 import importlib
+import inspect
 import json
 import os
 import runpy
@@ -648,6 +649,7 @@ class TestPipelineToolsDirect:
 
             from jarvis_mcp.server import jarvis_run_tool
 
+            assert "wait" not in inspect.signature(jarvis_run_tool).parameters
             result = await jarvis_run_tool("test")
 
             assert result["status"] == "running"

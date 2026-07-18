@@ -1436,10 +1436,13 @@ async def jarvis_edit_step_tool(
 @mcp.tool(
     name="jarvis_run",
     description=(
-        "Run a configured JARVIS pipeline. Optional execution intent selects "
-        "local, cluster, or hostfile mode without exposing scheduler internals. "
-        "Optional spack_specs are resolved into a filtered environment that JARVIS "
-        "persists before direct or scheduler execution."
+        "Start a configured JARVIS pipeline and return its durable execution "
+        "handle without waiting for workload completion. Optional execution intent "
+        "selects local, cluster, or hostfile mode without exposing scheduler "
+        "internals. Optional spack_specs are resolved into a filtered environment "
+        "that JARVIS persists before direct or scheduler execution. Use "
+        "jarvis_get_execution with the returned pipeline_id and execution_id to "
+        "query lifecycle, progress, artifacts, and execution-owned service runtimes."
     ),
     annotations={
         "readOnlyHint": False,
@@ -1452,12 +1455,11 @@ async def jarvis_run_tool(
     pipeline_id: str,
     execution: ExecutionIntent | None = None,
     submit: bool = True,
-    wait: bool = False,
     execution_id: str | None = None,
     spack_specs: Optional[list[str]] = None,
     ctx: Context | None = None,
 ) -> JarvisRunResult:
-    """Run or submit a pipeline after persisting any requested Spack environment."""
+    """Start a pipeline without waiting after persisting its Spack environment."""
     mode = "auto"
     if execution is not None:
         intent = _validated_execution_intent(execution)
@@ -1482,7 +1484,7 @@ async def jarvis_run_tool(
     run_arguments: dict[str, Any] = {
         "mode": mode,
         "submit": submit,
-        "wait": wait,
+        "wait": False,
         "execution_id": execution_id,
         "spack_specs": spack_specs,
         "pipeline_config": run_arguments_config,

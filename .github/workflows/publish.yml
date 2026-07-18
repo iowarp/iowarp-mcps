@@ -252,6 +252,7 @@ jobs:
         "$clio_kit" --help >/dev/null
         listed_servers="$("$clio_kit" mcp-servers)"
         listed_contracts="$("$clio_kit" mcp-contracts)"
+        grep -Fq 'clio-kit-jarvis-user-v3.4' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.3' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.2' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.1' <<< "$listed_contracts"
@@ -262,9 +263,13 @@ jobs:
         grep -Fq 'clio-kit-spack-user-v2.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2' <<< "$listed_contracts"
         jarvis_contract="$("$clio_kit" \
-          mcp-contract clio-kit-jarvis-user-v3.3)"
-        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.3"; assert {tool["name"] for tool in value["tools"]} == {"jarvis_create_pipeline", "jarvis_describe", "jarvis_add_step", "jarvis_edit_step", "jarvis_run", "jarvis_get_execution"}' \
+          mcp-contract clio-kit-jarvis-user-v3.4)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.4"; assert {tool["name"] for tool in value["tools"]} == {"jarvis_create_pipeline", "jarvis_describe", "jarvis_add_step", "jarvis_edit_step", "jarvis_run", "jarvis_get_execution"}' \
           <<< "$jarvis_contract"
+        historical_jarvis_contract_v33="$("$clio_kit" \
+          mcp-contract clio-kit-jarvis-user-v3.3)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.3"' \
+          <<< "$historical_jarvis_contract_v33"
         historical_jarvis_contract_v32="$("$clio_kit" \
           mcp-contract clio-kit-jarvis-user-v3.2)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.2"' \
