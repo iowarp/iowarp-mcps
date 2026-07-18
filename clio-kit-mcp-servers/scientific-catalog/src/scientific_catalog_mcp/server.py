@@ -94,7 +94,11 @@ def scientific_dataset_search_tool(
 
 @mcp.tool(
     name="scientific_dataset_describe",
-    description=("Return one exact operator catalog record and its jarvis.dataset-descriptor.v1."),
+    description=(
+        "Return one exact operator catalog record plus a top-level dataset_descriptor. "
+        "Pass dataset_descriptor unchanged as jarvis_add_step config.dataset_descriptor; "
+        "do not pass the surrounding dataset record."
+    ),
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -104,7 +108,7 @@ def scientific_dataset_search_tool(
     tags={"scientific-data", "catalog", "user"},
 )
 def scientific_dataset_describe_tool(dataset_id: str) -> DatasetDescribeResult:
-    """Resolve a stable dataset id without accepting raw paths or scene parameters."""
+    """Resolve a stable dataset id and an explicit JARVIS-ready descriptor handoff."""
     try:
         return _store().describe(dataset_id)
     except CatalogError as exc:

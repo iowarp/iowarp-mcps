@@ -99,7 +99,7 @@ def test_contract_probe_uses_a_fresh_isolated_child_environment(
             {"spack_find", "spack_install", "spack_locate"},
         ),
         (
-            "clio-kit-scientific-catalog-user-v1",
+            "clio-kit-scientific-catalog-user-v1.1",
             {"scientific_dataset_search", "scientific_dataset_describe"},
         ),
     ],
@@ -149,6 +149,16 @@ def test_previous_spack_contract_remains_loadable_by_exact_identity() -> None:
     )
 
 
+def test_previous_scientific_catalog_contract_remains_loadable() -> None:
+    """The explicit handoff revision does not erase released v1 evidence."""
+    previous = load_mcp_user_contract("clio-kit-scientific-catalog-user-v1")
+
+    assert previous["contract_id"] == "clio-kit-scientific-catalog-user-v1"
+    assert previous["contract_sha256"] == (
+        "a53006f24f4698f659f0a7c8bf61fc7bd7ad23274b06d2eed2ccfca68b9ecb0a"
+    )
+
+
 def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     """Spack locate returns JARVIS's reload input without a fake load operation."""
     artifact = load_mcp_user_contract("clio-kit-spack-user-v2.1")
@@ -167,7 +177,7 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
 
 def test_scientific_catalog_contract_separates_discovery_from_scene_control() -> None:
     """Catalog tools expose exact descriptors without paths or scene inputs."""
-    artifact = load_mcp_user_contract("clio-kit-scientific-catalog-user-v1")
+    artifact = load_mcp_user_contract("clio-kit-scientific-catalog-user-v1.1")
     tools = {
         cast(str, tool["name"]): cast(JSON, tool)
         for tool in cast(list[JSON], artifact["tools"])
@@ -190,6 +200,12 @@ def test_scientific_catalog_contract_separates_discovery_from_scene_control() ->
     ):
         assert prohibited not in encoded_inputs
     describe_output = cast(JSON, tools["scientific_dataset_describe"]["outputSchema"])
+    describe_properties = cast(JSON, describe_output["properties"])
+    assert "dataset_descriptor" in cast(list[str], describe_output["required"])
+    assert (
+        describe_properties["dataset_descriptor"]
+        == cast(JSON, describe_properties["dataset"])["properties"]["descriptor"]
+    )
     assert "jarvis.dataset-descriptor.v1" in json.dumps(describe_output, sort_keys=True)
 
 
@@ -543,6 +559,7 @@ def test_contract_cli_lists_and_prints_verified_artifacts() -> None:
     assert "clio-kit-slurm-user-v3" in listed.output
     assert "clio-kit-spack-user-v2.1" in listed.output
     assert "clio-kit-spack-user-v2" in listed.output
+    assert "clio-kit-scientific-catalog-user-v1.1" in listed.output
     assert "clio-kit-scientific-catalog-user-v1" in listed.output
     assert shown.exit_code == 0, shown.output
     assert json.loads(shown.output)["contract_id"] == "clio-kit-spack-user-v2.1"

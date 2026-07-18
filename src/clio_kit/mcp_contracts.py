@@ -156,8 +156,8 @@ USER_CONTRACT_SPECS: Final = (
         expected_tools=frozenset({"spack_find", "spack_install", "spack_locate"}),
     ),
     UserContractSpec(
-        contract_id="clio-kit-scientific-catalog-user-v1",
-        artifact_name="scientific-catalog-user-v1.json",
+        contract_id="clio-kit-scientific-catalog-user-v1.1",
+        artifact_name="scientific-catalog-user-v1.1.json",
         server_name="scientific-catalog",
         distribution_name="scientific-catalog-mcp",
         entry_command="scientific-catalog-mcp",
@@ -174,6 +174,7 @@ HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = (
     "jarvis-user-v3.json",
     "jarvis-user-v3.1.json",
     "jarvis-user-v3.2.json",
+    "scientific-catalog-user-v1.json",
     "spack-user-v2.json",
 )
 

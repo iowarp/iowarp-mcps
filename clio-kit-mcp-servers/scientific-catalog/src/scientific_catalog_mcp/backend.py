@@ -109,6 +109,7 @@ class CatalogStore:
             catalog_revision=catalog.revision,
             catalog_sha256=catalog.canonical_digest,
             dataset=match,
+            dataset_descriptor=match.descriptor,
             descriptor_sha256=match.descriptor.canonical_digest,
         )
 
