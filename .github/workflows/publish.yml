@@ -256,6 +256,7 @@ jobs:
         grep -Fq 'clio-kit-jarvis-user-v3.2' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-scientific-catalog-user-v1.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-scientific-catalog-user-v1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-slurm-user-v3' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2.1' <<< "$listed_contracts"
@@ -277,9 +278,13 @@ jobs:
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3"' \
           <<< "$historical_jarvis_contract_v3"
         catalog_contract="$("$clio_kit" \
-          mcp-contract clio-kit-scientific-catalog-user-v1)"
-        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-scientific-catalog-user-v1"; assert {tool["name"] for tool in value["tools"]} == {"scientific_dataset_search", "scientific_dataset_describe"}' \
+          mcp-contract clio-kit-scientific-catalog-user-v1.1)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-scientific-catalog-user-v1.1"; assert {tool["name"] for tool in value["tools"]} == {"scientific_dataset_search", "scientific_dataset_describe"}' \
           <<< "$catalog_contract"
+        historical_catalog_contract_v1="$("$clio_kit" \
+          mcp-contract clio-kit-scientific-catalog-user-v1)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-scientific-catalog-user-v1"' \
+          <<< "$historical_catalog_contract_v1"
         slurm_contract="$("$clio_kit" \
           mcp-contract clio-kit-slurm-user-v3)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-slurm-user-v3"' \

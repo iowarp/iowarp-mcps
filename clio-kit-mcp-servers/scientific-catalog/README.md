@@ -10,6 +10,11 @@ contain camera positions, colormaps, filters, thresholds, render recipes, schedu
 demo behavior. JARVIS consumes the returned `jarvis.dataset-descriptor.v1`; visualization choices
 remain runtime commands.
 
+`scientific_dataset_describe` keeps the human-facing catalog record under `dataset` and also
+returns its exact descriptor as the top-level `dataset_descriptor` field. Pass that named value
+unchanged as `jarvis_add_step.config.dataset_descriptor`; do not pass the surrounding `dataset`
+record. `descriptor_sha256` identifies the same descriptor bytes after canonical JSON encoding.
+
 Run from the containing clio-kit installation:
 
 ```console

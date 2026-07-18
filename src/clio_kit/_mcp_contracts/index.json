@@ -28,13 +28,13 @@
       "wire_sha256": "5f1d3aaf1d7311df84d9b25a66c3ed1987f3b84799658eaf8d9ccbbb79485ed2"
     },
     {
-      "artifact": "scientific-catalog-user-v1.json",
-      "artifact_sha256": "86097ef70d5b4e740a93ae0cdd0eb723cae1ac8898cfd8cbbc1911835cb22d56",
-      "contract_id": "clio-kit-scientific-catalog-user-v1",
-      "contract_sha256": "a53006f24f4698f659f0a7c8bf61fc7bd7ad23274b06d2eed2ccfca68b9ecb0a",
+      "artifact": "scientific-catalog-user-v1.1.json",
+      "artifact_sha256": "29cbbfe64eaa7bcf29531b3d28762b8ff47e89d291b0a5b66119da96c790135e",
+      "contract_id": "clio-kit-scientific-catalog-user-v1.1",
+      "contract_sha256": "80a9b583c26a084ff07d638ddf0c2c7d4325dbc8d4299931d0c4f3627cb8674c",
       "profile": "user",
       "server_name": "scientific-catalog",
-      "wire_sha256": "55bd04f45653c9117b8a1ae41cbc5e79dd6383e86a851b43caa071ae357bb2c4"
+      "wire_sha256": "1c8df94a298f92b92126c953a7b8124d90b2fa12919de93738a40e563c3eaa28"
     },
     {
       "artifact": "jarvis-user-v3.json",
@@ -62,6 +62,15 @@
       "profile": "user",
       "server_name": "jarvis",
       "wire_sha256": "bda0abe2b57d5e52ef639bf530e967c3b65072ebc4761d25cd9cbbcf0cd934e9"
+    },
+    {
+      "artifact": "scientific-catalog-user-v1.json",
+      "artifact_sha256": "86097ef70d5b4e740a93ae0cdd0eb723cae1ac8898cfd8cbbc1911835cb22d56",
+      "contract_id": "clio-kit-scientific-catalog-user-v1",
+      "contract_sha256": "a53006f24f4698f659f0a7c8bf61fc7bd7ad23274b06d2eed2ccfca68b9ecb0a",
+      "profile": "user",
+      "server_name": "scientific-catalog",
+      "wire_sha256": "55bd04f45653c9117b8a1ae41cbc5e79dd6383e86a851b43caa071ae357bb2c4"
     },
     {
       "artifact": "spack-user-v2.json",

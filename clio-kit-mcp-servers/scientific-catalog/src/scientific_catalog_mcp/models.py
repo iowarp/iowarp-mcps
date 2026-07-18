@@ -305,7 +305,17 @@ class DatasetDescribeResult(StrictModel):
     catalog_revision: str
     catalog_sha256: str
     dataset: CatalogDataset
+    dataset_descriptor: DatasetDescriptor
     descriptor_sha256: str
+
+    @model_validator(mode="after")
+    def validate_descriptor_handoff(self) -> Self:
+        """Keep the explicit JARVIS handoff identical to the catalog record."""
+        if self.dataset_descriptor != self.dataset.descriptor:
+            raise ValueError("dataset_descriptor must match dataset.descriptor")
+        if self.descriptor_sha256 != self.dataset_descriptor.canonical_digest:
+            raise ValueError("descriptor_sha256 must identify dataset_descriptor")
+        return self
 
 
 def summary_of(dataset: CatalogDataset) -> DatasetSummary:

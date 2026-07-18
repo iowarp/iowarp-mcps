@@ -10,7 +10,11 @@ import pytest
 from fastmcp import Client
 
 from scientific_catalog_mcp.backend import CatalogError, CatalogStore
-from scientific_catalog_mcp.models import DatasetDescriptor, canonical_sha256
+from scientific_catalog_mcp.models import (
+    DatasetDescribeResult,
+    DatasetDescriptor,
+    canonical_sha256,
+)
 from scientific_catalog_mcp.server import configure_catalog, mcp
 
 
@@ -109,9 +113,25 @@ def test_search_and_describe_return_stable_intrinsic_contracts(tmp_path: Path) -
     described = store.describe("deep-water-impact-2018")
     assert described.schema_version == "clio-kit.scientific-dataset-description.v1"
     assert described.dataset.descriptor.schema_version == "jarvis.dataset-descriptor.v1"
+    assert described.dataset_descriptor == described.dataset.descriptor
     assert described.descriptor_sha256 == canonical_sha256(
-        described.dataset.descriptor.model_dump(mode="json")
+        described.dataset_descriptor.model_dump(mode="json")
     )
+
+
+def test_describe_result_rejects_a_divergent_handoff(tmp_path: Path) -> None:
+    """Catalog metadata and the explicit JARVIS handoff cannot silently diverge."""
+    path = tmp_path / "catalog.json"
+    _write_catalog(path, _catalog())
+    store = CatalogStore(path)
+    asteroid = store.describe("deep-water-impact-2018")
+    red_sea = store.describe("red-sea-eddies-2020")
+    payload = asteroid.model_dump(mode="json")
+    payload["dataset_descriptor"] = red_sea.dataset_descriptor.model_dump(mode="json")
+    payload["descriptor_sha256"] = red_sea.descriptor_sha256
+
+    with pytest.raises(ValueError, match="must match dataset.descriptor"):
+        DatasetDescribeResult.model_validate(payload)
 
 
 def test_pagination_cursor_is_bound_to_catalog_revision(tmp_path: Path) -> None:
@@ -167,6 +187,16 @@ async def test_mcp_surface_has_two_agent_oriented_tools(tmp_path: Path) -> None:
             "scientific_dataset_search",
             {"query": "red sea", "page_size": 10},
         )
+        described = await client.call_tool(
+            "scientific_dataset_describe",
+            {"dataset_id": "red-sea-eddies-2020"},
+        )
     content = cast(dict[str, Any], result.structured_content)
     assert content["total_matches"] == 1
     assert content["datasets"][0]["dataset_id"] == "red-sea-eddies-2020"
+    described_content = cast(dict[str, Any], described.structured_content)
+    dataset = cast(dict[str, Any], described_content["dataset"])
+    assert described_content["dataset_descriptor"] == dataset["descriptor"]
+    assert described_content["dataset_descriptor"]["schema_version"] == (
+        "jarvis.dataset-descriptor.v1"
+    )
