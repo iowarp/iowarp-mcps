@@ -19,11 +19,11 @@ QUALITY_WORKFLOW = (
     REPOSITORY_ROOT / ".github" / "workflows" / "quality_control.yml"
 ).read_text(encoding="utf-8")
 EXPECTED_JARVIS_RELEASE_URL = (
-    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.13/"
-    "jarvis_cd-1.3.13-py3-none-any.whl"
+    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.15/"
+    "jarvis_cd-1.3.15-py3-none-any.whl"
 )
 EXPECTED_JARVIS_RELEASE_SHA256 = (
-    "0c041a145eaa94a0176e6e7fa9fc60cc5b3143b2070237d5c9ee0950bb4931e8"
+    "3276b4db592934acc34e55eb16ce0ab9496bf9143ad38a768de4f9e58a8738e8"
 )
 
 
@@ -292,9 +292,19 @@ def test_ares_probe_exercises_persistent_uv_tool_installation() -> None:
     assert 'env["JARVIS_ROOT"] = str(jarvis_root)' in probe
     assert '"jarvis_root": str(jarvis_root)' in probe
     assert '"locked_jarvis": locked_jarvis' in probe
+    assert '"package_name": "paraview"' in probe
+    assert 'paraview_package.get("name") == "builtin.paraview"' in probe
+    assert 'paraview_settings["mode"].get("default") == "server"' in probe
+    assert 'paraview_settings["dataset_descriptor"].get("default") == ""' in probe
+    assert '"pvpython_bin"' in probe
+    assert '"pvpython_options"' in probe
+    assert '"pvbatch_bin"' in probe
+    assert '"pvbatch_options"' in probe
+    assert ".isdisjoint(paraview_settings)" in probe
+    assert '"paraview_description": paraview_description' in probe
     assert 'assert "%" not in log_path.name' in probe
     assert "assert log_path.is_file()" in probe
-    assert probe_module["EXPECTED_JARVIS_VERSION"] == "1.3.13"
+    assert probe_module["EXPECTED_JARVIS_VERSION"] == "1.3.15"
     assert probe_module["EXPECTED_JARVIS_URL"] == EXPECTED_JARVIS_RELEASE_URL
     assert probe_module["EXPECTED_JARVIS_SHA256"] == EXPECTED_JARVIS_RELEASE_SHA256
     assert "uvx" not in probe
@@ -335,8 +345,8 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     )
     match = re.fullmatch(
         r"jarvis-cd @ "
-        r"(https://github\.com/grc-iit/jarvis-cd/releases/download/v1\.3\.13/"
-        r"jarvis_cd-1\.3\.13-py3-none-any\.whl)"
+        r"(https://github\.com/grc-iit/jarvis-cd/releases/download/v1\.3\.15/"
+        r"jarvis_cd-1\.3\.15-py3-none-any\.whl)"
         r"#sha256=([0-9a-f]{64})",
         dependency,
     )
@@ -350,7 +360,7 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     jarvis_package = next(
         package for package in jarvis_lock["package"] if package["name"] == "jarvis-cd"
     )
-    assert jarvis_package["version"] == "1.3.13"
+    assert jarvis_package["version"] == "1.3.15"
     assert jarvis_package["source"] == {"url": expected_url}
     assert jarvis_package["wheels"] == [
         {"url": expected_url, "hash": f"sha256:{expected_digest}"}
@@ -371,12 +381,12 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     assert '"jarvis_get_execution_artifacts"' not in smoke_block
     assert 'get_servers_path() / "jarvis"' in smoke_block
     assert 'distribution("jarvis-cd")' in smoke_block
-    assert 'installed.version == "1.3.13"' in smoke_block
+    assert 'installed.version == "1.3.15"' in smoke_block
     assert expected_url in smoke_block
     assert expected_digest in smoke_block
     assert "expected_requirement in project" in smoke_block
     assert 'package["name"] == "jarvis-cd"' in smoke_block
-    assert 'jarvis_package["version"] == "1.3.13"' in smoke_block
+    assert 'jarvis_package["version"] == "1.3.15"' in smoke_block
     assert 'jarvis_package["source"] == {"url": expected_url}' in smoke_block
     assert '"hash": f"sha256:{expected_digest}"' in smoke_block
     assert 'package["name"] == "jarvis-mcp"' in smoke_block
@@ -392,9 +402,17 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     assert 'jarvis.save_repos({"repos": [str(legacy_builtin)]})' in smoke_block
     assert "rebound_builtin != legacy_builtin" in smoke_block
     assert '"builtin.paraview"' in smoke_block
-    assert 'item.get("name") == "pvpython_bin"' in smoke_block
-    assert "len(paraview_menu) == 30" in smoke_block
-    assert 'pvpython[0]["default"] == "pvpython"' in smoke_block
+    assert 'paraview_settings["mode"]["default"] == "server"' in smoke_block
+    assert 'paraview_settings["dataset_descriptor"]["default"] == ""' in smoke_block
+    assert (
+        'paraview_settings["force_offscreen_rendering"]["default"] is False'
+        in smoke_block
+    )
+    assert '"pvpython_bin"' in smoke_block
+    assert '"pvpython_options"' in smoke_block
+    assert '"pvbatch_bin"' in smoke_block
+    assert '"pvbatch_options"' in smoke_block
+    assert ".isdisjoint(paraview_settings)" in smoke_block
 
 
 def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:

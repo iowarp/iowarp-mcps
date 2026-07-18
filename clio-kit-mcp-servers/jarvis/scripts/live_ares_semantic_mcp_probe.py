@@ -18,13 +18,13 @@ from urllib.parse import urlsplit
 
 
 Json = dict[str, Any]
-EXPECTED_JARVIS_VERSION = "1.3.13"
+EXPECTED_JARVIS_VERSION = "1.3.15"
 EXPECTED_JARVIS_URL = (
-    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.13/"
-    "jarvis_cd-1.3.13-py3-none-any.whl"
+    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.15/"
+    "jarvis_cd-1.3.15-py3-none-any.whl"
 )
 EXPECTED_JARVIS_SHA256 = (
-    "0c041a145eaa94a0176e6e7fa9fc60cc5b3143b2070237d5c9ee0950bb4931e8"
+    "3276b4db592934acc34e55eb16ce0ab9496bf9143ad38a768de4f9e58a8738e8"
 )
 
 
@@ -506,6 +506,40 @@ def main() -> int:
             "jarvis_get_execution",
         ]
         assert tools == expected, tools
+        paraview_description = _tool_payload(
+            user.call_tool(
+                "jarvis_describe",
+                {"target": "package", "package_name": "paraview"},
+            )
+        )
+        paraview_package = paraview_description.get("package")
+        assert isinstance(paraview_package, dict), paraview_description
+        assert paraview_package.get("name") == "builtin.paraview", paraview_package
+        paraview_menu = paraview_package.get("settings")
+        assert isinstance(paraview_menu, list), paraview_package
+        paraview_settings = {
+            setting["name"]: setting
+            for setting in paraview_menu
+            if isinstance(setting, dict) and isinstance(setting.get("name"), str)
+        }
+        assert paraview_settings["mode"].get("default") == "server"
+        assert "service for a live dataset view" in str(
+            paraview_settings["mode"].get("description")
+        )
+        assert paraview_settings["dataset_descriptor"].get("default") == ""
+        assert "requires mode=service" in str(
+            paraview_settings["dataset_descriptor"].get("description")
+        )
+        assert paraview_settings["force_offscreen_rendering"].get("default") is False
+        assert "service mode is always headless" in str(
+            paraview_settings["force_offscreen_rendering"].get("description")
+        )
+        assert {
+            "pvpython_bin",
+            "pvpython_options",
+            "pvbatch_bin",
+            "pvbatch_options",
+        }.isdisjoint(paraview_settings)
         pipeline_id = f"clio_semantic_{int(time.time())}"
         create_result = user.call_tool(
             "jarvis_create_pipeline",
@@ -802,6 +836,7 @@ def main() -> int:
                     "spack_spec": args.spack_spec,
                     "spack_command": str(spack_command),
                     "tools": tools,
+                    "paraview_description": paraview_description,
                     "pipeline_id": pipeline_id,
                     "create": create_result,
                     "add": add_result,
