@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-    "version": "2.5.9",
+    "version": "2.5.10",
     "pluginRoot": "./clio-kit-mcp-servers"
   },
   "plugins": [
@@ -303,7 +303,7 @@
       "name": "clio-spack",
       "source": "./clio-kit-mcp-servers/spack",
       "description": "Structured Spack discovery and installation tools for scientific agents",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "category": "development",
       "keywords": [
         "package-management",

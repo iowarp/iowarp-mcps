@@ -30,6 +30,8 @@ mcp: FastMCP = FastMCP(
     "spack",
     instructions=(
         "Discover, locate, and install Spack packages using structured results. "
+        "A find with no installed matches succeeds with count=0 and packages=[]; "
+        "locating an absent package returns the structured not_installed error. "
         "This server never pretends that a shell-local `spack load` changes later "
         "agent or scheduler processes. Runtime environment materialization is an "
         "admin diagnostic; JARVIS should persist it inside jarvis_run."
@@ -44,7 +46,10 @@ ResultT = TypeVar("ResultT")
 
 @mcp.tool(
     name="spack_find",
-    description="List installed Spack packages matching an optional constraint.",
+    description=(
+        "List installed Spack packages matching an optional constraint. "
+        "No matches is a successful result with count=0 and packages=[]."
+    ),
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -60,7 +65,10 @@ async def spack_find_tool(query: str | None = None) -> SpackFindResult:
 
 @mcp.tool(
     name="spack_locate",
-    description="Resolve one unique installed Spack spec and return its exact prefix.",
+    description=(
+        "Resolve one unique installed Spack spec and return its exact prefix. "
+        "An absent package returns the structured not_installed error."
+    ),
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,

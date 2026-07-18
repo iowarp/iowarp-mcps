@@ -35,6 +35,11 @@ _STREAM_CHUNK_BYTES = 64 * 1024
 _STREAM_JOIN_TIMEOUT_SECONDS = 5.0
 _ENVIRONMENT_MARKER = b"\0__SPACK_MCP_ENVIRONMENT_V1__\0"
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_FIND_NO_MATCH_DIAGNOSTIC = re.compile(
+    r"\A(?:==>\s*)?Error:\s*No packages? match(?:es)? the query"
+    r"(?::[^\r\n]*)?\s*\Z",
+    re.IGNORECASE,
+)
 _DEFAULT_RUNTIME_ENVIRONMENT_ALLOWLIST = {
     "ACLOCAL_PATH",
     "CMAKE_PREFIX_PATH",
@@ -258,7 +263,12 @@ def find_installed(query: str | None = None) -> SpackFindResult:
     args = ["find", "--json"]
     if normalized is not None:
         args.append(normalized)
-    result = _run_spack(args, operation="find", timeout_seconds=120)
+    try:
+        result = _run_spack(args, operation="find", timeout_seconds=120)
+    except SpackBackendError as exc:
+        if _is_find_no_match(exc):
+            return SpackFindResult(query=normalized, packages=[], count=0)
+        raise
     records = _decode_find_records(result)
     packages = sorted(
         (_package_summary(record) for record in records),
@@ -271,6 +281,22 @@ def find_installed(query: str | None = None) -> SpackFindResult:
         ),
     )
     return SpackFindResult(query=normalized, packages=packages, count=len(packages))
+
+
+def _is_find_no_match(error: SpackBackendError) -> bool:
+    """Return whether Spack reported the normal empty-result condition.
+
+    Spack exits with status 1 when a ``find`` constraint matches no installed
+    package. Only its bounded, single-diagnostic form is normalized; every
+    other nonzero invocation remains a structured backend error.
+    """
+    return (
+        error.code == "command_failed"
+        and error.operation == "find"
+        and error.returncode == 1
+        and error.detail is not None
+        and _FIND_NO_MATCH_DIAGNOSTIC.fullmatch(error.detail) is not None
+    )
 
 
 def locate_installed(spec: str) -> SpackLocateResult:

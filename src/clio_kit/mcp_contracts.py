@@ -147,8 +147,8 @@ USER_CONTRACT_SPECS: Final = (
         ),
     ),
     UserContractSpec(
-        contract_id="clio-kit-spack-user-v2",
-        artifact_name="spack-user-v2.json",
+        contract_id="clio-kit-spack-user-v2.1",
+        artifact_name="spack-user-v2.1.json",
         server_name="spack",
         distribution_name="spack-mcp",
         entry_command="spack-mcp",
@@ -174,6 +174,7 @@ HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = (
     "jarvis-user-v3.json",
     "jarvis-user-v3.1.json",
     "jarvis-user-v3.2.json",
+    "spack-user-v2.json",
 )
 
 

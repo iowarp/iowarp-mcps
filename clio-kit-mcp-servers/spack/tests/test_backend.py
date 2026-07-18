@@ -96,6 +96,69 @@ def test_find_sorts_package_records_deterministically(monkeypatch: pytest.Monkey
     assert [package.name for package in result.packages] == ["hdf5", "zlib"]
 
 
+def test_find_normalizes_spack_no_match_to_empty_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An ordinary zero-match query is typed data, not an MCP failure."""
+    monkeypatch.setattr(backend, "_spack_executable", lambda: "/opt/spack/bin/spack")
+    monkeypatch.setattr(
+        backend,
+        "_run_bounded_command",
+        lambda *args, **kwargs: backend._CommandResult(
+            argv=("/opt/spack/bin/spack", "find", "--json", "paraview"),
+            returncode=1,
+            stdout="",
+            stderr="==> Error: No package matches the query: paraview",
+            duration_seconds=0.1,
+        ),
+    )
+
+    result = backend.find_installed("paraview")
+
+    assert result.model_dump(mode="json") == {
+        "schema_version": "spack.mcp.result.v1",
+        "operation": "find",
+        "query": "paraview",
+        "packages": [],
+        "count": 0,
+    }
+
+
+def test_locate_maps_spack_no_match_to_not_installed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Locate owns the absent-package semantic after its internal find."""
+    monkeypatch.setattr(backend, "_spack_executable", lambda: "/opt/spack/bin/spack")
+    monkeypatch.setattr(
+        backend,
+        "_run_bounded_command",
+        lambda *args, **kwargs: backend._CommandResult(
+            argv=("/opt/spack/bin/spack", "find", "--json", "paraview"),
+            returncode=1,
+            stdout="",
+            stderr="==> Error: No package matches the query: paraview",
+            duration_seconds=0.1,
+        ),
+    )
+
+    with pytest.raises(backend.SpackBackendError) as error:
+        backend.locate_installed("paraview")
+
+    assert error.value.code == "not_installed"
+    assert error.value.operation == "locate"
+    assert error.value.returncode is None
+    assert json.loads(error.value.as_json()) == {
+        "schema_version": "spack.mcp.error.v1",
+        "error": {
+            "code": "not_installed",
+            "message": "no installed Spack package matches: paraview",
+            "operation": "locate",
+            "returncode": None,
+            "detail": None,
+        },
+    }
+
+
 def test_locate_requires_one_exact_match(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         backend,

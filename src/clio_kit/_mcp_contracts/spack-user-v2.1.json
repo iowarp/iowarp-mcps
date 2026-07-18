@@ -1,0 +1,420 @@
+{
+  "canonicalization": "json-sort-keys-compact-utf8-v1",
+  "contract_id": "clio-kit-spack-user-v2.1",
+  "contract_sha256": "cc90789227aa0baea99d0e0379b320811c1dbd40c7fa66877d372309201be1c2",
+  "profile": "user",
+  "projection": "mcp-agent-tool-schema-v1",
+  "schema_version": "clio-kit.mcp-user-contract.v1",
+  "server_name": "spack",
+  "source": {
+    "method": "tools/list",
+    "protocol_version": "2024-11-05",
+    "transport": "stdio"
+  },
+  "tool_names": [
+    "spack_find",
+    "spack_install",
+    "spack_locate"
+  ],
+  "tools": [
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List installed Spack packages matching an optional constraint. No matches is a successful result with count=0 and packages=[].",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "spack_find",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Machine-readable installed-package query result.",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "operation": {
+            "const": "find",
+            "default": "find",
+            "type": "string"
+          },
+          "packages": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Stable summary of one concrete installed Spack package.",
+              "properties": {
+                "architecture": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "compiler": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "dag_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Install one Spack spec with explicit reusable or fresh concretization and verify that a matching install is observable.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "reuse": {
+            "default": true,
+            "description": "Choose Spack concretization explicitly: true passes --reuse and may reuse compatible installed packages or buildcaches; false passes --fresh and excludes them while concretizing.",
+            "type": "boolean"
+          },
+          "spec": {
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 14400,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "name": "spack_install",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Completed Spack install operation and observed matching installs.",
+        "properties": {
+          "duration_seconds": {
+            "type": "number"
+          },
+          "operation": {
+            "const": "install",
+            "default": "install",
+            "type": "string"
+          },
+          "packages": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Stable summary of one concrete installed Spack package.",
+              "properties": {
+                "architecture": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "compiler": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "dag_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "requested_spec": {
+            "type": "string"
+          },
+          "reuse": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          },
+          "status": {
+            "const": "installed",
+            "default": "installed",
+            "type": "string"
+          },
+          "stdout_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "requested_spec",
+          "reuse",
+          "duration_seconds",
+          "packages"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Resolve one unique installed Spack spec and return its exact prefix. An absent package returns the structured not_installed error.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "spec": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "name": "spack_locate",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Unique installed package and its exact prefix.",
+        "properties": {
+          "load_spec": {
+            "type": "string"
+          },
+          "operation": {
+            "const": "locate",
+            "default": "locate",
+            "type": "string"
+          },
+          "package": {
+            "additionalProperties": false,
+            "description": "Stable summary of one concrete installed Spack package.",
+            "properties": {
+              "architecture": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "compiler": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "dag_hash": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "requested_spec": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested_spec",
+          "load_spec",
+          "package",
+          "prefix"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "wire_sha256": "5f1d3aaf1d7311df84d9b25a66c3ed1987f3b84799658eaf8d9ccbbb79485ed2"
+}
