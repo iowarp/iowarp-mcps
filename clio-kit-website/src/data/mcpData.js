@@ -41,7 +41,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -72,7 +72,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -94,7 +94,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.0.1",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -114,7 +114,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -142,7 +142,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -166,7 +166,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -188,7 +188,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -233,7 +233,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -256,8 +256,8 @@ export const mcpData = {
       "jarvis_get_execution"
     ],
     "stats": {
-      "version": "3.0.0",
-      "updated": "2026-07-13"
+      "version": "3.3.1",
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -285,7 +285,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -307,7 +307,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -336,7 +336,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -370,7 +370,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -401,7 +401,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -445,7 +445,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -467,7 +467,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -492,7 +492,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -513,7 +513,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -521,6 +521,26 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "sac"
+  },
+  "scientific_catalog": {
+    "name": "Scientific-Catalog",
+    "category": "Data Processing",
+    "description": "Operator-owned scientific dataset discovery for remote agents",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "scientific_dataset_search",
+      "scientific_dataset_describe"
+    ],
+    "stats": {
+      "version": "1.0.0",
+      "updated": "2026-07-17"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "scientific_catalog"
   },
   "seismic": {
     "name": "Seismic",
@@ -533,7 +553,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -556,7 +576,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "3.0.0",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -576,8 +596,8 @@ export const mcpData = {
       "spack_install"
     ],
     "stats": {
-      "version": "2.0.1",
-      "updated": "2026-07-13"
+      "version": "2.1.0",
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -597,7 +617,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-13"
+      "updated": "2026-07-17"
     },
     "platforms": [
       "claude",
@@ -611,7 +631,7 @@ export const mcpData = {
 // Categories with counts and colors
 export const categories = {
   "All": {
-    "count": 23,
+    "count": 24,
     "color": "#6b7280",
     "icon": "\ud83d\udd0d"
   },
@@ -621,7 +641,7 @@ export const categories = {
     "icon": "\ud83d\udcc8"
   },
   "Data Processing": {
-    "count": 11,
+    "count": 12,
     "color": "#3b82f6",
     "icon": "\ud83d\udcca"
   },

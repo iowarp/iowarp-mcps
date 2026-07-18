@@ -17,6 +17,12 @@ persists it in the pipeline, and reloads it inside direct or scheduled execution
 value to `jarvis_run` so a later install cannot make the runtime selection
 ambiguous.
 
+An ordinary `spack_find` query with no installed matches is successful typed
+data: `count` is `0` and `packages` is `[]`. Calling `spack_locate` for an absent
+package instead returns the structured `not_installed` semantic so an agent can
+decide whether its policy permits `spack_install`. Other nonzero Spack
+invocations remain structured MCP errors.
+
 ## Install concretization
 
 `spack_install` always selects the Spack concretization policy explicitly:
@@ -34,7 +40,7 @@ to `jarvis_run`.
 Run the default server with:
 
 ```bash
-uv tool install 'clio-kit==2.3.2'
+uv tool install 'clio-kit==2.5.10'
 clio-kit mcp-server spack
 ```
 

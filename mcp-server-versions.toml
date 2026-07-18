@@ -4,7 +4,7 @@ schema-version = 1
 # Existing Registry versions are immutable and must not be republished merely
 # because a newer clio-kit wheel also contains their unchanged implementation.
 [mcp-registry-release]
-publish = ["jarvis"]
+publish = ["spack"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
@@ -36,5 +36,5 @@ sac = "2.2.3"
 scientific-catalog = "1.0.0"
 seismic = "2.2.3"
 slurm = "3.0.0"
-spack = "2.0.1"
+spack = "2.1.0"
 terrain = "2.2.3"

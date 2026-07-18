@@ -258,6 +258,7 @@ jobs:
         grep -Fq 'clio-kit-jarvis-user-v3' <<< "$listed_contracts"
         grep -Fq 'clio-kit-scientific-catalog-user-v1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-slurm-user-v3' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-spack-user-v2.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2' <<< "$listed_contracts"
         jarvis_contract="$("$clio_kit" \
           mcp-contract clio-kit-jarvis-user-v3.3)"
@@ -284,9 +285,13 @@ jobs:
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-slurm-user-v3"' \
           <<< "$slurm_contract"
         spack_contract="$("$clio_kit" \
+          mcp-contract clio-kit-spack-user-v2.1)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v2.1"' \
+          <<< "$spack_contract"
+        historical_spack_contract_v2="$("$clio_kit" \
           mcp-contract clio-kit-spack-user-v2)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v2"' \
-          <<< "$spack_contract"
+          <<< "$historical_spack_contract_v2"
         server_count=0
         for server_dir in clio-kit-mcp-servers/*/; do
           if [ ! -f "$server_dir/pyproject.toml" ]; then
@@ -349,8 +354,8 @@ jobs:
 
         from clio_kit import get_servers_path, locked_server_environment
 
-        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.15/jarvis_cd-1.3.15-py3-none-any.whl"
-        expected_digest = "3276b4db592934acc34e55eb16ce0ab9496bf9143ad38a768de4f9e58a8738e8"
+        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.16/jarvis_cd-1.3.16-py3-none-any.whl"
+        expected_digest = "c35f531e386cc9a5e728c1c67c1902b08e0776f07d95bdfb13c33cb00550310a"
         expected_requirement = f"jarvis-cd @ {expected_url}#sha256={expected_digest}"
         server = get_servers_path() / "jarvis"
         project = tomllib.loads(
@@ -363,7 +368,7 @@ jobs:
             for package in jarvis_lock["package"]
             if package["name"] == "jarvis-cd"
         )
-        assert jarvis_package["version"] == "1.3.15"
+        assert jarvis_package["version"] == "1.3.16"
         assert jarvis_package["source"] == {"url": expected_url}
         assert jarvis_package["wheels"] == [
             {"url": expected_url, "hash": f"sha256:{expected_digest}"}
@@ -392,9 +397,9 @@ jobs:
         from jarvis_cd.core.pkg import Pkg
         from jarvis_cd.core.pipeline import Pipeline
 
-        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.15/jarvis_cd-1.3.15-py3-none-any.whl"
+        expected_url = "https://github.com/grc-iit/jarvis-cd/releases/download/v1.3.16/jarvis_cd-1.3.16-py3-none-any.whl"
         installed = distribution("jarvis-cd")
-        assert installed.version == "1.3.15"
+        assert installed.version == "1.3.16"
         direct_url_text = installed.read_text("direct_url.json")
         assert direct_url_text is not None
         direct_url = json.loads(direct_url_text)

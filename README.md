@@ -123,7 +123,7 @@ federation gates:
 clio-kit mcp-contracts
 clio-kit mcp-contract clio-kit-jarvis-user-v3.3
 clio-kit mcp-contract clio-kit-slurm-user-v3
-clio-kit mcp-contract clio-kit-spack-user-v2
+clio-kit mcp-contract clio-kit-spack-user-v2.1
 clio-kit mcp-contract clio-kit-scientific-catalog-user-v1
 ```
 
@@ -226,14 +226,16 @@ See [Claude Desktop MCP docs](https://modelcontextprotocol.io/quickstart/user) f
 ## Available Packages
 
 The version below is each MCP server's agent-facing contract version, not the
-containing `clio-kit` wheel version. JARVIS 3.1 and SLURM 3.0 have contracts
-redesigned for agent use. Spack is at 2.0, while the other
+containing `clio-kit` wheel version. JARVIS 3.3 and SLURM 3.0 have contracts
+redesigned for agent use. Spack is at 2.1, while the other
 contracts retain their existing 2.x identities until a focused upgrade.
 
 The Spack install contract makes concretization explicit: `reuse=true` passes
 `spack install --reuse`, while `reuse=false` passes `spack install --fresh`.
 Agents should discover first, install only when needed, then pass the exact
-`spack_locate` result to JARVIS for runtime loading.
+`spack_locate` result to JARVIS for runtime loading. A find with no installed
+match is normal typed data (`count=0`, `packages=[]`); locate reports the
+distinct `not_installed` semantic, while real Spack failures remain errors.
 
 <div align="center">
 
@@ -260,7 +262,7 @@ Agents should discover first, install only when needed, then pass the exact
 | **`seismic`** | 2.2.3 | Seismology | Analyze earthquake catalogs and sequences | `clio-kit mcp-server seismic` |
 | **`scientific-catalog`** | 1.0.0 | Discovery | Operator-owned scientific dataset discovery | `clio-kit mcp-server scientific-catalog` |
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
-| **`spack`** | 2.0.1 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
+| **`spack`** | 2.1.0 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
 | **`terrain`** | 2.2.3 | Geospatial | Analyze DEMs and terrain point clouds | `clio-kit mcp-server terrain` |
 
 </div>
