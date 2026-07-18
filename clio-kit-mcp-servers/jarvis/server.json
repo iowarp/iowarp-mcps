@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
   "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-  "version": "3.3.1",
+  "version": "3.4.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.5.11",
+      "version": "2.5.12",
       "transport": {
         "type": "stdio"
       },
@@ -47,7 +47,7 @@
     },
     {
       "name": "jarvis_run",
-      "description": "Run a configured JARVIS pipeline. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. Optional spack_specs are resolved into a filtered environment that JARVIS persists before direct or scheduler execution."
+      "description": "Start a configured JARVIS pipeline and return its durable execution handle without waiting for workload completion. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. Optional spack_specs are resolved into a filtered environment that JARVIS persists before direct or scheduler execution. Use jarvis_get_execution with the returned pipeline_id and execution_id to query lifecycle, progress, artifacts, and execution-owned service runtimes."
     },
     {
       "name": "jarvis_get_execution",

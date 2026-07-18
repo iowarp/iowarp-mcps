@@ -117,12 +117,13 @@ and hostfile paths, so later edits to the named pipeline cannot change a queued
 job. The structured Spack metadata always records a disposition: a run with no
 requested specs and no prior owned environment reports `not_requested` rather
 than `null`; reuse is accepted only when the persisted digest still matches the
-pipeline environment. Every run returns a JARVIS `execution_handle` and the
-current durable `execution_record`. Direct runs pass `wait` through to
-`Pipeline.run`; with `wait=false` the handle remains nonterminal and can be
-queried later with `jarvis_get_execution`. Scheduler runs use the handle
-returned by `Pipeline.submit`. The authoritative scheduler fields are
-`scheduler_provider`, nullable `scheduler_native_id`, and nullable `cluster`.
+pipeline environment. Every run starts without waiting and returns a JARVIS
+`execution_handle` plus the current durable `execution_record`. Query the
+returned `pipeline_id` and `execution_id` with `jarvis_get_execution` for
+lifecycle state, progress, artifacts, or execution-owned service runtimes.
+Scheduler runs use the handle returned by `Pipeline.submit`. The authoritative
+scheduler fields are `scheduler_provider`, nullable `scheduler_native_id`, and
+nullable `cluster`.
 `scheduler_job_id` remains a temporary relay compatibility alias and is never
 inferred from application stdout.
 
@@ -243,7 +244,7 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_run`
-**Description**: Run a configured JARVIS pipeline, optionally persisting the runtime environment for `spack_specs`, and return structured execution metadata.
+**Description**: Start a configured JARVIS pipeline without waiting, optionally persist the runtime environment for `spack_specs`, and return a durable execution handle for `jarvis_get_execution`.
 **Tags**: jarvis, pipeline, user
 
 ### `jarvis_get_execution`

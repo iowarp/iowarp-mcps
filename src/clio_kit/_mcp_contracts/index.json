@@ -1,13 +1,13 @@
 {
   "contracts": [
     {
-      "artifact": "jarvis-user-v3.3.json",
-      "artifact_sha256": "d5deb5f69af618be6a857544e770ac6f1ad1c335d80f3853e2fbbe09419672f5",
-      "contract_id": "clio-kit-jarvis-user-v3.3",
-      "contract_sha256": "0993ee9b2ee9b3c2b021a3967d9221199c3a6be50d726d4b125812e6b1148115",
+      "artifact": "jarvis-user-v3.4.json",
+      "artifact_sha256": "855ef8d623ff1c699382a469aa2ba4ffb2dff6a9f94766319285b19b14899d8b",
+      "contract_id": "clio-kit-jarvis-user-v3.4",
+      "contract_sha256": "52bfe1d416e674d120f200e502ded2197ee27219c26891a22c6c33ba917d5696",
       "profile": "user",
       "server_name": "jarvis",
-      "wire_sha256": "c74276800cab5031ccd1538343180c40a58e9b8700d0b49e9ca9d4461d37696d"
+      "wire_sha256": "2ced8dc66ecee832ee86df0c99c29610bce61a82f9d80a8a53e0ea037d262219"
     },
     {
       "artifact": "slurm-user-v3.json",
@@ -62,6 +62,15 @@
       "profile": "user",
       "server_name": "jarvis",
       "wire_sha256": "bda0abe2b57d5e52ef639bf530e967c3b65072ebc4761d25cd9cbbcf0cd934e9"
+    },
+    {
+      "artifact": "jarvis-user-v3.3.json",
+      "artifact_sha256": "d5deb5f69af618be6a857544e770ac6f1ad1c335d80f3853e2fbbe09419672f5",
+      "contract_id": "clio-kit-jarvis-user-v3.3",
+      "contract_sha256": "0993ee9b2ee9b3c2b021a3967d9221199c3a6be50d726d4b125812e6b1148115",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "c74276800cab5031ccd1538343180c40a58e9b8700d0b49e9ca9d4461d37696d"
     },
     {
       "artifact": "scientific-catalog-user-v1.json",
