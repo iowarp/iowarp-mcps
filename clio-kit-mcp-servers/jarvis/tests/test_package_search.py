@@ -66,6 +66,49 @@ async def test_named_package_loads_settings_for_only_the_selected_package(
 
 
 @pytest.mark.asyncio
+async def test_paraview_description_is_semantic_not_site_runtime_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The exact released JARVIS package gives agents no launcher escape hatch."""
+    from jarvis_cd.core.config import Jarvis  # type: ignore[import-untyped]
+
+    monkeypatch.setattr(Jarvis, "_instance", None)
+    jarvis = Jarvis(jarvis_root=str(tmp_path / "jarvis"))
+    jarvis.initialize(
+        str(tmp_path / "config"),
+        str(tmp_path / "private"),
+        str(tmp_path / "shared"),
+    )
+    repositories = [Path(value) for value in jarvis.repos["repos"]]
+
+    with patch(
+        "jarvis_mcp.server.get_manager",
+        return_value=Mock(list_repos=Mock(return_value=repositories)),
+    ):
+        result = await jarvis_describe_tool("package", package_name="paraview")
+
+    package = result["package"]
+    assert package["name"] == "builtin.paraview"
+    settings = {setting["name"]: setting for setting in package["settings"]}
+    assert settings["mode"]["default"] == "server"
+    assert "service for a live dataset view" in settings["mode"]["description"]
+    assert settings["dataset_descriptor"]["default"] == ""
+    assert "requires mode=service" in settings["dataset_descriptor"]["description"]
+    assert settings["force_offscreen_rendering"]["default"] is False
+    assert (
+        "service mode is always headless"
+        in settings["force_offscreen_rendering"]["description"]
+    )
+    assert {
+        "pvpython_bin",
+        "pvpython_options",
+        "pvbatch_bin",
+        "pvbatch_options",
+    }.isdisjoint(settings)
+
+
+@pytest.mark.asyncio
 async def test_ambiguous_short_name_fails_with_canonical_candidates(
     tmp_path: Path,
 ) -> None:

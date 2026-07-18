@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
   "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.5.8",
+      "version": "2.5.9",
       "transport": {
         "type": "stdio"
       },
