@@ -256,7 +256,7 @@ export const mcpData = {
       "jarvis_get_execution"
     ],
     "stats": {
-      "version": "3.5.0",
+      "version": "3.5.1",
       "updated": "2026-07-18"
     },
     "platforms": [
