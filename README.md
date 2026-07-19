@@ -260,7 +260,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`plot`** | 2.2.3 | Visualization | Generate plots from CSV data | `clio-kit mcp-server plot` |
 | **`sac`** | 2.2.3 | Seismology | Analyze SAC waveforms and archives | `clio-kit mcp-server sac` |
 | **`seismic`** | 2.2.3 | Seismology | Analyze earthquake catalogs and sequences | `clio-kit mcp-server seismic` |
-| **`scientific-catalog`** | 1.1.1 | Discovery | Operator-owned scientific dataset discovery | `clio-kit mcp-server scientific-catalog` |
+| **`scientific-catalog`** | 1.1.2 | Discovery | Operator-owned scientific dataset discovery | `clio-kit mcp-server scientific-catalog` |
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
 | **`spack`** | 2.1.0 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
 | **`terrain`** | 2.2.3 | Geospatial | Analyze DEMs and terrain point clouds | `clio-kit mcp-server terrain` |

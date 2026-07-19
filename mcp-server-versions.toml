@@ -1,9 +1,9 @@
 schema-version = 1
 
-# Only scientific-catalog has a new agent-facing prompt in this wheel. Its
-# frozen v1.1 two-tool schema remains unchanged.
+# Publish both newly available agent-facing contracts under unused immutable
+# Registry versions. Their tool schemas remain unchanged by this patch.
 [mcp-registry-release]
-publish = ["scientific-catalog"]
+publish = ["jarvis", "scientific-catalog"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
@@ -32,7 +32,7 @@ paraview = "2.2.3"
 parquet = "2.2.3"
 plot = "2.2.3"
 sac = "2.2.3"
-scientific-catalog = "1.1.1"
+scientific-catalog = "1.1.2"
 seismic = "2.2.3"
 slurm = "3.0.0"
 spack = "2.1.0"
