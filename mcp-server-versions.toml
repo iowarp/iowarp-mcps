@@ -1,9 +1,9 @@
 schema-version = 1
 
-# Only this JARVIS server record has a new package/runtime patch in this wheel.
-# Its v3.4 user schema remains unchanged while the locked JARVIS-CD runtime advances.
+# Only scientific-catalog has a new agent-facing prompt in this wheel. Its
+# frozen v1.1 two-tool schema remains unchanged.
 [mcp-registry-release]
-publish = ["jarvis"]
+publish = ["scientific-catalog"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
@@ -32,7 +32,7 @@ paraview = "2.2.3"
 parquet = "2.2.3"
 plot = "2.2.3"
 sac = "2.2.3"
-scientific-catalog = "1.1.0"
+scientific-catalog = "1.1.1"
 seismic = "2.2.3"
 slurm = "3.0.0"
 spack = "2.1.0"

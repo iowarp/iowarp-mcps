@@ -15,6 +15,9 @@ returns its exact descriptor as the top-level `dataset_descriptor` field. Pass t
 unchanged as `jarvis_add_step.config.dataset_descriptor`; do not pass the surrounding `dataset`
 record. `descriptor_sha256` identifies the same descriptor bytes after canonical JSON encoding.
 
+The `discover_scientific_dataset` prompt provides the same generic search-then-describe workflow
+for MCP clients that support prompts. It does not add dataset-specific or visualization behavior.
+
 Run from the containing clio-kit installation:
 
 ```console
