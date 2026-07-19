@@ -200,3 +200,23 @@ async def test_mcp_surface_has_two_agent_oriented_tools(tmp_path: Path) -> None:
     assert described_content["dataset_descriptor"]["schema_version"] == (
         "jarvis.dataset-descriptor.v1"
     )
+
+
+@pytest.mark.asyncio
+async def test_discover_prompt_preserves_search_describe_boundary() -> None:
+    """The generic prompt must guide discovery without smuggling scene semantics."""
+    async with Client(mcp) as client:
+        prompts = {prompt.name for prompt in await client.list_prompts()}
+        rendered = await client.get_prompt(
+            "discover_scientific_dataset",
+            {"query": "asteroid impact volume"},
+        )
+
+    assert "discover_scientific_dataset" in prompts
+    assert rendered.messages
+    text = rendered.messages[0].content.text
+    assert "asteroid impact volume" in text
+    assert "scientific_dataset_search" in text
+    assert "scientific_dataset_describe" in text
+    assert "dataset_descriptor unchanged" in text
+    assert "Do not invent camera, colormap, filter, scheduler" in text

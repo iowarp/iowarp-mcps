@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Message
 from pydantic import Field
 
 from .backend import CatalogError, CatalogStore
@@ -127,6 +128,21 @@ def scientific_catalog_capabilities() -> dict[str, object]:
         "visualization_owner": "vigil",
         "scene_semantics_in_catalog": False,
     }
+
+
+@mcp.prompt()
+def discover_scientific_dataset(query: str) -> list[Message]:
+    """Guide an agent through catalog search and exact descriptor handoff."""
+    return [
+        Message(
+            f"Find an operator-registered scientific dataset matching {query!r}. "
+            "Call scientific_dataset_search with that query first. Use only dataset identifiers "
+            "returned by the search, and report a no-match result before broadening the query. "
+            "For the chosen dataset_id, call scientific_dataset_describe and pass only its "
+            "top-level dataset_descriptor unchanged to JARVIS. Do not invent camera, colormap, "
+            "filter, scheduler, or demo-recipe semantics."
+        )
+    ]
 
 
 def main() -> None:
