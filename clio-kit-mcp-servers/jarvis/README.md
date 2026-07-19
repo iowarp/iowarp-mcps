@@ -162,6 +162,12 @@ service instance identity, private endpoint metadata, and the intrinsic
 does not scrape stdout or infer a service from process text. Private cluster
 endpoints are routing inputs for clio-relay, not browser URLs.
 
+Authenticated `jarvis.service-runtime.v2` records expose authorization only as
+`{"scheme":"bearer","token_sha256":"<64 lowercase hex>"}`. The digest is a
+non-secret capability fingerprint for binding and audit, not a credential.
+JARVIS and this MCP reject a raw `token` field before it can enter agent-visible
+output.
+
 Artifacts are opt-in so routine polling stays compact. Pass `artifacts={}` for
 the default bounded page, or provide exact `package_id`, `role`, `state`, and
 `artifact_id` filters plus `page_size` and `cursor`. The page size defaults to
