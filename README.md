@@ -121,7 +121,7 @@ federation gates:
 
 ```bash
 clio-kit mcp-contracts
-clio-kit mcp-contract clio-kit-jarvis-user-v3.4
+clio-kit mcp-contract clio-kit-jarvis-user-v3.5
 clio-kit mcp-contract clio-kit-slurm-user-v3
 clio-kit mcp-contract clio-kit-spack-user-v2.1
 clio-kit mcp-contract clio-kit-scientific-catalog-user-v1.1
@@ -249,7 +249,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`geo`** | 2.2.3 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
 | **`geojson`** | 2.2.3 | Geospatial | Inspect, validate, and summarize GeoJSON | `clio-kit mcp-server geojson` |
 | **`hdf5`** | 2.2.3 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `clio-kit mcp-server hdf5` |
-| **`jarvis`** | 3.4.2 | Workflow | Durable pipeline, bounded package discovery, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
+| **`jarvis`** | 3.5.0 | Workflow | Durable pipeline, bounded package discovery, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
 | **`lmod`** | 2.2.3 | Environment | Environment module management | `clio-kit mcp-server lmod` |
 | **`ndp`** | 2.2.3 | Data Protocol | Search and discover datasets across CKAN instances | `clio-kit mcp-server ndp` |
 | **`node-hardware`** | 2.2.3 | System | System hardware information | `clio-kit mcp-server node-hardware` |

@@ -162,6 +162,70 @@ def native_service_runtimes(
     }
 
 
+def native_authenticated_service_runtime(
+    execution_id: str,
+    *,
+    authorization: dict[str, str],
+) -> dict[str, object]:
+    """Return one native authenticated runtime with a valid dataset identity."""
+    intrinsic_descriptor: dict[str, object] = {
+        "schema_version": "jarvis.dataset-descriptor.v1",
+        "dataset_id": "asteroid-subset",
+        "kind": "temporal-volume-series",
+        "format": "vtk-image-data",
+        "members": [
+            {
+                "index": 0,
+                "location": "/datasets/asteroid/frame-0000.vti",
+                "timestep": 0.0,
+            }
+        ],
+        "arrays": [
+            {
+                "name": "pressure",
+                "association": "point",
+                "components": 1,
+            }
+        ],
+        "bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "source_artifact": None,
+    }
+    digest = hashlib.sha256(
+        json.dumps(
+            intrinsic_descriptor,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    return {
+        "schema_version": "jarvis.service-runtime.v2",
+        "execution_id": execution_id,
+        "package_name": "builtin.paraview",
+        "package_id": "viewer",
+        "service_instance_id": "service-1",
+        "revision": 1,
+        "lifecycle": "ready",
+        "host": "127.0.0.1",
+        "port": 21000,
+        "protocol": "http",
+        "health_path": "/healthz",
+        "live_data_path": "/live-data",
+        "events_path": "/events",
+        "state_path": "/state",
+        "command_path": "/commands",
+        "delivery_mode": "push",
+        "dataset_descriptor": {
+            **intrinsic_descriptor,
+            "fingerprint": {"algorithm": "sha256", "digest": digest},
+        },
+        "authorization": authorization,
+        "message": None,
+        "observed_at_epoch": 1.0,
+    }
+
+
 class ModernPipeline:
     """Small stand-in for the current JARVIS Pipeline API."""
 
@@ -1394,6 +1458,76 @@ class TestPipelineExecutionOperations:
             "terminal": False,
             "service_runtimes": [],
         }
+
+    @pytest.mark.asyncio
+    async def test_execution_query_exposes_only_capability_fingerprint(self) -> None:
+        """Authenticated runtimes expose a fingerprint, never a bearer secret."""
+        pipeline = ModernPipeline("queryable")
+        pipeline.run(execution_id="query-run-1", wait=False)
+        token_sha256 = "a" * 64
+        snapshot = native_service_runtimes("query-run-1", "queryable", "running", False)
+        snapshot["service_runtimes"] = [
+            native_authenticated_service_runtime(
+                "query-run-1",
+                authorization={
+                    "scheme": "bearer",
+                    "token_sha256": token_sha256,
+                },
+            )
+        ]
+        pipeline.get_execution_service_runtimes = Mock(return_value=snapshot)
+
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+            return_value=pipeline,
+        ):
+            result = await get_execution(
+                "queryable",
+                "query-run-1",
+                include_service_runtimes=True,
+            )
+
+        authorization = result["service_runtimes"]["service_runtimes"][0][
+            "authorization"
+        ]
+        assert authorization == {
+            "scheme": "bearer",
+            "token_sha256": token_sha256,
+        }
+        assert "token" not in authorization
+
+    @pytest.mark.asyncio
+    async def test_execution_query_rejects_raw_bearer_token_without_leaking(
+        self,
+    ) -> None:
+        """A native raw token fails closed and never reaches agent-visible output."""
+        pipeline = ModernPipeline("queryable")
+        pipeline.run(execution_id="query-run-1", wait=False)
+        raw_token = "b" * 64
+        snapshot = native_service_runtimes("query-run-1", "queryable", "running", False)
+        snapshot["service_runtimes"] = [
+            native_authenticated_service_runtime(
+                "query-run-1",
+                authorization={"scheme": "bearer", "token": raw_token},
+            )
+        ]
+        pipeline.get_execution_service_runtimes = Mock(return_value=snapshot)
+
+        with (
+            patch(
+                "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+                return_value=pipeline,
+            ),
+            pytest.raises(ToolError) as error,
+        ):
+            await get_execution(
+                "queryable",
+                "query-run-1",
+                include_service_runtimes=True,
+            )
+
+        assert raw_token not in str(error.value)
+        assert "jarvis_execution_query_failed" in str(error.value)
 
     @pytest.mark.asyncio
     async def test_execution_query_retries_a_torn_lifecycle_view(self) -> None:

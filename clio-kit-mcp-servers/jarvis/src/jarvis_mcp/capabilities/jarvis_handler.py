@@ -57,6 +57,33 @@ _SPACK_ENVIRONMENT_STATE_SCHEMA = "jarvis.mcp.spack-environment.v1"
 _SPACK_ENVIRONMENT_STATE_FILENAME = ".jarvis-mcp-spack-environment.json"
 _SPACK_ENVIRONMENT_TRANSACTION_SCHEMA = "jarvis.mcp.spack-environment-transaction.v1"
 _SPACK_ENVIRONMENT_TRANSACTION_FILENAME = ".jarvis-mcp-spack-environment.pending.json"
+_SERVICE_RUNTIME_SCHEMA_V1 = "jarvis.service-runtime.v1"
+_SERVICE_RUNTIME_SCHEMA_V2 = "jarvis.service-runtime.v2"
+_SERVICE_RUNTIME_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_SERVICE_RUNTIME_FIELDS_V1 = frozenset(
+    {
+        "schema_version",
+        "execution_id",
+        "package_name",
+        "package_id",
+        "service_instance_id",
+        "revision",
+        "lifecycle",
+        "host",
+        "port",
+        "protocol",
+        "health_path",
+        "live_data_path",
+        "events_path",
+        "state_path",
+        "command_path",
+        "delivery_mode",
+        "dataset_descriptor",
+        "message",
+        "observed_at_epoch",
+    }
+)
+_SERVICE_RUNTIME_FIELDS_V2 = _SERVICE_RUNTIME_FIELDS_V1 | {"authorization"}
 _PIPELINE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _WINDOWS_RESERVED_PIPELINE_NAMES = {
     "CON",
@@ -976,11 +1003,43 @@ def _service_runtime_snapshot_document(
     if not isinstance(runtimes, list):
         raise ValueError("JARVIS service-runtime entries must be a list")
     for runtime in runtimes:
-        if not isinstance(runtime, dict):
-            raise ValueError("JARVIS service-runtime entry must be an object")
-        if runtime.get("execution_id") != expected_execution_id:
-            raise ValueError("JARVIS service-runtime entry identity did not match")
+        _validate_service_runtime_document(
+            runtime,
+            expected_execution_id=expected_execution_id,
+        )
     return cast(dict[str, Any], document)
+
+
+def _validate_service_runtime_document(
+    value: object,
+    *,
+    expected_execution_id: str,
+) -> None:
+    """Validate versioned service identity without accepting bearer secrets."""
+    if not isinstance(value, dict):
+        raise ValueError("JARVIS service-runtime entry must be an object")
+    schema_version = value.get("schema_version")
+    if schema_version == _SERVICE_RUNTIME_SCHEMA_V1:
+        expected_fields = _SERVICE_RUNTIME_FIELDS_V1
+    elif schema_version == _SERVICE_RUNTIME_SCHEMA_V2:
+        expected_fields = _SERVICE_RUNTIME_FIELDS_V2
+    else:
+        raise ValueError("JARVIS service-runtime entry schema is unsupported")
+    if set(value) != expected_fields:
+        raise ValueError("JARVIS service-runtime entry fields are invalid")
+    if value.get("execution_id") != expected_execution_id:
+        raise ValueError("JARVIS service-runtime entry identity did not match")
+    if schema_version == _SERVICE_RUNTIME_SCHEMA_V1:
+        return
+    authorization = value.get("authorization")
+    if (
+        not isinstance(authorization, dict)
+        or set(authorization) != {"scheme", "token_sha256"}
+        or authorization.get("scheme") != "bearer"
+        or not isinstance(authorization.get("token_sha256"), str)
+        or _SERVICE_RUNTIME_SHA256.fullmatch(authorization["token_sha256"]) is None
+    ):
+        raise ValueError("JARVIS service-runtime v2 authorization is invalid")
 
 
 async def _run_pipeline_operation(

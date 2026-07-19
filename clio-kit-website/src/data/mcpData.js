@@ -256,7 +256,7 @@ export const mcpData = {
       "jarvis_get_execution"
     ],
     "stats": {
-      "version": "3.4.2",
+      "version": "3.5.0",
       "updated": "2026-07-18"
     },
     "platforms": [
@@ -532,7 +532,7 @@ export const mcpData = {
       "scientific_dataset_describe"
     ],
     "stats": {
-      "version": "1.1.0",
+      "version": "1.1.1",
       "updated": "2026-07-18"
     },
     "platforms": [

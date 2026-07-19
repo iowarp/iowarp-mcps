@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
   "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-  "version": "3.4.2",
+  "version": "3.5.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.5.17",
+      "version": "2.5.18",
       "transport": {
         "type": "stdio"
       },
@@ -51,7 +51,7 @@
     },
     {
       "name": "jarvis_get_execution",
-      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set include_service_runtimes=true to include execution-owned network services such as an interactive ParaView runtime. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest."
+      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set include_service_runtimes=true to include execution-owned network services such as an interactive ParaView runtime; authenticated services expose only a non-secret bearer token SHA-256 fingerprint. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest."
     }
   ],
   "resources": [

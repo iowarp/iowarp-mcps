@@ -19,6 +19,9 @@ from fastmcp.prompts import Message
 
 def test_service_runtime_response_model_is_closed_and_fingerprint_bound() -> None:
     """The MCP response preserves JARVIS's exact service and dataset identity."""
+    from jarvis_mcp.capabilities.jarvis_handler import (
+        _service_runtime_snapshot_document,
+    )
     from jarvis_mcp.server import JarvisServiceRuntimeSnapshotDocument
 
     intrinsic = {
@@ -91,6 +94,69 @@ def test_service_runtime_response_model_is_closed_and_fingerprint_bound() -> Non
     assert (
         parsed.service_runtimes[0].dataset_descriptor.fingerprint.digest == fingerprint
     )
+
+    token_sha256 = "a" * 64
+    authenticated = deepcopy(snapshot)
+    authenticated_runtime = authenticated["service_runtimes"][0]
+    authenticated_runtime["schema_version"] = "jarvis.service-runtime.v2"
+    authenticated_runtime["authorization"] = {
+        "scheme": "bearer",
+        "token_sha256": token_sha256,
+    }
+    authenticated_parsed = JarvisServiceRuntimeSnapshotDocument.model_validate(
+        authenticated
+    )
+    assert authenticated_parsed.service_runtimes[0].schema_version == (
+        "jarvis.service-runtime.v2"
+    )
+    assert authenticated_parsed.model_dump(mode="json")["service_runtimes"][0][
+        "authorization"
+    ] == {"scheme": "bearer", "token_sha256": token_sha256}
+
+    v1_with_authorization = deepcopy(authenticated)
+    v1_with_authorization["service_runtimes"][0]["schema_version"] = (
+        "jarvis.service-runtime.v1"
+    )
+    with pytest.raises(ValueError, match="Extra inputs"):
+        JarvisServiceRuntimeSnapshotDocument.model_validate(v1_with_authorization)
+
+    v2_without_authorization = deepcopy(authenticated)
+    v2_without_authorization["service_runtimes"][0].pop("authorization")
+    with pytest.raises(ValueError, match="Field required"):
+        JarvisServiceRuntimeSnapshotDocument.model_validate(v2_without_authorization)
+
+    invalid_fingerprint = "NOT-A-LOWERCASE-SHA256"
+    invalid_authorization = deepcopy(authenticated)
+    invalid_authorization["service_runtimes"][0]["authorization"]["token_sha256"] = (
+        invalid_fingerprint
+    )
+    with pytest.raises(ValueError) as invalid_error:
+        JarvisServiceRuntimeSnapshotDocument.model_validate(invalid_authorization)
+    assert invalid_fingerprint not in str(invalid_error.value)
+    with pytest.raises(ValueError) as normalized_error:
+        _service_runtime_snapshot_document(
+            invalid_authorization,
+            expected_execution_id="execution-1",
+            expected_pipeline_id="pipeline",
+        )
+    assert invalid_fingerprint not in str(normalized_error.value)
+
+    raw_token = "b" * 64
+    raw_authorization = deepcopy(authenticated)
+    raw_authorization["service_runtimes"][0]["authorization"] = {
+        "scheme": "bearer",
+        "token": raw_token,
+    }
+    with pytest.raises(ValueError) as raw_model_error:
+        JarvisServiceRuntimeSnapshotDocument.model_validate(raw_authorization)
+    assert raw_token not in str(raw_model_error.value)
+    with pytest.raises(ValueError) as raw_handler_error:
+        _service_runtime_snapshot_document(
+            raw_authorization,
+            expected_execution_id="execution-1",
+            expected_pipeline_id="pipeline",
+        )
+    assert raw_token not in str(raw_handler_error.value)
 
     changed = deepcopy(snapshot)
     changed["service_runtimes"][0]["dataset_descriptor"]["dataset_id"] = "changed"

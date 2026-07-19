@@ -622,12 +622,35 @@ class JarvisDatasetDescriptorDocument(BaseModel):
         return self
 
 
-class JarvisServiceRuntimeDocument(BaseModel):
-    """Latest durable observation of one execution-owned service."""
+class JarvisServiceAuthorizationDocument(BaseModel):
+    """Non-secret fingerprint for an execution-owned runtime capability."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        strict=True,
+        hide_input_in_errors=True,
+    )
 
-    schema_version: Literal["jarvis.service-runtime.v1"]
+    scheme: Literal["bearer"]
+    token_sha256: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[0-9a-f]{64}$",
+        repr=False,
+    )
+
+
+class _JarvisServiceRuntimeDocumentBase(BaseModel):
+    """Fields shared by every released JARVIS service-runtime revision."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        strict=True,
+        hide_input_in_errors=True,
+    )
+
     execution_id: str = Field(min_length=1, max_length=256)
     package_name: str = Field(min_length=1, max_length=256)
     package_id: str = Field(min_length=1, max_length=256)
@@ -648,7 +671,9 @@ class JarvisServiceRuntimeDocument(BaseModel):
     observed_at_epoch: float = Field(ge=0, allow_inf_nan=False)
 
     @model_validator(mode="after")
-    def validate_private_endpoint_metadata(self) -> "JarvisServiceRuntimeDocument":
+    def validate_private_endpoint_metadata(
+        self,
+    ) -> "_JarvisServiceRuntimeDocumentBase":
         """Reject wildcard hosts and ambiguous or duplicated HTTP paths."""
         if self.host in {"0.0.0.0", "::", "*", "localhost"}:
             raise ValueError("service runtime host cannot be a wildcard or alias")
@@ -674,10 +699,34 @@ class JarvisServiceRuntimeDocument(BaseModel):
         return self
 
 
+class JarvisServiceRuntimeV1Document(_JarvisServiceRuntimeDocumentBase):
+    """Released unauthenticated service-runtime v1 document."""
+
+    schema_version: Literal["jarvis.service-runtime.v1"]
+
+
+class JarvisServiceRuntimeV2Document(_JarvisServiceRuntimeDocumentBase):
+    """Service-runtime v2 document with a non-secret capability fingerprint."""
+
+    schema_version: Literal["jarvis.service-runtime.v2"]
+    authorization: JarvisServiceAuthorizationDocument
+
+
+JarvisServiceRuntimeDocument = Annotated[
+    JarvisServiceRuntimeV1Document | JarvisServiceRuntimeV2Document,
+    Field(discriminator="schema_version"),
+]
+
+
 class JarvisServiceRuntimeSnapshotDocument(BaseModel):
     """Execution-bound current service runtimes returned by JARVIS."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        strict=True,
+        hide_input_in_errors=True,
+    )
 
     schema_version: Literal["jarvis.execution.service-runtimes.v1"]
     execution_id: str = Field(min_length=1, max_length=256)
@@ -712,7 +761,11 @@ class JarvisServiceRuntimeSnapshotDocument(BaseModel):
 class JarvisExecutionResult(BaseModel):
     """Frozen top-level result envelope for a selectable execution query."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        hide_input_in_errors=True,
+    )
 
     schema_version: Literal["clio-kit.jarvis-execution.v2"]
     pipeline_id: str
@@ -1500,7 +1553,8 @@ async def jarvis_run_tool(
         "Query one JARVIS execution handle, durable lifecycle record, and "
         "runtime metadata. Progress is included by default and can be omitted. "
         "Set include_service_runtimes=true to include execution-owned network "
-        "services such as an interactive ParaView runtime. "
+        "services such as an interactive ParaView runtime; authenticated "
+        "services expose only a non-secret bearer token SHA-256 fingerprint. "
         "Set artifacts to {} or filters to include one bounded artifact page; "
         "omit artifacts to avoid querying the artifact manifest."
     ),
@@ -1519,15 +1573,19 @@ async def jarvis_get_execution_tool(
     artifacts: ExecutionArtifactQuery | None = None,
 ) -> JarvisExecutionResult:
     """Query a selectable JARVIS-owned execution view in one locked load."""
-    return JarvisExecutionResult.model_validate(
-        await get_execution(
-            pipeline_id,
-            execution_id,
-            include_progress=include_progress,
-            include_service_runtimes=include_service_runtimes,
-            artifacts=artifacts.model_dump() if artifacts is not None else None,
-        )
+    document = await get_execution(
+        pipeline_id,
+        execution_id,
+        include_progress=include_progress,
+        include_service_runtimes=include_service_runtimes,
+        artifacts=artifacts.model_dump() if artifacts is not None else None,
     )
+    try:
+        return JarvisExecutionResult.model_validate(document)
+    except ValidationError:
+        raise ToolError(
+            "JARVIS execution result failed closed output validation"
+        ) from None
 
 
 def _context_has_progress_token(ctx: Context | None) -> bool:
