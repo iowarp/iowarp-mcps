@@ -19,11 +19,11 @@ QUALITY_WORKFLOW = (
     REPOSITORY_ROOT / ".github" / "workflows" / "quality_control.yml"
 ).read_text(encoding="utf-8")
 EXPECTED_JARVIS_RELEASE_URL = (
-    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.4.3/"
-    "jarvis_cd-1.4.3-py3-none-any.whl"
+    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.4.4/"
+    "jarvis_cd-1.4.4-py3-none-any.whl"
 )
 EXPECTED_JARVIS_RELEASE_SHA256 = (
-    "7944f256e2442a3355775c9a54ebb44b5a9b26394e4aa4aeb85a0268d238bac2"
+    "321ee1a23e96a4c97b3b0d6107c5f5299d7db362396dd748e87a44d2a30d3db3"
 )
 
 
@@ -304,7 +304,7 @@ def test_ares_probe_exercises_persistent_uv_tool_installation() -> None:
     assert '"paraview_description": paraview_description' in probe
     assert 'assert "%" not in log_path.name' in probe
     assert "assert log_path.is_file()" in probe
-    assert probe_module["EXPECTED_JARVIS_VERSION"] == "1.4.3"
+    assert probe_module["EXPECTED_JARVIS_VERSION"] == "1.4.4"
     assert probe_module["EXPECTED_JARVIS_URL"] == EXPECTED_JARVIS_RELEASE_URL
     assert probe_module["EXPECTED_JARVIS_SHA256"] == EXPECTED_JARVIS_RELEASE_SHA256
     assert "uvx" not in probe
@@ -345,8 +345,8 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     )
     match = re.fullmatch(
         r"jarvis-cd @ "
-        r"(https://github\.com/grc-iit/jarvis-cd/releases/download/v1\.4\.3/"
-        r"jarvis_cd-1\.4\.3-py3-none-any\.whl)"
+        r"(https://github\.com/grc-iit/jarvis-cd/releases/download/v1\.4\.4/"
+        r"jarvis_cd-1\.4\.4-py3-none-any\.whl)"
         r"#sha256=([0-9a-f]{64})",
         dependency,
     )
@@ -360,7 +360,7 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     jarvis_package = next(
         package for package in jarvis_lock["package"] if package["name"] == "jarvis-cd"
     )
-    assert jarvis_package["version"] == "1.4.3"
+    assert jarvis_package["version"] == "1.4.4"
     assert jarvis_package["source"] == {"url": expected_url}
     assert jarvis_package["wheels"] == [
         {"url": expected_url, "hash": f"sha256:{expected_digest}"}
@@ -382,12 +382,12 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     assert '"jarvis_get_execution_artifacts"' not in smoke_block
     assert 'get_servers_path() / "jarvis"' in smoke_block
     assert 'distribution("jarvis-cd")' in smoke_block
-    assert 'installed.version == "1.4.3"' in smoke_block
+    assert 'installed.version == "1.4.4"' in smoke_block
     assert expected_url in smoke_block
     assert expected_digest in smoke_block
     assert "expected_requirement in project" in smoke_block
     assert 'package["name"] == "jarvis-cd"' in smoke_block
-    assert 'jarvis_package["version"] == "1.4.3"' in smoke_block
+    assert 'jarvis_package["version"] == "1.4.4"' in smoke_block
     assert 'jarvis_package["source"] == {"url": expected_url}' in smoke_block
     assert '"hash": f"sha256:{expected_digest}"' in smoke_block
     assert 'package["name"] == "jarvis-mcp"' in smoke_block
