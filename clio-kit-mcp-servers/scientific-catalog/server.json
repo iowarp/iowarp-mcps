@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/scientific-catalog-mcp",
   "title": "CLIO Scientific Catalog",
   "description": "Operator-owned scientific dataset discovery for remote agents",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.5.18",
+      "version": "2.5.19",
       "transport": {
         "type": "stdio"
       },

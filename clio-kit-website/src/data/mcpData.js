@@ -532,7 +532,7 @@ export const mcpData = {
       "scientific_dataset_describe"
     ],
     "stats": {
-      "version": "1.1.1",
+      "version": "1.1.2",
       "updated": "2026-07-18"
     },
     "platforms": [

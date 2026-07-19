@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-    "version": "2.5.18",
+    "version": "2.5.19",
     "pluginRoot": "./clio-kit-mcp-servers"
   },
   "plugins": [
@@ -268,7 +268,7 @@
       "name": "clio-scientific-catalog",
       "source": "./clio-kit-mcp-servers/scientific-catalog",
       "description": "Operator-owned scientific dataset discovery for remote agents",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "category": "development",
       "keywords": [],
       "license": "BSD-3-Clause",
