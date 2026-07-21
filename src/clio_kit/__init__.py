@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import dataclasses
 import hashlib
 import importlib.metadata as importlib_metadata
 import json
@@ -11,6 +12,16 @@ import tempfile
 from pathlib import Path
 import click
 
+from clio_kit.env_cache import (
+    CacheInUseError,
+    EnvironmentInUseMarker,
+    collect_cache_gc,
+    default_event_emitter,
+    discover_servers,
+    load_cache_policy,
+    maintain_after_build,
+    measure_cache_budget,
+)
 from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
@@ -561,57 +572,138 @@ def mcp_server(server, branch, args):
 
     child_environment = subprocess_env_with_github_https_rewrite()
 
-    # Build the child launcher command.
     if branch:
-        # Run from git branch
+        # Run from a git branch: uvx owns its own ephemeral environment, so the
+        # bounded local runtime cache does not apply.
         cmd = [
             uvx_command(),
             "--from",
             f"git+https://github.com/iowarp/clio-kit.git@{branch}#subdirectory=clio-kit-mcp-servers/{actual_dir}",
             entry_command,
         ]
-    else:
-        # Run from local path in development mode
-        servers_path = get_servers_path()
-        server_path = servers_path / actual_dir
+        cmd.extend(args)
+        _run_child_command(cmd, entry_command, child_environment)
+        return
 
-        if server_path.exists():
-            # The root wheel includes each server's project and uv.lock. Use an
-            # immutable install in a source-and-lock-keyed cache so the exact
-            # outer wheel also binds the child dependency closure.
-            runtime_identity = locked_server_project_identity(server_path)
-            runtime_project = materialize_locked_server_project(
-                server_path,
-                identity=runtime_identity,
-            )
-            cmd = locked_server_command(runtime_project, entry_command)
-            child_environment["UV_PROJECT_ENVIRONMENT"] = str(
-                _locked_server_environment_path(
-                    server_path,
-                    project_sha256=runtime_identity["project_sha256"],
+    server_path = get_servers_path() / actual_dir
+    if server_path.exists():
+        _run_locked_local_server(server_path, entry_command, args, child_environment)
+        return
+
+    # Not in development: try to run the installed console script directly.
+    _run_child_command([entry_command, *args], entry_command, child_environment)
+
+
+def _run_locked_local_server(
+    server_path: Path,
+    entry_command: str,
+    args: tuple[str, ...],
+    child_environment: dict[str, str],
+) -> None:
+    """Build, evict, and launch one embedded server from its source-locked cache.
+
+    The root wheel ships each server's project and ``uv.lock``. The child runs
+    from an immutable, source-and-lock-keyed environment so the outer wheel binds
+    the child dependency closure exactly. After the environment for the current
+    spec is confirmed built, older specs of this server are evicted and the
+    private uv cache is pruned, keeping steady-state disk bounded to the newest
+    spec. The in-use marker is held across the whole launch so a concurrent
+    launch or ``cache gc`` never evicts the environment this process is using.
+    """
+    runtime_identity = locked_server_project_identity(server_path)
+    runtime_project = materialize_locked_server_project(
+        server_path,
+        identity=runtime_identity,
+    )
+    project_sha256 = runtime_identity["project_sha256"]
+    cache_root = _clio_cache_root()
+    environment_path = _locked_server_environment_path(
+        server_path,
+        project_sha256=project_sha256,
+    )
+    child_environment["UV_PROJECT_ENVIRONMENT"] = str(environment_path)
+    child_environment[LOCKED_SERVER_SCHEMA_ENV] = runtime_identity["schema_version"]
+    child_environment[LOCKED_SERVER_PROJECT_SHA_ENV] = project_sha256
+    child_environment[LOCKED_SERVER_LOCK_SHA_ENV] = runtime_identity["lock_sha256"]
+    child_environment["UV_CACHE_DIR"] = str((cache_root / "uv-cache").resolve())
+    child_environment.pop("VIRTUAL_ENV", None)
+
+    uv = uv_command()
+    try:
+        environment_path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    with EnvironmentInUseMarker(cache_root, environment_path.name):
+        if _build_locked_environment(uv, runtime_project, child_environment):
+            try:
+                maintain_after_build(
+                    cache_root,
+                    server_path.name,
+                    project_sha256=project_sha256,
+                    uv_executable=uv,
                 )
-            )
-            child_environment[LOCKED_SERVER_SCHEMA_ENV] = runtime_identity[
-                "schema_version"
-            ]
-            child_environment[LOCKED_SERVER_PROJECT_SHA_ENV] = runtime_identity[
-                "project_sha256"
-            ]
-            child_environment[LOCKED_SERVER_LOCK_SHA_ENV] = runtime_identity[
-                "lock_sha256"
-            ]
-            child_environment["UV_CACHE_DIR"] = str(
-                (_clio_cache_root() / "uv-cache").resolve()
-            )
-            child_environment.pop("VIRTUAL_ENV", None)
+            except Exception as exc:  # noqa: BLE001 - launch must never be blocked
+                default_event_emitter(
+                    {
+                        "event": "cache_maintenance_failed",
+                        "server": server_path.name,
+                        "reason": repr(exc),
+                    }
+                )
         else:
-            # Not in development, try to run the command directly (if installed)
-            cmd = [entry_command]
+            default_event_emitter(
+                {
+                    "event": "cache_maintenance_skipped",
+                    "server": server_path.name,
+                    "reason": "environment_build_failed",
+                }
+            )
+        cmd = locked_server_command(runtime_project, entry_command)
+        cmd.extend(args)
+        _run_child_command(cmd, entry_command, child_environment)
 
-    # Add any additional arguments
-    cmd.extend(args)
 
-    # Execute the command
+def _build_locked_environment(
+    uv: str,
+    runtime_project: Path,
+    child_environment: dict[str, str],
+) -> bool:
+    """Materialize the child environment for the current spec from its lock.
+
+    A discrete, frozen sync gives a verifiable "environment built" signal before
+    eviction removes any older spec, so a failed upgrade never destroys the
+    previously working environment. Its output is confined to stderr because the
+    child server's stdout is the JSON-RPC channel.
+    """
+    try:
+        completed = subprocess.run(
+            [
+                uv,
+                "sync",
+                "--no-dev",
+                "--no-editable",
+                "--frozen",
+                "--project",
+                str(runtime_project),
+            ],
+            env=child_environment,
+            capture_output=True,
+        )
+    except OSError:
+        return False
+    for stream in (completed.stdout, completed.stderr):
+        if stream:
+            sys.stderr.write(stream.decode("utf-8", errors="replace"))
+    sys.stderr.flush()
+    return completed.returncode == 0
+
+
+def _run_child_command(
+    cmd: list[str],
+    entry_command: str,
+    child_environment: dict[str, str],
+) -> None:
+    """Execute a child command, translating spawn failures to launcher errors."""
     try:
         subprocess.run(cmd, check=True, env=child_environment)
     except subprocess.CalledProcessError as e:
@@ -752,6 +844,108 @@ def search(args):
             "Error: uvx not found. Please install uv: https://github.com/astral-sh/uv"
         )
         sys.exit(1)
+
+
+@main.group("cache")
+def cache_group() -> None:
+    """Inspect and reclaim the private MCP runtime cache."""
+
+
+@cache_group.command("gc")
+@click.option(
+    "--keep",
+    type=int,
+    default=None,
+    help="Environments to keep per server (overrides CLIO_KIT_ENV_KEEP).",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Report what would be evicted without deleting anything.",
+)
+def cache_gc(keep: int | None, dry_run: bool) -> None:
+    """Collapse every server to its newest N specs and prune the uv cache.
+
+    This is the manual reclaim path for a box already polluted by unbounded
+    environment history. It refuses to run while any environment is held by a
+    live server, because deleting an environment mid-spawn corrupts the cache.
+    """
+    cache_root = _clio_cache_root()
+    policy = load_cache_policy()
+    if keep is not None:
+        if keep < 1:
+            raise click.ClickException("--keep must be >= 1")
+        policy = dataclasses.replace(policy, keep_per_server=keep)
+    try:
+        eviction, prune = collect_cache_gc(
+            cache_root,
+            policy=policy,
+            uv_executable=uv_command(),
+            dry_run=dry_run,
+        )
+    except CacheInUseError as exc:
+        raise click.ClickException(str(exc)) from exc
+    budget = measure_cache_budget(cache_root, policy=policy)
+    click.echo(
+        json.dumps(
+            {
+                "dry_run": dry_run,
+                "keep_per_server": policy.keep_per_server,
+                "evicted": [
+                    {
+                        "server": entry.server,
+                        "hash_prefix": entry.hash_prefix,
+                        "bytes_freed": entry.bytes_freed,
+                    }
+                    for entry in eviction.evicted
+                ],
+                "skipped_in_use": [
+                    {"server": entry.server, "hash_prefix": entry.hash_prefix}
+                    for entry in eviction.skipped_in_use
+                ],
+                "bytes_freed": eviction.bytes_freed,
+                "uv_cache_prune": {
+                    "ran": prune.ran,
+                    "ok": prune.ok,
+                    "reason": prune.reason,
+                },
+                "cache_total_bytes": budget.total_bytes,
+                "over_budget": budget.over_budget,
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@cache_group.command("status")
+def cache_status() -> None:
+    """Print a machine-readable summary of the private runtime cache footprint."""
+    cache_root = _clio_cache_root()
+    policy = load_cache_policy()
+    budget = measure_cache_budget(cache_root, policy=policy)
+    environments_root = cache_root / "mcp-environments"
+    per_server: dict[str, int] = {}
+    if environments_root.is_dir():
+        for server in sorted(discover_servers(cache_root)):
+            token = f"{server}-"
+            per_server[server] = sum(
+                1
+                for child in environments_root.iterdir()
+                if child.is_dir() and child.name.startswith(token)
+            )
+    click.echo(
+        json.dumps(
+            {
+                "cache_root": str(cache_root),
+                "total_bytes": budget.total_bytes,
+                "max_bytes": budget.max_bytes,
+                "over_budget": budget.over_budget,
+                "keep_per_server": policy.keep_per_server,
+                "environments_per_server": per_server,
+            },
+            sort_keys=True,
+        )
+    )
 
 
 def cli():
