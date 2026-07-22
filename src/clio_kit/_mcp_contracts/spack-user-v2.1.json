@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-spack-user-v2.1",
-  "contract_sha256": "cc90789227aa0baea99d0e0379b320811c1dbd40c7fa66877d372309201be1c2",
+  "contract_sha256": "f1a62d96179012975f763402446571146e04e519f98df30583f9800f233216fc",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -311,7 +311,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Resolve one unique installed Spack spec and return its exact prefix. An absent package returns the structured not_installed error.",
+      "description": "Resolve one unique installed Spack spec. Copy spack_locate.output.load_spec unchanged into one element of jarvis_run.input.spack_specs; do not derive or pass an executable path from the returned prefix. An absent package returns the structured not_installed error.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -330,6 +330,7 @@
         "description": "Unique installed package and its exact prefix.",
         "properties": {
           "load_spec": {
+            "description": "Exact runtime identity for JARVIS. Copy this value unchanged from spack_locate.output.load_spec into one element of jarvis_run.input.spack_specs.",
             "type": "string"
           },
           "operation": {
@@ -416,5 +417,5 @@
       }
     }
   ],
-  "wire_sha256": "5f1d3aaf1d7311df84d9b25a66c3ed1987f3b84799658eaf8d9ccbbb79485ed2"
+  "wire_sha256": "e06bfa71153e19ea44f03ed55f03873bc643f42b4b25b96788c02892df719da8"
 }

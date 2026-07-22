@@ -74,7 +74,7 @@ def test_contract_probe_uses_a_fresh_isolated_child_environment(
     ("contract_id", "expected_names"),
     [
         (
-            "clio-kit-jarvis-user-v3.5",
+            "clio-kit-jarvis-user-v3.6",
             {
                 "jarvis_create_pipeline",
                 "jarvis_describe",
@@ -124,25 +124,30 @@ def test_shipped_contract_digest_covers_exact_user_surface(
 
 def test_previous_jarvis_contracts_remain_loadable_by_exact_identity() -> None:
     """JARVIS contract revisions do not erase released evidence."""
-    previous = load_mcp_user_contract("clio-kit-jarvis-user-v3.4")
+    previous = load_mcp_user_contract("clio-kit-jarvis-user-v3.5")
 
-    assert previous["contract_id"] == "clio-kit-jarvis-user-v3.4"
+    assert previous["contract_id"] == "clio-kit-jarvis-user-v3.5"
     assert previous["contract_sha256"] == (
+        "9933815ca7ee913d56a7cb1081d7702474bc984efcc97bf16434980172d0469d"
+    )
+    older = load_mcp_user_contract("clio-kit-jarvis-user-v3.4")
+    assert older["contract_id"] == "clio-kit-jarvis-user-v3.4"
+    assert older["contract_sha256"] == (
         "52bfe1d416e674d120f200e502ded2197ee27219c26891a22c6c33ba917d5696"
     )
-    older = load_mcp_user_contract("clio-kit-jarvis-user-v3.3")
-    assert older["contract_id"] == "clio-kit-jarvis-user-v3.3"
-    assert older["contract_sha256"] == (
+    even_older = load_mcp_user_contract("clio-kit-jarvis-user-v3.3")
+    assert even_older["contract_id"] == "clio-kit-jarvis-user-v3.3"
+    assert even_older["contract_sha256"] == (
         "0993ee9b2ee9b3c2b021a3967d9221199c3a6be50d726d4b125812e6b1148115"
     )
-    even_older = load_mcp_user_contract("clio-kit-jarvis-user-v3.2")
-    assert even_older["contract_id"] == "clio-kit-jarvis-user-v3.2"
-    assert even_older["contract_sha256"] == (
+    earlier = load_mcp_user_contract("clio-kit-jarvis-user-v3.2")
+    assert earlier["contract_id"] == "clio-kit-jarvis-user-v3.2"
+    assert earlier["contract_sha256"] == (
         "12f6d349c9d44d8ce3594943dcd4018ec9b6e01ebb0e59d468bb1bb783a1ad5d"
     )
-    earlier = load_mcp_user_contract("clio-kit-jarvis-user-v3.1")
-    assert earlier["contract_id"] == "clio-kit-jarvis-user-v3.1"
-    assert earlier["contract_sha256"] == (
+    oldest_minor = load_mcp_user_contract("clio-kit-jarvis-user-v3.1")
+    assert oldest_minor["contract_id"] == "clio-kit-jarvis-user-v3.1"
+    assert oldest_minor["contract_sha256"] == (
         "adc7756025fbcc90b0695bd4eaac00bda5c6cff4eb2f248fd7be263bd90b9b8b"
     )
     oldest = load_mcp_user_contract("clio-kit-jarvis-user-v3")
@@ -183,6 +188,35 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     properties = cast(JSON, output_schema["properties"])
     assert properties["load_spec"] == {"type": "string"}
     assert "load_spec" in cast(list[str], output_schema["required"])
+
+
+def test_spack_surface_validator_accepts_described_required_load_spec() -> None:
+    """A handoff description must not make the required string schema noncanonical."""
+
+    spec = next(spec for spec in USER_CONTRACT_SPECS if spec.server_name == "spack")
+    load_spec_description = (
+        "Copy spack_locate.output.load_spec unchanged into one element of "
+        "jarvis_run.input.spack_specs."
+    )
+    tools: list[JSON] = [
+        {"name": "spack_find"},
+        {"name": "spack_install"},
+        {
+            "name": "spack_locate",
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "load_spec": {
+                        "type": "string",
+                        "description": load_spec_description,
+                    }
+                },
+                "required": ["load_spec"],
+            },
+        },
+    ]
+
+    mcp_contracts._validate_required_surface(spec, tools)
 
 
 def test_scientific_catalog_contract_separates_discovery_from_scene_control() -> None:
@@ -239,7 +273,7 @@ def test_spack_install_contract_exposes_explicit_concretization_modes() -> None:
 
 def test_jarvis_contract_combines_mutations_and_execution_observation() -> None:
     """JARVIS gives agents one mutation and one durable observation semantic."""
-    artifact = load_mcp_user_contract("clio-kit-jarvis-user-v3.5")
+    artifact = load_mcp_user_contract("clio-kit-jarvis-user-v3.6")
     tools = {
         cast(str, tool["name"]): cast(JSON, tool)
         for tool in cast(list[JSON], artifact["tools"])
@@ -277,6 +311,33 @@ def test_jarvis_contract_combines_mutations_and_execution_observation() -> None:
     assert describe_properties["query"]["description"].endswith(
         "target='package_search'."
     )
+    describe_output = cast(JSON, describe["outputSchema"])
+    describe_result = cast(JSON, describe_output["properties"])["result"]
+    describe_variants = cast(list[JSON], cast(JSON, describe_result)["oneOf"])
+    package_variant = next(
+        variant
+        for variant in describe_variants
+        if cast(JSON, variant["properties"])["target"]
+        == {"const": "package", "type": "string"}
+    )
+    package_schema = cast(JSON, cast(JSON, package_variant["properties"])["package"])
+    package_properties = cast(JSON, package_schema["properties"])
+    settings_options = cast(
+        list[JSON], cast(JSON, package_properties["settings"])["anyOf"]
+    )
+    settings = next(option for option in settings_options if "items" in option)
+    setting = cast(JSON, settings["items"])
+    input_binding = cast(JSON, cast(JSON, setting["properties"])["input_binding"])
+    assert input_binding["additionalProperties"] is False
+    assert input_binding["required"] == ["schema_version", "kind", "structure"]
+    assert input_binding["properties"] == {
+        "kind": {"const": "local_file", "type": "string"},
+        "schema_version": {
+            "const": "jarvis.configuration-input-binding.v1",
+            "type": "string",
+        },
+        "structure": {"const": "regular_file", "type": "string"},
+    }
     add_step = cast(JSON, tools["jarvis_add_step"])
     add_input = cast(JSON, add_step["inputSchema"])
     add_properties = cast(JSON, add_input["properties"])
@@ -604,6 +665,7 @@ def test_contract_cli_lists_and_prints_verified_artifacts() -> None:
     shown = runner.invoke(main, ["mcp-contract", "clio-kit-spack-user-v2.1"])
 
     assert listed.exit_code == 0, listed.output
+    assert "clio-kit-jarvis-user-v3.6" in listed.output
     assert "clio-kit-jarvis-user-v3.5" in listed.output
     assert "clio-kit-jarvis-user-v3.4" in listed.output
     assert "clio-kit-jarvis-user-v3.3" in listed.output

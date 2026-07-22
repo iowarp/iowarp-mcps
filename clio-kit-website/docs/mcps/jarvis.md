@@ -10,7 +10,7 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="🤖"
   category="Data Processing"
   description="JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles"
-  version="3.5.4"
+  version="3.6.0"
   actions={["jarvis_create_pipeline", "jarvis_describe", "jarvis_add_step", "jarvis_edit_step", "jarvis_run", "jarvis_get_execution"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["jarvis", "pipeline-management", "high-performance-computing", "hpc", "workflow", "data-pipelines", "scientific-computing", "mcp", "package-management"]}

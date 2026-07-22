@@ -482,6 +482,7 @@ async def append_pkg(
     pkg_type: str,
     pkg_id: Optional[str] = None,
     do_configure: bool = True,
+    agent_visible_only: bool = False,
     **kwargs: Any,
 ) -> dict:
     try:
@@ -489,6 +490,8 @@ async def append_pkg(
         config_flag = do_configure
         if "do_configure" in raw_kwargs:
             config_flag = raw_kwargs.pop("do_configure")
+        if agent_visible_only:
+            _reject_non_agent_visible_package_settings(pkg_type, raw_kwargs)
 
         with _protocol_stdout_to_stderr():
             pipeline = _load_pipeline(pipeline_id)
@@ -506,13 +509,19 @@ async def append_pkg(
                 pipeline.append(pkg_type, package_alias=pkg_id, config_args=config_args)
                 try:
                     expected = _normalize_package_config_request(
-                        pipeline, resolved_pkg_id, raw_kwargs
+                        pipeline,
+                        resolved_pkg_id,
+                        raw_kwargs,
+                        agent_visible_only=agent_visible_only,
                     )
                     persisted_config = _package_config(
                         _get_package(pipeline, resolved_pkg_id)
                     )
                     _require_persisted_package_config(
-                        resolved_pkg_id, expected, persisted_config
+                        resolved_pkg_id,
+                        expected,
+                        persisted_config,
+                        pipeline=pipeline,
                     )
                     if config_flag:
                         pipeline.configure_package(resolved_pkg_id, config_args)
@@ -521,7 +530,10 @@ async def append_pkg(
                             _get_package(persisted, resolved_pkg_id)
                         )
                         _require_persisted_package_config(
-                            resolved_pkg_id, expected, persisted_config
+                            resolved_pkg_id,
+                            expected,
+                            persisted_config,
+                            pipeline=persisted,
                         )
                 except BaseException as exc:
                     try:
@@ -581,20 +593,43 @@ async def update_pipeline(pipeline_id: str) -> dict:
 
 
 @_locked_pipeline_operation
-async def configure_pkg(pipeline_id: str, pkg_id: str, **kwargs: Any) -> dict:
+async def configure_pkg(
+    pipeline_id: str,
+    pkg_id: str,
+    *,
+    agent_visible_only: bool = False,
+    **kwargs: Any,
+) -> dict:
     try:
         with _protocol_stdout_to_stderr():
             pipeline = _load_pipeline(pipeline_id)
             if _is_legacy_pipeline(pipeline):
+                if agent_visible_only:
+                    _normalize_package_config_request(
+                        pipeline,
+                        pkg_id,
+                        kwargs,
+                        agent_visible_only=True,
+                    )
                 pipeline.configure(pkg_id, **kwargs)
                 _save_pipeline(pipeline)
                 persisted_config = _package_config(_get_package(pipeline, pkg_id))
             else:
-                expected = _normalize_package_config_request(pipeline, pkg_id, kwargs)
+                expected = _normalize_package_config_request(
+                    pipeline,
+                    pkg_id,
+                    kwargs,
+                    agent_visible_only=agent_visible_only,
+                )
                 pipeline.configure_package(pkg_id, _kwargs_to_config_args(kwargs))
                 persisted = _load_pipeline(pipeline_id)
                 persisted_config = _package_config(_get_package(persisted, pkg_id))
-                _require_persisted_package_config(pkg_id, expected, persisted_config)
+                _require_persisted_package_config(
+                    pkg_id,
+                    expected,
+                    persisted_config,
+                    pipeline=persisted,
+                )
         return {
             "pipeline_id": pipeline_id,
             "configured": pkg_id,
@@ -3242,7 +3277,11 @@ def _package_config(pkg: Any) -> Any:
 
 
 def _normalize_package_config_request(
-    pipeline: Any, pkg_id: str, kwargs: dict[str, Any]
+    pipeline: Any,
+    pkg_id: str,
+    kwargs: dict[str, Any],
+    *,
+    agent_visible_only: bool = False,
 ) -> dict[str, Any]:
     """Validate and normalize structured settings with the package-owned parser."""
     pkg = _get_package(pipeline, pkg_id)
@@ -3261,6 +3300,7 @@ def _normalize_package_config_request(
     if not isinstance(menu, list):
         raise RuntimeError(f"Package '{pkg_id}' returned an invalid configuration menu")
     canonical_names: dict[str, str] = {}
+    nullable_names: set[str] = set()
     for spec in menu:
         if not isinstance(spec, dict):
             raise RuntimeError(
@@ -3271,7 +3311,11 @@ def _normalize_package_config_request(
             raise RuntimeError(
                 f"Package '{pkg_id}' returned an invalid configuration option name"
             )
+        if agent_visible_only and spec.get("agent_visible", True) is False:
+            continue
         canonical_names[name] = name
+        if "default" in spec and spec["default"] is None:
+            nullable_names.add(name)
         aliases = spec.get("aliases", [])
         if not isinstance(aliases, list) or not all(
             isinstance(alias, str) and alias for alias in aliases
@@ -3286,11 +3330,15 @@ def _normalize_package_config_request(
         raise ValueError(
             f"Package '{pkg_id}' does not support settings: {', '.join(unknown)}"
         )
-    null_names = sorted(name for name, value in kwargs.items() if value is None)
+    null_names = sorted(
+        name
+        for name, value in kwargs.items()
+        if value is None and canonical_names[name] not in nullable_names
+    )
     if null_names:
         raise ValueError(
-            "Package settings cannot be null; provide a concrete value for: "
-            + ", ".join(null_names)
+            "Package settings cannot be null unless their package description reports "
+            "nullable=true; provide a concrete value for: " + ", ".join(null_names)
         )
 
     parser = cast(Any, get_argparse())
@@ -3314,10 +3362,65 @@ def _normalize_package_config_request(
     return normalized
 
 
-def _require_persisted_package_config(
-    pkg_id: str, expected: dict[str, Any], persisted: Any
+def _reject_non_agent_visible_package_settings(
+    package_name: str,
+    kwargs: dict[str, Any],
 ) -> None:
-    """Fail unless every normalized setting survived a durable pipeline reload."""
+    """Reject implementation settings before a user append can mutate a pipeline."""
+
+    if not kwargs:
+        return
+    try:
+        from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
+
+        instance = Pkg.load_standalone(package_name)
+        menu = instance.configure_menu()
+    except Exception as exc:
+        raise RuntimeError(
+            f"Package '{package_name}' does not expose agent configuration metadata"
+        ) from exc
+    if not isinstance(menu, list):
+        raise RuntimeError(
+            f"Package '{package_name}' returned an invalid configuration menu"
+        )
+    hidden_names: set[str] = set()
+    for spec in menu:
+        if not isinstance(spec, dict):
+            raise RuntimeError(
+                f"Package '{package_name}' returned an invalid configuration option"
+            )
+        if spec.get("agent_visible", True) is not False:
+            continue
+        name = spec.get("name")
+        if not isinstance(name, str) or not name:
+            raise RuntimeError(
+                f"Package '{package_name}' returned an invalid configuration option name"
+            )
+        hidden_names.add(name)
+        aliases = spec.get("aliases", [])
+        if not isinstance(aliases, list) or not all(
+            isinstance(alias, str) and alias for alias in aliases
+        ):
+            raise RuntimeError(
+                f"Package '{package_name}' returned invalid aliases for '{name}'"
+            )
+        hidden_names.update(aliases)
+    requested = sorted(set(kwargs) & hidden_names)
+    if requested:
+        raise ValueError(
+            "Package settings are implementation-owned and not agent-visible: "
+            + ", ".join(requested)
+        )
+
+
+def _require_persisted_package_config(
+    pkg_id: str,
+    expected: dict[str, Any],
+    persisted: Any,
+    *,
+    pipeline: Any | None = None,
+) -> None:
+    """Require exact persistence or a verified package-owned input rewrite."""
     if not isinstance(persisted, dict):
         raise RuntimeError(f"Package '{pkg_id}' persisted an invalid configuration")
     mismatches = [
@@ -3325,6 +3428,31 @@ def _require_persisted_package_config(
         for name, value in expected.items()
         if name not in persisted or _jsonable(persisted[name]) != _jsonable(value)
     ]
+    if mismatches and pipeline is not None:
+        package = _get_package(pipeline, pkg_id)
+        loader = getattr(pipeline, "_load_package_instance", None)
+        instance = (
+            loader(package, getattr(pipeline, "env", {}))
+            if package is not None and callable(loader)
+            else package
+        )
+        verifier = getattr(
+            instance,
+            "configuration_input_materialization_matches",
+            None,
+        )
+        if callable(verifier):
+            verified: set[str] = set()
+            for name in mismatches:
+                if name not in persisted:
+                    continue
+                try:
+                    matches = verifier(name, expected[name], persisted[name])
+                except Exception:
+                    matches = False
+                if matches is True:
+                    verified.add(name)
+            mismatches = [name for name in mismatches if name not in verified]
     if mismatches:
         raise ValueError(
             f"Package '{pkg_id}' did not persist settings: {', '.join(mismatches)}"

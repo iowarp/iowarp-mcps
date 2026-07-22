@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
   "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-  "version": "3.5.4",
+  "version": "3.6.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.5.23",
+      "version": "2.6.0",
       "transport": {
         "type": "stdio"
       },
@@ -35,11 +35,11 @@
     },
     {
       "name": "jarvis_describe",
-      "description": "Describe JARVIS packages, one package, a pipeline, or one pipeline step. For a named application, first use target='package' with its unique short name or fully qualified package name. Use target='package_search' for bounded discovery, then describe the selected canonical name. target='packages' is an exhaustive legacy inventory with every package's settings and can be large; use it only when the complete installed catalog is explicitly required."
+      "description": "Describe JARVIS packages, one package, a pipeline, or one pipeline step. For a named application, first use target='package' with its unique short name or fully qualified package name. Use target='package_search' for bounded discovery, then describe the selected canonical name. A package description returns package-owned configuration metadata and, when supported, a versioned deployment contract covering execution profiles, runtime requirements, readiness, and configuration rules. Package settings include only semantic parameters explicitly marked agent-visible. A setting may include a versioned input_binding descriptor for a declared local input that must be staged; callers must not infer file semantics from setting names or prose. Installer, scheduler, and other implementation controls remain owned by their dedicated contracts. target='packages' is an exhaustive legacy inventory with every agent-visible package setting and can be large; use it only when the complete installed catalog is explicitly required."
     },
     {
       "name": "jarvis_add_step",
-      "description": "Add and configure a package-backed step in a JARVIS pipeline. First use jarvis_describe(target='package') for the selected package; config keys must use its canonical setting names exactly, except for aliases explicitly listed there. User-level step configuration is always validated and cannot be bypassed."
+      "description": "Add and configure a package-backed step in a JARVIS pipeline. First use jarvis_describe(target='package') for the selected package; config keys must use its canonical setting names exactly, except for aliases explicitly listed there. Explicit null is accepted only when that setting reports nullable=true; omit a setting to use its declared default. Only settings marked agent-visible by the package are accepted here. User-level step configuration is always validated and cannot be bypassed."
     },
     {
       "name": "jarvis_edit_step",
@@ -47,11 +47,11 @@
     },
     {
       "name": "jarvis_run",
-      "description": "Start a configured JARVIS pipeline and return its durable execution handle without waiting for workload completion. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. Optional spack_specs are resolved into a filtered environment that JARVIS persists before direct or scheduler execution. Use jarvis_get_execution with the returned pipeline_id and execution_id to query lifecycle, progress, artifacts, and execution-owned service runtimes."
+      "description": "Start a configured JARVIS pipeline and return its durable execution handle without waiting for workload completion. Optional execution intent selects local, cluster, or hostfile mode without exposing scheduler internals. For each runtime resolved with Spack, copy spack_locate.output.load_spec unchanged into one element of jarvis_run.input.spack_specs; do not derive an executable path from the Spack prefix. JARVIS resolves those specs into a filtered environment and persists it before direct or scheduler execution. Use jarvis_get_execution with the returned pipeline_id and execution_id to query lifecycle, progress, artifacts, and execution-owned service runtimes."
     },
     {
       "name": "jarvis_get_execution",
-      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set include_service_runtimes=true to include execution-owned network services such as an interactive ParaView runtime; authenticated services expose only a non-secret bearer token SHA-256 fingerprint. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest."
+      "description": "Query one JARVIS execution handle, durable lifecycle record, and runtime metadata. Progress is included by default and can be omitted. Set include_service_runtimes=true to include execution-owned network services; authenticated services expose only a non-secret bearer token SHA-256 fingerprint. Set artifacts to {} or filters to include one bounded artifact page; omit artifacts to avoid querying the artifact manifest."
     }
   ],
   "resources": [

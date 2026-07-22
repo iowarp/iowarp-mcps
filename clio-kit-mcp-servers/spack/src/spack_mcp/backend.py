@@ -126,7 +126,13 @@ class SpackLocateResult(BaseModel):
     schema_version: Literal["spack.mcp.result.v1"] = SPACK_RESULT_SCHEMA
     operation: Literal["locate"] = "locate"
     requested_spec: str
-    load_spec: str
+    load_spec: str = Field(
+        description=(
+            "Exact runtime identity for JARVIS. Copy this value unchanged from "
+            "spack_locate.output.load_spec into one element of "
+            "jarvis_run.input.spack_specs."
+        )
+    )
     package: SpackPackage
     prefix: str
 

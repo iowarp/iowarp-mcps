@@ -194,6 +194,9 @@ MCP_METADATA_PROFILE = "user"
 
 PACKAGE_SEARCH_SCHEMA = "jarvis.package-search.v1"
 PACKAGE_SEARCH_CURSOR_SCHEMA = "clio-kit.jarvis-package-search-cursor.v1"
+PACKAGE_DESCRIPTION_SCHEMA = "jarvis.package-description.v1"
+PACKAGE_DEPLOYMENT_SCHEMA = "jarvis.package-deployment.v1"
+CONFIGURATION_INPUT_BINDING_SCHEMA = "jarvis.configuration-input-binding.v1"
 PACKAGE_SEARCH_DEFAULT_PAGE_SIZE = 10
 PACKAGE_SEARCH_MAX_PAGE_SIZE = 25
 PACKAGE_SEARCH_MAX_RESULT_BYTES = 64 * 1024
@@ -224,6 +227,192 @@ class _PackageInventoryEntry:
             "description": _bounded_package_search_description(self.description),
         }
         return {key: value for key, value in summary.items() if value is not None}
+
+
+@dataclass(frozen=True)
+class _PackageAgentMetadata:
+    """Package-owned metadata safe to return through the user MCP surface."""
+
+    settings: list[dict[str, Any]] | None
+    deployment: dict[str, Any] | None
+
+
+class _ClosedDocument(BaseModel):
+    """Base for agent-visible documents with no undeclared fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class JarvisPackageConditionDocument(_ClosedDocument):
+    """One package-owned predicate over a canonical configuration setting."""
+
+    parameter: str
+    operator: Literal["equals", "greater_than", "is_empty", "is_not_empty"]
+    value: str | int | float | bool | None = None
+
+
+class JarvisPackageReadinessDocument(_ClosedDocument):
+    """Observable condition that makes one execution profile ready."""
+
+    mechanism: Literal["process_exit", "progress_event", "service_runtime"]
+    condition: str
+    capability: str | None = None
+
+
+class JarvisPackageExecutionProfileDocument(_ClosedDocument):
+    """Package-owned execution kind, applicability, requirements, and readiness."""
+
+    name: str
+    execution_kind: Literal["batch", "service"]
+    when: list[JarvisPackageConditionDocument]
+    runtime_requirements: list[str]
+    readiness: JarvisPackageReadinessDocument
+    description: str | None = None
+
+
+class JarvisConfigurationInputBindingDocument(_ClosedDocument):
+    """Declared client-local input that must be staged before package use."""
+
+    schema_version: Literal["jarvis.configuration-input-binding.v1"]
+    kind: Literal["local_file"]
+    structure: Literal["regular_file"]
+
+
+class JarvisRuntimeRequirementStatusDocument(_ClosedDocument):
+    """Package observation of whether a runtime requirement can be used."""
+
+    state: Literal["ready", "unavailable", "unknown"]
+    usable: bool | None
+    reason_code: str
+
+
+class JarvisProviderQueryDocument(_ClosedDocument):
+    """Provider-neutral query that can resolve one runtime requirement."""
+
+    kind: str
+    value: str
+
+
+class JarvisProviderResolutionDocument(_ClosedDocument):
+    """One provider and query capable of resolving a runtime requirement."""
+
+    provider: str
+    query: JarvisProviderQueryDocument
+
+
+class JarvisRuntimeRequirementDocument(_ClosedDocument):
+    """Runtime capabilities and provider resolutions owned by a package."""
+
+    id: str
+    description: str
+    required_capabilities: list[str]
+    available_capabilities: list[str]
+    status: JarvisRuntimeRequirementStatusDocument
+    provider_resolutions: list[JarvisProviderResolutionDocument]
+
+
+class JarvisPackageConfigurationRuleDocument(_ClosedDocument):
+    """Conditional requirement over canonical package configuration settings."""
+
+    when: list[JarvisPackageConditionDocument]
+    requires: list[JarvisPackageConditionDocument]
+    description: str
+
+
+class JarvisPackageDeploymentDocument(_ClosedDocument):
+    """Versioned deployment and readiness contract supplied by JARVIS."""
+
+    schema_version: Literal["jarvis.package-deployment.v1"]
+    package: str
+    execution_profiles: list[JarvisPackageExecutionProfileDocument]
+    runtime_requirements: list[JarvisRuntimeRequirementDocument]
+    configuration_rules: list[JarvisPackageConfigurationRuleDocument]
+
+
+class JarvisPackageSettingDocument(TypedDict):
+    """One package parser setting with truthful default and null semantics."""
+
+    name: str
+    description: NotRequired[str]
+    type: NotRequired[str]
+    default: NotRequired[Any]
+    choices: NotRequired[list[Any]]
+    required: bool
+    nullable: bool
+    aliases: NotRequired[list[str]]
+    input_binding: NotRequired[JarvisConfigurationInputBindingDocument]
+
+
+class JarvisPackageDescriptionDocument(_ClosedDocument):
+    """Path-free package detail returned after selecting one canonical package."""
+
+    schema_version: Literal["jarvis.package-description.v1"]
+    name: str
+    short_name: str
+    description: str | None
+    deployment: JarvisPackageDeploymentDocument | None
+    settings: list[JarvisPackageSettingDocument] | None = None
+
+
+class JarvisPackageSummaryDocument(_ClosedDocument):
+    """Bounded package identity returned during search."""
+
+    name: str
+    short_name: str
+    repository: str
+    description: str | None = None
+
+
+class JarvisDescribePackagesResult(_ClosedDocument):
+    """Exhaustive legacy package inventory result."""
+
+    target: Literal["packages"]
+    packages: list[JarvisPackageDescriptionDocument]
+
+
+class JarvisDescribePackageSearchResult(_ClosedDocument):
+    """Bounded package search page."""
+
+    schema_version: Literal["jarvis.package-search.v1"]
+    target: Literal["package_search"]
+    query: str
+    inventory_revision: str
+    packages: list[JarvisPackageSummaryDocument]
+    total_matches: int
+    returned_count: int
+    next_cursor: str | None
+
+
+class JarvisDescribePackageResult(_ClosedDocument):
+    """Exact package description result."""
+
+    target: Literal["package"]
+    package: JarvisPackageDescriptionDocument
+
+
+class JarvisDescribePipelineResult(_ClosedDocument):
+    """Stored pipeline snapshot result."""
+
+    target: Literal["pipeline"]
+    pipeline: dict[str, Any]
+
+
+class JarvisDescribeStepResult(_ClosedDocument):
+    """Stored pipeline step and package configuration result."""
+
+    target: Literal["step"]
+    step: dict[str, Any]
+    config: dict[str, Any]
+
+
+JarvisDescribeResult = Annotated[
+    JarvisDescribePackagesResult
+    | JarvisDescribePackageSearchResult
+    | JarvisDescribePackageResult
+    | JarvisDescribePipelineResult
+    | JarvisDescribeStepResult,
+    Field(discriminator="target"),
+]
 
 
 class JarvisExecutionHandleDocument(TypedDict):
@@ -1286,9 +1475,18 @@ async def jarvis_create_pipeline_tool(
         "Describe JARVIS packages, one package, a pipeline, or one pipeline step. "
         "For a named application, first use target='package' with its unique short name "
         "or fully qualified package name. Use target='package_search' for bounded "
-        "discovery, then describe the selected canonical name. target='packages' is an "
-        "exhaustive legacy inventory with every package's settings and can be large; "
-        "use it only when the complete installed catalog is explicitly required."
+        "discovery, then describe the selected canonical name. A package description "
+        "returns package-owned configuration metadata and, when supported, a versioned "
+        "deployment contract covering execution profiles, runtime requirements, "
+        "readiness, and configuration rules. Package settings include only semantic "
+        "parameters explicitly marked agent-visible. A setting may include a versioned "
+        "input_binding descriptor for a declared local input that must be staged; "
+        "callers must not infer file semantics from setting names or prose. Installer, "
+        "scheduler, and other implementation controls remain owned by their dedicated "
+        "contracts. "
+        "target='packages' is an exhaustive legacy inventory with every agent-visible "
+        "package setting and can be large; use it only when the complete installed "
+        "catalog is explicitly required."
     ),
     annotations={
         "readOnlyHint": True,
@@ -1330,8 +1528,7 @@ async def jarvis_describe_tool(
             max_length=512,
             description=(
                 "Case-insensitive unique short name or fully qualified package name for "
-                "target='package', for example paraview or builtin.paraview. Ambiguous "
-                "short names fail with canonical candidates."
+                "target='package'. Ambiguous short names fail with canonical candidates."
             ),
         ),
     ] = None,
@@ -1377,27 +1574,39 @@ async def jarvis_describe_tool(
             )
         ),
     ] = True,
-) -> dict[str, Any]:
+) -> JarvisDescribeResult:
     """Describe user-level JARVIS objects without exposing repository administration."""
     normalized = target.strip().lower()
     if normalized == "packages":
-        return {"target": "packages", "packages": _discover_packages()}
+        return cast(
+            JarvisDescribeResult,
+            {"target": "packages", "packages": _discover_packages()},
+        )
     if normalized == "package_search":
         if query is None or not query.strip():
             raise ToolError("query is required when target='package_search'")
-        return _search_packages(query=query, page_size=page_size, cursor=cursor)
+        return cast(
+            JarvisDescribeResult,
+            _search_packages(query=query, page_size=page_size, cursor=cursor),
+        )
     if normalized == "package":
         if not package_name:
             raise ToolError("package_name is required when target='package'")
         package = _find_package_description(package_name)
         if package is None:
             raise ToolError(f"package not found: {package_name}")
-        return {"target": "package", "package": package}
+        return cast(
+            JarvisDescribeResult,
+            {"target": "package", "package": package},
+        )
     if normalized == "pipeline":
         if not pipeline_id:
             raise ToolError("pipeline_id is required when target='pipeline'")
         snapshot = await export_pipeline(pipeline_id, include_yaml=include_yaml)
-        return {"target": "pipeline", "pipeline": snapshot}
+        return cast(
+            JarvisDescribeResult,
+            {"target": "pipeline", "pipeline": snapshot},
+        )
     if normalized == "step":
         if not pipeline_id or not step_id:
             raise ToolError("pipeline_id and step_id are required when target='step'")
@@ -1406,7 +1615,10 @@ async def jarvis_describe_tool(
         if step is None:
             raise ToolError(f"step not found in pipeline {pipeline_id}: {step_id}")
         config = await get_pkg_config(pipeline_id, step_id)
-        return {"target": "step", "step": step, "config": config}
+        return cast(
+            JarvisDescribeResult,
+            {"target": "step", "step": step, "config": config},
+        )
     raise ToolError(
         "target must be one of: packages, package_search, package, pipeline, step"
     )
@@ -1418,8 +1630,10 @@ async def jarvis_describe_tool(
         "Add and configure a package-backed step in a JARVIS pipeline. First use "
         "jarvis_describe(target='package') for the selected package; config keys "
         "must use its canonical setting names exactly, except for aliases explicitly "
-        "listed there. User-level step configuration is always validated and cannot "
-        "be bypassed."
+        "listed there. Explicit null is accepted only when that setting reports "
+        "nullable=true; omit a setting to use its declared default. Only settings marked "
+        "agent-visible by the package are accepted here. User-level step configuration "
+        "is always validated and cannot be bypassed."
     ),
     annotations={
         "readOnlyHint": False,
@@ -1441,8 +1655,9 @@ async def jarvis_add_step_tool(
                 "there are also accepted, and settings must not be renamed or placed "
                 "under invented nesting. JSON documents may be passed directly as "
                 "objects or lists under their exact setting name; clio-kit serializes "
-                "them canonically before JARVIS package validation. Omit config to use "
-                "the package defaults."
+                "them canonically before JARVIS package validation. Explicit null is "
+                "accepted only for a setting that reports nullable=true. Omit config or "
+                "an individual setting to use the package-owned default."
             )
         ),
     ] = None,
@@ -1453,6 +1668,7 @@ async def jarvis_add_step_tool(
         package_name,
         pkg_id=step_id,
         do_configure=True,
+        agent_visible_only=True,
         **(config or {}),
     )
 
@@ -1480,7 +1696,12 @@ async def jarvis_edit_step_tool(
     if operation == "edit":
         if config is None:
             raise ToolError("config is required when operation='edit'")
-        return await configure_pkg(pipeline_id, step_id, **config)
+        return await configure_pkg(
+            pipeline_id,
+            step_id,
+            agent_visible_only=True,
+            **config,
+        )
     if config not in (None, {}):
         raise ToolError("config is not accepted when operation='remove'")
     return await unlink_pkg(pipeline_id, step_id)
@@ -1492,8 +1713,11 @@ async def jarvis_edit_step_tool(
         "Start a configured JARVIS pipeline and return its durable execution "
         "handle without waiting for workload completion. Optional execution intent "
         "selects local, cluster, or hostfile mode without exposing scheduler "
-        "internals. Optional spack_specs are resolved into a filtered environment "
-        "that JARVIS persists before direct or scheduler execution. Use "
+        "internals. For each runtime resolved with Spack, copy "
+        "spack_locate.output.load_spec unchanged into one element of "
+        "jarvis_run.input.spack_specs; do not derive an executable path from the Spack "
+        "prefix. JARVIS resolves those specs into a filtered environment and persists "
+        "it before direct or scheduler execution. Use "
         "jarvis_get_execution with the returned pipeline_id and execution_id to "
         "query lifecycle, progress, artifacts, and execution-owned service runtimes."
     ),
@@ -1509,7 +1733,17 @@ async def jarvis_run_tool(
     execution: ExecutionIntent | None = None,
     submit: bool = True,
     execution_id: str | None = None,
-    spack_specs: Optional[list[str]] = None,
+    spack_specs: Annotated[
+        Optional[list[str]],
+        Field(
+            description=(
+                "Runtime identities supplied by Spack. Copy each "
+                "spack_locate.output.load_spec unchanged into this list; do not pass "
+                "spack_locate.output.prefix or an inferred executable path. JARVIS "
+                "persists the resolved environment for the execution."
+            )
+        ),
+    ] = None,
     ctx: Context | None = None,
 ) -> JarvisRunResult:
     """Start a pipeline without waiting after persisting its Spack environment."""
@@ -1553,8 +1787,8 @@ async def jarvis_run_tool(
         "Query one JARVIS execution handle, durable lifecycle record, and "
         "runtime metadata. Progress is included by default and can be omitted. "
         "Set include_service_runtimes=true to include execution-owned network "
-        "services such as an interactive ParaView runtime; authenticated "
-        "services expose only a non-secret bearer token SHA-256 fingerprint. "
+        "services; authenticated services expose only a non-secret bearer token "
+        "SHA-256 fingerprint. "
         "Set artifacts to {} or filters to include one bounded artifact page; "
         "omit artifacts to avoid querying the artifact manifest."
     ),
@@ -2072,19 +2306,18 @@ def _package_inventory_entry(repo: Path, pkg_file: Path) -> _PackageInventoryEnt
 def _package_description_from_inventory(
     entry: _PackageInventoryEntry,
 ) -> dict[str, Any]:
-    """Load the package-owned settings for one selected inventory entry."""
+    """Load one selected package's path-free agent contract."""
 
+    metadata = _package_agent_metadata(entry.name)
     package: dict[str, Any] = {
+        "schema_version": PACKAGE_DESCRIPTION_SCHEMA,
         "name": entry.name,
         "short_name": entry.short_name,
         "description": entry.description,
-        "path": str(entry.package_file),
+        "deployment": metadata.deployment,
     }
-    menu = _package_settings(package["name"])
-    if menu is None and package["name"] != package["short_name"]:
-        menu = _package_settings(package["short_name"])
-    if menu is not None:
-        package["settings"] = menu
+    if metadata.settings is not None:
+        package["settings"] = metadata.settings
     return package
 
 
@@ -2417,20 +2650,85 @@ def _step_snapshot(
     return None
 
 
-def _package_settings(package_name: str) -> list[dict[str, Any]] | None:
+def _package_agent_metadata(package_name: str) -> _PackageAgentMetadata:
+    """Load package-owned configuration and deployment metadata once.
+
+    Older JARVIS packages do not implement ``describe_deployment`` and are
+    represented with ``deployment=None``. If a package advertises the method,
+    however, its document must match the versioned, path-free contract instead
+    of being silently downgraded to legacy behavior.
+    """
+
     try:
         from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
 
         pkg = Pkg.load_standalone(package_name)
-        return [_setting_from_menu_item(item) for item in pkg.configure_menu()]
     except Exception:
-        return None
+        return _PackageAgentMetadata(settings=None, deployment=None)
+
+    try:
+        menu = pkg.configure_menu()
+        settings = [
+            _setting_from_menu_item(item)
+            for item in menu
+            if _setting_is_agent_visible(item)
+        ]
+    except Exception:
+        settings = None
+
+    describe_deployment = getattr(pkg, "describe_deployment", None)
+    if not callable(describe_deployment):
+        return _PackageAgentMetadata(settings=settings, deployment=None)
+    try:
+        raw_deployment = describe_deployment()
+    except Exception:
+        raise ToolError(
+            f"package '{package_name}' failed to describe its deployment contract"
+        ) from None
+    if raw_deployment is None:
+        return _PackageAgentMetadata(settings=settings, deployment=None)
+    if isinstance(raw_deployment, BaseModel):
+        raw_deployment = raw_deployment.model_dump(mode="json")
+    if not isinstance(raw_deployment, dict):
+        raise ToolError(
+            f"package '{package_name}' returned an invalid deployment contract"
+        )
+    try:
+        deployment = json.loads(
+            json.dumps(
+                raw_deployment,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+    except (TypeError, ValueError):
+        raise ToolError(
+            f"package '{package_name}' returned a non-JSON deployment contract"
+        ) from None
+    try:
+        validated = JarvisPackageDeploymentDocument.model_validate(deployment)
+    except ValidationError:
+        raise ToolError(
+            f"package '{package_name}' returned an invalid deployment contract"
+        ) from None
+    if (
+        validated.schema_version != PACKAGE_DEPLOYMENT_SCHEMA
+        or validated.package != package_name
+    ):
+        raise ToolError(
+            f"package '{package_name}' returned an invalid deployment contract"
+        )
+    return _PackageAgentMetadata(settings=settings, deployment=deployment)
 
 
 def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
     setting: dict[str, Any] = {
         "name": item.get("name"),
         "description": item.get("msg"),
+        "required": bool(item.get("required", False)),
+        "nullable": _setting_accepts_null(item),
     }
     kind = item.get("type")
     if isinstance(kind, type):
@@ -2442,15 +2740,36 @@ def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
     choices = item.get("choices")
     if isinstance(choices, (list, tuple)):
         setting["choices"] = list(choices)
-    required = item.get("required")
-    if isinstance(required, bool):
-        setting["required"] = required
     aliases = item.get("aliases")
     if isinstance(aliases, (list, tuple)) and all(
         isinstance(alias, str) and alias for alias in aliases
     ):
         setting["aliases"] = list(aliases)
-    return {key: value for key, value in setting.items() if value is not None}
+    if "input_binding" in item:
+        try:
+            input_binding = JarvisConfigurationInputBindingDocument.model_validate(
+                item["input_binding"]
+            )
+        except ValidationError as error:
+            raise ValueError("invalid package configuration input binding") from error
+        setting["input_binding"] = input_binding.model_dump(mode="json")
+    return {
+        key: value
+        for key, value in setting.items()
+        if value is not None or key == "default"
+    }
+
+
+def _setting_is_agent_visible(item: dict[str, Any]) -> bool:
+    """Return whether package metadata exposes a setting to user agents."""
+
+    return item.get("agent_visible", True) is not False
+
+
+def _setting_accepts_null(item: dict[str, Any]) -> bool:
+    """Return whether the structured add-step path accepts explicit null."""
+
+    return "default" in item and item["default"] is None
 
 
 def _validated_execution_intent(
@@ -2554,6 +2873,22 @@ def add_spack_command_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_jarvis_root_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the shared validated JARVIS root option to a CLI parser."""
+    parser.add_argument(
+        "--jarvis-root",
+        type=_existing_directory_path,
+        default=None,
+        help="Existing directory to use as the isolated JARVIS_ROOT.",
+    )
+
+
+def configure_jarvis_root(jarvis_root: str | None) -> None:
+    """Apply an explicitly validated JARVIS root before serving requests."""
+    if jarvis_root is not None:
+        os.environ["JARVIS_ROOT"] = jarvis_root
+
+
 def configure_spack_command(spack_command: str | None) -> None:
     """Apply an explicitly validated Spack command for later JARVIS runs."""
     if spack_command is not None:
@@ -2576,6 +2911,20 @@ def _spack_command_path(value: str) -> str:
     return str(resolved)
 
 
+def _existing_directory_path(value: str) -> str:
+    """Resolve and validate an operator-supplied existing directory."""
+    candidate = Path(value).expanduser()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"JARVIS root does not exist: {candidate}"
+        ) from exc
+    if not resolved.is_dir():
+        raise argparse.ArgumentTypeError(f"JARVIS root is not a directory: {resolved}")
+    return str(resolved)
+
+
 def main() -> None:
     """Main entry point for the Jarvis MCP server."""
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
@@ -2592,8 +2941,10 @@ def main() -> None:
     )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
+    add_jarvis_root_argument(parser)
     add_spack_command_argument(parser)
     args = parser.parse_args()
+    configure_jarvis_root(args.jarvis_root)
     configure_spack_command(args.spack_command)
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "user")

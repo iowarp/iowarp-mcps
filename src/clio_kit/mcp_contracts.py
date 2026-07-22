@@ -112,8 +112,8 @@ class UserContractSpec:
 
 USER_CONTRACT_SPECS: Final = (
     UserContractSpec(
-        contract_id="clio-kit-jarvis-user-v3.5",
-        artifact_name="jarvis-user-v3.5.json",
+        contract_id="clio-kit-jarvis-user-v3.6",
+        artifact_name="jarvis-user-v3.6.json",
         server_name="jarvis",
         distribution_name="jarvis-mcp",
         entry_command="jarvis-mcp",
@@ -176,6 +176,7 @@ HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = (
     "jarvis-user-v3.2.json",
     "jarvis-user-v3.3.json",
     "jarvis-user-v3.4.json",
+    "jarvis-user-v3.5.json",
     "scientific-catalog-user-v1.json",
     "spack-user-v2.json",
 )
@@ -810,9 +811,19 @@ def _validate_required_surface(spec: UserContractSpec, tools: Sequence[JSON]) ->
             raise ContractGenerationError("spack_locate must publish outputSchema")
         properties = locate_output.get("properties")
         required = locate_output.get("required")
+        load_spec = (
+            properties.get("load_spec") if isinstance(properties, dict) else None
+        )
+        load_spec_description = (
+            load_spec.get("description") if isinstance(load_spec, dict) else None
+        )
         if (
             not isinstance(properties, dict)
-            or properties.get("load_spec") != {"type": "string"}
+            or not isinstance(load_spec, dict)
+            or load_spec.get("type") != "string"
+            or not isinstance(load_spec_description, str)
+            or "spack_locate.output.load_spec" not in load_spec_description
+            or "jarvis_run.input.spack_specs" not in load_spec_description
             or not isinstance(required, list)
             or "load_spec" not in required
         ):

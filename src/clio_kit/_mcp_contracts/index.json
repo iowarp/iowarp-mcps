@@ -1,13 +1,13 @@
 {
   "contracts": [
     {
-      "artifact": "jarvis-user-v3.5.json",
-      "artifact_sha256": "88f8a256262f4c27e0c23359cb3c86b6fb1b2d7c787f56c9c91e0a69e0e719af",
-      "contract_id": "clio-kit-jarvis-user-v3.5",
-      "contract_sha256": "9933815ca7ee913d56a7cb1081d7702474bc984efcc97bf16434980172d0469d",
+      "artifact": "jarvis-user-v3.6.json",
+      "artifact_sha256": "6e839f3ac975f247053ef4b6a048c53686882c2ab6a1b103f91dfc744ed29ed5",
+      "contract_id": "clio-kit-jarvis-user-v3.6",
+      "contract_sha256": "055c6697dc9a25fb033c949db92c928aee8d5673f7b2e3a4d90a237f4f87a40d",
       "profile": "user",
       "server_name": "jarvis",
-      "wire_sha256": "05f7d8a6286e211657ca40b64f0645bbd529e402fbf55770c845403695ddd366"
+      "wire_sha256": "c69db36bda5d1cc97043d7b7cee88cabcf044d506865046537e0fb17ab0b2023"
     },
     {
       "artifact": "slurm-user-v3.json",
@@ -20,12 +20,12 @@
     },
     {
       "artifact": "spack-user-v2.1.json",
-      "artifact_sha256": "1bae2c8386a85e90fde674819c04a598033b360367745fd36bead97b5728d537",
+      "artifact_sha256": "24f6e2b340ef5e2649241c10d7c2260b8d8cbbaa4e10f1a389c9249c2e7e6171",
       "contract_id": "clio-kit-spack-user-v2.1",
-      "contract_sha256": "cc90789227aa0baea99d0e0379b320811c1dbd40c7fa66877d372309201be1c2",
+      "contract_sha256": "f1a62d96179012975f763402446571146e04e519f98df30583f9800f233216fc",
       "profile": "user",
       "server_name": "spack",
-      "wire_sha256": "5f1d3aaf1d7311df84d9b25a66c3ed1987f3b84799658eaf8d9ccbbb79485ed2"
+      "wire_sha256": "e06bfa71153e19ea44f03ed55f03873bc643f42b4b25b96788c02892df719da8"
     },
     {
       "artifact": "scientific-catalog-user-v1.1.json",
@@ -80,6 +80,15 @@
       "profile": "user",
       "server_name": "jarvis",
       "wire_sha256": "2ced8dc66ecee832ee86df0c99c29610bce61a82f9d80a8a53e0ea037d262219"
+    },
+    {
+      "artifact": "jarvis-user-v3.5.json",
+      "artifact_sha256": "88f8a256262f4c27e0c23359cb3c86b6fb1b2d7c787f56c9c91e0a69e0e719af",
+      "contract_id": "clio-kit-jarvis-user-v3.5",
+      "contract_sha256": "9933815ca7ee913d56a7cb1081d7702474bc984efcc97bf16434980172d0469d",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "05f7d8a6286e211657ca40b64f0645bbd529e402fbf55770c845403695ddd366"
     },
     {
       "artifact": "scientific-catalog-user-v1.json",

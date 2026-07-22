@@ -34,7 +34,8 @@ mcp: FastMCP = FastMCP(
         "locating an absent package returns the structured not_installed error. "
         "This server never pretends that a shell-local `spack load` changes later "
         "agent or scheduler processes. Runtime environment materialization is an "
-        "admin diagnostic; JARVIS should persist it inside jarvis_run."
+        "admin diagnostic. Copy spack_locate.output.load_spec unchanged into "
+        "jarvis_run.input.spack_specs so JARVIS persists the runtime environment."
     ),
 )
 
@@ -66,8 +67,11 @@ async def spack_find_tool(query: str | None = None) -> SpackFindResult:
 @mcp.tool(
     name="spack_locate",
     description=(
-        "Resolve one unique installed Spack spec and return its exact prefix. "
-        "An absent package returns the structured not_installed error."
+        "Resolve one unique installed Spack spec. Copy "
+        "spack_locate.output.load_spec unchanged into one element of "
+        "jarvis_run.input.spack_specs; do not derive or pass an executable path from "
+        "the returned prefix. An absent package returns the structured not_installed "
+        "error."
     ),
     annotations={
         "readOnlyHint": True,
@@ -155,8 +159,9 @@ def prepare_spack_package(spec: str) -> list[Message]:
     return [
         Message(
             f"Prepare Spack package {spec!r}. First call spack_find, install only if "
-            "needed, then call spack_locate. Pass the exact spec to jarvis_run via "
-            "spack_specs so JARVIS persists the runtime environment."
+            "needed, then call spack_locate. Copy spack_locate.output.load_spec "
+            "unchanged into jarvis_run.input.spack_specs so JARVIS persists the "
+            "runtime environment."
         )
     ]
 
