@@ -185,6 +185,35 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     assert "load_spec" in cast(list[str], output_schema["required"])
 
 
+def test_spack_surface_validator_accepts_described_required_load_spec() -> None:
+    """A handoff description must not make the required string schema noncanonical."""
+
+    spec = next(spec for spec in USER_CONTRACT_SPECS if spec.server_name == "spack")
+    load_spec_description = (
+        "Copy spack_locate.output.load_spec unchanged into one element of "
+        "jarvis_run.input.spack_specs."
+    )
+    tools: list[JSON] = [
+        {"name": "spack_find"},
+        {"name": "spack_install"},
+        {
+            "name": "spack_locate",
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "load_spec": {
+                        "type": "string",
+                        "description": load_spec_description,
+                    }
+                },
+                "required": ["load_spec"],
+            },
+        },
+    ]
+
+    mcp_contracts._validate_required_surface(spec, tools)
+
+
 def test_scientific_catalog_contract_separates_discovery_from_scene_control() -> None:
     """Catalog tools expose exact descriptors without paths or scene inputs."""
     artifact = load_mcp_user_contract("clio-kit-scientific-catalog-user-v1.1")

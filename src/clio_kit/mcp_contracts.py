@@ -810,9 +810,19 @@ def _validate_required_surface(spec: UserContractSpec, tools: Sequence[JSON]) ->
             raise ContractGenerationError("spack_locate must publish outputSchema")
         properties = locate_output.get("properties")
         required = locate_output.get("required")
+        load_spec = (
+            properties.get("load_spec") if isinstance(properties, dict) else None
+        )
+        load_spec_description = (
+            load_spec.get("description") if isinstance(load_spec, dict) else None
+        )
         if (
             not isinstance(properties, dict)
-            or properties.get("load_spec") != {"type": "string"}
+            or not isinstance(load_spec, dict)
+            or load_spec.get("type") != "string"
+            or not isinstance(load_spec_description, str)
+            or "spack_locate.output.load_spec" not in load_spec_description
+            or "jarvis_run.input.spack_specs" not in load_spec_description
             or not isinstance(required, list)
             or "load_spec" not in required
         ):
