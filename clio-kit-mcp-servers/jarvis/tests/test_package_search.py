@@ -11,6 +11,7 @@ from fastmcp.exceptions import ToolError
 
 from jarvis_mcp.server import (
     PACKAGE_SEARCH_MAX_RESULT_BYTES,
+    _PackageAgentMetadata,
     _setting_from_menu_item,
     jarvis_describe_tool,
     mcp,
@@ -47,13 +48,16 @@ async def test_named_package_loads_settings_for_only_the_selected_package(
     _write_package(repo, "site.solver", "Solver package.")
     settings_calls: list[str] = []
 
-    def settings(package_name: str) -> list[dict[str, object]]:
+    def metadata(package_name: str) -> _PackageAgentMetadata:
         settings_calls.append(package_name)
-        return [{"name": "mode", "default": "service"}]
+        return _PackageAgentMetadata(
+            settings=[{"name": "mode", "default": "service"}],
+            deployment=None,
+        )
 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
-        patch("jarvis_mcp.server._package_settings", side_effect=settings),
+        patch("jarvis_mcp.server._package_agent_metadata", side_effect=metadata),
     ):
         short = await jarvis_describe_tool("package", package_name="PARAVIEW")
         canonical = await jarvis_describe_tool(
@@ -63,6 +67,123 @@ async def test_named_package_loads_settings_for_only_the_selected_package(
     assert short["package"] == canonical["package"]
     assert short["package"]["name"] == "builtin.paraview"
     assert settings_calls == ["builtin.paraview", "builtin.paraview"]
+
+
+@pytest.mark.asyncio
+async def test_named_package_projects_package_owned_deployment_contract(
+    tmp_path: Path,
+) -> None:
+    """Describe returns the package contract unchanged and without source paths."""
+
+    repo = tmp_path / "repo"
+    _write_package(repo, "site.simulator", "Generic simulation package.")
+    deployment = {
+        "schema_version": "jarvis.package-deployment.v1",
+        "package": "site.simulator",
+        "execution_profiles": [
+            {
+                "name": "distributed_batch",
+                "execution_kind": "batch",
+                "when": [
+                    {
+                        "parameter": "mode",
+                        "operator": "equals",
+                        "value": "batch",
+                    }
+                ],
+                "runtime_requirements": ["simulation_runtime"],
+                "readiness": {
+                    "mechanism": "process_exit",
+                    "condition": "exit_code_zero",
+                },
+            }
+        ],
+        "runtime_requirements": [
+            {
+                "id": "simulation_runtime",
+                "description": "Runtime capable of distributed simulation.",
+                "required_capabilities": ["mpi"],
+                "available_capabilities": ["mpi"],
+                "status": {
+                    "state": "ready",
+                    "usable": True,
+                    "reason_code": "provider_resolved",
+                },
+                "provider_resolutions": [
+                    {
+                        "provider": "spack",
+                        "query": {"kind": "spec", "value": "simulator"},
+                    }
+                ],
+            }
+        ],
+        "configuration_rules": [
+            {
+                "when": [
+                    {
+                        "parameter": "mode",
+                        "operator": "equals",
+                        "value": "batch",
+                    }
+                ],
+                "requires": [
+                    {
+                        "parameter": "tasks",
+                        "operator": "greater_than",
+                        "value": 0,
+                    }
+                ],
+                "description": "Batch execution requires at least one task.",
+            }
+        ],
+    }
+    package = Mock()
+    package.configure_menu.return_value = [
+        {"name": "mode", "type": str, "default": "batch"},
+        {"name": "tasks", "type": int, "default": 1},
+        {
+            "name": "install_query",
+            "type": str,
+            "default": "",
+            "agent_visible": False,
+        },
+    ]
+    package.describe_deployment.return_value = deployment
+
+    with (
+        patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
+        patch(
+            "jarvis_cd.core.pkg.Pkg.load_standalone",
+            return_value=package,
+        ) as load_standalone,
+    ):
+        result = await jarvis_describe_tool("package", package_name="site.simulator")
+
+    description = result["package"]
+    assert description["schema_version"] == "jarvis.package-description.v1"
+    assert description["deployment"] == deployment
+    assert description["settings"] == [
+        {
+            "name": "mode",
+            "type": "str",
+            "default": "batch",
+            "required": False,
+            "nullable": False,
+        },
+        {
+            "name": "tasks",
+            "type": "int",
+            "default": 1,
+            "required": False,
+            "nullable": False,
+        },
+    ]
+    assert "path" not in description
+    assert "install_query" not in {
+        setting["name"] for setting in description["settings"]
+    }
+    assert "executable" not in json.dumps(description, sort_keys=True).casefold()
+    load_standalone.assert_called_once_with("site.simulator")
 
 
 @pytest.mark.asyncio
@@ -90,6 +211,9 @@ async def test_paraview_description_is_semantic_not_site_runtime_configuration(
 
     package = result["package"]
     assert package["name"] == "builtin.paraview"
+    assert package["schema_version"] == "jarvis.package-description.v1"
+    assert package["deployment"] is None
+    assert "path" not in package
     settings = {setting["name"]: setting for setting in package["settings"]}
     assert settings["mode"]["default"] == "server"
     assert "service for a live dataset view" in settings["mode"]["description"]
@@ -119,13 +243,16 @@ async def test_ambiguous_short_name_fails_with_canonical_candidates(
     _write_package(repo, "site.solver", "Site solver.")
     settings_calls: list[str] = []
 
-    def settings(package_name: str) -> list[dict[str, object]]:
+    def metadata(package_name: str) -> _PackageAgentMetadata:
         settings_calls.append(package_name)
-        return [{"name": "package", "default": package_name}]
+        return _PackageAgentMetadata(
+            settings=[{"name": "package", "default": package_name}],
+            deployment=None,
+        )
 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
-        patch("jarvis_mcp.server._package_settings", side_effect=settings),
+        patch("jarvis_mcp.server._package_agent_metadata", side_effect=metadata),
     ):
         with pytest.raises(
             ToolError,
@@ -160,7 +287,7 @@ async def test_package_search_is_ranked_summary_only_and_cursor_bound(
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
         patch(
-            "jarvis_mcp.server._package_settings",
+            "jarvis_mcp.server._package_agent_metadata",
             side_effect=AssertionError("search must not load settings"),
         ),
     ):
@@ -221,7 +348,7 @@ async def test_package_search_enforces_response_byte_ceiling(tmp_path: Path) -> 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
         patch(
-            "jarvis_mcp.server._package_settings",
+            "jarvis_mcp.server._package_agent_metadata",
             side_effect=AssertionError("search must not load settings"),
         ),
     ):
@@ -249,15 +376,18 @@ async def test_legacy_packages_target_remains_exhaustive_with_settings(
     """The released exhaustive response retains its shape and full settings."""
 
     repo = tmp_path / "repo"
-    echo_file = _write_package(repo, "builtin.echo", "Echo package.")
-    paraview_file = _write_package(repo, "builtin.paraview", "ParaView package.")
+    _write_package(repo, "builtin.echo", "Echo package.")
+    _write_package(repo, "builtin.paraview", "ParaView package.")
 
-    def settings(package_name: str) -> list[dict[str, object]]:
-        return [{"name": "package", "default": package_name}]
+    def metadata(package_name: str) -> _PackageAgentMetadata:
+        return _PackageAgentMetadata(
+            settings=[{"name": "package", "default": package_name}],
+            deployment=None,
+        )
 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
-        patch("jarvis_mcp.server._package_settings", side_effect=settings),
+        patch("jarvis_mcp.server._package_agent_metadata", side_effect=metadata),
     ):
         result = await jarvis_describe_tool("packages")
 
@@ -265,17 +395,19 @@ async def test_legacy_packages_target_remains_exhaustive_with_settings(
         "target": "packages",
         "packages": [
             {
+                "schema_version": "jarvis.package-description.v1",
                 "name": "builtin.echo",
                 "short_name": "echo",
                 "description": "Echo package.",
-                "path": str(echo_file),
+                "deployment": None,
                 "settings": [{"name": "package", "default": "builtin.echo"}],
             },
             {
+                "schema_version": "jarvis.package-description.v1",
                 "name": "builtin.paraview",
                 "short_name": "paraview",
                 "description": "ParaView package.",
-                "path": str(paraview_file),
+                "deployment": None,
                 "settings": [{"name": "package", "default": "builtin.paraview"}],
             },
         ],
@@ -299,6 +431,10 @@ async def test_jarvis_describe_schema_teaches_exact_then_bounded_discovery() -> 
     ]
     assert isinstance(describe.description, str)
     assert "named application" in describe.description
+    assert "versioned deployment contract" in describe.description
+    assert "runtime requirements" in describe.description
+    assert "readiness" in describe.description
+    assert "agent-visible" in describe.description
     assert (
         "unique short name or fully qualified"
         in properties["package_name"]["description"]
@@ -321,6 +457,51 @@ async def test_jarvis_describe_schema_teaches_exact_then_bounded_discovery() -> 
     }
     assert "only for target='pipeline'" in properties["include_yaml"]["description"]
 
+    output_schema = describe.output_schema
+    assert output_schema is not None
+    result_schema = output_schema["properties"]["result"]
+    package_branch = next(
+        branch
+        for branch in result_schema["oneOf"]
+        if branch["properties"]["target"].get("const") == "package"
+    )
+    package_schema = package_branch["properties"]["package"]
+    assert package_schema["additionalProperties"] is False
+    settings_schema = next(
+        option
+        for option in package_schema["properties"]["settings"]["anyOf"]
+        if option.get("type") == "array"
+    )["items"]
+    assert settings_schema["additionalProperties"] is False
+    assert "default" in settings_schema["properties"]
+    assert "default" not in settings_schema["required"]
+    assert {"name", "required", "nullable"}.issubset(settings_schema["required"])
+    deployment_schema = next(
+        option
+        for option in package_schema["properties"]["deployment"]["anyOf"]
+        if option.get("type") == "object"
+    )
+    assert deployment_schema["additionalProperties"] is False
+    assert deployment_schema["properties"]["schema_version"]["const"] == (
+        "jarvis.package-deployment.v1"
+    )
+    assert set(deployment_schema["properties"]) == {
+        "schema_version",
+        "package",
+        "execution_profiles",
+        "runtime_requirements",
+        "configuration_rules",
+    }
+    encoded_deployment_schema = json.dumps(deployment_schema, sort_keys=True)
+    for required_term in (
+        "execution_kind",
+        "readiness",
+        "provider_resolutions",
+        "required_capabilities",
+        "configuration_rules",
+    ):
+        assert required_term in encoded_deployment_schema
+
 
 def test_package_setting_preserves_agent_relevant_parser_metadata() -> None:
     """Package-owned choices, requirements, and aliases survive discovery."""
@@ -342,7 +523,28 @@ def test_package_setting_preserves_agent_relevant_parser_metadata() -> None:
         "default": "service",
         "choices": ["service", "batch"],
         "required": True,
+        "nullable": False,
         "aliases": ["execution_mode"],
+    }
+
+
+def test_null_default_is_explicitly_advertised_as_nullable() -> None:
+    """Agents can distinguish an omitted default from an invalid null value."""
+
+    assert _setting_from_menu_item(
+        {
+            "name": "optional_label",
+            "msg": "Optional label",
+            "type": str,
+            "default": None,
+        }
+    ) == {
+        "name": "optional_label",
+        "description": "Optional label",
+        "type": "str",
+        "default": None,
+        "required": False,
+        "nullable": True,
     }
 
 
@@ -359,7 +561,26 @@ async def test_jarvis_add_step_schema_is_exact_and_has_no_user_bypass() -> None:
     assert "do_configure" in legacy_append.parameters["properties"]
     assert isinstance(add_step.description, str)
     assert "canonical setting names exactly" in add_step.description
+    assert "agent-visible" in add_step.description
     config_description = properties["config"]["description"]
     assert "must not be renamed" in config_description
     assert "objects or lists" in config_description
     assert "serializes them canonically" in config_description
+    assert "nullable=true" in config_description
+
+
+@pytest.mark.asyncio
+async def test_jarvis_run_schema_teaches_exact_spack_handoff() -> None:
+    """The run tool names both ends of the cross-server runtime handoff."""
+
+    tools = await mcp.list_tools()
+    run = next(tool for tool in tools if tool.name == "jarvis_run")
+    properties = run.parameters["properties"]
+
+    assert isinstance(run.description, str)
+    assert "spack_locate.output.load_spec" in run.description
+    assert "jarvis_run.input.spack_specs" in run.description
+    assert "executable path" in run.description
+    spack_specs = properties["spack_specs"]
+    assert "spack_locate.output.load_spec" in spack_specs["description"]
+    assert "spack_locate.output.prefix" in spack_specs["description"]

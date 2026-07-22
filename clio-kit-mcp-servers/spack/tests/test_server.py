@@ -37,6 +37,23 @@ async def test_find_returns_typed_result(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 @pytest.mark.asyncio
+async def test_locate_tools_list_teaches_exact_jarvis_handoff() -> None:
+    """Agents can discover the cross-server handoff before calling locate."""
+
+    tools = await server.mcp.list_tools(run_middleware=False)
+    locate = next(tool for tool in tools if tool.name == "spack_locate")
+
+    assert isinstance(locate.description, str)
+    assert "spack_locate.output.load_spec" in locate.description
+    assert "jarvis_run.input.spack_specs" in locate.description
+    assert "executable path" in locate.description
+    assert locate.output_schema is not None
+    load_spec = locate.output_schema["properties"]["load_spec"]
+    assert "spack_locate.output.load_spec" in load_spec["description"]
+    assert "jarvis_run.input.spack_specs" in load_spec["description"]
+
+
+@pytest.mark.asyncio
 async def test_install_forwards_explicit_reuse_false(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

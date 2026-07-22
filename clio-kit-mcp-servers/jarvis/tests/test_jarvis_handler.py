@@ -977,6 +977,68 @@ class TestPackageOperations:
         assert exc_info.value.status_code == 422
         assert "does not support settings: message" in str(exc_info.value.detail)
 
+    def test_current_configure_accepts_only_declared_nullable_defaults(self):
+        """Explicit null follows the same default metadata returned by describe."""
+        from jarvis_cd.util import PkgArgParse
+
+        from jarvis_mcp.capabilities.jarvis_handler import (
+            _normalize_package_config_request,
+        )
+
+        class ConfigurablePackage:
+            @staticmethod
+            def configure_menu():
+                return [
+                    {"name": "optional_label", "type": str, "default": None},
+                    {"name": "mode", "type": str, "default": "batch"},
+                    {
+                        "name": "install_query",
+                        "type": str,
+                        "default": "",
+                        "agent_visible": False,
+                    },
+                ]
+
+            def get_argparse(self):
+                return PkgArgParse("package", self.configure_menu())
+
+        package = {
+            "pkg_id": "package",
+            "pkg_type": "site.package",
+            "config": {},
+        }
+        pipeline = Mock(
+            env={},
+            get_pkg=Mock(return_value=package),
+            _load_package_instance=Mock(return_value=ConfigurablePackage()),
+        )
+
+        assert _normalize_package_config_request(
+            pipeline,
+            "package",
+            {"optional_label": None},
+        ) == {"optional_label": None}
+        with pytest.raises(ValueError, match="reports nullable=true"):
+            _normalize_package_config_request(
+                pipeline,
+                "package",
+                {"mode": None},
+            )
+        with pytest.raises(
+            ValueError, match="does not support settings: install_query"
+        ):
+            _normalize_package_config_request(
+                pipeline,
+                "package",
+                {"install_query": "simulator"},
+                agent_visible_only=True,
+            )
+        assert _normalize_package_config_request(
+            pipeline,
+            "package",
+            {"install_query": "simulator"},
+        ) == {"install_query": "simulator"}
+
     @pytest.mark.asyncio
     async def test_current_configure_rejects_false_persistence_success(self):
         """A normal return is insufficient unless the edit survives reload."""

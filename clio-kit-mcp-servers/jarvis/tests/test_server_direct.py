@@ -633,6 +633,7 @@ class TestPipelineToolsDirect:
                 "builtin.lammps",
                 pkg_id="lammps_1",
                 do_configure=True,
+                agent_visible_only=True,
                 nodes=4,
             )
 
@@ -663,6 +664,7 @@ class TestPipelineToolsDirect:
                 "builtin.paraview",
                 pkg_id=None,
                 do_configure=True,
+                agent_visible_only=True,
                 dataset_descriptor=descriptor,
             )
 
@@ -680,7 +682,12 @@ class TestPipelineToolsDirect:
             result = await jarvis_edit_step_tool("test", "lammps_1", {"nodes": 2})
 
             assert result["configured"] == "lammps_1"
-            mock_handler.assert_called_once_with("test", "lammps_1", nodes=2)
+            mock_handler.assert_called_once_with(
+                "test",
+                "lammps_1",
+                agent_visible_only=True,
+                nodes=2,
+            )
 
     @pytest.mark.asyncio
     async def test_jarvis_edit_step_remove_operation_unlinks(self):
@@ -1220,6 +1227,7 @@ class TestPipelineToolsDirect:
     ):
         """Package helper functions extract descriptions and optional settings."""
         from jarvis_mcp.server import (
+            _PackageAgentMetadata,
             _first_docstring_or_comment,
             _package_from_pkg_file,
             _setting_from_menu_item,
@@ -1240,6 +1248,8 @@ class TestPipelineToolsDirect:
             "description": "Node count",
             "type": "int",
             "default": 1,
+            "required": False,
+            "nullable": False,
         }
 
         repo = tmp_path / "repo"
@@ -1248,8 +1258,11 @@ class TestPipelineToolsDirect:
         pkg_file = pkg_dir / "pkg.py"
         pkg_file.write_text('"""Demo."""\n')
         with patch(
-            "jarvis_mcp.server._package_settings",
-            side_effect=[[{"name": "x"}], None],
+            "jarvis_mcp.server._package_agent_metadata",
+            return_value=_PackageAgentMetadata(
+                settings=[{"name": "x"}],
+                deployment=None,
+            ),
         ):
             assert _package_from_pkg_file(repo, pkg_file)["settings"] == [{"name": "x"}]
 
@@ -1291,21 +1304,24 @@ class TestPipelineToolsDirect:
         package_file.write_text('"""Site solver."""\n', encoding="utf-8")
         manager = Mock()
         manager.list_repos.return_value = [repo]
+        from jarvis_mcp.server import _PackageAgentMetadata, jarvis_describe_tool
 
         with (
             patch("jarvis_mcp.server.get_manager", return_value=manager),
-            patch("jarvis_mcp.server._package_settings", return_value=None),
+            patch(
+                "jarvis_mcp.server._package_agent_metadata",
+                return_value=_PackageAgentMetadata(settings=None, deployment=None),
+            ),
         ):
-            from jarvis_mcp.server import jarvis_describe_tool
-
             result = await jarvis_describe_tool("packages")
 
         assert result["packages"] == [
             {
+                "schema_version": "jarvis.package-description.v1",
                 "name": "site.solver",
                 "short_name": "solver",
                 "description": "Site solver.",
-                "path": str(package_file),
+                "deployment": None,
             }
         ]
 
@@ -1335,13 +1351,15 @@ class TestPipelineToolsDirect:
         )
         manager = Mock()
         manager.list_repos.return_value = [repo]
+        from jarvis_mcp.server import _PackageAgentMetadata, jarvis_describe_tool
 
         with (
             patch("jarvis_mcp.server.get_manager", return_value=manager),
-            patch("jarvis_mcp.server._package_settings", return_value=None),
+            patch(
+                "jarvis_mcp.server._package_agent_metadata",
+                return_value=_PackageAgentMetadata(settings=None, deployment=None),
+            ),
         ):
-            from jarvis_mcp.server import jarvis_describe_tool
-
             result = await jarvis_describe_tool("package", package_name="builtin.demo")
 
             assert result["target"] == "package"
