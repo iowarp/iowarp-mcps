@@ -61,7 +61,7 @@ wheels = [
 
 [[package]]
 name = "clio-kit"
-version = "2.5.23"
+version = "2.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

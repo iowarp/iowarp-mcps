@@ -196,6 +196,7 @@ PACKAGE_SEARCH_SCHEMA = "jarvis.package-search.v1"
 PACKAGE_SEARCH_CURSOR_SCHEMA = "clio-kit.jarvis-package-search-cursor.v1"
 PACKAGE_DESCRIPTION_SCHEMA = "jarvis.package-description.v1"
 PACKAGE_DEPLOYMENT_SCHEMA = "jarvis.package-deployment.v1"
+CONFIGURATION_INPUT_BINDING_SCHEMA = "jarvis.configuration-input-binding.v1"
 PACKAGE_SEARCH_DEFAULT_PAGE_SIZE = 10
 PACKAGE_SEARCH_MAX_PAGE_SIZE = 25
 PACKAGE_SEARCH_MAX_RESULT_BYTES = 64 * 1024
@@ -266,6 +267,15 @@ class JarvisPackageExecutionProfileDocument(_ClosedDocument):
     when: list[JarvisPackageConditionDocument]
     runtime_requirements: list[str]
     readiness: JarvisPackageReadinessDocument
+    description: str | None = None
+
+
+class JarvisConfigurationInputBindingDocument(_ClosedDocument):
+    """Declared client-local input that must be staged before package use."""
+
+    schema_version: Literal["jarvis.configuration-input-binding.v1"]
+    kind: Literal["local_file"]
+    structure: Literal["regular_file"]
 
 
 class JarvisRuntimeRequirementStatusDocument(_ClosedDocument):
@@ -330,6 +340,7 @@ class JarvisPackageSettingDocument(TypedDict):
     required: bool
     nullable: bool
     aliases: NotRequired[list[str]]
+    input_binding: NotRequired[JarvisConfigurationInputBindingDocument]
 
 
 class JarvisPackageDescriptionDocument(_ClosedDocument):
@@ -1468,8 +1479,11 @@ async def jarvis_create_pipeline_tool(
         "returns package-owned configuration metadata and, when supported, a versioned "
         "deployment contract covering execution profiles, runtime requirements, "
         "readiness, and configuration rules. Package settings include only semantic "
-        "parameters explicitly marked agent-visible; installer, scheduler, and other "
-        "implementation controls remain owned by their dedicated contracts. "
+        "parameters explicitly marked agent-visible. A setting may include a versioned "
+        "input_binding descriptor for a declared local input that must be staged; "
+        "callers must not infer file semantics from setting names or prose. Installer, "
+        "scheduler, and other implementation controls remain owned by their dedicated "
+        "contracts. "
         "target='packages' is an exhaustive legacy inventory with every agent-visible "
         "package setting and can be large; use it only when the complete installed "
         "catalog is explicitly required."
@@ -2731,6 +2745,14 @@ def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
         isinstance(alias, str) and alias for alias in aliases
     ):
         setting["aliases"] = list(aliases)
+    if "input_binding" in item:
+        try:
+            input_binding = JarvisConfigurationInputBindingDocument.model_validate(
+                item["input_binding"]
+            )
+        except ValidationError as error:
+            raise ValueError("invalid package configuration input binding") from error
+        setting["input_binding"] = input_binding.model_dump(mode="json")
     return {
         key: value
         for key, value in setting.items()
@@ -2851,6 +2873,22 @@ def add_spack_command_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_jarvis_root_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the shared validated JARVIS root option to a CLI parser."""
+    parser.add_argument(
+        "--jarvis-root",
+        type=_existing_directory_path,
+        default=None,
+        help="Existing directory to use as the isolated JARVIS_ROOT.",
+    )
+
+
+def configure_jarvis_root(jarvis_root: str | None) -> None:
+    """Apply an explicitly validated JARVIS root before serving requests."""
+    if jarvis_root is not None:
+        os.environ["JARVIS_ROOT"] = jarvis_root
+
+
 def configure_spack_command(spack_command: str | None) -> None:
     """Apply an explicitly validated Spack command for later JARVIS runs."""
     if spack_command is not None:
@@ -2873,6 +2911,20 @@ def _spack_command_path(value: str) -> str:
     return str(resolved)
 
 
+def _existing_directory_path(value: str) -> str:
+    """Resolve and validate an operator-supplied existing directory."""
+    candidate = Path(value).expanduser()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"JARVIS root does not exist: {candidate}"
+        ) from exc
+    if not resolved.is_dir():
+        raise argparse.ArgumentTypeError(f"JARVIS root is not a directory: {resolved}")
+    return str(resolved)
+
+
 def main() -> None:
     """Main entry point for the Jarvis MCP server."""
     parser = argparse.ArgumentParser(description="Jarvis MCP Server")
@@ -2889,8 +2941,10 @@ def main() -> None:
     )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
+    add_jarvis_root_argument(parser)
     add_spack_command_argument(parser)
     args = parser.parse_args()
+    configure_jarvis_root(args.jarvis_root)
     configure_spack_command(args.spack_command)
     transport = args.transport or os.getenv("MCP_TRANSPORT", "stdio")
     profile = args.profile or os.getenv("JARVIS_MCP_PROFILE", "user")

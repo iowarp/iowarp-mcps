@@ -518,7 +518,10 @@ async def append_pkg(
                         _get_package(pipeline, resolved_pkg_id)
                     )
                     _require_persisted_package_config(
-                        resolved_pkg_id, expected, persisted_config
+                        resolved_pkg_id,
+                        expected,
+                        persisted_config,
+                        pipeline=pipeline,
                     )
                     if config_flag:
                         pipeline.configure_package(resolved_pkg_id, config_args)
@@ -527,7 +530,10 @@ async def append_pkg(
                             _get_package(persisted, resolved_pkg_id)
                         )
                         _require_persisted_package_config(
-                            resolved_pkg_id, expected, persisted_config
+                            resolved_pkg_id,
+                            expected,
+                            persisted_config,
+                            pipeline=persisted,
                         )
                 except BaseException as exc:
                     try:
@@ -618,7 +624,12 @@ async def configure_pkg(
                 pipeline.configure_package(pkg_id, _kwargs_to_config_args(kwargs))
                 persisted = _load_pipeline(pipeline_id)
                 persisted_config = _package_config(_get_package(persisted, pkg_id))
-                _require_persisted_package_config(pkg_id, expected, persisted_config)
+                _require_persisted_package_config(
+                    pkg_id,
+                    expected,
+                    persisted_config,
+                    pipeline=persisted,
+                )
         return {
             "pipeline_id": pipeline_id,
             "configured": pkg_id,
@@ -3403,9 +3414,13 @@ def _reject_non_agent_visible_package_settings(
 
 
 def _require_persisted_package_config(
-    pkg_id: str, expected: dict[str, Any], persisted: Any
+    pkg_id: str,
+    expected: dict[str, Any],
+    persisted: Any,
+    *,
+    pipeline: Any | None = None,
 ) -> None:
-    """Fail unless every normalized setting survived a durable pipeline reload."""
+    """Require exact persistence or a verified package-owned input rewrite."""
     if not isinstance(persisted, dict):
         raise RuntimeError(f"Package '{pkg_id}' persisted an invalid configuration")
     mismatches = [
@@ -3413,6 +3428,31 @@ def _require_persisted_package_config(
         for name, value in expected.items()
         if name not in persisted or _jsonable(persisted[name]) != _jsonable(value)
     ]
+    if mismatches and pipeline is not None:
+        package = _get_package(pipeline, pkg_id)
+        loader = getattr(pipeline, "_load_package_instance", None)
+        instance = (
+            loader(package, getattr(pipeline, "env", {}))
+            if package is not None and callable(loader)
+            else package
+        )
+        verifier = getattr(
+            instance,
+            "configuration_input_materialization_matches",
+            None,
+        )
+        if callable(verifier):
+            verified: set[str] = set()
+            for name in mismatches:
+                if name not in persisted:
+                    continue
+                try:
+                    matches = verifier(name, expected[name], persisted[name])
+                except Exception:
+                    matches = False
+                if matches is True:
+                    verified.add(name)
+            mismatches = [name for name in mismatches if name not in verified]
     if mismatches:
         raise ValueError(
             f"Package '{pkg_id}' did not persist settings: {', '.join(mismatches)}"

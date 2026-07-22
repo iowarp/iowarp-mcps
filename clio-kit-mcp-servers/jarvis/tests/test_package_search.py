@@ -84,6 +84,7 @@ async def test_named_package_projects_package_owned_deployment_contract(
             {
                 "name": "distributed_batch",
                 "execution_kind": "batch",
+                "description": "Run the selected distributed simulation workload.",
                 "when": [
                     {
                         "parameter": "mode",
@@ -142,6 +143,16 @@ async def test_named_package_projects_package_owned_deployment_contract(
         {"name": "mode", "type": str, "default": "batch"},
         {"name": "tasks", "type": int, "default": 1},
         {
+            "name": "input_deck",
+            "type": str,
+            "default": "",
+            "input_binding": {
+                "schema_version": "jarvis.configuration-input-binding.v1",
+                "kind": "local_file",
+                "structure": "regular_file",
+            },
+        },
+        {
             "name": "install_query",
             "type": str,
             "default": "",
@@ -177,6 +188,18 @@ async def test_named_package_projects_package_owned_deployment_contract(
             "required": False,
             "nullable": False,
         },
+        {
+            "name": "input_deck",
+            "type": "str",
+            "default": "",
+            "required": False,
+            "nullable": False,
+            "input_binding": {
+                "schema_version": "jarvis.configuration-input-binding.v1",
+                "kind": "local_file",
+                "structure": "regular_file",
+            },
+        },
     ]
     assert "path" not in description
     assert "install_query" not in {
@@ -184,6 +207,22 @@ async def test_named_package_projects_package_owned_deployment_contract(
     }
     assert "executable" not in json.dumps(description, sort_keys=True).casefold()
     load_standalone.assert_called_once_with("site.simulator")
+
+
+def test_setting_projection_rejects_unversioned_or_open_input_bindings() -> None:
+    """File staging authority comes only from the exact closed descriptor."""
+    with pytest.raises(ValueError, match="invalid package configuration input binding"):
+        _setting_from_menu_item(
+            {
+                "name": "input_deck",
+                "type": str,
+                "input_binding": {
+                    "kind": "local_file",
+                    "structure": "regular_file",
+                    "untrusted": True,
+                },
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -212,7 +251,31 @@ async def test_paraview_description_is_semantic_not_site_runtime_configuration(
     package = result["package"]
     assert package["name"] == "builtin.paraview"
     assert package["schema_version"] == "jarvis.package-description.v1"
-    assert package["deployment"] is None
+    deployment = package["deployment"]
+    assert deployment["schema_version"] == "jarvis.package-deployment.v1"
+    assert deployment["package"] == "builtin.paraview"
+    assert {
+        (profile["name"], profile["execution_kind"])
+        for profile in deployment["execution_profiles"]
+    } == {
+        ("batch_script", "batch"),
+        ("client_server", "service"),
+        ("live_dataset_service", "service"),
+    }
+    assert {
+        requirement["id"] for requirement in deployment["runtime_requirements"]
+    } == {"paraview.batch", "paraview.server", "paraview.service"}
+    for requirement in deployment["runtime_requirements"]:
+        assert requirement["provider_resolutions"] == [
+            {
+                "provider": "spack",
+                "query": {"kind": "spec", "value": "paraview"},
+            }
+        ]
+    deployment_text = json.dumps(deployment, sort_keys=True).lower()
+    assert "pvpython" not in deployment_text
+    assert "pvbatch" not in deployment_text
+    assert "--mesa" not in deployment_text
     assert "path" not in package
     settings = {setting["name"]: setting for setting in package["settings"]}
     assert settings["mode"]["default"] == "server"
@@ -435,6 +498,7 @@ async def test_jarvis_describe_schema_teaches_exact_then_bounded_discovery() -> 
     assert "runtime requirements" in describe.description
     assert "readiness" in describe.description
     assert "agent-visible" in describe.description
+    assert "input_binding" in describe.description
     assert (
         "unique short name or fully qualified"
         in properties["package_name"]["description"]
