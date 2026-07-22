@@ -35,7 +35,7 @@
     },
     {
       "name": "spack_locate",
-      "description": "Resolve one unique installed Spack spec and return its exact prefix. An absent package returns the structured not_installed error."
+      "description": "Resolve one unique installed Spack spec. Copy spack_locate.output.load_spec unchanged into one element of jarvis_run.input.spack_specs; do not derive or pass an executable path from the returned prefix. An absent package returns the structured not_installed error."
     },
     {
       "name": "spack_install",
