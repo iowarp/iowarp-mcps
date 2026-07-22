@@ -186,7 +186,14 @@ def test_spack_contract_requires_load_spec_without_exposing_load() -> None:
     assert "spack_load" not in tools
     output_schema = cast(JSON, tools["spack_locate"]["outputSchema"])
     properties = cast(JSON, output_schema["properties"])
-    assert properties["load_spec"] == {"type": "string"}
+    assert properties["load_spec"] == {
+        "type": "string",
+        "description": (
+            "Exact runtime identity for JARVIS. Copy this value unchanged from "
+            "spack_locate.output.load_spec into one element of "
+            "jarvis_run.input.spack_specs."
+        ),
+    }
     assert "load_spec" in cast(list[str], output_schema["required"])
 
 
