@@ -1,0 +1,5 @@
+{
+  "name": "clio-web",
+  "description": "Web MCP server providing curated fetch + search tools for agentic web access",
+  "version": "1.0.0"
+}

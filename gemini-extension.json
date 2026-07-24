@@ -1,6 +1,6 @@
 {
   "name": "clio-kit",
-  "version": "2.6.2",
+  "version": "2.6.3",
   "mcpServers": {
     "clio-adios": {
       "command": "clio-kit",
@@ -161,6 +161,13 @@
       "args": [
         "mcp-server",
         "terrain"
+      ]
+    },
+    "clio-web": {
+      "command": "clio-kit",
+      "args": [
+        "mcp-server",
+        "web"
       ]
     }
   }

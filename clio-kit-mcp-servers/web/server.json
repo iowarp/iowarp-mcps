@@ -1,0 +1,55 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.iowarp/web-mcp",
+  "title": "CLIO Web",
+  "description": "Web MCP server providing curated fetch + search tools for agentic web access",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/iowarp/clio-kit",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "clio-kit",
+      "version": "2.6.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp-server"
+        },
+        {
+          "type": "positional",
+          "value": "web"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "fetch",
+      "description": "Fetch an HTTP(S) URL with a streamed size cap and timeout, convert HTML to Markdown, and return the content inline or (to_file=True) write it to a local file and return its path."
+    },
+    {
+      "name": "search",
+      "description": "Search the web via a configurable provider (keyless DuckDuckGo by default; optional BYO-key Brave or Tavily) and return ranked results."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "web://providers",
+      "name": "search_providers",
+      "description": "The active + available web-search providers and current fetch limits."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "research_web",
+      "description": "Guided search then fetch workflow for researching a topic on the web."
+    }
+  ],
+  "tags": []
+}
