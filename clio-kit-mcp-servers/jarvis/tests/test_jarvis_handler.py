@@ -1357,6 +1357,58 @@ class TestPipelineExecutionOperations:
         load_pipeline.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("execution_id", "reported_execution_id"),
+        [
+            ("", "unassigned"),
+            ("jarvis_c5d3c8ac187b0cef2956bf8256", "jarvis_c5d3c8ac187b0cef2956bf8256"),
+        ],
+    )
+    async def test_execution_query_rejects_invalid_reference_before_pipeline_load(
+        self,
+        execution_id: str,
+        reported_execution_id: str,
+    ) -> None:
+        """Invalid query references fail locally before any pipeline I/O."""
+        with (
+            patch(
+                "jarvis_mcp.capabilities.jarvis_handler._load_pipeline"
+            ) as load_pipeline,
+            pytest.raises(ToolError) as exc_info,
+        ):
+            await get_execution("queryable", execution_id)
+
+        error = json.loads(str(exc_info.value))
+        assert error["error"]["code"] == "jarvis_execution_id_invalid"
+        assert error["error"]["execution_id"] == reported_execution_id
+        assert error["error"]["retryable"] is False
+        assert "exact value returned by jarvis_run" in error["error"]["message"]
+        load_pipeline.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "execution_id",
+        [
+            "jarvis_c5d3c8ac187b0dfe6f0cef2956bf8256",
+            "jarvis_operator-run-1",
+        ],
+    )
+    async def test_execution_query_accepts_generated_and_caller_defined_ids(
+        self,
+        execution_id: str,
+    ) -> None:
+        """Exact generated handles and caller-defined IDs remain queryable."""
+        pipeline = ModernPipeline("queryable")
+        pipeline.run(execution_id=execution_id, wait=False)
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+            return_value=pipeline,
+        ):
+            result = await get_execution("queryable", execution_id)
+
+        assert result["execution_id"] == execution_id
+
+    @pytest.mark.asyncio
     async def test_run_pipeline_scheduler_mode_submits_modern_pipeline(self):
         """Scheduler mode delegates to native Pipeline.submit."""
 
