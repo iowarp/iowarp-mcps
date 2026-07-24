@@ -60,6 +60,8 @@ _SPACK_ENVIRONMENT_TRANSACTION_FILENAME = ".jarvis-mcp-spack-environment.pending
 _SERVICE_RUNTIME_SCHEMA_V1 = "jarvis.service-runtime.v1"
 _SERVICE_RUNTIME_SCHEMA_V2 = "jarvis.service-runtime.v2"
 _SERVICE_RUNTIME_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_JARVIS_GENERATED_EXECUTION_ID = re.compile(r"^jarvis_[0-9a-f]{32}$")
+_JARVIS_GENERATED_EXECUTION_CANDIDATE = re.compile(r"^jarvis_[0-9a-f]*$")
 _SERVICE_RUNTIME_FIELDS_V1 = frozenset(
     {
         "schema_version",
@@ -840,7 +842,7 @@ async def get_execution(
     """Return one durable execution view with selectable owned semantics."""
     validated_pipeline = _validate_pipeline_id(pipeline_id)
     try:
-        validated_execution = _native_execution_id(execution_id)
+        validated_execution = _execution_query_id(execution_id)
     except Exception as exc:
         raise ToolError(
             _structured_runtime_error(
@@ -2571,6 +2573,24 @@ def _native_execution_id(value: str | None) -> str:
             "installed JARVIS-CD does not expose native execution handles"
         ) from exc
     return cast(str, validate_execution_id(value))
+
+
+def _execution_query_id(value: str) -> str:
+    """Validate one existing execution reference without generating a new ID."""
+    if not value:
+        raise ValueError(
+            "execution_id is required; use the exact value returned by jarvis_run"
+        )
+    if (
+        _JARVIS_GENERATED_EXECUTION_CANDIDATE.fullmatch(value) is not None
+        and _JARVIS_GENERATED_EXECUTION_ID.fullmatch(value) is None
+    ):
+        raise ValueError(
+            "JARVIS-generated execution_id must be 'jarvis_' followed by exactly "
+            "32 lowercase hexadecimal characters; use the exact value returned by "
+            "jarvis_run without abbreviation"
+        )
+    return _native_execution_id(value)
 
 
 def _require_execution_parameters(
