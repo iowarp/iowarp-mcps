@@ -160,6 +160,13 @@
         "mcp-server",
         "terrain"
       ]
+    },
+    "clio-web": {
+      "command": "clio-kit",
+      "args": [
+        "mcp-server",
+        "web"
+      ]
     }
   }
 }

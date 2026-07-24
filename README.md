@@ -23,6 +23,7 @@
 <!-- mcp-name: io.github.iowarp/slurm-mcp -->
 <!-- mcp-name: io.github.iowarp/spack-mcp -->
 <!-- mcp-name: io.github.iowarp/terrain-mcp -->
+<!-- mcp-name: io.github.iowarp/web-mcp -->
 
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyPI version](https://img.shields.io/pypi/v/clio-kit.svg)](https://pypi.org/project/clio-kit/)
@@ -264,6 +265,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
 | **`spack`** | 2.1.0 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
 | **`terrain`** | 2.2.3 | Geospatial | Analyze DEMs and terrain point clouds | `clio-kit mcp-server terrain` |
+| **`web`** | 1.0.0 | Web | Fetch a URL to Markdown and search the web | `clio-kit mcp-server web` |
 
 </div>
 
