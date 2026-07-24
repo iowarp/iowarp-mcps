@@ -18,13 +18,13 @@ from urllib.parse import urlsplit
 
 
 Json = dict[str, Any]
-EXPECTED_JARVIS_VERSION = "1.6.0"
+EXPECTED_JARVIS_VERSION = "1.7.0"
 EXPECTED_JARVIS_URL = (
-    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.6.0/"
-    "jarvis_cd-1.6.0-py3-none-any.whl"
+    "https://github.com/grc-iit/jarvis-cd/releases/download/v1.7.0/"
+    "jarvis_cd-1.7.0-py3-none-any.whl"
 )
 EXPECTED_JARVIS_SHA256 = (
-    "c4853138f3263715e806fcd794233d89f4aa58161e3c5fbab59e7f96d24f0e98"
+    "f61d2c9b01af1794263013b9045916230c36c318c2984ba4f35d82d8c994e9bb"
 )
 
 
