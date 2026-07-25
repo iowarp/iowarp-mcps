@@ -729,6 +729,46 @@ class TestHandlerHelpers:
         no_env = SimpleNamespace()
         jarvis_handler._build_pipeline_env(no_env)
 
+    def test_build_pipeline_env_uses_environment_manager_for_current_jarvis(self):
+        """JARVIS 1.7 pipelines persist its filtered current environment."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        captured = {
+            "HOME": "/home/alice",
+            "PATH": "/usr/bin",
+            "USER": "alice",
+        }
+        capture = Mock(return_value=captured)
+        manager = SimpleNamespace(_capture_current_environment=capture)
+        pipeline = SimpleNamespace(jarvis=object(), env={})
+        with patch(
+            "jarvis_cd.core.environment.EnvironmentManager",
+            return_value=manager,
+        ) as manager_class:
+            jarvis_handler._build_pipeline_env(pipeline)
+
+        manager_class.assert_called_once_with(pipeline.jarvis)
+        capture.assert_called_once_with()
+        assert pipeline.env == captured
+
+    def test_build_pipeline_env_rejects_invalid_current_jarvis_capture(self):
+        """A malformed dependency result fails instead of persisting empty state."""
+        from jarvis_mcp.capabilities import jarvis_handler
+
+        manager = SimpleNamespace(_capture_current_environment=Mock(return_value={"PATH": 3}))
+        pipeline = SimpleNamespace(jarvis=object(), env={})
+        with (
+            patch(
+                "jarvis_cd.core.environment.EnvironmentManager",
+                return_value=manager,
+            ),
+            pytest.raises(
+                TypeError,
+                match="JARVIS environment capture must return a string mapping",
+            ),
+        ):
+            jarvis_handler._build_pipeline_env(pipeline)
+
     def test_package_lookup_object_and_missing_path_fallbacks(self):
         """Package and path helpers handle object packages and missing Jarvis paths."""
         from jarvis_mcp.capabilities.jarvis_handler import (

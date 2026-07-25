@@ -14,7 +14,7 @@ import tempfile
 import threading
 import time
 from collections import deque
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager, redirect_stdout
 from dataclasses import dataclass
 from functools import wraps
@@ -3124,16 +3124,36 @@ def _save_pipeline(pipeline: Any) -> None:
 
 
 def _build_pipeline_env(pipeline: Any) -> None:
-    if not hasattr(pipeline, "build_env"):
+    if hasattr(pipeline, "build_env"):
+        default_keys = ["CMAKE_PREFIX_PATH", "PATH"]
+        env_track_dict = {key: True for key in default_keys}
+        try:
+            built = pipeline.build_env(env_track_dict)
+        except TypeError:
+            built = pipeline.build_env()
+        if built is not None and built is not pipeline:
+            _save_pipeline(built)
         return
-    default_keys = ["CMAKE_PREFIX_PATH", "PATH"]
-    env_track_dict = {key: True for key in default_keys}
-    try:
-        built = pipeline.build_env(env_track_dict)
-    except TypeError:
-        built = pipeline.build_env()
-    if built is not None and built is not pipeline:
-        _save_pipeline(built)
+
+    jarvis_config = getattr(pipeline, "jarvis", None)
+    if jarvis_config is None:
+        return
+
+    from jarvis_cd.core.environment import EnvironmentManager  # type: ignore[import-untyped]
+
+    manager = EnvironmentManager(jarvis_config)
+    capture = getattr(manager, "capture_current_environment", None)
+    if not callable(capture):
+        capture = getattr(manager, "_capture_current_environment", None)
+    if not callable(capture):
+        raise RuntimeError("installed JARVIS does not expose environment capture")
+
+    captured = capture()
+    if not isinstance(captured, Mapping) or not all(
+        isinstance(name, str) and isinstance(value, str) for name, value in captured.items()
+    ):
+        raise TypeError("JARVIS environment capture must return a string mapping")
+    pipeline.env = dict(captured)
 
 
 def _apply_pipeline_config(pipeline: Any, config: dict[str, Any]) -> None:
