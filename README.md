@@ -1,5 +1,7 @@
 # CLIO Kit
 
+[![MCP Toplist](https://mcptoplist.com/badge/pulsemcp%2Fiowarp-clio-adios.svg)](https://mcptoplist.com/server/pulsemcp%2Fiowarp-clio-adios)
+
 <!-- mcp-name: io.github.iowarp/adios-mcp -->
 <!-- mcp-name: io.github.iowarp/arxiv-mcp -->
 <!-- mcp-name: io.github.iowarp/chronolog-mcp -->
