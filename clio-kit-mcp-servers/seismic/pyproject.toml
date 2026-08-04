@@ -12,7 +12,7 @@ authors = [
 keywords = ["MCP", "seismic", "earthquake", "seismology", "gutenberg-richter", "omori", "matplotlib", "numpy"]
 
 dependencies = [
-    "fastmcp>=3.2.0",
+    "fastmcp>=4.0.0b1",
     "python-dotenv>=1.2.2",
     "numpy>=1.24.0",
     "matplotlib>=3.6.0",

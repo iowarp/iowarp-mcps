@@ -12,7 +12,7 @@ authors = [
 keywords = ["jarvis", "pipeline-management", "high-performance-computing", "hpc", "workflow", "data-pipelines", "scientific-computing", "mcp", "package-management"]
 
 dependencies = [
-  "fastmcp>=3.2.0",
+  "fastmcp>=4.0.0b1",
   "fastapi",
   "python-dotenv>=1.2.2",
   "jarvis-cd @ https://github.com/grc-iit/jarvis-cd/releases/download/v1.7.0/jarvis_cd-1.7.0-py3-none-any.whl#sha256=f61d2c9b01af1794263013b9045916230c36c318c2984ba4f35d82d8c994e9bb",
