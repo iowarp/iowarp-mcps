@@ -1,9 +1,14 @@
 schema-version = 1
 
-# Publish the JARVIS server under a fresh immutable Registry version so its
-# package coordinate resolves the wheel containing the updated JARVIS lock.
+# Only list a server here when ITS registry contract (tool names/schemas
+# under [servers] below) actually changed this release. Republishing an
+# unchanged contract under the same version is a duplicate the Registry
+# rejects; bumping the version just to re-point the pypi wheel coordinate
+# is version churn with no semantic change. When a server's contract does
+# change, add it here WITH a real version bump under [servers] in the same
+# PR, then remove it again once published.
 [mcp-registry-release]
-publish = ["jarvis"]
+publish = []
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
