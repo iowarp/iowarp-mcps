@@ -41,7 +41,7 @@ _READONLY_ANNOTATIONS = {
 
 @mcp.tool(
     name="search_arxiv",
-    title="search(papers)",
+    title="Search Papers",
     description="Search ArXiv for papers by category or topic.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -57,7 +57,7 @@ async def search_arxiv_tool(query: str = "cs.AI", max_results: int = 5) -> dict:
 
 @mcp.tool(
     name="get_recent_papers",
-    title="recent(papers)",
+    title="Recent Papers",
     description="Get recent papers from a specific ArXiv category.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "papers"},
@@ -73,7 +73,7 @@ async def get_recent_papers_tool(category: str = "cs.AI", max_results: int = 5) 
 
 @mcp.tool(
     name="search_papers_by_author",
-    title="search(author)",
+    title="Search By Author",
     description="Search ArXiv papers by author name.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -89,7 +89,7 @@ async def search_papers_by_author_tool(author: str, max_results: int = 10) -> di
 
 @mcp.tool(
     name="search_by_title",
-    title="search(title)",
+    title="Search By Title",
     description="Search ArXiv papers by title keywords.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -105,7 +105,7 @@ async def search_by_title_tool(title_keywords: str, max_results: int = 10) -> di
 
 @mcp.tool(
     name="search_by_abstract",
-    title="search(abstract)",
+    title="Search By Abstract",
     description="Search ArXiv papers by abstract keywords.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -125,7 +125,7 @@ async def search_by_abstract_tool(
 
 @mcp.tool(
     name="search_by_subject",
-    title="search(subject)",
+    title="Search By Subject",
     description="Search ArXiv papers by subject classification.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -141,7 +141,7 @@ async def search_by_subject_tool(subject: str, max_results: int = 10) -> dict:
 
 @mcp.tool(
     name="search_date_range",
-    title="search(range)",
+    title="Search By Date",
     description="Search ArXiv papers within a specific date range.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -161,7 +161,7 @@ async def search_date_range_tool(
 
 @mcp.tool(
     name="get_paper_details",
-    title="get(paper)",
+    title="Paper Details",
     description="Get detailed information about a specific ArXiv paper by ID.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "papers"},
@@ -177,7 +177,7 @@ async def get_paper_details_tool(arxiv_id: str) -> dict:
 
 @mcp.tool(
     name="export_to_bibtex",
-    title="export(bibtex)",
+    title="Export BibTeX",
     description="Export search results to BibTeX format for citation management.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "export"},
@@ -193,7 +193,7 @@ async def export_to_bibtex_tool(papers_json: str) -> dict:
 
 @mcp.tool(
     name="find_similar_papers",
-    title="find(similar)",
+    title="Find Similar Papers",
     description="Find papers similar to a reference paper based on categories and keywords.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "search"},
@@ -213,7 +213,7 @@ async def find_similar_papers_tool(
 
 @mcp.tool(
     name="download_paper_pdf",
-    title="download(pdf)",
+    title="Download PDF",
     description="Download the PDF of a paper from ArXiv.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "download"},
@@ -231,7 +231,7 @@ async def download_paper_pdf_tool(
 
 @mcp.tool(
     name="get_pdf_url",
-    title="get(pdfurl)",
+    title="Get PDF URL",
     description="Get the direct PDF URL for a paper without downloading.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "papers"},
@@ -247,7 +247,7 @@ async def get_pdf_url_tool(arxiv_id: str) -> dict:
 
 @mcp.tool(
     name="download_multiple_pdfs",
-    title="download(many)",
+    title="Download Multiple PDFs",
     description="Download multiple PDFs concurrently with rate limiting.",
     annotations=_READONLY_ANNOTATIONS,
     tags={"arxiv", "download"},

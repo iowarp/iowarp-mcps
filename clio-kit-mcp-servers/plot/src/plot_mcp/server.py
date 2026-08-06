@@ -6,13 +6,15 @@ pandas and matplotlib.
 """
 
 import os
-from typing import Annotated
+from typing import Annotated, Any, Literal, TypedDict, cast
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
+from fastmcp.tools import ToolResult
+from fastmcp.utilities.types import Image
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, TypeAdapter
 import logging
 from .implementation.plot_capabilities import (
     create_line_plot,
@@ -22,7 +24,129 @@ from .implementation.plot_capabilities import (
     create_heatmap,
     create_timeseries_plot,
     get_data_info,
+    build_preview_png,
 )
+
+
+# --- Structured result shapes (drive real MCP outputSchema declarations) ----
+
+
+class LinePlotResult(TypedDict):
+    """Structured result for a successful line plot."""
+
+    status: Literal["success"]
+    plot_type: Literal["line"]
+    output_path: str
+    x_column: str
+    y_column: str
+    title: str
+    data_points: int
+
+
+class BarPlotResult(TypedDict):
+    """Structured result for a successful bar plot."""
+
+    status: Literal["success"]
+    plot_type: Literal["bar"]
+    output_path: str
+    x_column: str
+    y_column: str
+    title: str
+    data_points: int
+    aggregated: bool
+
+
+class ScatterPlotResult(TypedDict):
+    """Structured result for a successful scatter plot."""
+
+    status: Literal["success"]
+    plot_type: Literal["scatter"]
+    output_path: str
+    x_column: str
+    y_column: str
+    title: str
+    data_points: int
+
+
+class HistogramResult(TypedDict):
+    """Structured result for a successful histogram."""
+
+    status: Literal["success"]
+    plot_type: Literal["histogram"]
+    output_path: str
+    column: str
+    bins: int
+    title: str
+    data_points: int
+
+
+class HeatmapResult(TypedDict):
+    """Structured result for a successful correlation heatmap."""
+
+    status: Literal["success"]
+    plot_type: Literal["heatmap"]
+    output_path: str
+    title: str
+    data_points: int
+    numeric_columns: list[str]
+
+
+class TimeseriesXAxis(TypedDict):
+    """Inferred x-axis metadata for a time-series plot."""
+
+    kind: Literal[
+        "epoch_milliseconds",
+        "epoch_seconds",
+        "datetime",
+        "numeric",
+        "categorical",
+        "row_index",
+    ]
+    label: str
+    parse_success_ratio: float
+
+
+class TimeseriesPlotResult(TypedDict):
+    """Structured result for a successful multi-series time-series plot."""
+
+    status: Literal["success"]
+    plot_type: Literal["timeseries"]
+    output_path: str
+    x_column: str
+    x_axis: TimeseriesXAxis
+    y_columns: list[str]
+    title: str
+    data_points: int
+
+
+class DataInfoResult(TypedDict):
+    """Structured result describing a CSV/Excel file's schema and contents."""
+
+    status: Literal["success"]
+    file_path: str
+    shape: tuple[int, int]
+    columns: list[str]
+    dtypes: dict[str, str]
+    null_counts: dict[str, int]
+    memory_usage: int
+    head: dict[str, Any]
+
+
+def _plot_tool_result(structured: dict[str, Any]) -> ToolResult:
+    """Wrap a plot capability's structured result with a bounded PNG preview.
+
+    Every image-producing plot tool returns both a rendered MCP
+    ``ImageContent`` block (a downscaled preview, bounded to ~800px wide so
+    the wire payload stays small) and the unmodified structured dict —
+    ``output_path`` in that dict still points at the full-resolution file on
+    disk; nothing about the saved file changes.
+    """
+    preview_bytes = build_preview_png(structured["output_path"])
+    return ToolResult(
+        content=[Image(data=preview_bytes, format="png")],
+        structured_content=structured,
+    )
+
 
 # Configure logging
 logging.basicConfig(
@@ -41,14 +165,15 @@ mcp: FastMCP = FastMCP(
         "Generate line plots, bar charts, scatter plots, histograms, heatmaps, and "
         "multi-series time-series line charts from data. Use plot_timeseries to plot "
         "one or more y columns against an auto-detected time, numeric, or categorical "
-        "x axis. All plots are saved to files."
+        "x axis. Every plot tool saves the full-resolution image to output_path and "
+        "also returns a bounded PNG preview inline in the response for immediate viewing."
     ),
 )
 
 
 @mcp.tool(
     name="line_plot",
-    title="plot(line)",
+    title="Line Plot",
     description="Create a line plot from CSV or Excel data with customizable styling.",
     annotations={
         "readOnlyHint": False,
@@ -56,6 +181,7 @@ mcp: FastMCP = FastMCP(
         "idempotentHint": True,
     },
     tags={"plot", "line-chart", "visualization"},
+    output_schema=TypeAdapter(LinePlotResult).json_schema(mode="serialization"),
 )
 async def line_plot_tool(
     file_path: str,
@@ -63,7 +189,7 @@ async def line_plot_tool(
     y_column: str,
     title: str = "Line Plot",
     output_path: str = "line_plot.png",
-) -> dict:
+) -> ToolResult:
     """
     Create a line plot from data file with comprehensive visualization options.
 
@@ -75,22 +201,21 @@ async def line_plot_tool(
         output_path: Absolute path where the plot image will be saved (supports PNG, PDF, SVG)
 
     Returns:
-        Dictionary containing:
-        - plot_info: Details about the generated plot including dimensions and format
-        - data_summary: Statistical summary of the plotted data
-        - file_details: Information about the output file size and location
-        - visualization_stats: Metrics about data points and trends
+        A result carrying both a rendered PNG preview (bounded to ~800px
+        wide) and a structured dict: status, plot_type, output_path (the
+        full-resolution file on disk), x_column, y_column, title, and
+        data_points.
     """
     logger.info(f"Creating line plot from {file_path}")
     result = create_line_plot(file_path, x_column, y_column, title, output_path)
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return _plot_tool_result(result)
 
 
 @mcp.tool(
     name="bar_plot",
-    title="plot(bar)",
+    title="Bar Plot",
     description="Create a bar chart from CSV or Excel data with categorical grouping.",
     annotations={
         "readOnlyHint": False,
@@ -98,6 +223,7 @@ async def line_plot_tool(
         "idempotentHint": True,
     },
     tags={"plot", "bar-chart", "visualization"},
+    output_schema=TypeAdapter(BarPlotResult).json_schema(mode="serialization"),
 )
 async def bar_plot_tool(
     file_path: str,
@@ -105,7 +231,7 @@ async def bar_plot_tool(
     y_column: str,
     title: str = "Bar Plot",
     output_path: str = "bar_plot.png",
-) -> dict:
+) -> ToolResult:
     """
     Create a bar plot from data file with comprehensive customization options.
 
@@ -117,22 +243,21 @@ async def bar_plot_tool(
         output_path: Absolute path where the plot image will be saved (supports PNG, PDF, SVG)
 
     Returns:
-        Dictionary containing:
-        - plot_info: Details about the generated bar chart including bar count and styling
-        - data_summary: Statistical summary of the categorical and numerical data
-        - file_details: Information about the output file size and location
-        - visualization_stats: Metrics about data distribution and categories
+        A result carrying both a rendered PNG preview (bounded to ~800px
+        wide) and a structured dict: status, plot_type, output_path (the
+        full-resolution file on disk), x_column, y_column, title,
+        data_points, and whether the bars were aggregated by mean.
     """
     logger.info(f"Creating bar plot from {file_path}")
     result = create_bar_plot(file_path, x_column, y_column, title, output_path)
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return _plot_tool_result(result)
 
 
 @mcp.tool(
     name="scatter_plot",
-    title="plot(scatter)",
+    title="Scatter Plot",
     description="Create a scatter plot from CSV or Excel data for correlation analysis.",
     annotations={
         "readOnlyHint": False,
@@ -140,6 +265,7 @@ async def bar_plot_tool(
         "idempotentHint": True,
     },
     tags={"plot", "scatter-plot", "visualization"},
+    output_schema=TypeAdapter(ScatterPlotResult).json_schema(mode="serialization"),
 )
 async def scatter_plot_tool(
     file_path: str,
@@ -147,7 +273,7 @@ async def scatter_plot_tool(
     y_column: str,
     title: str = "Scatter Plot",
     output_path: str = "scatter_plot.png",
-) -> dict:
+) -> ToolResult:
     """
     Create a scatter plot from data file with advanced correlation analysis.
 
@@ -159,22 +285,21 @@ async def scatter_plot_tool(
         output_path: Absolute path where the plot image will be saved (supports PNG, PDF, SVG)
 
     Returns:
-        Dictionary containing:
-        - plot_info: Details about the generated scatter plot including point count and styling
-        - correlation_stats: Statistical correlation metrics and trend analysis
-        - data_summary: Statistical summary of both x and y variables
-        - file_details: Information about the output file size and location
+        A result carrying both a rendered PNG preview (bounded to ~800px
+        wide) and a structured dict: status, plot_type, output_path (the
+        full-resolution file on disk), x_column, y_column, title, and
+        data_points.
     """
     logger.info(f"Creating scatter plot from {file_path}")
     result = create_scatter_plot(file_path, x_column, y_column, title, output_path)
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return _plot_tool_result(result)
 
 
 @mcp.tool(
     name="histogram_plot",
-    title="plot(histogram)",
+    title="Histogram",
     description="Create a histogram from CSV or Excel data showing value distribution.",
     annotations={
         "readOnlyHint": False,
@@ -182,6 +307,7 @@ async def scatter_plot_tool(
         "idempotentHint": True,
     },
     tags={"plot", "histogram", "visualization"},
+    output_schema=TypeAdapter(HistogramResult).json_schema(mode="serialization"),
 )
 async def histogram_plot_tool(
     file_path: str,
@@ -189,7 +315,7 @@ async def histogram_plot_tool(
     bins: int = 30,
     title: str = "Histogram",
     output_path: str = "histogram.png",
-) -> dict:
+) -> ToolResult:
     """
     Create a histogram from data file with advanced statistical analysis.
 
@@ -201,22 +327,20 @@ async def histogram_plot_tool(
         output_path: Absolute path where the plot image will be saved (supports PNG, PDF, SVG)
 
     Returns:
-        Dictionary containing:
-        - plot_info: Details about the generated histogram including bin information
-        - distribution_stats: Statistical metrics including mean, median, mode, and standard deviation
-        - data_summary: Comprehensive summary of the data distribution
-        - file_details: Information about the output file size and location
+        A result carrying both a rendered PNG preview (bounded to ~800px
+        wide) and a structured dict: status, plot_type, output_path (the
+        full-resolution file on disk), column, bins, title, and data_points.
     """
     logger.info(f"Creating histogram from {file_path}")
     result = create_histogram(file_path, column, bins, title, output_path)
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return _plot_tool_result(result)
 
 
 @mcp.tool(
     name="heatmap_plot",
-    title="plot(heatmap)",
+    title="Heatmap",
     description="Create a correlation heatmap from numeric columns in CSV or Excel data.",
     annotations={
         "readOnlyHint": False,
@@ -224,10 +348,11 @@ async def histogram_plot_tool(
         "idempotentHint": True,
     },
     tags={"plot", "heatmap", "visualization"},
+    output_schema=TypeAdapter(HeatmapResult).json_schema(mode="serialization"),
 )
 async def heatmap_plot_tool(
     file_path: str, title: str = "Heatmap", output_path: str = "heatmap.png"
-) -> dict:
+) -> ToolResult:
     """
     Create a heatmap from data file with advanced correlation visualization.
 
@@ -237,22 +362,21 @@ async def heatmap_plot_tool(
         output_path: Absolute path where the plot image will be saved (supports PNG, PDF, SVG)
 
     Returns:
-        Dictionary containing:
-        - plot_info: Details about the generated heatmap including matrix dimensions
-        - correlation_matrix: Full correlation matrix with statistical significance
-        - data_summary: Statistical summary of all numerical variables
-        - file_details: Information about the output file size and location
+        A result carrying both a rendered PNG preview (bounded to ~800px
+        wide) and a structured dict: status, plot_type, output_path (the
+        full-resolution file on disk), title, data_points, and the numeric
+        columns included in the correlation matrix.
     """
     logger.info(f"Creating heatmap from {file_path}")
     result = create_heatmap(file_path, title, output_path)
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return _plot_tool_result(result)
 
 
 @mcp.tool(
     name="plot_timeseries",
-    title="plot(timeseries)",
+    title="Timeseries Plot",
     description="Create a multi-series line chart PNG from one or more y columns of a CSV or Excel file, auto-detecting a time, numeric, or categorical x axis.",
     annotations={
         "readOnlyHint": False,
@@ -260,6 +384,7 @@ async def heatmap_plot_tool(
         "idempotentHint": True,
     },
     tags={"plot", "line-chart", "timeseries", "visualization"},
+    output_schema=TypeAdapter(TimeseriesPlotResult).json_schema(mode="serialization"),
 )
 async def plot_timeseries(
     data_path: str,
@@ -273,7 +398,7 @@ async def plot_timeseries(
     output_path: str = "timeseries.png",
     title: str | None = None,
     max_rows: int = 2000,
-) -> dict:
+) -> ToolResult:
     """
     Create a time-series line plot from one or more columns of a data file.
 
@@ -293,11 +418,11 @@ async def plot_timeseries(
         max_rows: Maximum number of leading rows to read and plot
 
     Returns:
-        Dictionary containing:
-        - plot_info: Details about the generated plot including the resolved y columns
-        - x_axis: The inferred x-axis kind, label, and parse-success ratio
-        - data_summary: Number of data points plotted
-        - file_details: Information about the output file location
+        A result carrying both a rendered PNG preview (bounded to ~800px
+        wide) and a structured dict: status, plot_type, output_path (the
+        full-resolution file on disk), x_column, the inferred x_axis (kind,
+        label, parse_success_ratio), the resolved y_columns, title, and
+        data_points.
     """
     logger.info(f"Creating timeseries plot from {data_path}")
     result = create_timeseries_plot(
@@ -305,12 +430,12 @@ async def plot_timeseries(
     )
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return _plot_tool_result(result)
 
 
 @mcp.tool(
     name="data_info",
-    title="describe(data)",
+    title="Describe Data",
     description="Get schema, column types, and summary statistics for a CSV or Excel file.",
     annotations={
         "readOnlyHint": True,
@@ -319,7 +444,7 @@ async def plot_timeseries(
     },
     tags={"data", "analysis", "visualization"},
 )
-async def data_info_tool(file_path: str) -> dict:
+async def data_info_tool(file_path: str) -> DataInfoResult:
     """
     Get comprehensive data file information with detailed analysis.
 
@@ -327,17 +452,15 @@ async def data_info_tool(file_path: str) -> dict:
         file_path: Absolute path to CSV or Excel file
 
     Returns:
-        Dictionary containing:
-        - data_schema: Column names, data types, and null value analysis
-        - data_quality: Missing values, duplicates, and data consistency metrics
-        - statistical_summary: Basic statistics for numerical and categorical columns
-        - visualization_recommendations: Suggested plot types based on data characteristics
+        Dictionary containing status, file_path, shape (rows, columns),
+        columns, dtypes, null_counts, memory_usage, and a JSON preview of the
+        first rows (head).
     """
     logger.info(f"Getting data info for {file_path}")
     result = get_data_info(file_path)
     if result.get("status") == "error":
         raise ToolError(result["error"])
-    return result
+    return cast(DataInfoResult, result)
 
 
 @mcp.resource("plot://styles")

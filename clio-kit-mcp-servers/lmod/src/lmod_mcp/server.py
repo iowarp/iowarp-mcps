@@ -35,7 +35,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="module_list",
-    title="list(loaded)",
+    title="List Loaded",
     description="List all currently loaded environment modules.",
     annotations={
         "readOnlyHint": True,
@@ -54,7 +54,7 @@ async def module_list_tool() -> dict:
 
 @mcp.tool(
     name="module_avail",
-    title="search(avail)",
+    title="Search Available",
     description="Search for available modules, optionally filtered by name pattern.",
     annotations={
         "readOnlyHint": True,
@@ -73,7 +73,7 @@ async def module_avail_tool(pattern: Optional[str] = None) -> dict:
 
 @mcp.tool(
     name="module_show",
-    title="show(module)",
+    title="Show Module",
     description="Display detailed information about a specific module.",
     annotations={
         "readOnlyHint": True,
@@ -92,7 +92,7 @@ async def module_show_tool(module_name: str) -> dict:
 
 @mcp.tool(
     name="module_load",
-    title="load(modules)",
+    title="Load Modules",
     description="Load one or more environment modules into the current session.",
     annotations={
         "readOnlyHint": False,
@@ -113,7 +113,7 @@ async def module_load_tool(modules: list[str]) -> dict:
 
 @mcp.tool(
     name="module_unload",
-    title="unload(modules)",
+    title="Unload Modules",
     description="Unload one or more currently loaded modules from the environment.",
     annotations={
         "readOnlyHint": False,
@@ -134,7 +134,7 @@ async def module_unload_tool(modules: list[str]) -> dict:
 
 @mcp.tool(
     name="module_swap",
-    title="swap(module)",
+    title="Swap Module",
     description="Swap one module for another atomically.",
     annotations={
         "readOnlyHint": False,
@@ -155,7 +155,7 @@ async def module_swap_tool(old_module: str, new_module: str) -> dict:
 
 @mcp.tool(
     name="module_spider",
-    title="spider(search)",
+    title="Spider Search",
     description="Search the entire module tree comprehensively for matching modules.",
     annotations={
         "readOnlyHint": True,
@@ -174,7 +174,7 @@ async def module_spider_tool(pattern: Optional[str] = None) -> dict:
 
 @mcp.tool(
     name="module_save",
-    title="save(collection)",
+    title="Save Collection",
     description="Save currently loaded modules as a named collection.",
     annotations={
         "readOnlyHint": False,
@@ -195,7 +195,7 @@ async def module_save_tool(collection_name: str) -> dict:
 
 @mcp.tool(
     name="module_restore",
-    title="restore(collection)",
+    title="Restore Collection",
     description="Restore a previously saved module collection.",
     annotations={
         "readOnlyHint": False,
@@ -216,7 +216,7 @@ async def module_restore_tool(collection_name: str) -> dict:
 
 @mcp.tool(
     name="module_savelist",
-    title="list(collections)",
+    title="List Collections",
     description="List all saved module collections.",
     annotations={
         "readOnlyHint": True,

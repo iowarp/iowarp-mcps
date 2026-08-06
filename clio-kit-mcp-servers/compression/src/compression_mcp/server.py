@@ -26,7 +26,7 @@ mcp: FastMCP = FastMCP(
 
 
 @mcp.tool(
-    title="compress(file)",
+    title="Compress",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -45,7 +45,7 @@ async def compress_file_tool(
 
 
 @mcp.tool(
-    title="decompress(file)",
+    title="Decompress",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,

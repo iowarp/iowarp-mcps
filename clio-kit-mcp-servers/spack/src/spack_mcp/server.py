@@ -47,7 +47,7 @@ ResultT = TypeVar("ResultT")
 
 @mcp.tool(
     name="spack_find",
-    title="find(packages)",
+    title="Find Packages",
     description=(
         "List installed Spack packages matching an optional constraint. "
         "No matches is a successful result with count=0 and packages=[]."
@@ -67,7 +67,7 @@ async def spack_find_tool(query: str | None = None) -> SpackFindResult:
 
 @mcp.tool(
     name="spack_locate",
-    title="locate(package)",
+    title="Locate Package",
     description=(
         "Resolve one unique installed Spack spec. Copy "
         "spack_locate.output.load_spec unchanged into one element of "
@@ -90,7 +90,7 @@ async def spack_locate_tool(spec: str) -> SpackLocateResult:
 
 @mcp.tool(
     name="spack_install",
-    title="install(package)",
+    title="Install Package",
     description=(
         "Install one Spack spec with explicit reusable or fresh concretization and "
         "verify that a matching install is observable."
@@ -128,7 +128,7 @@ async def spack_install_tool(
 
 @mcp.tool(
     name="spack_environment",
-    title="diff(environment)",
+    title="Diff Environment",
     description=(
         "Admin diagnostic: return a filtered structured environment for installed specs. "
         "This does not mutate the MCP server or any later process."

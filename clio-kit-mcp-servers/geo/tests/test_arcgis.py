@@ -321,8 +321,8 @@ async def test_tool_runs_in_memory(fake_http, tmp_path) -> None:
                 "output_path": str(out),
             },
         )
-    assert result.data["ok"] is True
-    assert result.data["feature_count"] == 2
+    assert result.structured_content["ok"] is True
+    assert result.structured_content["feature_count"] == 2
     assert out.is_file()
 
 

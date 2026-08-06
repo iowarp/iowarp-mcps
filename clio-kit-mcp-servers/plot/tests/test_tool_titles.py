@@ -43,8 +43,19 @@ async def test_titles_are_distinct_within_server() -> None:
 
 @pytest.mark.asyncio
 async def test_plot_timeseries_title_matches_project_owner_mapping() -> None:
-    """The owner's exact given mapping for this tool: plot_timeseries -> plot(timeseries)."""
+    """The owner's exact given mapping for this tool: plot_timeseries -> Timeseries Plot."""
     async with Client(mcp) as client:
         tools = {tool.name: tool for tool in await client.list_tools()}
 
-    assert tools["plot_timeseries"].title == "plot(timeseries)"
+    assert tools["plot_timeseries"].title == "Timeseries Plot"
+
+
+@pytest.mark.asyncio
+async def test_titles_have_no_parentheses() -> None:
+    """Titles are plain Title Case names; parens are a UI-injected call-arg
+    decoration, not part of the tool's display title (2.7.1 rename)."""
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+
+    with_parens = [tool.name for tool in tools if tool.title and "(" in tool.title]
+    assert not with_parens, f"Tools with parens in title: {with_parens}"

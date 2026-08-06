@@ -7,13 +7,14 @@ visualized as a layered map with an optional web-tile basemap.
 """
 
 import logging
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, cast
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 from pydantic import Field
+from typing_extensions import NotRequired, TypedDict
 
 from .implementation import (
     ArcGISQueryError,
@@ -27,6 +28,159 @@ from .implementation import (
     query_arcgis_features,
     render_map,
 )
+
+# --- Structured result shapes (drive real MCP outputSchema declarations) ----
+
+
+class MapLayerSummary(TypedDict):
+    """Per-layer feature/geometry summary within a rendered map result.
+
+    ``skipped`` is present only when the layer had no usable geometries;
+    ``geometry`` is present only when it did — the two are mutually
+    exclusive, but both are optional so one TypedDict covers both outcomes.
+    """
+
+    name: str
+    features: int
+    geometry: NotRequired[list[str]]
+    skipped: NotRequired[Literal["no features"]]
+
+
+class MapBounds(TypedDict):
+    """WGS84 bounding box merged across every rendered layer."""
+
+    min_lon: float
+    min_lat: float
+    max_lon: float
+    max_lat: float
+
+
+class RenderFeatureMapResult(TypedDict):
+    """Structured result for a successful render_feature_map call."""
+
+    status: Literal["success"]
+    output_path: str
+    size_bytes: int
+    bounds: MapBounds
+    basemap: bool
+    layers: list[MapLayerSummary]
+
+
+class MatchedPoint(TypedDict):
+    """One point that fell within the (optionally buffered) query polygons."""
+
+    index: int
+    lon: float
+    lat: float
+    properties: dict[str, Any]
+
+
+class PointsInPolygonsResult(TypedDict):
+    """Structured result for a successful points_in_polygons call.
+
+    Every return path in the implementation (no input points, no input
+    polygons, or a normal overlap) produces this exact same shape — only the
+    counts and ``matched`` contents vary — so one TypedDict covers all of
+    them; no discriminated union is needed here.
+    """
+
+    status: Literal["success"]
+    points_total: int
+    polygons_total: int
+    matched_count: int
+    matched: list[MatchedPoint]
+
+
+class BoundingBoxResult(TypedDict):
+    """Structured result for a bounding_box call.
+
+    ``status`` is ``"empty"`` when the input GeoJSON had no usable
+    geometries — ``bbox`` is then ``None`` and ``feature_count`` is 0.
+    Otherwise ``status`` is ``"success"`` and ``bbox`` carries
+    ``[min_lon, min_lat, max_lon, max_lat]``.
+
+    Modeled as one TypedDict with a two-value ``status`` Literal rather than
+    a ``Field(discriminator=...)`` union: a discriminated union's JSON Schema
+    root is a bare ``oneOf``/``discriminator`` object with no ``type: object``
+    key, which trips FastMCP's non-object-output-schema auto-wrap
+    (``x-fastmcp-wrap-result``) and would silently change this tool's
+    structured_content from a bare dict to ``{"result": {...}}``.
+    """
+
+    status: Literal["success", "empty"]
+    feature_count: int
+    bbox: list[float] | None
+
+
+class ArcGISFeature(TypedDict):
+    """One GeoJSON-like feature returned by an ArcGIS FeatureServer query.
+
+    ``geometry`` is a compact summary, not raw ArcGIS geometry: a point
+    ``{x, y}``, a sampled ring ``{bbox, point_count_sampled}``, or a
+    last-resort ``{geometry_keys}`` fallback — genuinely freeform.
+    """
+
+    type: Literal["Feature"]
+    properties: dict[str, Any]
+    geometry: dict[str, Any]
+
+
+class QueryArcGISFeaturesResult(TypedDict):
+    """Structured result for a successful query_arcgis_features call."""
+
+    ok: Literal[True]
+    status: Literal["success"]
+    source_url: str
+    query_url: str
+    output_path: str
+    output_size_bytes: int
+    feature_count: int
+    geometry_type: str | None
+    fields: list[str]
+    features: list[ArcGISFeature]
+    features_truncated: bool
+
+
+class GeocodeMatch(TypedDict):
+    """One geocoded location match from OpenStreetMap Nominatim."""
+
+    display_name: str | None
+    lat: float
+    lon: float
+    bbox: list[float] | None
+    type: str | None
+    importance: float | None
+    provenance: Literal["osm_nominatim"]
+
+
+class DistanceFilterCenter(TypedDict):
+    """Center coordinate used for a filter_points_by_radius query."""
+
+    lat: float
+    lon: float
+
+
+class FilterPointsByRadiusResult(TypedDict):
+    """Structured result for a successful filter_points_by_radius call.
+
+    ``points`` entries carry the source row's own (freeform) columns plus an
+    always-present ``distance_km`` and, when ``id_column`` was given, an
+    ``id`` field — the base columns are genuinely open-ended, so each point
+    stays ``dict[str, Any]``.
+    """
+
+    ok: Literal[True]
+    count: int
+    within_radius_count: int
+    total_points: int
+    skipped_invalid: int
+    source_format: Literal["csv", "geojson"]
+    lat_column: str
+    lon_column: str
+    center: DistanceFilterCenter
+    radius_km: float
+    points: list[dict[str, Any]]
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -49,7 +203,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="render_feature_map",
-    title="map(render)",
+    title="Render Map",
     description=(
         "Render one or more GeoJSON layers (polygons/lines/points) onto a single "
         "map PNG with an optional basemap. Each layer accepts a style with fixed "
@@ -80,10 +234,13 @@ async def render_feature_map_tool(
         list[float] | None,
         Field(description="Optional view window [min_lon, min_lat, max_lon, max_lat]."),
     ] = None,
-) -> dict[str, Any]:
+) -> RenderFeatureMapResult:
     """Render GeoJSON layers to a map PNG. See tool description for the layer schema."""
     try:
-        return render_map(layers, output_path, title=title, basemap=basemap, bbox=bbox)
+        return cast(
+            RenderFeatureMapResult,
+            render_map(layers, output_path, title=title, basemap=basemap, bbox=bbox),
+        )
     except MapRenderError as exc:
         raise ToolError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - surface rendering failures as tool errors
@@ -93,7 +250,7 @@ async def render_feature_map_tool(
 
 @mcp.tool(
     name="points_in_polygons",
-    title="join(points)",
+    title="Points In Polygons",
     description=(
         "Spatial overlap: return which GeoJSON points fall within (optionally "
         "buffered) GeoJSON polygons — e.g. which AirNow monitors lie inside the "
@@ -115,14 +272,17 @@ async def points_in_polygons_tool(
     point_label_fields: Annotated[
         list[str] | None, Field(description="Property names to surface per matched point.")
     ] = None,
-) -> dict[str, Any]:
+) -> PointsInPolygonsResult:
     """Return the points that fall within (optionally buffered) polygons."""
     try:
-        return points_in_polygons(
-            points_geojson,
-            polygons_geojson,
-            buffer_km=buffer_km,
-            point_label_fields=point_label_fields,
+        return cast(
+            PointsInPolygonsResult,
+            points_in_polygons(
+                points_geojson,
+                polygons_geojson,
+                buffer_km=buffer_km,
+                point_label_fields=point_label_fields,
+            ),
         )
     except Exception as exc:  # noqa: BLE001 - surface as tool error
         logger.exception("points_in_polygons failed")
@@ -131,7 +291,7 @@ async def points_in_polygons_tool(
 
 @mcp.tool(
     name="bounding_box",
-    title="compute(bbox)",
+    title="Bounding Box",
     description=(
         "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON "
         "features (inline or file path), optionally padded by buffer_km. A "
@@ -145,10 +305,10 @@ async def bounding_box_tool(
         Any, Field(description="GeoJSON features (FeatureCollection/Feature/list/JSON/path).")
     ],
     pad_km: Annotated[float, Field(description="Optional padding in km added on each side.")] = 0.0,
-) -> dict[str, Any]:
+) -> BoundingBoxResult:
     """Return the (optionally padded) bounding box of GeoJSON features."""
     try:
-        return bounding_box(geojson, pad_km=pad_km)
+        return cast(BoundingBoxResult, bounding_box(geojson, pad_km=pad_km))
     except Exception as exc:  # noqa: BLE001
         logger.exception("bounding_box failed")
         raise ToolError(f"Bounding box failed: {exc}") from exc
@@ -156,7 +316,7 @@ async def bounding_box_tool(
 
 @mcp.tool(
     name="query_arcgis_features",
-    title="query(arcgis)",
+    title="Query ArcGIS",
     description=(
         "Query an ArcGIS FeatureServer layer (with optional lon/lat bbox and where "
         "clause) and write the returned features to a local GeoJSON file. The saved "
@@ -195,7 +355,7 @@ async def query_arcgis_features_tool(
         str | None,
         Field(description="Output GeoJSON path; auto-named under the artifacts root if omitted."),
     ] = None,
-) -> dict[str, Any]:
+) -> QueryArcGISFeaturesResult:
     """Query an ArcGIS FeatureServer layer and persist features as GeoJSON.
 
     Returns ``{ok, output_path, feature_count, geometry_type, fields, features, ...}``
@@ -203,17 +363,20 @@ async def query_arcgis_features_tool(
     ``output_path``.
     """
     try:
-        return await query_arcgis_features(
-            feature_service_url,
-            layer_id=layer_id,
-            where=where,
-            out_fields=out_fields,
-            max_features=max_features,
-            min_lon=min_lon,
-            min_lat=min_lat,
-            max_lon=max_lon,
-            max_lat=max_lat,
-            output_path=output_path,
+        return cast(
+            QueryArcGISFeaturesResult,
+            await query_arcgis_features(
+                feature_service_url,
+                layer_id=layer_id,
+                where=where,
+                out_fields=out_fields,
+                max_features=max_features,
+                min_lon=min_lon,
+                min_lat=min_lat,
+                max_lon=max_lon,
+                max_lat=max_lat,
+                output_path=output_path,
+            ),
         )
     except ArcGISQueryError as exc:
         raise ToolError(str(exc)) from exc
@@ -224,7 +387,7 @@ async def query_arcgis_features_tool(
 
 @mcp.tool(
     name="geocode",
-    title="geocode(place)",
+    title="Geocode",
     description=(
         "Look up a free-text place name or location and return real coordinates "
         "from OpenStreetMap Nominatim (a lookup, not a model guess). Each match "
@@ -252,7 +415,7 @@ async def geocode_tool(
             )
         ),
     ] = None,
-) -> list[dict[str, Any]]:
+) -> list[GeocodeMatch]:
     """Geocode a place name into coordinates via OpenStreetMap Nominatim.
 
     Returns a list of matches, each with ``display_name``, ``lat``, ``lon``,
@@ -260,7 +423,9 @@ async def geocode_tool(
     and ``provenance`` (the data source, e.g. ``"osm_nominatim"``).
     """
     try:
-        return await geocode(query, limit=limit, countrycodes=countrycodes)
+        return cast(
+            list[GeocodeMatch], await geocode(query, limit=limit, countrycodes=countrycodes)
+        )
     except GeocodeError as exc:
         raise ToolError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - surface lookup failures as tool errors
@@ -270,7 +435,7 @@ async def geocode_tool(
 
 @mcp.tool(
     name="filter_points_by_radius",
-    title="filter(radius)",
+    title="Filter By Radius",
     description=(
         "Filter/rank any table of points by great-circle distance to a center. "
         "Reads a CSV (or GeoJSON points) of locations, computes the haversine "
@@ -315,7 +480,7 @@ async def filter_points_by_radius_tool(
         int | None,
         Field(description="Optional cap on the number of returned points (after sorting)."),
     ] = None,
-) -> dict[str, Any]:
+) -> FilterPointsByRadiusResult:
     """Return the points within radius_km of the center, sorted by distance.
 
     Returns ``{ok, count, within_radius_count, points:[{..., distance_km}],
@@ -323,15 +488,18 @@ async def filter_points_by_radius_tool(
     station/catalog semantics.
     """
     try:
-        return filter_points_by_radius(
-            data_path,
-            center_lat,
-            center_lon,
-            radius_km,
-            lat_column=lat_column,
-            lon_column=lon_column,
-            id_column=id_column,
-            limit=limit,
+        return cast(
+            FilterPointsByRadiusResult,
+            filter_points_by_radius(
+                data_path,
+                center_lat,
+                center_lon,
+                radius_km,
+                lat_column=lat_column,
+                lon_column=lon_column,
+                id_column=id_column,
+                limit=limit,
+            ),
         )
     except ProximityError as exc:
         raise ToolError(str(exc)) from exc

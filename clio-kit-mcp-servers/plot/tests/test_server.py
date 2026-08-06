@@ -8,7 +8,18 @@ import pandas as pd
 import pytest
 
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import ToolResult
 from plot_mcp import server
+
+
+def _assert_plot_tool_result(result: ToolResult) -> None:
+    """A plot tool result carries a PNG image block plus the structured dict."""
+    assert isinstance(result, ToolResult)
+    assert result.structured_content is not None
+    assert result.structured_content["status"] == "success"
+    image_blocks = [c for c in result.content if c.type == "image"]
+    assert image_blocks, "expected an image content block"
+    assert image_blocks[0].mime_type == "image/png"
 
 
 class TestServer:
@@ -128,8 +139,7 @@ class TestServer:
                 title="Test Line Plot",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
-            assert "status" in result
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
     @pytest.mark.asyncio
@@ -143,8 +153,7 @@ class TestServer:
                 title="Test Bar Plot",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
-            assert "status" in result
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
     @pytest.mark.asyncio
@@ -158,8 +167,7 @@ class TestServer:
                 title="Test Scatter Plot",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
-            assert "status" in result
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
     @pytest.mark.asyncio
@@ -173,8 +181,7 @@ class TestServer:
                 title="Test Histogram",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
-            assert "status" in result
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
     @pytest.mark.asyncio
@@ -184,8 +191,7 @@ class TestServer:
             result = await server.heatmap_plot_tool(
                 file_path=sample_csv_file, title="Test Heatmap", output_path=f.name
             )
-            assert isinstance(result, dict)
-            assert "status" in result
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
     @pytest.mark.asyncio

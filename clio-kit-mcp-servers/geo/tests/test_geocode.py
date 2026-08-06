@@ -239,7 +239,9 @@ async def test_tool_registered() -> None:
 async def test_tool_runs_in_memory(fake_http) -> None:
     async with Client(mcp) as client:
         result = await client.call_tool("geocode", {"query": "Boulder, CO", "limit": 1})
-    matches = result.data
+    # geocode returns a bare list, which FastMCP wraps as {"result": [...]}
+    # in structured_content since MCP output schemas must be object-shaped.
+    matches = result.structured_content["result"]
     assert isinstance(matches, list)
     assert matches[0]["provenance"] == "osm_nominatim"
     assert matches[0]["bbox"] == [
