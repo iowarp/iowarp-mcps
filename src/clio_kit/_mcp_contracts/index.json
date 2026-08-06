@@ -2,39 +2,39 @@
   "contracts": [
     {
       "artifact": "jarvis-user-v3.6.json",
-      "artifact_sha256": "b4cabd8715813a7cfd0e27b6aa8d9aba94cc60ae6ccba98fc76e310d41ac4547",
+      "artifact_sha256": "08c86eda618ec83109fa3c86fe28eccfd44c1ed0e647b93bcb0a82e470fd0d5e",
       "contract_id": "clio-kit-jarvis-user-v3.6",
-      "contract_sha256": "c845f7f72f0692aa3e0f28a5310a343ce116aae1e5542d3bc8a2a9de17b3296b",
+      "contract_sha256": "a326af259e50b57b19b7aa1d209720d5a71e57d7c2e64979596c4fc21850bdda",
       "profile": "user",
       "server_name": "jarvis",
-      "wire_sha256": "1353209b546f438430c55a86c066a4aedc84cc306f399d110c966d4c688f0bc7"
+      "wire_sha256": "0f912b4dfa7135448834f915984ca413f77b73ef53b0f758594006cd7551cd35"
     },
     {
       "artifact": "slurm-user-v3.json",
-      "artifact_sha256": "2a92deb6290123b2d33d622a7a8a78c0f844383cbd5d1280a331775d2997a558",
+      "artifact_sha256": "6252a8fe20406eed7fa6b643472d6ae90b5249f7832faf21ae9f47c264763bf7",
       "contract_id": "clio-kit-slurm-user-v3",
-      "contract_sha256": "b1783c194b60ad6b791582fbf1783d7f0770fddf2a880da1d78bc7c4069feeb7",
+      "contract_sha256": "f61b27b0c7d4648d86c27b29504688a13ba45767bd75bfc372c830308f7c05c0",
       "profile": "user",
       "server_name": "slurm",
-      "wire_sha256": "29dcc199e98f38cc4d3edcd97c081f486e37291c7b9b4d0477684b4e58642e40"
+      "wire_sha256": "8da5ea375d75d04052f766b02071fa4f41a2b61494b739e0e806eed02da532db"
     },
     {
       "artifact": "spack-user-v2.1.json",
-      "artifact_sha256": "f1e5cf00f3df13bdc60b5d84536ecbfa0b54b718b36ff61f5f9b4b2e7d418958",
+      "artifact_sha256": "b8da9a3cad05ad734ac3a20adb635f11fa45a8870afe08a9f4e261fdc713b57d",
       "contract_id": "clio-kit-spack-user-v2.1",
-      "contract_sha256": "c9415541797dab178d5bdc797c6c03b259b462139fd8ab4069334b9871aef7a0",
+      "contract_sha256": "4a065d2c67c0dd34e2cc18bca9dc53ed87ce35aa4ac524ef3e5c954a875c19db",
       "profile": "user",
       "server_name": "spack",
-      "wire_sha256": "898e43be33f7ab61130ee1b0b1ec5458f60e32ad27a1ad96fd806902266c9dc3"
+      "wire_sha256": "c7f1d1a4ce35b58664b46d2994863257a1e5a30e5c4ab7501b0a96a4becc08b7"
     },
     {
       "artifact": "scientific-catalog-user-v1.1.json",
-      "artifact_sha256": "5d3b7240297dfb79a93c9cdbb1e18aad8776480a63e90606af0e3bcbcfa5db2e",
+      "artifact_sha256": "8548aa8f0d1993ec644bb2fea778a4759b27d34bea3ed93ff92254b6fbf3052e",
       "contract_id": "clio-kit-scientific-catalog-user-v1.1",
-      "contract_sha256": "b5de9cd81ad2d8bab463b56669165535737a0954fa0a944b25da4a0c9325aaba",
+      "contract_sha256": "fd9fd4ba76617f1fd13560420cd650f78adc55d0957bd950d10d09c72ebe1889",
       "profile": "user",
       "server_name": "scientific-catalog",
-      "wire_sha256": "6b81cd7593c415df4b6f2a14e40df9b698ee8ea8d6cfd5a7adef4b8ef36b50e2"
+      "wire_sha256": "6a8fc61e31515880c722db3447d2f01584e4b297cb02b70b5618bff081840380"
     },
     {
       "artifact": "jarvis-user-v3.json",

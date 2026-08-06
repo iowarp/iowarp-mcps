@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-jarvis-user-v3.6",
-  "contract_sha256": "c845f7f72f0692aa3e0f28a5310a343ce116aae1e5542d3bc8a2a9de17b3296b",
+  "contract_sha256": "a326af259e50b57b19b7aa1d209720d5a71e57d7c2e64979596c4fc21850bdda",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -81,7 +81,7 @@
         "additionalProperties": true,
         "type": "object"
       },
-      "title": "add(step)"
+      "title": "Add Step"
     },
     {
       "_meta": {
@@ -329,7 +329,7 @@
         "additionalProperties": true,
         "type": "object"
       },
-      "title": "create(jarvis run)"
+      "title": "Create Jarvis Run"
     },
     {
       "_meta": {
@@ -1563,7 +1563,7 @@
         "type": "object",
         "x-fastmcp-wrap-result": true
       },
-      "title": "describe(jarvis)"
+      "title": "Describe"
     },
     {
       "_meta": {
@@ -1622,7 +1622,7 @@
         "additionalProperties": true,
         "type": "object"
       },
-      "title": "edit(step)"
+      "title": "Edit Step"
     },
     {
       "_meta": {
@@ -3101,7 +3101,7 @@
         ],
         "type": "object"
       },
-      "title": "get(execution)"
+      "title": "Get Execution"
     },
     {
       "_meta": {
@@ -3844,8 +3844,8 @@
         ],
         "type": "object"
       },
-      "title": "start(execution)"
+      "title": "Start Execution"
     }
   ],
-  "wire_sha256": "1353209b546f438430c55a86c066a4aedc84cc306f399d110c966d4c688f0bc7"
+  "wire_sha256": "0f912b4dfa7135448834f915984ca413f77b73ef53b0f758594006cd7551cd35"
 }

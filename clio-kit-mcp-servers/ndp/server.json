@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.7.0",
+      "version": "2.7.1",
       "transport": {
         "type": "stdio"
       },
