@@ -93,15 +93,23 @@ def read_server_versions(repo_root: Path) -> dict[str, str]:
 
 
 def read_registry_publish_servers(repo_root: Path) -> tuple[str, ...]:
-    """Read the MCP servers whose contract versions this release publishes."""
+    """Read the MCP servers whose contract versions this release publishes.
+
+    An empty list is valid and expected: it means no server's registry
+    contract (tool names/schemas under [servers]) changed this release, so
+    there is nothing to republish. A server is only listed here alongside a
+    real version bump under [servers], in the same PR that changes its
+    contract; it is removed again once published so the next release does
+    not collide with an already-published version.
+    """
     versions_path = repo_root / SERVER_VERSIONS_FILE
     with open(versions_path, "rb") as f:
         data = tomllib.load(f)
     release = data.get("mcp-registry-release")
     raw_servers = release.get("publish") if isinstance(release, dict) else None
-    if not isinstance(raw_servers, list) or not raw_servers:
+    if not isinstance(raw_servers, list):
         raise ValueError(
-            f"{versions_path} must define a nonempty mcp-registry-release.publish"
+            f"{versions_path} must define mcp-registry-release.publish as a list"
         )
     if not all(isinstance(server, str) and server for server in raw_servers):
         raise ValueError(f"{versions_path} has an invalid publish server")

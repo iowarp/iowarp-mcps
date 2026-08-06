@@ -921,7 +921,10 @@ jobs:
             print(server)
         PY
         )
-        test "${#release_servers[@]}" -gt 0
+        if [ "${#release_servers[@]}" -eq 0 ]; then
+          echo "MCP Registry: nothing to publish (no server's registry contract changed this release)"
+          exit 0
+        fi
         for server_name in "${release_servers[@]}"; do
           server_dir="clio-kit-mcp-servers/$server_name"
           test -f "$server_dir/server.json"
