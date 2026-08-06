@@ -214,6 +214,7 @@ def with_error_handling(func):
 
 
 @mcp.tool(
+    title="open(file)",
     tags={"file", "core"},
     annotations={
         "title": "Open HDF5 File",
@@ -247,6 +248,7 @@ async def open_file(path: str, mode: str = "r") -> str:
 
 
 @mcp.tool(
+    title="close(file)",
     tags={"file", "core"},
     annotations={
         "title": "Close HDF5 File",
@@ -275,6 +277,7 @@ async def close_file() -> str:
 
 
 @mcp.tool(
+    title="get(filename)",
     tags={"file", "info"},
     annotations={
         "title": "Get Current Filename",
@@ -298,6 +301,7 @@ async def get_filename() -> str:
 
 
 @mcp.tool(
+    title="get(mode)",
     tags={"file", "info"},
     annotations={
         "title": "Get File Access Mode",
@@ -321,6 +325,7 @@ async def get_mode() -> str:
 
 
 @mcp.tool(
+    title="get(object)",
     tags={"dataset", "navigation"},
     annotations={
         "title": "Get Object by Path",
@@ -358,6 +363,7 @@ async def get_by_path(path: str) -> str:
 
 
 @mcp.tool(
+    title="list(keys)",
     tags={"dataset", "navigation"},
     annotations={
         "title": "List Keys in Group",
@@ -393,6 +399,7 @@ async def list_keys(path: str = "/") -> str:
 
 
 @mcp.tool(
+    title="visit(nodes)",
     tags={"dataset", "navigation"},
     annotations={
         "title": "Visit All Nodes Recursively",
@@ -432,6 +439,7 @@ async def visit(callback_fn: str = "collect_paths") -> str:
 
 
 @mcp.tool(
+    title="read(full)",
     tags={"dataset", "read"},
     annotations={
         "title": "Read Full Dataset",
@@ -479,6 +487,7 @@ async def read_full_dataset(path: str) -> str:
 
 
 @mcp.tool(
+    title="read(slice)",
     tags={"dataset", "read"},
     annotations={
         "title": "Read Partial Dataset",
@@ -539,6 +548,7 @@ async def read_partial_dataset(
 
 
 @mcp.tool(
+    title="get(shape)",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Shape",
@@ -574,6 +584,7 @@ async def get_shape(path: str) -> str:
 
 
 @mcp.tool(
+    title="get(dtype)",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Data Type",
@@ -609,6 +620,7 @@ async def get_dtype(path: str) -> str:
 
 
 @mcp.tool(
+    title="get(size)",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Size",
@@ -644,6 +656,7 @@ async def get_size(path: str) -> str:
 
 
 @mcp.tool(
+    title="get(chunks)",
     tags={"dataset", "metadata", "performance"},
     annotations={
         "title": "Get Dataset Chunk Info",
@@ -693,6 +706,7 @@ async def get_chunks(path: str) -> str:
 
 
 @mcp.tool(
+    title="read(attr)",
     tags={"attribute", "metadata"},
     annotations={
         "title": "Read Attribute",
@@ -732,6 +746,7 @@ async def read_attribute(path: str, name: str) -> str:
 
 
 @mcp.tool(
+    title="list(attrs)",
     tags={"attribute", "metadata"},
     annotations={
         "title": "List All Attributes",
@@ -781,6 +796,7 @@ async def list_attributes(path: str) -> str:
 
 
 @mcp.tool(
+    title="scan(parallel)",
     tags={"performance", "parallel", "scan"},
     annotations={
         "title": "Parallel Scan Multiple Files",
@@ -865,6 +881,7 @@ async def hdf5_parallel_scan(
 
 
 @mcp.tool(
+    title="read(batch)",
     tags={"performance", "parallel", "read"},
     annotations={
         "title": "Batch Read Multiple Datasets",
@@ -952,6 +969,7 @@ async def hdf5_batch_read(
 
 
 @mcp.tool(
+    title="stream(data)",
     tags={"performance", "streaming"},
     annotations={
         "title": "Stream Large Dataset",
@@ -1058,6 +1076,7 @@ async def hdf5_stream_data(
 
 
 @mcp.tool(
+    title="stats(aggregate)",
     tags={"performance", "parallel", "analysis"},
     annotations={
         "title": "Aggregate Statistics Across Datasets",
@@ -1182,6 +1201,7 @@ async def hdf5_aggregate_stats(
 
 
 @mcp.tool(
+    title="analyze(structure)",
     tags={"discovery", "ai-powered", "analysis"},
     annotations={
         "title": "Analyze Dataset Structure",
@@ -1300,6 +1320,7 @@ async def analyze_dataset_structure(
 
 
 @mcp.tool(
+    title="find(similar)",
     tags={"discovery", "ai-powered", "similarity"},
     annotations={
         "title": "Find Similar Datasets",
@@ -1409,6 +1430,7 @@ async def find_similar_datasets(
 
 
 @mcp.tool(
+    title="suggest(next)",
     tags={"discovery", "ai-powered", "recommendation"},
     annotations={
         "title": "Suggest Next Exploration",
@@ -1529,6 +1551,7 @@ async def suggest_next_exploration(
 
 
 @mcp.tool(
+    title="find(bottlenecks)",
     tags={"discovery", "ai-powered", "performance"},
     annotations={
         "title": "Identify I/O Bottlenecks",
@@ -1633,6 +1656,7 @@ async def identify_io_bottlenecks(
 
 
 @mcp.tool(
+    title="optimize(access)",
     tags={"discovery", "performance", "optimization"},
     annotations={
         "title": "Optimize Access Pattern",
@@ -1723,6 +1747,7 @@ async def optimize_access_pattern(
 
 
 @mcp.tool(
+    title="refresh(files)",
     tags={"admin", "discovery"},
     annotations={
         "title": "Refresh HDF5 Resources",
@@ -1762,6 +1787,7 @@ async def refresh_hdf5_resources(ctx: Optional[Context] = None) -> str:
 
 
 @mcp.tool(
+    title="list(files)",
     tags={"discovery", "helper"},
     annotations={
         "title": "List Available HDF5 Files",
@@ -1795,6 +1821,7 @@ async def list_available_hdf5_files() -> str:
 
 
 @mcp.tool(
+    title="export(dataset)",
     tags={"dataset", "export", "interactive"},
     annotations={
         "title": "Export Dataset",

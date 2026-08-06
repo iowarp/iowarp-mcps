@@ -1263,6 +1263,7 @@ def create_pipeline_workflow(name: str) -> list[Message]:
 
 @mcp.tool(
     name="update_pipeline",
+    title="reapply(pipeline)",
     description="Re-apply environment and configuration to every package in a pipeline.",
     annotations={
         "readOnlyHint": False,
@@ -1278,6 +1279,7 @@ async def update_pipeline_tool(pipeline_id: str) -> dict:
 
 @mcp.tool(
     name="build_pipeline_env",
+    title="build(env)",
     description="Rebuild a pipeline's env.yaml, capturing CMAKE_PREFIX_PATH and PATH.",
     annotations={
         "readOnlyHint": False,
@@ -1293,6 +1295,7 @@ async def build_pipeline_env_tool(pipeline_id: str) -> dict:
 
 @mcp.tool(
     name="create_pipeline",
+    title="create(pipeline)",
     description="Create a new Jarvis-CD pipeline environment.",
     annotations={
         "readOnlyHint": False,
@@ -1308,6 +1311,7 @@ async def create_pipeline_tool(pipeline_id: str) -> dict:
 
 @mcp.tool(
     name="load_pipeline",
+    title="load(pipeline)",
     description="Load an existing Jarvis-CD pipeline environment.",
     annotations={
         "readOnlyHint": True,
@@ -1323,6 +1327,7 @@ async def load_pipeline_tool(pipeline_id: Optional[str] = None) -> dict:
 
 @mcp.tool(
     name="export_pipeline",
+    title="export(pipeline)",
     description="Export a structured snapshot of a Jarvis-CD pipeline.",
     annotations={
         "readOnlyHint": True,
@@ -1338,6 +1343,7 @@ async def export_pipeline_tool(pipeline_id: str, include_yaml: bool = True) -> d
 
 @mcp.tool(
     name="get_pkg_config",
+    title="get(config)",
     description="Retrieve the configuration of a specific package in a pipeline.",
     annotations={
         "readOnlyHint": True,
@@ -1353,6 +1359,7 @@ async def get_pkg_config_tool(pipeline_id: str, pkg_id: str) -> dict:
 
 @mcp.tool(
     name="append_pkg",
+    title="append(package)",
     description="Append a package to a Jarvis-CD pipeline.",
     annotations={
         "readOnlyHint": False,
@@ -1380,6 +1387,7 @@ async def append_pkg_tool(
 
 @mcp.tool(
     name="configure_pkg",
+    title="configure(pkg)",
     description="Configure a package in a Jarvis-CD pipeline.",
     annotations={
         "readOnlyHint": False,
@@ -1397,6 +1405,7 @@ async def configure_pkg_tool(
 
 @mcp.tool(
     name="unlink_pkg",
+    title="unlink(package)",
     description="Unlink a package from a pipeline (preserve files).",
     annotations={
         "readOnlyHint": False,
@@ -1412,6 +1421,7 @@ async def unlink_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 
 @mcp.tool(
     name="remove_pkg",
+    title="remove(package)",
     description=(
         "Delete a package through JARVIS-CD's destructive removal API. Fails "
         "explicitly when the installed JARVIS-CD only supports non-destructive unlinking."
@@ -1430,6 +1440,7 @@ async def remove_pkg_tool(pipeline_id: str, pkg_id: str) -> dict:
 
 @mcp.tool(
     name="run_pipeline",
+    title="run(pipeline)",
     description="Execute a Jarvis-CD pipeline end-to-end.",
     annotations={
         "readOnlyHint": False,
@@ -1445,6 +1456,7 @@ async def run_pipeline_tool(pipeline_id: str) -> dict:
 
 @mcp.tool(
     name="jarvis_create_pipeline",
+    title="create(jarvis run)",
     description=(
         "Create a JARVIS pipeline. Optionally pass execution intent such as "
         "local, cluster, or hostfile mode; backend details are resolved where "
@@ -1471,6 +1483,7 @@ async def jarvis_create_pipeline_tool(
 
 @mcp.tool(
     name="jarvis_describe",
+    title="describe(jarvis)",
     description=(
         "Describe JARVIS packages, one package, a pipeline, or one pipeline step. "
         "For a named application, first use target='package' with its unique short name "
@@ -1626,6 +1639,7 @@ async def jarvis_describe_tool(
 
 @mcp.tool(
     name="jarvis_add_step",
+    title="add(step)",
     description=(
         "Add and configure a package-backed step in a JARVIS pipeline. First use "
         "jarvis_describe(target='package') for the selected package; config keys "
@@ -1675,6 +1689,7 @@ async def jarvis_add_step_tool(
 
 @mcp.tool(
     name="jarvis_edit_step",
+    title="edit(step)",
     description=(
         "Edit or remove a step in a JARVIS pipeline. Use operation='edit' with "
         "config, or operation='remove' without config."
@@ -1709,6 +1724,7 @@ async def jarvis_edit_step_tool(
 
 @mcp.tool(
     name="jarvis_run",
+    title="start(execution)",
     description=(
         "Start a configured JARVIS pipeline and return its durable execution "
         "handle without waiting for workload completion. Optional execution intent "
@@ -1783,6 +1799,7 @@ async def jarvis_run_tool(
 
 @mcp.tool(
     name="jarvis_get_execution",
+    title="get(execution)",
     description=(
         "Query one JARVIS execution handle, durable lifecycle record, and "
         "runtime metadata. Progress is included by default and can be omitted. "
@@ -1836,6 +1853,7 @@ def _context_has_progress_token(ctx: Context | None) -> bool:
 
 @mcp.tool(
     name="destroy_pipeline",
+    title="destroy(pipeline)",
     description="Destroy a pipeline environment and clean up files.",
     annotations={
         "readOnlyHint": False,
@@ -1851,6 +1869,7 @@ async def destroy_pipeline_tool(pipeline_id: str) -> dict:
 
 @mcp.tool(
     name="jm_create_config",
+    title="init(config)",
     description="Initialize JarvisManager config directories.",
     annotations={
         "readOnlyHint": False,
@@ -1875,6 +1894,7 @@ def jm_create_config(
 
 @mcp.tool(
     name="jm_load_config",
+    title="load(config)",
     description="Load existing JarvisManager configuration.",
     annotations={
         "readOnlyHint": True,
@@ -1895,6 +1915,7 @@ def jm_load_config() -> list:
 
 @mcp.tool(
     name="jm_save_config",
+    title="save(config)",
     description="Save current JarvisManager configuration.",
     annotations={
         "readOnlyHint": False,
@@ -1915,6 +1936,7 @@ def jm_save_config() -> list:
 
 @mcp.tool(
     name="jm_set_hostfile",
+    title="set(hostfile)",
     description="Set hostfile path for JarvisManager.",
     annotations={
         "readOnlyHint": False,
@@ -1936,6 +1958,7 @@ def jm_set_hostfile(path: str) -> list:
 
 @mcp.tool(
     name="jm_bootstrap_from",
+    title="bootstrap(machine)",
     description="Bootstrap Jarvis config from a machine template.",
     annotations={
         "readOnlyHint": False,
@@ -1956,6 +1979,7 @@ def jm_bootstrap_from(machine: str) -> list:
 
 @mcp.tool(
     name="jm_bootstrap_list",
+    title="list(templates)",
     description="List available bootstrap machine templates.",
     annotations={
         "readOnlyHint": True,
@@ -1975,6 +1999,7 @@ def jm_bootstrap_list() -> list:
 
 @mcp.tool(
     name="jm_reset",
+    title="reset(manager)",
     description="Reset JarvisManager (destroy all pipelines and data).",
     annotations={
         "readOnlyHint": False,
@@ -1995,6 +2020,7 @@ def jm_reset() -> list:
 
 @mcp.tool(
     name="jm_list_pipelines",
+    title="list(pipelines)",
     description="List all existing Jarvis pipelines.",
     annotations={
         "readOnlyHint": True,
@@ -2015,6 +2041,7 @@ async def jm_list_pipelines() -> dict[str, Any]:
 
 @mcp.tool(
     name="jm_cd",
+    title="cd(pipeline)",
     description="Change current Jarvis pipeline context.",
     annotations={
         "readOnlyHint": False,
@@ -2036,6 +2063,7 @@ def jm_cd(pipeline_id: str) -> list:
 
 @mcp.tool(
     name="jm_list_repos",
+    title="list(repos)",
     description="List all Jarvis repositories.",
     annotations={
         "readOnlyHint": True,
@@ -2056,6 +2084,7 @@ async def jm_list_repos() -> dict[str, Any]:
 
 @mcp.tool(
     name="jm_add_repo",
+    title="add(repo)",
     description="Add a repository to JarvisManager.",
     annotations={
         "readOnlyHint": False,
@@ -2077,6 +2106,7 @@ def jm_add_repo(path: str, force: bool = False) -> list:
 
 @mcp.tool(
     name="jm_remove_repo",
+    title="remove(repo)",
     description="Remove a repository from JarvisManager.",
     annotations={
         "readOnlyHint": False,
@@ -2098,6 +2128,7 @@ def jm_remove_repo(repo_name: str) -> list:
 
 @mcp.tool(
     name="jm_promote_repo",
+    title="promote(repo)",
     description="Promote a repository in JarvisManager.",
     annotations={
         "readOnlyHint": False,
@@ -2119,6 +2150,7 @@ def jm_promote_repo(repo_name: str) -> list:
 
 @mcp.tool(
     name="jm_get_repo",
+    title="get(repo)",
     description="Get repository info from JarvisManager.",
     annotations={
         "readOnlyHint": True,
@@ -2139,6 +2171,7 @@ async def jm_get_repo(repo_name: str) -> dict[str, Any]:
 
 @mcp.tool(
     name="jm_construct_pkg",
+    title="construct(pkg)",
     description="Construct a package skeleton in JarvisManager.",
     annotations={
         "readOnlyHint": False,
@@ -2159,6 +2192,7 @@ def jm_construct_pkg(pkg_type: str) -> list:
 
 @mcp.tool(
     name="jm_graph_show",
+    title="show(graph)",
     description="Print the current resource graph frames.",
     annotations={
         "readOnlyHint": True,
@@ -2179,6 +2213,7 @@ def jm_graph_show() -> list:
 
 @mcp.tool(
     name="jm_graph_build",
+    title="build(graph)",
     description="Build or rebuild the resource graph with a net sleep interval.",
     annotations={
         "readOnlyHint": False,
@@ -2199,6 +2234,7 @@ def jm_graph_build(net_sleep: float) -> list:
 
 @mcp.tool(
     name="jm_graph_modify",
+    title="modify(graph)",
     description="Modify the resource graph using a net sleep interval.",
     annotations={
         "readOnlyHint": False,

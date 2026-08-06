@@ -106,6 +106,7 @@ def get_pv_manager() -> "VisualizationEngine":
 
 @mcp.tool(
     name="load_scientific_data",
+    title="load(data)",
     description="Load scientific datasets (VTK, EXODUS, CSV, RAW, BP5) into ParaView with automatic format detection.",
     annotations={
         "readOnlyHint": False,
@@ -161,6 +162,7 @@ async def read_datafile_tool(file_path: str) -> str:
 
 
 @mcp.tool(
+    title="save(stl)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -185,6 +187,7 @@ def save_contour_as_stl(stl_filename: str = "contour.stl") -> str:
 
 @mcp.tool(
     name="create_geometric_shape",
+    title="create(shape)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -210,6 +213,7 @@ def create_source(source_type: str) -> str:
 
 @mcp.tool(
     name="generate_isosurface",
+    title="create(isosurface)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -238,6 +242,7 @@ def create_isosurface(value: float, field: Optional[str] = None) -> str:
 
 @mcp.tool(
     name="create_data_slice",
+    title="create(slice)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -274,6 +279,7 @@ def create_slice(
 
 @mcp.tool(
     name="configure_volume_display",
+    title="toggle(volume)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -298,6 +304,7 @@ def toggle_volume_rendering(enable: bool = True) -> str:
 
 
 @mcp.tool(
+    title="toggle(visibility)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -322,6 +329,7 @@ def toggle_visibility(enable: bool = True) -> str:
 
 
 @mcp.tool(
+    title="set(source)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -345,6 +353,7 @@ def set_active_source(name: str) -> str:
 
 
 @mcp.tool(
+    title="list(sources)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -396,6 +405,7 @@ def get_active_source_names_by_type(source_type: Optional[str] = None) -> str:
 
 
 @mcp.tool(
+    title="edit(opacity)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -443,6 +453,7 @@ def edit_volume_opacity(field_name: str, opacity_points: list[dict[str, float]])
 
 
 @mcp.tool(
+    title="set(colormap)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -473,6 +484,7 @@ def set_color_map(field_name: str, color_points: list[dict]) -> str:
 
 @mcp.tool(
     name="apply_field_coloring",
+    title="color(field)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -497,6 +509,7 @@ def color_by(field: str, component: int = -1) -> str:
 
 
 @mcp.tool(
+    title="compute(area)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -517,6 +530,7 @@ def compute_surface_area() -> str:
 
 
 @mcp.tool(
+    title="set(preset)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -540,6 +554,7 @@ def set_color_map_preset(preset_name: str = "Cool to Warm") -> str:
 
 
 @mcp.tool(
+    title="set(representation)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -563,6 +578,7 @@ def set_representation_type(rep_type: str) -> str:
 
 
 @mcp.tool(
+    title="get(pipeline)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -583,6 +599,7 @@ def get_pipeline() -> str:
 
 
 @mcp.tool(
+    title="list(arrays)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -603,6 +620,7 @@ def get_available_arrays() -> str:
 
 
 @mcp.tool(
+    title="compute(histogram)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -655,6 +673,7 @@ def get_histogram(
 
 @mcp.tool(
     name="generate_flow_streamlines",
+    title="create(streamlines)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -701,6 +720,7 @@ def create_streamline(
 
 @mcp.tool(
     name="take_viewport_screenshot",
+    title="capture(screenshot)",
     description="Capture a screenshot of the current ParaView viewport and save it as a timestamped PNG.",
     annotations={
         "readOnlyHint": True,
@@ -736,6 +756,7 @@ async def get_screenshot_tool() -> str:
 
 @mcp.tool(
     name="show_screenshot_preview",
+    title="preview(screenshot)",
     description="Capture a screenshot with inline preview using temporary files.",
     annotations={
         "readOnlyHint": True,
@@ -801,6 +822,7 @@ async def show_screenshot_preview() -> str:
 
 
 @mcp.tool(
+    title="rotate(camera)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -825,6 +847,7 @@ def rotate_camera(azimuth: float = 30.0, elevation: float = 0.0) -> str:
 
 
 @mcp.tool(
+    title="reset(camera)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -862,6 +885,7 @@ def reset_camera() -> str:
 
 
 @mcp.tool(
+    title="plot(line)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -893,6 +917,7 @@ def plot_over_line(
 
 
 @mcp.tool(
+    title="warp(vector)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -921,6 +946,7 @@ def warp_by_vector(
 
 
 @mcp.tool(
+    title="list(commands)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,

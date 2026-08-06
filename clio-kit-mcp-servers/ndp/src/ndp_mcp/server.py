@@ -348,6 +348,7 @@ ndp_client = NDPClient()
 
 @mcp.tool(
     name="list_organizations",
+    title="list(orgs)",
     description="List organizations available in the National Data Platform.",
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"organizations", "catalogs"},
@@ -377,6 +378,7 @@ async def list_organizations(
 
 @mcp.tool(
     name="search_datasets",
+    title="search(datasets)",
     description="Search for datasets in the NDP using term-based or field-specific criteria.",
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"datasets", "search"},
@@ -489,6 +491,7 @@ async def search_datasets(
 
 @mcp.tool(
     name="get_dataset_details",
+    title="get(dataset)",
     description="Retrieve detailed metadata for a specific dataset by ID or name.",
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"datasets", "metadata"},
@@ -533,6 +536,7 @@ async def get_dataset_details(
 
 @mcp.tool(
     name="stage_resource",
+    title="stage(resource)",
     description=(
         "Download/stage an HTTP(S) or OSDF/Pelican dataset resource to a local "
         "file and return its local_path, size, and content-type."

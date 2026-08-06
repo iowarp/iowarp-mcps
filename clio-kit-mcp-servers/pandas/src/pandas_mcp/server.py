@@ -70,6 +70,7 @@ class PandasMCPError(Exception):
 
 @mcp.tool(
     name="load_data",
+    title="load(data)",
     description="Load and parse data from CSV, Excel, JSON, Parquet, or HDF5 files with optional column selection and row limiting.",
     annotations={
         "readOnlyHint": True,
@@ -116,6 +117,7 @@ async def load_data_tool(
 
 @mcp.tool(
     name="save_data",
+    title="save(data)",
     description="Save data to CSV, Excel, JSON, Parquet, or HDF5 with auto-detected format and optional index inclusion.",
     annotations={
         "readOnlyHint": False,
@@ -157,6 +159,7 @@ async def save_data_tool(
 
 @mcp.tool(
     name="statistical_summary",
+    title="summary(stats)",
     description="Compute descriptive statistics, distribution analysis, and outlier detection for numerical and categorical columns.",
     annotations={
         "readOnlyHint": True,
@@ -186,6 +189,7 @@ async def statistical_summary_tool(
 
 @mcp.tool(
     name="correlation_analysis",
+    title="correlate(data)",
     description="Compute correlation matrices (Pearson, Spearman, or Kendall) with significance testing and strong-correlation detection.",
     annotations={
         "readOnlyHint": True,
@@ -215,6 +219,7 @@ async def correlation_analysis_tool(
 
 @mcp.tool(
     name="hypothesis_testing",
+    title="test(hypothesis)",
     description="Run statistical hypothesis tests (t-test, chi-square, ANOVA, normality, Mann-Whitney) with p-values and effect sizes.",
     annotations={
         "readOnlyHint": True,
@@ -258,6 +263,7 @@ async def hypothesis_testing_tool(
 
 @mcp.tool(
     name="handle_missing_data",
+    title="fix(missing)",
     description="Detect, impute, or remove missing values using strategies like mean/median/mode fill, forward/backward fill, or interpolation.",
     annotations={
         "readOnlyHint": True,
@@ -292,6 +298,7 @@ async def handle_missing_data_tool(
 
 @mcp.tool(
     name="clean_data",
+    title="clean(data)",
     description="Remove duplicates, detect outliers via IQR/Z-score, and optimize data types in a single pass.",
     annotations={
         "readOnlyHint": True,
@@ -328,6 +335,7 @@ async def clean_data_tool(
 
 @mcp.tool(
     name="groupby_operations",
+    title="group(data)",
     description="Group data by columns and apply aggregations (sum, mean, count, min, max, std, median) with optional pre-filter.",
     annotations={
         "readOnlyHint": True,
@@ -361,6 +369,7 @@ async def groupby_operations_tool(
 
 @mcp.tool(
     name="merge_datasets",
+    title="merge(data)",
     description="Join two datasets using inner, outer, left, or right joins on specified key columns.",
     annotations={
         "readOnlyHint": True,
@@ -396,6 +405,7 @@ async def merge_datasets_tool(
 
 @mcp.tool(
     name="pivot_table",
+    title="pivot(table)",
     description="Create pivot tables with configurable row index, column headers, value columns, and aggregation function.",
     annotations={
         "readOnlyHint": True,
@@ -435,6 +445,7 @@ async def pivot_table_tool(
 
 @mcp.tool(
     name="time_series_operations",
+    title="transform(series)",
     description="Resample, compute rolling statistics, create lag features, or difference a time series.",
     annotations={
         "readOnlyHint": True,
@@ -477,6 +488,7 @@ async def time_series_operations_tool(
 
 @mcp.tool(
     name="validate_data",
+    title="validate(data)",
     description="Validate columns against rules for min/max range, data type, nullability, uniqueness, and regex patterns.",
     annotations={
         "readOnlyHint": True,
@@ -510,6 +522,7 @@ async def validate_data_tool(
 
 @mcp.tool(
     name="filter_data",
+    title="filter(data)",
     description="Filter rows using comparison, membership, pattern-matching, and null-check operators across multiple columns.",
     annotations={
         "readOnlyHint": True,
@@ -547,6 +560,7 @@ async def filter_data_tool(
 
 @mcp.tool(
     name="optimize_memory",
+    title="optimize(memory)",
     description="Analyze and reduce DataFrame memory usage through automatic dtype optimization and chunked-processing recommendations.",
     annotations={
         "readOnlyHint": True,
@@ -582,6 +596,7 @@ async def optimize_memory_tool(
 
 @mcp.tool(
     name="profile_data",
+    title="profile(data)",
     description="Generate a full dataset profile: shape, types, missing values, distributions, quality checks, and optional correlations.",
     annotations={
         "readOnlyHint": True,
@@ -611,6 +626,7 @@ async def profile_data_tool(
 
 @mcp.tool(
     name="profile_csv",
+    title="profile(csv)",
     description="Quickly profile a CSV file: row/column counts, per-column dtype, null counts, and min/max/mean for numeric columns.",
     annotations={
         "readOnlyHint": True,

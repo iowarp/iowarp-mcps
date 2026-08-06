@@ -433,6 +433,7 @@ async def _download(
 
 @mcp.tool(
     name="fetch",
+    title="fetch(url)",
     description=(
         "Fetch an HTTP(S) URL with a streamed size cap and timeout, convert "
         "HTML to Markdown, and return the content inline or (to_file=True) "
@@ -646,6 +647,7 @@ async def _search_tavily(query: str, count: int) -> list[dict[str, str]]:
 
 @mcp.tool(
     name="search",
+    title="search(web)",
     description=(
         "Search the web via a configurable provider (keyless DuckDuckGo by "
         "default; optional BYO-key Brave or Tavily) and return ranked results."

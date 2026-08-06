@@ -89,6 +89,7 @@ class SlurmMCPError(Exception):
 
 @mcp.tool(
     name="slurm_submit",
+    title="submit(job)",
     description=(
         "Submit one Slurm job or array and return its scheduler-native job ID. "
         "Set array only for an array submission."
@@ -129,6 +130,7 @@ async def slurm_submit_tool(
 
 @mcp.tool(
     name="slurm_list",
+    title="list(jobs)",
     description=(
         "List a bounded number of Slurm jobs with optional user, state, and "
         "partition filters. Returns native IDs and explicit truncation state."
@@ -158,6 +160,7 @@ async def slurm_list_tool(
 
 @mcp.tool(
     name="slurm_describe",
+    title="describe(job)",
     description=(
         "Describe one scheduler-native Slurm job: lifecycle state, terminality, "
         "scheduler properties, and optional bounded stdout/stderr tails."
@@ -190,6 +193,7 @@ async def slurm_describe_tool(
 
 @mcp.tool(
     name="slurm_cluster",
+    title="snapshot(cluster)",
     description=(
         "Inspect bounded Slurm partition and queue records in one snapshot. "
         "Node details are excluded by default and bounded when requested."
@@ -224,6 +228,7 @@ async def slurm_cluster_tool(
 
 @mcp.tool(
     name="slurm_cancel",
+    title="cancel(job)",
     description=(
         "Request destructive cancellation of one Slurm job. confirm_job_id must "
         "exactly repeat job_id; omission or mismatch is rejected without calling scancel."
@@ -261,6 +266,7 @@ async def slurm_cancel_tool(
 
 @mcp.tool(
     name="submit_slurm_job",
+    title="submit(slurm job)",
     description="Submit a job script to the Slurm scheduler with resource requirements.",
     annotations={
         "readOnlyHint": False,
@@ -303,6 +309,7 @@ async def submit_slurm_job_tool(
 
 @mcp.tool(
     name="check_job_status",
+    title="check(job status)",
     description="Check the status of a Slurm job by its ID.",
     annotations={
         "readOnlyHint": True,
@@ -331,6 +338,7 @@ async def check_job_status_tool(job_id: str) -> dict:
 
 @mcp.tool(
     name="cancel_slurm_job",
+    title="cancel(slurm job)",
     description="Cancel a running or pending Slurm job.",
     annotations={
         "readOnlyHint": False,
@@ -358,6 +366,7 @@ async def cancel_slurm_job_tool(job_id: str) -> dict:
 
 @mcp.tool(
     name="list_slurm_jobs",
+    title="list(slurm jobs)",
     description="List Slurm jobs with optional filtering by user and state.",
     annotations={
         "readOnlyHint": True,
@@ -388,6 +397,7 @@ async def list_slurm_jobs_tool(
 
 @mcp.tool(
     name="get_slurm_info",
+    title="get(cluster info)",
     description="Get Slurm cluster configuration, partitions, and resource availability.",
     annotations={
         "readOnlyHint": True,
@@ -412,6 +422,7 @@ async def get_slurm_info_tool() -> dict:
 
 @mcp.tool(
     name="get_job_details",
+    title="get(job details)",
     description="Get detailed information about a specific Slurm job.",
     annotations={
         "readOnlyHint": True,
@@ -439,6 +450,7 @@ async def get_job_details_tool(job_id: str) -> dict:
 
 @mcp.tool(
     name="get_job_output",
+    title="get(job output)",
     description="Retrieve stdout or stderr output from a Slurm job.",
     annotations={
         "readOnlyHint": True,
@@ -467,6 +479,7 @@ async def get_job_output_tool(job_id: str, output_type: str = "stdout") -> dict:
 
 @mcp.tool(
     name="get_queue_info",
+    title="get(queue info)",
     description="Get Slurm queue status and partition information.",
     annotations={
         "readOnlyHint": True,
@@ -494,6 +507,7 @@ async def get_queue_info_tool(partition: Optional[str] = None) -> dict:
 
 @mcp.tool(
     name="submit_array_job",
+    title="submit(array job)",
     description="Submit a Slurm array job for parallel task execution.",
     annotations={
         "readOnlyHint": False,
@@ -539,6 +553,7 @@ async def submit_array_job_tool(
 
 @mcp.tool(
     name="get_node_info",
+    title="get(node info)",
     description="Get information about Slurm cluster nodes and their resources.",
     annotations={
         "readOnlyHint": True,
@@ -563,6 +578,7 @@ async def get_node_info_tool() -> dict:
 
 @mcp.tool(
     name="allocate_slurm_nodes",
+    title="allocate(nodes)",
     description="Allocate Slurm nodes for an interactive session using salloc.",
     annotations={
         "readOnlyHint": False,
@@ -606,6 +622,7 @@ async def allocate_slurm_nodes_tool(
 
 @mcp.tool(
     name="deallocate_slurm_nodes",
+    title="release(allocation)",
     description="Release a Slurm node allocation by canceling it.",
     annotations={
         "readOnlyHint": False,
@@ -633,6 +650,7 @@ async def deallocate_slurm_nodes_tool(allocation_id: str) -> dict:
 
 @mcp.tool(
     name="get_allocation_status",
+    title="check(allocation)",
     description="Check the status of a Slurm node allocation.",
     annotations={
         "readOnlyHint": True,
