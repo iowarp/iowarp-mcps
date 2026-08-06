@@ -5,6 +5,7 @@ Comprehensive test coverage for plot_capabilities.py - all functionality, edge c
         assert len(result["columns"]) == 3 error handling.
 """
 
+import json
 import os
 import tempfile
 import pandas as pd
@@ -98,6 +99,7 @@ class TestPlotCapabilities:
             len(result["columns"]) == 5
         )  # columns (x, y, category, value, numeric_cat)
         assert "x" in result["columns"]
+        json.dumps(result)
 
     def test_get_data_info_file_not_found(self):
         """Test data info with non-existent file"""

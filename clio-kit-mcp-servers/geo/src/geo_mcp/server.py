@@ -49,6 +49,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="render_feature_map",
+    title="map(render)",
     description=(
         "Render one or more GeoJSON layers (polygons/lines/points) onto a single "
         "map PNG with an optional basemap. Each layer accepts a style with fixed "
@@ -92,6 +93,7 @@ async def render_feature_map_tool(
 
 @mcp.tool(
     name="points_in_polygons",
+    title="join(points)",
     description=(
         "Spatial overlap: return which GeoJSON points fall within (optionally "
         "buffered) GeoJSON polygons — e.g. which AirNow monitors lie inside the "
@@ -129,6 +131,7 @@ async def points_in_polygons_tool(
 
 @mcp.tool(
     name="bounding_box",
+    title="compute(bbox)",
     description=(
         "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON "
         "features (inline or file path), optionally padded by buffer_km. A "
@@ -153,6 +156,7 @@ async def bounding_box_tool(
 
 @mcp.tool(
     name="query_arcgis_features",
+    title="query(arcgis)",
     description=(
         "Query an ArcGIS FeatureServer layer (with optional lon/lat bbox and where "
         "clause) and write the returned features to a local GeoJSON file. The saved "
@@ -220,6 +224,7 @@ async def query_arcgis_features_tool(
 
 @mcp.tool(
     name="geocode",
+    title="geocode(place)",
     description=(
         "Look up a free-text place name or location and return real coordinates "
         "from OpenStreetMap Nominatim (a lookup, not a model guess). Each match "
@@ -265,6 +270,7 @@ async def geocode_tool(
 
 @mcp.tool(
     name="filter_points_by_radius",
+    title="filter(radius)",
     description=(
         "Filter/rank any table of points by great-circle distance to a center. "
         "Reads a CSV (or GeoJSON points) of locations, computes the haversine "

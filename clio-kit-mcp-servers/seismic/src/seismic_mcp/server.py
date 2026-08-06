@@ -51,6 +51,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="analyze_sequence",
+    title="analyze(sequence)",
     description=(
         "Compute the descriptive statistics of a saved earthquake catalog: "
         "completeness magnitude (Mc), the Gutenberg-Richter b-value with "
@@ -96,6 +97,7 @@ async def analyze_sequence_tool(
 
 @mcp.tool(
     name="plot_sequence",
+    title="plot(sequence)",
     description=(
         "Render the three-panel earthquake-sequence figure from a saved catalog: "
         "(1) an epicenter map sized by magnitude and coloured by time, (2) the "

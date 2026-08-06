@@ -72,7 +72,13 @@ async def validate(module_path: str) -> list[str]:
             if not tool.annotations:
                 errors.append(f"Tool '{tool.name}': missing annotations")
             else:
-                ann = tool.annotations.model_dump()
+                # by_alias=True: fastmcp>=4.0.0b1's ToolAnnotations exposes these
+                # as snake_case Python fields (read_only_hint, ...) with the
+                # camelCase spellings checked below carried only as wire
+                # aliases. model_dump()'s snake_case default silently failed
+                # every one of these lookups once servers floored to 4.0.0b1,
+                # even though the hints were genuinely set.
+                ann = tool.annotations.model_dump(by_alias=True)
                 for hint in ("readOnlyHint", "destructiveHint", "idempotentHint"):
                     if ann.get(hint) is None:
                         errors.append(

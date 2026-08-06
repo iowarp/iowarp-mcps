@@ -48,6 +48,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="dem_terrain",
+    title="analyze(dem)",
     description=(
         "Analyze a Digital Elevation Model grid for elevation, slope, aspect, and "
         "site suitability. Accepts CSV numeric grids, NPY, and NPZ (with a 'dem' "
@@ -107,6 +108,7 @@ async def dem_terrain_tool(
 
 @mcp.tool(
     name="pointcloud_read",
+    title="grid(points)",
     description=(
         "Read an x/y/z point cloud and grid it into a DEM-like surface by averaging "
         "z per cell. Accepts CSV with x,y,z columns, NPY, and NPZ; LAS/LAZ requires "

@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-jarvis-user-v3.6",
-  "contract_sha256": "055c6697dc9a25fb033c949db92c928aee8d5673f7b2e3a4d90a237f4f87a40d",
+  "contract_sha256": "c845f7f72f0692aa3e0f28a5310a343ce116aae1e5542d3bc8a2a9de17b3296b",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -80,7 +80,8 @@
       "outputSchema": {
         "additionalProperties": true,
         "type": "object"
-      }
+      },
+      "title": "add(step)"
     },
     {
       "_meta": {
@@ -327,7 +328,8 @@
       "outputSchema": {
         "additionalProperties": true,
         "type": "object"
-      }
+      },
+      "title": "create(jarvis run)"
     },
     {
       "_meta": {
@@ -1560,7 +1562,8 @@
         ],
         "type": "object",
         "x-fastmcp-wrap-result": true
-      }
+      },
+      "title": "describe(jarvis)"
     },
     {
       "_meta": {
@@ -1618,7 +1621,8 @@
       "outputSchema": {
         "additionalProperties": true,
         "type": "object"
-      }
+      },
+      "title": "edit(step)"
     },
     {
       "_meta": {
@@ -3096,7 +3100,8 @@
           "service_runtimes"
         ],
         "type": "object"
-      }
+      },
+      "title": "get(execution)"
     },
     {
       "_meta": {
@@ -3838,8 +3843,9 @@
           "runtime_metadata"
         ],
         "type": "object"
-      }
+      },
+      "title": "start(execution)"
     }
   ],
-  "wire_sha256": "c69db36bda5d1cc97043d7b7cee88cabcf044d506865046537e0fb17ab0b2023"
+  "wire_sha256": "1353209b546f438430c55a86c066a4aedc84cc306f399d110c966d4c688f0bc7"
 }

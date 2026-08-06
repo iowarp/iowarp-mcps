@@ -13,7 +13,7 @@ authors = [
   { name = "IoWarp Team - Gnosis Research Center", email = "grc@illinoistech.edu" },
 ]
 dependencies = [
-  "fastmcp>=3.2.0",
+  "fastmcp>=4.0.0b1",
   "pydantic>=2.10",
 ]
 

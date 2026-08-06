@@ -2,6 +2,7 @@
 Plot capabilities implementation for data visualization.
 """
 
+import json
 import math
 import os
 from datetime import datetime, timezone
@@ -57,10 +58,12 @@ def get_data_info(file_path: str) -> Dict[str, Any]:
             "file_path": file_path,
             "shape": df.shape,
             "columns": df.columns.tolist(),
-            "dtypes": df.dtypes.to_dict(),
-            "null_counts": df.isnull().sum().to_dict(),
-            "memory_usage": df.memory_usage(deep=True).sum(),
-            "head": df.head().to_dict(),
+            "dtypes": {column: str(dtype) for column, dtype in df.dtypes.items()},
+            "null_counts": {
+                column: int(count) for column, count in df.isnull().sum().items()
+            },
+            "memory_usage": int(df.memory_usage(deep=True).sum()),
+            "head": json.loads(df.head().to_json()),
         }
     except Exception as e:
         logger.error(f"Error getting data info: {e}")

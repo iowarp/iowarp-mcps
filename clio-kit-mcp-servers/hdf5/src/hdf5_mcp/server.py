@@ -55,7 +55,7 @@ import os
 import time
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import Any, Callable, Optional, List
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
@@ -69,6 +69,23 @@ from fastmcp.prompts import Message
 
 from .config import get_config
 from .resources import ResourceManager, LazyHDF5Proxy, discover_hdf5_files_in_roots
+
+
+def _sample_callable(ctx: Optional[Context]) -> Optional[Callable[..., Any]]:
+    """Return the context's LLM-sampling callable, if this connection still offers one.
+
+    MCP 2026-07-28 removed sampling as a declared client capability, so
+    ``Context`` no longer defines ``.sample`` at all (it is not merely
+    optional per-client anymore). Looked up dynamically so a connection
+    negotiating that protocol version degrades through the same "AI
+    insights are unavailable" messaging these tools already use for clients
+    that never supported sampling, instead of a static attribute error.
+    """
+    if ctx is None:
+        return None
+    sample = getattr(ctx, "sample", None)
+    return sample if callable(sample) else None
+
 
 # =========================================================================
 # Server Setup
@@ -214,6 +231,7 @@ def with_error_handling(func):
 
 
 @mcp.tool(
+    title="open(file)",
     tags={"file", "core"},
     annotations={
         "title": "Open HDF5 File",
@@ -247,6 +265,7 @@ async def open_file(path: str, mode: str = "r") -> str:
 
 
 @mcp.tool(
+    title="close(file)",
     tags={"file", "core"},
     annotations={
         "title": "Close HDF5 File",
@@ -275,6 +294,7 @@ async def close_file() -> str:
 
 
 @mcp.tool(
+    title="get(filename)",
     tags={"file", "info"},
     annotations={
         "title": "Get Current Filename",
@@ -298,6 +318,7 @@ async def get_filename() -> str:
 
 
 @mcp.tool(
+    title="get(mode)",
     tags={"file", "info"},
     annotations={
         "title": "Get File Access Mode",
@@ -321,6 +342,7 @@ async def get_mode() -> str:
 
 
 @mcp.tool(
+    title="get(object)",
     tags={"dataset", "navigation"},
     annotations={
         "title": "Get Object by Path",
@@ -358,6 +380,7 @@ async def get_by_path(path: str) -> str:
 
 
 @mcp.tool(
+    title="list(keys)",
     tags={"dataset", "navigation"},
     annotations={
         "title": "List Keys in Group",
@@ -393,6 +416,7 @@ async def list_keys(path: str = "/") -> str:
 
 
 @mcp.tool(
+    title="visit(nodes)",
     tags={"dataset", "navigation"},
     annotations={
         "title": "Visit All Nodes Recursively",
@@ -432,6 +456,7 @@ async def visit(callback_fn: str = "collect_paths") -> str:
 
 
 @mcp.tool(
+    title="read(full)",
     tags={"dataset", "read"},
     annotations={
         "title": "Read Full Dataset",
@@ -479,6 +504,7 @@ async def read_full_dataset(path: str) -> str:
 
 
 @mcp.tool(
+    title="read(slice)",
     tags={"dataset", "read"},
     annotations={
         "title": "Read Partial Dataset",
@@ -539,6 +565,7 @@ async def read_partial_dataset(
 
 
 @mcp.tool(
+    title="get(shape)",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Shape",
@@ -574,6 +601,7 @@ async def get_shape(path: str) -> str:
 
 
 @mcp.tool(
+    title="get(dtype)",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Data Type",
@@ -609,6 +637,7 @@ async def get_dtype(path: str) -> str:
 
 
 @mcp.tool(
+    title="get(size)",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Size",
@@ -644,6 +673,7 @@ async def get_size(path: str) -> str:
 
 
 @mcp.tool(
+    title="get(chunks)",
     tags={"dataset", "metadata", "performance"},
     annotations={
         "title": "Get Dataset Chunk Info",
@@ -693,6 +723,7 @@ async def get_chunks(path: str) -> str:
 
 
 @mcp.tool(
+    title="read(attr)",
     tags={"attribute", "metadata"},
     annotations={
         "title": "Read Attribute",
@@ -732,6 +763,7 @@ async def read_attribute(path: str, name: str) -> str:
 
 
 @mcp.tool(
+    title="list(attrs)",
     tags={"attribute", "metadata"},
     annotations={
         "title": "List All Attributes",
@@ -781,6 +813,7 @@ async def list_attributes(path: str) -> str:
 
 
 @mcp.tool(
+    title="scan(parallel)",
     tags={"performance", "parallel", "scan"},
     annotations={
         "title": "Parallel Scan Multiple Files",
@@ -865,6 +898,7 @@ async def hdf5_parallel_scan(
 
 
 @mcp.tool(
+    title="read(batch)",
     tags={"performance", "parallel", "read"},
     annotations={
         "title": "Batch Read Multiple Datasets",
@@ -952,6 +986,7 @@ async def hdf5_batch_read(
 
 
 @mcp.tool(
+    title="stream(data)",
     tags={"performance", "streaming"},
     annotations={
         "title": "Stream Large Dataset",
@@ -1058,6 +1093,7 @@ async def hdf5_stream_data(
 
 
 @mcp.tool(
+    title="stats(aggregate)",
     tags={"performance", "parallel", "analysis"},
     annotations={
         "title": "Aggregate Statistics Across Datasets",
@@ -1182,6 +1218,7 @@ async def hdf5_aggregate_stats(
 
 
 @mcp.tool(
+    title="analyze(structure)",
     tags={"discovery", "ai-powered", "analysis"},
     annotations={
         "title": "Analyze Dataset Structure",
@@ -1241,15 +1278,16 @@ async def analyze_dataset_structure(
                 analysis += f"... and {len(groups) - 10} more groups\n"
 
         # Add LLM insights (optional - requires client sampling support)
-        if ctx and datasets:
+        sample = _sample_callable(ctx)
+        if sample and datasets:
             try:
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Analyze this HDF5 group structure at path '{path}': "
                     f"{len(datasets)} datasets, {len(groups)} groups. "
                     f"Dataset info: {', '.join(dataset_info[:5])}. "
                     f"What patterns do you observe and what might this data be used for?"
                 )
-                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"
             except ValueError as e:
                 # Client doesn't support sampling
                 logger.debug(f"Sampling not supported: {e}")
@@ -1265,6 +1303,10 @@ async def analyze_dataset_structure(
                 )
         elif not ctx:
             analysis += "\n\n[Debug: No Context provided to tool]\n"
+        elif not sample:
+            analysis += (
+                "\n\n[Debug: Context sampling not supported on this connection]\n"
+            )
         elif not datasets:
             analysis += "\n\n[Debug: No datasets to analyze]\n"
 
@@ -1277,14 +1319,15 @@ async def analyze_dataset_structure(
         analysis += f"Chunks: {obj.chunks}\n"
 
         # Add LLM insights for datasets (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Analyze this HDF5 dataset at path '{path}': "
                     f"Shape {obj.shape}, dtype {obj.dtype}, size {obj.nbytes / (1024 * 1024):.2f} MB. "
                     f"What might this data represent?"
                 )
-                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
             except Exception as e:
@@ -1300,6 +1343,7 @@ async def analyze_dataset_structure(
 
 
 @mcp.tool(
+    title="find(similar)",
     tags={"discovery", "ai-powered", "similarity"},
     annotations={
         "title": "Find Similar Datasets",
@@ -1379,7 +1423,8 @@ async def find_similar_datasets(
             result += f"    Shape: {ds['shape']}, Type: {ds['dtype']}, Size: {ds['size_mb']:.2f} MB\n"
 
         # Add LLM insights (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
                 top_similar = similar_datasets[:5]
                 similar_paths = ", ".join(
@@ -1388,13 +1433,13 @@ async def find_similar_datasets(
                         for ds in top_similar
                     ]
                 )
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Explain why these datasets are similar to '{reference_path}' "
                     f"(shape {ref_shape}, dtype {ref_dtype}): "
                     f"{similar_paths}. "
                     f"What might these similar datasets represent?"
                 )
-                result += f"\n\n🤖 AI Analysis:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                result += f"\n\n🤖 AI Analysis:\n{llm_response.text}\n"
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
             except Exception as e:
@@ -1409,6 +1454,7 @@ async def find_similar_datasets(
 
 
 @mcp.tool(
+    title="suggest(next)",
     tags={"discovery", "ai-powered", "recommendation"},
     annotations={
         "title": "Suggest Next Exploration",
@@ -1503,18 +1549,19 @@ async def suggest_next_exploration(
             result += f"   Interest score: {suggestion['score']}\n\n"
 
         # Add LLM recommendations (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
                 top_suggestions = suggestions[:3]
                 suggestion_list = ", ".join(
                     [f"{s['path']} ({s['info']})" for s in top_suggestions]
                 )
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Based on these top exploration targets at '{current_path}': "
                     f"{suggestion_list}, "
                     f"what would you recommend exploring first and why?"
                 )
-                result += f"\n🤖 AI Recommendations:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                result += f"\n🤖 AI Recommendations:\n{llm_response.text}\n"
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
             except Exception as e:
@@ -1529,6 +1576,7 @@ async def suggest_next_exploration(
 
 
 @mcp.tool(
+    title="find(bottlenecks)",
     tags={"discovery", "ai-powered", "performance"},
     annotations={
         "title": "Identify I/O Bottlenecks",
@@ -1607,17 +1655,18 @@ async def identify_io_bottlenecks(
             result += "\n"
 
         # Add LLM recommendations (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
                 bottleneck_summary = "; ".join(
                     [f"{b['path']} ({', '.join(b['issues'])})" for b in bottlenecks[:3]]
                 )
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"I found these I/O bottlenecks in HDF5 datasets: {bottleneck_summary}. "
                     f"What specific optimization strategies would you recommend to address these issues?"
                 )
                 result += (
-                    f"\n🤖 AI Optimization Recommendations:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                    f"\n🤖 AI Optimization Recommendations:\n{llm_response.text}\n"
                 )
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
@@ -1633,6 +1682,7 @@ async def identify_io_bottlenecks(
 
 
 @mcp.tool(
+    title="optimize(access)",
     tags={"discovery", "performance", "optimization"},
     annotations={
         "title": "Optimize Access Pattern",
@@ -1723,6 +1773,7 @@ async def optimize_access_pattern(
 
 
 @mcp.tool(
+    title="refresh(files)",
     tags={"admin", "discovery"},
     annotations={
         "title": "Refresh HDF5 Resources",
@@ -1762,6 +1813,7 @@ async def refresh_hdf5_resources(ctx: Optional[Context] = None) -> str:
 
 
 @mcp.tool(
+    title="list(files)",
     tags={"discovery", "helper"},
     annotations={
         "title": "List Available HDF5 Files",
@@ -1795,6 +1847,7 @@ async def list_available_hdf5_files() -> str:
 
 
 @mcp.tool(
+    title="export(dataset)",
     tags={"dataset", "export", "interactive"},
     annotations={
         "title": "Export Dataset",

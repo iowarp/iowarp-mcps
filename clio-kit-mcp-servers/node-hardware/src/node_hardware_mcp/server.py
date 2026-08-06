@@ -64,6 +64,7 @@ _READ_ONLY_ANNOTATIONS = {
 
 @mcp.tool(
     name="get_cpu_info",
+    title="get(cpu)",
     description="Get CPU specifications, core counts, frequencies, and per-core usage.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "cpu"},
@@ -80,6 +81,7 @@ async def get_cpu_info_tool() -> dict:
 
 @mcp.tool(
     name="get_memory_info",
+    title="get(memory)",
     description="Get RAM and swap capacity, usage percentages, and availability.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "memory"},
@@ -96,6 +98,7 @@ async def get_memory_info_tool() -> dict:
 
 @mcp.tool(
     name="get_system_info",
+    title="get(system)",
     description="Get OS details, hostname, uptime, and active users.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "system"},
@@ -112,6 +115,7 @@ async def get_system_info_tool() -> dict:
 
 @mcp.tool(
     name="get_disk_info",
+    title="get(disk)",
     description="Get disk partitions, usage statistics, and I/O counters.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "disk"},
@@ -128,6 +132,7 @@ async def get_disk_info_tool() -> dict:
 
 @mcp.tool(
     name="get_network_info",
+    title="get(network)",
     description="Get network interfaces, IP addresses, and I/O statistics.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "network"},
@@ -144,6 +149,7 @@ async def get_network_info_tool() -> dict:
 
 @mcp.tool(
     name="get_gpu_info",
+    title="get(gpu)",
     description="Get GPU model, memory, temperature, and utilization via nvidia-smi/rocm-smi.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "gpu"},
@@ -160,6 +166,7 @@ async def get_gpu_info_tool() -> dict:
 
 @mcp.tool(
     name="get_sensor_info",
+    title="get(sensors)",
     description="Get temperature, fan speed, and battery sensor readings.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "sensor"},
@@ -176,6 +183,7 @@ async def get_sensor_info_tool() -> dict:
 
 @mcp.tool(
     name="get_process_info",
+    title="get(processes)",
     description="Get running processes with CPU, memory, and status details.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "process"},
@@ -192,6 +200,7 @@ async def get_process_info_tool() -> dict:
 
 @mcp.tool(
     name="get_performance_info",
+    title="get(performance)",
     description="Get real-time CPU, memory, disk, and network performance metrics.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "performance"},
@@ -213,6 +222,7 @@ async def get_performance_info_tool() -> dict:
 
 @mcp.tool(
     name="get_remote_node_info",
+    title="get(remote node)",
     description="Collect hardware info from a remote node via SSH. Supports component filtering.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "remote", "ssh"},
@@ -269,6 +279,7 @@ async def get_remote_node_info_tool(
 
 @mcp.tool(
     name="health_check",
+    title="check(health)",
     description="Verify server health and hardware monitoring capability status.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"hardware", "diagnostics"},

@@ -41,6 +41,7 @@ _READ_ONLY_ANNOTATIONS = {
 
 @mcp.tool(
     name="load_darshan_log",
+    title="load(log)",
     description="Load and parse a Darshan log file to extract I/O performance metrics and metadata.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "io-analysis"},
@@ -62,6 +63,7 @@ async def load_darshan_log_tool(log_file_path: str) -> dict:
 
 @mcp.tool(
     name="get_job_summary",
+    title="get(job summary)",
     description="Get job-level summary from a Darshan log including runtime, process count, and I/O volume.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "io-analysis"},
@@ -83,6 +85,7 @@ async def get_job_summary_tool(log_file_path: str) -> dict:
 
 @mcp.tool(
     name="analyze_file_access_patterns",
+    title="analyze(access)",
     description="Analyze file access patterns including read/write types and sequential vs random access.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "io-analysis"},
@@ -109,6 +112,7 @@ async def analyze_file_access_patterns_tool(
 
 @mcp.tool(
     name="get_io_performance_metrics",
+    title="get(io metrics)",
     description="Extract I/O performance metrics including bandwidth, IOPS, and request sizes.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "performance"},
@@ -130,6 +134,7 @@ async def get_io_performance_metrics_tool(log_file_path: str) -> dict:
 
 @mcp.tool(
     name="analyze_posix_operations",
+    title="analyze(posix)",
     description="Analyze POSIX I/O operations including read/write system calls and their frequency.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "io-analysis"},
@@ -151,6 +156,7 @@ async def analyze_posix_operations_tool(log_file_path: str) -> dict:
 
 @mcp.tool(
     name="analyze_mpiio_operations",
+    title="analyze(mpiio)",
     description="Analyze MPI-IO operations including collective vs independent operations.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "io-analysis"},
@@ -172,6 +178,7 @@ async def analyze_mpiio_operations_tool(log_file_path: str) -> dict:
 
 @mcp.tool(
     name="identify_io_bottlenecks",
+    title="find(bottlenecks)",
     description="Identify I/O performance bottlenecks by analyzing access patterns and operations.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "performance"},
@@ -193,6 +200,7 @@ async def identify_io_bottlenecks_tool(log_file_path: str) -> dict:
 
 @mcp.tool(
     name="get_timeline_analysis",
+    title="get(timeline)",
     description="Generate timeline analysis showing I/O activity over time and temporal patterns.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "performance"},
@@ -217,6 +225,7 @@ async def get_timeline_analysis_tool(
 
 @mcp.tool(
     name="compare_darshan_logs",
+    title="compare(logs)",
     description="Compare two Darshan log files to identify performance differences between runs.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "performance"},
@@ -246,6 +255,7 @@ async def compare_darshan_logs_tool(
 
 @mcp.tool(
     name="generate_io_summary_report",
+    title="generate(report)",
     description="Generate a comprehensive I/O summary report with findings and recommendations.",
     annotations=_READ_ONLY_ANNOTATIONS,
     tags={"darshan", "performance"},

@@ -58,6 +58,7 @@ _SourceField = Annotated[
 
 @mcp.tool(
     name="inspect_geojson",
+    title="inspect(geojson)",
     description=(
         "Inspect a GeoJSON document and report its geometry types and counts, "
         "feature count, property keys (schema), bounding box "
@@ -90,6 +91,7 @@ async def inspect_geojson_tool(
 
 @mcp.tool(
     name="validate_geojson",
+    title="validate(geojson)",
     description=(
         "Validate the structural well-formedness of a GeoJSON document: that "
         "the top-level type is recognized and every geometry's type and "
@@ -112,6 +114,7 @@ async def validate_geojson_tool(source: _SourceField) -> dict[str, Any]:
 
 @mcp.tool(
     name="summarize_geojson",
+    title="summarize(geojson)",
     description=(
         "Produce a compact human-readable summary of a GeoJSON document: counts "
         "per geometry type, bounding box, property keys, and a few sample "
@@ -139,6 +142,7 @@ async def summarize_geojson_tool(
 
 @mcp.tool(
     name="feature_bbox",
+    title="compute(bbox)",
     description=(
         "Compute the overall bounding box [min_lon, min_lat, max_lon, max_lat] "
         "of all features in a GeoJSON document. Accepts a file path or inline "

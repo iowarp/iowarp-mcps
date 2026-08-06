@@ -747,7 +747,7 @@ class TestPipelineToolsDirect:
         from jarvis_mcp.server import jarvis_run_tool
 
         class FakeContext:
-            request_context = SimpleNamespace(meta=SimpleNamespace(progressToken=None))
+            request_context = SimpleNamespace(meta={"progressToken": None})
 
             async def report_progress(self, *_args: object, **_kwargs: object) -> None:
                 raise AssertionError("progress must not be reported without a token")
@@ -780,9 +780,7 @@ class TestPipelineToolsDirect:
         reports: list[tuple[float, float | None, str]] = []
 
         class FakeContext:
-            request_context = SimpleNamespace(
-                meta=SimpleNamespace(progressToken="live-token")
-            )
+            request_context = SimpleNamespace(meta={"progressToken": "live-token"})
 
             async def report_progress(
                 self, current: float, total: float | None, message: str

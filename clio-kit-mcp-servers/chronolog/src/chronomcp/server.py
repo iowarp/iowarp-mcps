@@ -15,6 +15,7 @@ mcp: FastMCP = config.mcp
 
 
 @mcp.tool(
+    title="start(chronolog)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -30,6 +31,7 @@ async def start_chronolog(
 
 
 @mcp.tool(
+    title="record(interaction)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -43,6 +45,7 @@ async def record_interaction(user_message: str, assistant_message: str) -> str:
 
 
 @mcp.tool(
+    title="stop(chronolog)",
     annotations={
         "readOnlyHint": False,
         "destructiveHint": False,
@@ -56,6 +59,7 @@ async def stop_chronolog() -> str:
 
 
 @mcp.tool(
+    title="retrieve(logs)",
     annotations={
         "readOnlyHint": True,
         "destructiveHint": False,

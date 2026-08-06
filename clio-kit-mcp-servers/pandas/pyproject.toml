@@ -11,7 +11,7 @@ authors = [
 keywords = ["pandas", "data-analysis", "statistical-analysis", "data-science", "data-manipulation", "time-series", "data-cleaning", "data-transformation", "mcp", "llm-integration"]
 
 dependencies = [
-  "fastmcp>=3.0.1",
+  "fastmcp>=4.0.0b1",
   "python-dotenv>=1.0.0",
   "pandas>=2.2.0",
   "numpy<2",

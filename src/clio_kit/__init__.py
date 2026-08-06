@@ -626,6 +626,7 @@ def _run_locked_local_server(
     child_environment[LOCKED_SERVER_PROJECT_SHA_ENV] = project_sha256
     child_environment[LOCKED_SERVER_LOCK_SHA_ENV] = runtime_identity["lock_sha256"]
     child_environment["UV_CACHE_DIR"] = str((cache_root / "uv-cache").resolve())
+    child_environment["UV_PRERELEASE"] = "allow"
     child_environment.pop("VIRTUAL_ENV", None)
 
     uv = uv_command()

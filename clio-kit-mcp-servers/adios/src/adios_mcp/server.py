@@ -27,6 +27,7 @@ mcp: FastMCP = FastMCP(
 # List BP5 Files Tool
 @mcp.tool(
     name="list_bp5",
+    title="list(bp5)",
     description="Lists all BP5 files in a given directory. The 'directory' parameter must be an absolute path.",
     annotations={
         "readOnlyHint": True,
@@ -43,6 +44,7 @@ async def list_bp5_tool(directory: str = "data/") -> dict:
 # ─── INSPECT VARIABLES ───────────────────────────────────────────────────────
 @mcp.tool(
     name="inspect_variables",
+    title="inspect(vars)",
     description="Inspects variables in a BP5 file, returning type, shape, and steps. Optionally filters by variable name.",
     annotations={
         "readOnlyHint": True,
@@ -61,6 +63,7 @@ async def inspect_variables_tool(
 # ─── INSPECT VARIABLES AT STEP ─────────────────────────────────────────────────
 @mcp.tool(
     name="inspect_variables_at_step",
+    title="inspect(step)",
     description="Inspects a specific variable at a given step in a BP5 file. All parameters are required.",
     annotations={
         "readOnlyHint": True,
@@ -81,6 +84,7 @@ async def inspect_variables_at_step_tool(
 # ─── INSPECT ATTRIBUTES ──────────────────────────────────────────────────────
 @mcp.tool(
     name="inspect_attributes",
+    title="inspect(attrs)",
     description="Reads global or variable-specific attributes from a BP5 file. The 'variable_name' is optional.",
     annotations={
         "readOnlyHint": True,
@@ -99,6 +103,7 @@ async def inspect_attributes_tool(
 # ─── READ VARIABLE AT STEP ────────────────────────────────────────────────────
 @mcp.tool(
     name="read_variable_at_step",
+    title="read(step)",
     description="Reads a named variable at a specific step from a BP5 file. All parameters are required.",
     annotations={
         "readOnlyHint": True,

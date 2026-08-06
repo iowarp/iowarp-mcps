@@ -416,10 +416,12 @@ def test_launcher_local_server_evicts_stale_sibling(
     stale_env, stale_project = _seed_spec(
         cache_root, "spack", _HASHES[8], mtime=1_000.0
     )
+    sync_environments: list[dict[str, str]] = []
 
     def fake_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
         # The build (uv sync) must materialize the current environment directory.
         if "sync" in cmd:
+            sync_environments.append(kwargs["env"])
             current_env.mkdir(parents=True, exist_ok=True)
             (current_env / "bin").mkdir(parents=True, exist_ok=True)
         return subprocess.CompletedProcess(cmd, 0, b"", b"")
@@ -429,5 +431,6 @@ def test_launcher_local_server_evicts_stale_sibling(
     clio_kit._run_locked_local_server(server_path, "spack-mcp", (), os.environ.copy())
 
     assert current_env.exists()
+    assert sync_environments[0]["UV_PRERELEASE"] == "allow"
     assert not stale_env.exists()
     assert not stale_project.exists()

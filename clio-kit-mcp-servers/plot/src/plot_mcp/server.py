@@ -48,6 +48,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="line_plot",
+    title="plot(line)",
     description="Create a line plot from CSV or Excel data with customizable styling.",
     annotations={
         "readOnlyHint": False,
@@ -89,6 +90,7 @@ async def line_plot_tool(
 
 @mcp.tool(
     name="bar_plot",
+    title="plot(bar)",
     description="Create a bar chart from CSV or Excel data with categorical grouping.",
     annotations={
         "readOnlyHint": False,
@@ -130,6 +132,7 @@ async def bar_plot_tool(
 
 @mcp.tool(
     name="scatter_plot",
+    title="plot(scatter)",
     description="Create a scatter plot from CSV or Excel data for correlation analysis.",
     annotations={
         "readOnlyHint": False,
@@ -171,6 +174,7 @@ async def scatter_plot_tool(
 
 @mcp.tool(
     name="histogram_plot",
+    title="plot(histogram)",
     description="Create a histogram from CSV or Excel data showing value distribution.",
     annotations={
         "readOnlyHint": False,
@@ -212,6 +216,7 @@ async def histogram_plot_tool(
 
 @mcp.tool(
     name="heatmap_plot",
+    title="plot(heatmap)",
     description="Create a correlation heatmap from numeric columns in CSV or Excel data.",
     annotations={
         "readOnlyHint": False,
@@ -247,6 +252,7 @@ async def heatmap_plot_tool(
 
 @mcp.tool(
     name="plot_timeseries",
+    title="plot(timeseries)",
     description="Create a multi-series line chart PNG from one or more y columns of a CSV or Excel file, auto-detecting a time, numeric, or categorical x axis.",
     annotations={
         "readOnlyHint": False,
@@ -304,6 +310,7 @@ async def plot_timeseries(
 
 @mcp.tool(
     name="data_info",
+    title="describe(data)",
     description="Get schema, column types, and summary statistics for a CSV or Excel file.",
     annotations={
         "readOnlyHint": True,

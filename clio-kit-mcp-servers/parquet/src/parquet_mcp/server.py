@@ -35,6 +35,7 @@ mcp = FastMCP(
 
 
 @mcp.tool(
+    title="summarize(parquet)",
     description="Return Parquet schema, row count, and file size.",
     annotations={
         "readOnlyHint": True,
@@ -56,6 +57,7 @@ async def summarize_tool(file_path: str) -> str:
 
 
 @mcp.tool(
+    title="read(slice)",
     description="Read a row slice from a Parquet file with optional column projection and filtering.",
     annotations={
         "readOnlyHint": True,
@@ -90,6 +92,7 @@ async def read_slice_tool(
 
 
 @mcp.tool(
+    title="preview(column)",
     description="Preview values from a specific column with pagination.",
     annotations={
         "readOnlyHint": True,
@@ -118,6 +121,7 @@ async def get_column_preview_tool(
 
 
 @mcp.tool(
+    title="aggregate(column)",
     description="Compute aggregate statistics (min, max, mean, etc.) on a Parquet column.",
     annotations={
         "readOnlyHint": True,
