@@ -55,7 +55,7 @@ import os
 import time
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import Any, Callable, Optional, List
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
@@ -69,6 +69,23 @@ from fastmcp.prompts import Message
 
 from .config import get_config
 from .resources import ResourceManager, LazyHDF5Proxy, discover_hdf5_files_in_roots
+
+
+def _sample_callable(ctx: Optional[Context]) -> Optional[Callable[..., Any]]:
+    """Return the context's LLM-sampling callable, if this connection still offers one.
+
+    MCP 2026-07-28 removed sampling as a declared client capability, so
+    ``Context`` no longer defines ``.sample`` at all (it is not merely
+    optional per-client anymore). Looked up dynamically so a connection
+    negotiating that protocol version degrades through the same "AI
+    insights are unavailable" messaging these tools already use for clients
+    that never supported sampling, instead of a static attribute error.
+    """
+    if ctx is None:
+        return None
+    sample = getattr(ctx, "sample", None)
+    return sample if callable(sample) else None
+
 
 # =========================================================================
 # Server Setup
@@ -1261,15 +1278,16 @@ async def analyze_dataset_structure(
                 analysis += f"... and {len(groups) - 10} more groups\n"
 
         # Add LLM insights (optional - requires client sampling support)
-        if ctx and datasets:
+        sample = _sample_callable(ctx)
+        if sample and datasets:
             try:
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Analyze this HDF5 group structure at path '{path}': "
                     f"{len(datasets)} datasets, {len(groups)} groups. "
                     f"Dataset info: {', '.join(dataset_info[:5])}. "
                     f"What patterns do you observe and what might this data be used for?"
                 )
-                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"
             except ValueError as e:
                 # Client doesn't support sampling
                 logger.debug(f"Sampling not supported: {e}")
@@ -1285,6 +1303,10 @@ async def analyze_dataset_structure(
                 )
         elif not ctx:
             analysis += "\n\n[Debug: No Context provided to tool]\n"
+        elif not sample:
+            analysis += (
+                "\n\n[Debug: Context sampling not supported on this connection]\n"
+            )
         elif not datasets:
             analysis += "\n\n[Debug: No datasets to analyze]\n"
 
@@ -1297,14 +1319,15 @@ async def analyze_dataset_structure(
         analysis += f"Chunks: {obj.chunks}\n"
 
         # Add LLM insights for datasets (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Analyze this HDF5 dataset at path '{path}': "
                     f"Shape {obj.shape}, dtype {obj.dtype}, size {obj.nbytes / (1024 * 1024):.2f} MB. "
                     f"What might this data represent?"
                 )
-                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                analysis += f"\n\n🤖 AI Insights:\n{llm_response.text}\n"
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
             except Exception as e:
@@ -1400,7 +1423,8 @@ async def find_similar_datasets(
             result += f"    Shape: {ds['shape']}, Type: {ds['dtype']}, Size: {ds['size_mb']:.2f} MB\n"
 
         # Add LLM insights (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
                 top_similar = similar_datasets[:5]
                 similar_paths = ", ".join(
@@ -1409,13 +1433,13 @@ async def find_similar_datasets(
                         for ds in top_similar
                     ]
                 )
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Explain why these datasets are similar to '{reference_path}' "
                     f"(shape {ref_shape}, dtype {ref_dtype}): "
                     f"{similar_paths}. "
                     f"What might these similar datasets represent?"
                 )
-                result += f"\n\n🤖 AI Analysis:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                result += f"\n\n🤖 AI Analysis:\n{llm_response.text}\n"
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
             except Exception as e:
@@ -1525,18 +1549,19 @@ async def suggest_next_exploration(
             result += f"   Interest score: {suggestion['score']}\n\n"
 
         # Add LLM recommendations (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
                 top_suggestions = suggestions[:3]
                 suggestion_list = ", ".join(
                     [f"{s['path']} ({s['info']})" for s in top_suggestions]
                 )
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"Based on these top exploration targets at '{current_path}': "
                     f"{suggestion_list}, "
                     f"what would you recommend exploring first and why?"
                 )
-                result += f"\n🤖 AI Recommendations:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                result += f"\n🤖 AI Recommendations:\n{llm_response.text}\n"
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
             except Exception as e:
@@ -1630,17 +1655,18 @@ async def identify_io_bottlenecks(
             result += "\n"
 
         # Add LLM recommendations (optional - requires client sampling support)
-        if ctx:
+        sample = _sample_callable(ctx)
+        if sample:
             try:
                 bottleneck_summary = "; ".join(
                     [f"{b['path']} ({', '.join(b['issues'])})" for b in bottlenecks[:3]]
                 )
-                llm_response = await ctx.sample(
+                llm_response = await sample(
                     f"I found these I/O bottlenecks in HDF5 datasets: {bottleneck_summary}. "
                     f"What specific optimization strategies would you recommend to address these issues?"
                 )
                 result += (
-                    f"\n🤖 AI Optimization Recommendations:\n{llm_response.text}\n"  # type: ignore[union-attr]
+                    f"\n🤖 AI Optimization Recommendations:\n{llm_response.text}\n"
                 )
             except ValueError as e:
                 logger.debug(f"Sampling not supported: {e}")
