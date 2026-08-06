@@ -1847,7 +1847,7 @@ def _context_has_progress_token(ctx: Context | None) -> bool:
     return (
         request_context is not None
         and request_context.meta is not None
-        and request_context.meta.progressToken is not None
+        and request_context.meta.get("progressToken") is not None
     )
 
 
