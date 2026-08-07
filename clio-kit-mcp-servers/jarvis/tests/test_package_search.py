@@ -12,6 +12,7 @@ from fastmcp.exceptions import ToolError
 from jarvis_mcp.server import (
     PACKAGE_SEARCH_MAX_RESULT_BYTES,
     _PackageAgentMetadata,
+    _package_configuration_search_text,
     _setting_from_menu_item,
     jarvis_describe_tool,
     mcp,
@@ -552,6 +553,60 @@ async def test_package_search_survives_a_package_that_cannot_be_loaded(
         result = await jarvis_describe_tool("package_search", query="echo")
 
     assert [package["name"] for package in result["packages"]] == ["builtin.echo"]
+
+
+def test_configuration_search_text_projects_settings_and_binding_vocabulary() -> None:
+    """The real (unmocked) implementation extracts declared search terms.
+
+    Unit-level, deterministic coverage of ``_package_configuration_search_text``
+    itself: this must not depend on how a real ``jarvis_cd`` install happens to
+    load a bare test-fixture package (that behavior is an accident of the
+    installed runtime, not a contract this function owns).
+    """
+
+    menu = [
+        {"name": "tasks", "msg": "Number of parallel tasks to launch."},
+        {
+            "name": "script",
+            "msg": "Caller-local script staged onto the cluster.",
+            "input_binding": {
+                "schema_version": "jarvis.configuration-input-binding.v1",
+                "kind": "local_file",
+                "structure": "regular_file",
+            },
+        },
+        {"name": "internal_flag", "msg": "Hidden from agents.", "agent_visible": False},
+    ]
+    package = Mock()
+    package.configure_menu.return_value = menu
+
+    with patch("jarvis_cd.core.pkg.Pkg.load_standalone", return_value=package):
+        text = _package_configuration_search_text("site.example")
+
+    for expected in (
+        "tasks",
+        "Number of parallel tasks to launch.",
+        "script",
+        "Caller-local script staged onto the cluster.",
+        "input_binding",
+        "local_file",
+        "regular_file",
+    ):
+        assert expected in text
+    # The setting marked ``agent_visible: False`` is filtered before any of
+    # its text can reach the search corpus.
+    assert "internal_flag" not in text
+    assert "Hidden from agents" not in text
+
+
+def test_configuration_search_text_is_best_effort_for_an_unloadable_package() -> None:
+    """A package that cannot be loaded contributes no configuration text."""
+
+    def explode(package_name: str) -> str:
+        raise RuntimeError(f"cannot import {package_name}")
+
+    with patch("jarvis_cd.core.pkg.Pkg.load_standalone", side_effect=explode):
+        assert _package_configuration_search_text("site.broken") == ""
 
 
 @pytest.mark.asyncio
