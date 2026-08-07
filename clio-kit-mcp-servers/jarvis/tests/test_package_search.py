@@ -504,6 +504,13 @@ async def test_package_search_finds_packages_by_declared_input_binding(
     ):
         shell = await jarvis_describe_tool("package_search", query="shell")
         binding = await jarvis_describe_tool("package_search", query="local_file")
+        # "shell" and "binding" never appear together as a contiguous phrase
+        # in any declared text (rank 5's substring check misses), but both
+        # terms individually appear in bounded_command's configuration
+        # ("...No shell is interposed"... "input_binding..." tokenizes to
+        # "binding"). This is rank 6: every query term present somewhere in
+        # the combined identity+configuration vocabulary, order-independent.
+        scattered = await jarvis_describe_tool("package_search", query="shell binding")
 
     # The identity match still ranks first; the declared contract adds the
     # candidate the agent could not otherwise reach.
@@ -515,8 +522,13 @@ async def test_package_search_finds_packages_by_declared_input_binding(
     assert [package["name"] for package in binding["packages"]] == [
         "site.bounded_command"
     ]
+    # Only the package whose declared configuration contains BOTH scattered
+    # terms matches; my_shell has "shell" but no "binding" anywhere.
+    assert [package["name"] for package in scattered["packages"]] == [
+        "site.bounded_command"
+    ]
     # The wire projection is unchanged: identity only, never settings.
-    for package in shell["packages"] + binding["packages"]:
+    for package in shell["packages"] + binding["packages"] + scattered["packages"]:
         assert set(package) <= {"name", "short_name", "repository", "description"}
 
 
