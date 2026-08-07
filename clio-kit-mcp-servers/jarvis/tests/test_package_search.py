@@ -12,6 +12,7 @@ from fastmcp.exceptions import ToolError
 from jarvis_mcp.server import (
     PACKAGE_SEARCH_MAX_RESULT_BYTES,
     _PackageAgentMetadata,
+    _package_configuration_search_text,
     _setting_from_menu_item,
     jarvis_describe_tool,
     mcp,
@@ -335,7 +336,14 @@ async def test_ambiguous_short_name_fails_with_canonical_candidates(
 async def test_package_search_is_ranked_summary_only_and_cursor_bound(
     tmp_path: Path,
 ) -> None:
-    """Search ranks deterministically without importing package settings."""
+    """Search ranks deterministically and never loads full agent metadata.
+
+    Discovery may read a package's declared configuration menu (see
+    ``test_package_search_finds_packages_by_declared_input_binding``) but must
+    never take the ``_package_agent_metadata`` path, whose deployment-contract
+    validation raises ``ToolError`` -- one package's bad contract must not be
+    able to fail an unrelated search.
+    """
 
     repo = tmp_path / "repo"
     _write_package(repo, "builtin.paraview", "Generic visualization runtime.")
@@ -430,6 +438,175 @@ async def test_package_search_enforces_response_byte_ceiling(tmp_path: Path) -> 
     assert 0 < result["returned_count"] < 25
     assert result["total_matches"] == 60
     assert isinstance(result["next_cursor"], str)
+
+
+@pytest.mark.asyncio
+async def test_package_search_finds_packages_by_declared_input_binding(
+    tmp_path: Path,
+) -> None:
+    """A staged-input package is discoverable through its declared contract.
+
+    Live regression (p5run2): an agent that had authored a local script
+    searched ``shell`` and ``script``, and the only package it could reach
+    declared no ``input_binding`` at all, so its file was never staged and the
+    job ran ``bash marker.sh`` in a directory that never received the file.
+    The package that DOES declare the binding was unreachable because search
+    ranked over module docstrings only.
+    """
+
+    repo = tmp_path / "repo"
+    _write_package(repo, "builtin.my_shell", "Launch the MyShell application.")
+    _write_package(repo, "site.bounded_command", "Package for bounded commands.")
+    _write_package(repo, "site.unrelated", "Unrelated application.")
+
+    declared = {
+        "builtin.my_shell": [{"name": "script", "msg": "The path of shell script."}],
+        "site.bounded_command": [
+            {
+                "name": "command",
+                "msg": "Argument vector to execute. No shell is interposed.",
+            },
+            {
+                "name": "script",
+                "msg": "Caller-local script staged onto the cluster.",
+                "input_binding": {
+                    "schema_version": "jarvis.configuration-input-binding.v1",
+                    "kind": "local_file",
+                    "structure": "regular_file",
+                },
+            },
+        ],
+    }
+
+    def configuration_text(package_name: str) -> str:
+        menu = declared.get(package_name)
+        if menu is None:
+            return ""
+        return " ".join(
+            part
+            for item in menu
+            for part in (
+                item["name"],
+                item["msg"],
+                *(
+                    ("input_binding", "local_file", "regular_file")
+                    if "input_binding" in item
+                    else ()
+                ),
+            )
+        )
+
+    with (
+        patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
+        patch(
+            "jarvis_mcp.server._package_configuration_search_text",
+            side_effect=configuration_text,
+        ),
+    ):
+        shell = await jarvis_describe_tool("package_search", query="shell")
+        binding = await jarvis_describe_tool("package_search", query="local_file")
+        # "shell" and "binding" never appear together as a contiguous phrase
+        # in any declared text (rank 5's substring check misses), but both
+        # terms individually appear in bounded_command's configuration
+        # ("...No shell is interposed"... "input_binding..." tokenizes to
+        # "binding"). This is rank 6: every query term present somewhere in
+        # the combined identity+configuration vocabulary, order-independent.
+        scattered = await jarvis_describe_tool("package_search", query="shell binding")
+
+    # The identity match still ranks first; the declared contract adds the
+    # candidate the agent could not otherwise reach.
+    assert [package["name"] for package in shell["packages"]] == [
+        "builtin.my_shell",
+        "site.bounded_command",
+    ]
+    # The binding's own declared vocabulary is a capability query.
+    assert [package["name"] for package in binding["packages"]] == [
+        "site.bounded_command"
+    ]
+    # Only the package whose declared configuration contains BOTH scattered
+    # terms matches; my_shell has "shell" but no "binding" anywhere.
+    assert [package["name"] for package in scattered["packages"]] == [
+        "site.bounded_command"
+    ]
+    # The wire projection is unchanged: identity only, never settings.
+    for package in shell["packages"] + binding["packages"] + scattered["packages"]:
+        assert set(package) <= {"name", "short_name", "repository", "description"}
+
+
+@pytest.mark.asyncio
+async def test_package_search_survives_a_package_that_cannot_be_loaded(
+    tmp_path: Path,
+) -> None:
+    """One unloadable package must not fail a whole discovery request."""
+
+    repo = tmp_path / "repo"
+    _write_package(repo, "builtin.broken", "Broken package.")
+    _write_package(repo, "builtin.echo", "Echo package.")
+
+    def explode(package_name: str) -> str:
+        raise RuntimeError(f"cannot import {package_name}")
+
+    with (
+        patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
+        patch("jarvis_cd.core.pkg.Pkg.load_standalone", side_effect=explode),
+    ):
+        result = await jarvis_describe_tool("package_search", query="echo")
+
+    assert [package["name"] for package in result["packages"]] == ["builtin.echo"]
+
+
+def test_configuration_search_text_projects_settings_and_binding_vocabulary() -> None:
+    """The real (unmocked) implementation extracts declared search terms.
+
+    Unit-level, deterministic coverage of ``_package_configuration_search_text``
+    itself: this must not depend on how a real ``jarvis_cd`` install happens to
+    load a bare test-fixture package (that behavior is an accident of the
+    installed runtime, not a contract this function owns).
+    """
+
+    menu = [
+        {"name": "tasks", "msg": "Number of parallel tasks to launch."},
+        {
+            "name": "script",
+            "msg": "Caller-local script staged onto the cluster.",
+            "input_binding": {
+                "schema_version": "jarvis.configuration-input-binding.v1",
+                "kind": "local_file",
+                "structure": "regular_file",
+            },
+        },
+        {"name": "internal_flag", "msg": "Hidden from agents.", "agent_visible": False},
+    ]
+    package = Mock()
+    package.configure_menu.return_value = menu
+
+    with patch("jarvis_cd.core.pkg.Pkg.load_standalone", return_value=package):
+        text = _package_configuration_search_text("site.example")
+
+    for expected in (
+        "tasks",
+        "Number of parallel tasks to launch.",
+        "script",
+        "Caller-local script staged onto the cluster.",
+        "input_binding",
+        "local_file",
+        "regular_file",
+    ):
+        assert expected in text
+    # The setting marked ``agent_visible: False`` is filtered before any of
+    # its text can reach the search corpus.
+    assert "internal_flag" not in text
+    assert "Hidden from agents" not in text
+
+
+def test_configuration_search_text_is_best_effort_for_an_unloadable_package() -> None:
+    """A package that cannot be loaded contributes no configuration text."""
+
+    def explode(package_name: str) -> str:
+        raise RuntimeError(f"cannot import {package_name}")
+
+    with patch("jarvis_cd.core.pkg.Pkg.load_standalone", side_effect=explode):
+        assert _package_configuration_search_text("site.broken") == ""
 
 
 @pytest.mark.asyncio
