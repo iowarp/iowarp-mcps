@@ -6,6 +6,7 @@ import importlib
 import json
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Any, Literal, Optional, cast
@@ -2379,7 +2380,15 @@ def _search_packages(
         )
 
     inventory = _discover_package_inventory()
-    inventory_revision = _package_inventory_revision(inventory)
+    # The declared configuration contract is part of what ranks and pages this
+    # search, so it is also part of the revision the cursor is bound to: a menu
+    # that changes between pages must invalidate the cursor exactly as a
+    # changed docstring already does.
+    configuration_texts = {
+        package.name: _package_configuration_search_text(package.name)
+        for package in inventory
+    }
+    inventory_revision = _package_inventory_revision(inventory, configuration_texts)
     query_sha256 = hashlib.sha256(
         normalized_query.casefold().encode("utf-8")
     ).hexdigest()
@@ -2387,7 +2396,14 @@ def _search_packages(
         (
             (rank, package)
             for package in inventory
-            if (rank := _package_search_rank(package, normalized_query)) is not None
+            if (
+                rank := _package_search_rank(
+                    package,
+                    normalized_query,
+                    configuration_texts.get(package.name, ""),
+                )
+            )
+            is not None
         ),
         key=lambda item: (item[0], item[1].name.casefold(), item[1].name),
     )
@@ -2443,11 +2459,66 @@ def _search_packages(
         page.pop()
 
 
+def _package_configuration_search_text(package_name: str) -> str:
+    """Return one package's declared agent-visible configuration as search text.
+
+    Discovery ranks over what a package DECLARES, not only over the module
+    docstring that ``_first_docstring_or_comment`` scrapes. A caller looking
+    for a package that accepts a *staged local input* has no other way to find
+    one: the bounded search summary carries identity only, and a setting's
+    ``input_binding`` -- the single authoritative staging signal -- lives in
+    the package's configure menu, which search never consulted. Every term
+    here is package-declared (setting names, setting prose, and the binding's
+    own ``kind``/``structure`` vocabulary); nothing about specific packages is
+    encoded in this function.
+
+    Loading is best-effort by design and mirrors
+    :func:`_package_agent_metadata`'s existing treatment of an unloadable
+    menu: a package that cannot be imported contributes no configuration text
+    and stays rankable by identity exactly as before, so one broken package in
+    a registered repository can never fail a whole search.
+    """
+
+    try:
+        from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
+
+        pkg = Pkg.load_standalone(package_name)
+        settings = [
+            _setting_from_menu_item(item)
+            for item in pkg.configure_menu()
+            if _setting_is_agent_visible(item)
+        ]
+    except Exception:
+        return ""
+
+    terms: list[str] = []
+    for setting in settings:
+        for field in ("name", "description"):
+            value = setting.get(field)
+            if isinstance(value, str) and value:
+                terms.append(value)
+        binding = setting.get("input_binding")
+        if isinstance(binding, dict):
+            terms.append("input_binding")
+            for field in ("kind", "structure"):
+                value = binding.get(field)
+                if isinstance(value, str) and value:
+                    terms.append(value)
+    return " ".join(terms)
+
+
 def _package_search_rank(
     package: _PackageInventoryEntry,
     query: str,
+    configuration_text: str = "",
 ) -> int | None:
-    """Return a deterministic relevance rank, or ``None`` when no field matches."""
+    """Return a deterministic relevance rank, or ``None`` when no field matches.
+
+    Ranks 0-4 are identity and docstring matches and are unchanged. Ranks 5
+    and 6 are the package's own declared configuration contract, which ranks
+    below every identity match so an exact name never loses to a setting that
+    merely mentions the query.
+    """
 
     folded_query = query.casefold()
     folded_name = package.name.casefold()
@@ -2467,7 +2538,7 @@ def _package_search_rank(
     normalized_query = _package_search_terms(folded_query)
     if not normalized_query:
         return None
-    searchable = _package_search_terms(
+    identity_terms = _package_search_terms(
         " ".join(
             (
                 package.name,
@@ -2476,8 +2547,15 @@ def _package_search_rank(
             )
         ).casefold()
     )
-    if all(term in searchable for term in normalized_query):
+    if all(term in identity_terms for term in normalized_query):
         return 4
+
+    folded_configuration = configuration_text.casefold()
+    if folded_configuration and folded_query in folded_configuration:
+        return 5
+    searchable = identity_terms + _package_search_terms(folded_configuration)
+    if all(term in searchable for term in normalized_query):
+        return 6
     return None
 
 
@@ -2487,9 +2565,13 @@ def _package_search_terms(value: str) -> list[str]:
     return [term for term in re.split(r"[^a-z0-9]+", value) if term]
 
 
-def _package_inventory_revision(inventory: list[_PackageInventoryEntry]) -> str:
-    """Hash the full lightweight inventory used to rank and page package search."""
+def _package_inventory_revision(
+    inventory: list[_PackageInventoryEntry],
+    configuration_texts: Mapping[str, str] | None = None,
+) -> str:
+    """Hash the full inventory used to rank and page package search."""
 
+    texts = configuration_texts or {}
     hasher = hashlib.sha256()
     hasher.update(b"clio-kit.jarvis-package-inventory.v1\0")
     for package in inventory:
@@ -2499,6 +2581,7 @@ def _package_inventory_revision(inventory: list[_PackageInventoryEntry]) -> str:
                 "short_name": package.short_name,
                 "repository": package.repository,
                 "description": package.description,
+                "configuration": texts.get(package.name, ""),
             }
         )
         hasher.update(len(encoded).to_bytes(8, "big"))
