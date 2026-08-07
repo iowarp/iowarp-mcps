@@ -12,6 +12,7 @@ import tempfile
 import pandas as pd
 import pytest
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import ToolResult
 
 from plot_mcp import server
 from plot_mcp.implementation.plot_capabilities import (
@@ -285,9 +286,14 @@ async def test_plot_timeseries_tool_success(datetime_csv):
             output_path=f.name,
             title="MCP Timeseries",
         )
-        assert isinstance(result, dict)
-        assert result["status"] == "success"
-        assert result["y_columns"] == ["pressure", "temperature"]
+        assert isinstance(result, ToolResult)
+        structured = result.structured_content
+        assert structured is not None
+        assert structured["status"] == "success"
+        assert structured["y_columns"] == ["pressure", "temperature"]
+        image_blocks = [c for c in result.content if c.type == "image"]
+        assert image_blocks, "expected an image content block"
+        assert image_blocks[0].mime_type == "image/png"
         assert os.path.exists(f.name)
     os.unlink(f.name)
 
@@ -301,7 +307,8 @@ async def test_plot_timeseries_tool_comma_string(datetime_csv):
             y_columns="temperature,pressure",
             output_path=f.name,
         )
-        assert result["status"] == "success"
+        assert result.structured_content is not None
+        assert result.structured_content["status"] == "success"
     os.unlink(f.name)
 
 

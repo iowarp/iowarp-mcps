@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-spack-user-v2.1",
-  "contract_sha256": "c9415541797dab178d5bdc797c6c03b259b462139fd8ab4069334b9871aef7a0",
+  "contract_sha256": "4a065d2c67c0dd34e2cc18bca9dc53ed87ce35aa4ac524ef3e5c954a875c19db",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -146,7 +146,7 @@
         ],
         "type": "object"
       },
-      "title": "find(packages)"
+      "title": "Find Packages"
     },
     {
       "_meta": {
@@ -295,7 +295,7 @@
         ],
         "type": "object"
       },
-      "title": "install(package)"
+      "title": "Install Package"
     },
     {
       "_meta": {
@@ -417,8 +417,8 @@
         ],
         "type": "object"
       },
-      "title": "locate(package)"
+      "title": "Locate Package"
     }
   ],
-  "wire_sha256": "898e43be33f7ab61130ee1b0b1ec5458f60e32ad27a1ad96fd806902266c9dc3"
+  "wire_sha256": "c7f1d1a4ce35b58664b46d2994863257a1e5a30e5c4ab7501b0a96a4becc08b7"
 }

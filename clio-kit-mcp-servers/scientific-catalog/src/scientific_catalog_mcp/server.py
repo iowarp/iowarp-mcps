@@ -60,7 +60,7 @@ def _store() -> CatalogStore:
 
 @mcp.tool(
     name="scientific_dataset_search",
-    title="search(dataset)",
+    title="Search Datasets",
     description=(
         "Search operator-registered scientific datasets and return bounded intrinsic summaries."
     ),
@@ -96,7 +96,7 @@ def scientific_dataset_search_tool(
 
 @mcp.tool(
     name="scientific_dataset_describe",
-    title="describe(dataset)",
+    title="Describe Dataset",
     description=(
         "Return one exact operator catalog record plus a top-level dataset_descriptor. "
         "Pass dataset_descriptor unchanged as jarvis_add_step config.dataset_descriptor; "

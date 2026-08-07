@@ -45,7 +45,7 @@ mcp: FastMCP = FastMCP(
 
 @mcp.tool(
     name="inspect_archive",
-    title="inspect(archive)",
+    title="Inspect Archive",
     description=(
         "Inspect a staged SAC file or TAR archive and summarize its SAC waveform "
         "members: count, a sample of member names and sizes, and the inferred "
@@ -90,7 +90,7 @@ async def inspect_archive_tool(
 
 @mcp.tool(
     name="compute_trace_statistics",
-    title="stats(traces)",
+    title="Trace Statistics",
     description=(
         "Compute per-trace amplitude statistics (min, max, mean, std, peak_abs) "
         "plus header metadata (npts, delta_s, begin_s, end_s) for SAC traces in a "
@@ -134,7 +134,7 @@ async def compute_trace_statistics_tool(
 
 @mcp.tool(
     name="plot_traces",
-    title="plot(traces)",
+    title="Plot Traces",
     description=(
         "Plot selected SAC traces from a file or archive to a PNG artifact. Traces "
         "are amplitude-normalized and vertically offset. Writes a file; returns the "

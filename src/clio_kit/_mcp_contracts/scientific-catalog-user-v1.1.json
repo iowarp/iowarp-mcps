@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-scientific-catalog-user-v1.1",
-  "contract_sha256": "b5de9cd81ad2d8bab463b56669165535737a0954fa0a944b25da4a0c9325aaba",
+  "contract_sha256": "fd9fd4ba76617f1fd13560420cd650f78adc55d0957bd950d10d09c72ebe1889",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -461,7 +461,7 @@
         ],
         "type": "object"
       },
-      "title": "describe(dataset)"
+      "title": "Describe Dataset"
     },
     {
       "_meta": {
@@ -666,8 +666,8 @@
         ],
         "type": "object"
       },
-      "title": "search(dataset)"
+      "title": "Search Datasets"
     }
   ],
-  "wire_sha256": "6b81cd7593c415df4b6f2a14e40df9b698ee8ea8d6cfd5a7adef4b8ef36b50e2"
+  "wire_sha256": "6a8fc61e31515880c722db3447d2f01584e4b297cb02b70b5618bff081840380"
 }

@@ -2,11 +2,22 @@
 Plot capabilities implementation for data visualization.
 """
 
+import io
 import json
 import math
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List
+
+import matplotlib
+
+# This is an unattended, headless MCP server: it must never depend on a GUI
+# toolkit (Tk, Qt, ...) being installed, and must never try to open a window.
+# Force the non-interactive Agg backend before pyplot picks one on its own —
+# otherwise backend selection silently depends on import order and on
+# whatever GUI toolkits happen to be present, and plotting breaks wherever
+# they are not (see the 2.7.1 output-content regression test that caught this).
+matplotlib.use("Agg")
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -14,8 +25,35 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import logging
+from PIL import Image as PILImage
 
 logger = logging.getLogger(__name__)
+
+PREVIEW_MAX_WIDTH = 800
+
+
+def build_preview_png(output_path: str, max_width: int = PREVIEW_MAX_WIDTH) -> bytes:
+    """Downscale the full-resolution plot on disk into a bounded PNG preview.
+
+    The full-resolution file (saved at ``dpi=300``, often multiple megabytes)
+    stays on disk at ``output_path``; this returns a small, wire-safe preview
+    fit for embedding directly in an MCP ``ImageContent`` block.
+
+    Args:
+        output_path: Path to the full-resolution PNG already written to disk.
+        max_width: Maximum preview width in pixels; height scales to match.
+
+    Returns:
+        PNG-encoded bytes no wider than ``max_width`` pixels.
+    """
+    with PILImage.open(output_path) as full_image:
+        image = full_image.convert("RGB")
+        if image.width > max_width:
+            new_height = round(image.height * (max_width / image.width))
+            image = image.resize((max_width, new_height), PILImage.Resampling.LANCZOS)
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
 
 
 def load_data(file_path: str) -> pd.DataFrame:

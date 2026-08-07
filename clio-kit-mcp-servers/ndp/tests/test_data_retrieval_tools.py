@@ -18,6 +18,15 @@ from ndp_mcp.server import mcp
 
 
 def _parse_result(result: Any) -> dict[str, Any]:
+    # Now that stage_resource declares a real, field-level outputSchema
+    # (2.7.1), the in-memory client validates ``result.data`` into a
+    # generated typed model rather than handing back a plain dict.
+    # ``structured_content`` is always the raw JSON-able dict the tool
+    # actually returned, independent of that client-side typing, so prefer
+    # it before falling back to the ``.data`` shapes used pre-outputSchema.
+    structured = getattr(result, "structured_content", None)
+    if isinstance(structured, dict):
+        return structured
     data = result.data
     if isinstance(data, dict):
         return data

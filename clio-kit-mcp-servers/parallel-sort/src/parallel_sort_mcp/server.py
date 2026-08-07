@@ -56,7 +56,7 @@ def sort_large_file(file_path: str) -> list[Message]:
 
 @mcp.tool(
     name="sort_log_by_timestamp",
-    title="sort(timestamp)",
+    title="Sort By Timestamp",
     description="Sort log file lines by timestamps in YYYY-MM-DD HH:MM:SS format.",
     annotations={
         "readOnlyHint": False,
@@ -84,7 +84,7 @@ async def sort_log_tool(
 
 @mcp.tool(
     name="parallel_sort_large_file",
-    title="sort(parallel)",
+    title="Parallel Sort",
     description="Sort large log files using parallel processing with chunked approach.",
     annotations={
         "readOnlyHint": False,
@@ -118,7 +118,7 @@ async def parallel_sort_tool(
 
 @mcp.tool(
     name="analyze_log_statistics",
-    title="analyze(stats)",
+    title="Analyze Statistics",
     description="Generate statistics for log files including temporal patterns and log levels.",
     annotations={
         "readOnlyHint": True,
@@ -143,7 +143,7 @@ async def analyze_statistics_tool(log_file: str, include_patterns: bool = True) 
 
 @mcp.tool(
     name="detect_log_patterns",
-    title="detect(patterns)",
+    title="Detect Patterns",
     description="Detect patterns in log files including anomalies and error clusters.",
     annotations={
         "readOnlyHint": True,
@@ -175,7 +175,7 @@ async def detect_patterns_tool(
 
 @mcp.tool(
     name="filter_logs",
-    title="filter(logs)",
+    title="Filter Logs",
     description="Filter log entries based on multiple conditions with logical operations.",
     annotations={
         "readOnlyHint": False,
@@ -209,7 +209,7 @@ async def filter_logs_tool(
 
 @mcp.tool(
     name="filter_by_time_range",
-    title="filter(time)",
+    title="Filter Time Range",
     description="Filter log entries by time range using start and end timestamps.",
     annotations={
         "readOnlyHint": False,
@@ -240,7 +240,7 @@ async def filter_time_range_tool(
 
 @mcp.tool(
     name="filter_by_log_level",
-    title="filter(level)",
+    title="Filter By Level",
     description="Filter log entries by log level (ERROR, WARN, INFO, DEBUG, etc.).",
     annotations={
         "readOnlyHint": False,
@@ -268,7 +268,7 @@ async def filter_level_tool(
 
 @mcp.tool(
     name="filter_by_keyword",
-    title="filter(keyword)",
+    title="Filter By Keyword",
     description="Filter log entries by keywords with support for multiple keywords and logical operations.",
     annotations={
         "readOnlyHint": False,
@@ -304,7 +304,7 @@ async def filter_keyword_tool(
 
 @mcp.tool(
     name="apply_filter_preset",
-    title="apply(preset)",
+    title="Apply Filter Preset",
     description="Apply predefined filter presets like 'errors_only' or 'connection_issues'.",
     annotations={
         "readOnlyHint": False,
@@ -332,7 +332,7 @@ async def filter_preset_tool(
 
 @mcp.tool(
     name="export_to_json",
-    title="export(json)",
+    title="Export JSON",
     description="Export log processing results to JSON format.",
     annotations={
         "readOnlyHint": False,
@@ -357,7 +357,7 @@ async def export_json_tool(data: dict, include_metadata: bool = True) -> dict:
 
 @mcp.tool(
     name="export_to_csv",
-    title="export(csv)",
+    title="Export CSV",
     description="Export log entries to CSV format with structured columns.",
     annotations={
         "readOnlyHint": False,
@@ -382,7 +382,7 @@ async def export_csv_tool(data: dict, include_headers: bool = True) -> dict:
 
 @mcp.tool(
     name="export_to_text",
-    title="export(text)",
+    title="Export Text",
     description="Export log entries to plain text format.",
     annotations={
         "readOnlyHint": False,
@@ -407,7 +407,7 @@ async def export_text_tool(data: dict, include_summary: bool = True) -> dict:
 
 @mcp.tool(
     name="generate_summary_report",
-    title="report(summary)",
+    title="Summary Report",
     description="Generate a summary report of log processing results with statistics.",
     annotations={
         "readOnlyHint": True,

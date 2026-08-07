@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 import asyncio
 
+from fastmcp.tools import ToolResult
 from plot_mcp import server
 from plot_mcp.implementation.plot_capabilities import (
     create_line_plot,
@@ -17,6 +18,16 @@ from plot_mcp.implementation.plot_capabilities import (
     create_heatmap,
     get_data_info,
 )
+
+
+def _assert_plot_tool_result(result: ToolResult) -> None:
+    """A plot tool result carries a PNG image block plus the structured dict."""
+    assert isinstance(result, ToolResult)
+    assert result.structured_content is not None
+    assert result.structured_content["status"] == "success"
+    image_blocks = [c for c in result.content if c.type == "image"]
+    assert image_blocks, "expected an image content block"
+    assert image_blocks[0].mime_type == "image/png"
 
 
 class TestHandlers:
@@ -193,7 +204,7 @@ class TestHandlers:
                 title="MCP Line Plot",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
         # Test bar_plot_tool
@@ -205,7 +216,7 @@ class TestHandlers:
                 title="MCP Bar Plot",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
         # Test scatter_plot_tool
@@ -217,7 +228,7 @@ class TestHandlers:
                 title="MCP Scatter Plot",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
         # Test histogram_plot_tool
@@ -229,7 +240,7 @@ class TestHandlers:
                 title="MCP Histogram",
                 output_path=f.name,
             )
-            assert isinstance(result, dict)
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
         # Test heatmap_plot_tool
@@ -237,7 +248,7 @@ class TestHandlers:
             result = await server.heatmap_plot_tool(
                 file_path=sample_csv_file, title="MCP Heatmap", output_path=f.name
             )
-            assert isinstance(result, dict)
+            _assert_plot_tool_result(result)
         os.unlink(f.name)
 
     def test_handler_parameter_validation(self, sample_csv_file):
@@ -421,10 +432,13 @@ class TestHandlers:
             # Execute all async tests
             results = await asyncio.gather(*async_tests)
 
-            # Verify all results
-            for result in results:
-                assert isinstance(result, dict)
-                assert "status" in result
+            # Verify all results: data_info_tool returns a plain dict, the
+            # five plot tools each return a ToolResult (image + structured).
+            data_info_result, *plot_results = results
+            assert isinstance(data_info_result, dict)
+            assert "status" in data_info_result
+            for result in plot_results:
+                _assert_plot_tool_result(result)
 
         # Cleanup
         for f in [f1, f2, f3, f4, f5]:

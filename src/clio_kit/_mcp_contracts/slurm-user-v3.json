@@ -1,7 +1,7 @@
 {
   "canonicalization": "json-sort-keys-compact-utf8-v1",
   "contract_id": "clio-kit-slurm-user-v3",
-  "contract_sha256": "b1783c194b60ad6b791582fbf1783d7f0770fddf2a880da1d78bc7c4069feeb7",
+  "contract_sha256": "f61b27b0c7d4648d86c27b29504688a13ba45767bd75bfc372c830308f7c05c0",
   "profile": "user",
   "projection": "mcp-agent-tool-schema-v1",
   "schema_version": "clio-kit.mcp-user-contract.v1",
@@ -114,7 +114,7 @@
         ],
         "type": "object"
       },
-      "title": "cancel(job)"
+      "title": "Cancel Job"
     },
     {
       "_meta": {
@@ -408,7 +408,7 @@
         ],
         "type": "object"
       },
-      "title": "snapshot(cluster)"
+      "title": "Cluster Snapshot"
     },
     {
       "_meta": {
@@ -562,7 +562,7 @@
         ],
         "type": "object"
       },
-      "title": "describe(job)"
+      "title": "Describe Job"
     },
     {
       "_meta": {
@@ -761,7 +761,7 @@
         ],
         "type": "object"
       },
-      "title": "list(jobs)"
+      "title": "List Jobs"
     },
     {
       "_meta": {
@@ -957,8 +957,8 @@
         ],
         "type": "object"
       },
-      "title": "submit(job)"
+      "title": "Submit Job"
     }
   ],
-  "wire_sha256": "29dcc199e98f38cc4d3edcd97c081f486e37291c7b9b4d0477684b4e58642e40"
+  "wire_sha256": "8da5ea375d75d04052f766b02071fa4f41a2b61494b739e0e806eed02da532db"
 }

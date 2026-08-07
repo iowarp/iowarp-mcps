@@ -231,7 +231,7 @@ def with_error_handling(func):
 
 
 @mcp.tool(
-    title="open(file)",
+    title="Open File",
     tags={"file", "core"},
     annotations={
         "title": "Open HDF5 File",
@@ -265,7 +265,7 @@ async def open_file(path: str, mode: str = "r") -> str:
 
 
 @mcp.tool(
-    title="close(file)",
+    title="Close File",
     tags={"file", "core"},
     annotations={
         "title": "Close HDF5 File",
@@ -294,7 +294,7 @@ async def close_file() -> str:
 
 
 @mcp.tool(
-    title="get(filename)",
+    title="Get Filename",
     tags={"file", "info"},
     annotations={
         "title": "Get Current Filename",
@@ -318,7 +318,7 @@ async def get_filename() -> str:
 
 
 @mcp.tool(
-    title="get(mode)",
+    title="Get Mode",
     tags={"file", "info"},
     annotations={
         "title": "Get File Access Mode",
@@ -342,7 +342,7 @@ async def get_mode() -> str:
 
 
 @mcp.tool(
-    title="get(object)",
+    title="Get Object",
     tags={"dataset", "navigation"},
     annotations={
         "title": "Get Object by Path",
@@ -380,7 +380,7 @@ async def get_by_path(path: str) -> str:
 
 
 @mcp.tool(
-    title="list(keys)",
+    title="List Keys",
     tags={"dataset", "navigation"},
     annotations={
         "title": "List Keys in Group",
@@ -416,7 +416,7 @@ async def list_keys(path: str = "/") -> str:
 
 
 @mcp.tool(
-    title="visit(nodes)",
+    title="Visit Nodes",
     tags={"dataset", "navigation"},
     annotations={
         "title": "Visit All Nodes Recursively",
@@ -456,7 +456,7 @@ async def visit(callback_fn: str = "collect_paths") -> str:
 
 
 @mcp.tool(
-    title="read(full)",
+    title="Read Dataset",
     tags={"dataset", "read"},
     annotations={
         "title": "Read Full Dataset",
@@ -504,7 +504,7 @@ async def read_full_dataset(path: str) -> str:
 
 
 @mcp.tool(
-    title="read(slice)",
+    title="Read Slice",
     tags={"dataset", "read"},
     annotations={
         "title": "Read Partial Dataset",
@@ -565,7 +565,7 @@ async def read_partial_dataset(
 
 
 @mcp.tool(
-    title="get(shape)",
+    title="Get Shape",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Shape",
@@ -601,7 +601,7 @@ async def get_shape(path: str) -> str:
 
 
 @mcp.tool(
-    title="get(dtype)",
+    title="Get Dtype",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Data Type",
@@ -637,7 +637,7 @@ async def get_dtype(path: str) -> str:
 
 
 @mcp.tool(
-    title="get(size)",
+    title="Get Size",
     tags={"dataset", "metadata"},
     annotations={
         "title": "Get Dataset Size",
@@ -673,7 +673,7 @@ async def get_size(path: str) -> str:
 
 
 @mcp.tool(
-    title="get(chunks)",
+    title="Get Chunks",
     tags={"dataset", "metadata", "performance"},
     annotations={
         "title": "Get Dataset Chunk Info",
@@ -723,7 +723,7 @@ async def get_chunks(path: str) -> str:
 
 
 @mcp.tool(
-    title="read(attr)",
+    title="Read Attribute",
     tags={"attribute", "metadata"},
     annotations={
         "title": "Read Attribute",
@@ -763,7 +763,7 @@ async def read_attribute(path: str, name: str) -> str:
 
 
 @mcp.tool(
-    title="list(attrs)",
+    title="List Attributes",
     tags={"attribute", "metadata"},
     annotations={
         "title": "List All Attributes",
@@ -813,7 +813,7 @@ async def list_attributes(path: str) -> str:
 
 
 @mcp.tool(
-    title="scan(parallel)",
+    title="Parallel Scan",
     tags={"performance", "parallel", "scan"},
     annotations={
         "title": "Parallel Scan Multiple Files",
@@ -898,7 +898,7 @@ async def hdf5_parallel_scan(
 
 
 @mcp.tool(
-    title="read(batch)",
+    title="Batch Read",
     tags={"performance", "parallel", "read"},
     annotations={
         "title": "Batch Read Multiple Datasets",
@@ -986,7 +986,7 @@ async def hdf5_batch_read(
 
 
 @mcp.tool(
-    title="stream(data)",
+    title="Stream Data",
     tags={"performance", "streaming"},
     annotations={
         "title": "Stream Large Dataset",
@@ -1093,7 +1093,7 @@ async def hdf5_stream_data(
 
 
 @mcp.tool(
-    title="stats(aggregate)",
+    title="Aggregate Stats",
     tags={"performance", "parallel", "analysis"},
     annotations={
         "title": "Aggregate Statistics Across Datasets",
@@ -1218,7 +1218,7 @@ async def hdf5_aggregate_stats(
 
 
 @mcp.tool(
-    title="analyze(structure)",
+    title="Analyze Structure",
     tags={"discovery", "ai-powered", "analysis"},
     annotations={
         "title": "Analyze Dataset Structure",
@@ -1343,7 +1343,7 @@ async def analyze_dataset_structure(
 
 
 @mcp.tool(
-    title="find(similar)",
+    title="Find Similar Datasets",
     tags={"discovery", "ai-powered", "similarity"},
     annotations={
         "title": "Find Similar Datasets",
@@ -1454,7 +1454,7 @@ async def find_similar_datasets(
 
 
 @mcp.tool(
-    title="suggest(next)",
+    title="Suggest Next Step",
     tags={"discovery", "ai-powered", "recommendation"},
     annotations={
         "title": "Suggest Next Exploration",
@@ -1576,7 +1576,7 @@ async def suggest_next_exploration(
 
 
 @mcp.tool(
-    title="find(bottlenecks)",
+    title="Find Bottlenecks",
     tags={"discovery", "ai-powered", "performance"},
     annotations={
         "title": "Identify I/O Bottlenecks",
@@ -1682,7 +1682,7 @@ async def identify_io_bottlenecks(
 
 
 @mcp.tool(
-    title="optimize(access)",
+    title="Optimize Access",
     tags={"discovery", "performance", "optimization"},
     annotations={
         "title": "Optimize Access Pattern",
@@ -1773,7 +1773,7 @@ async def optimize_access_pattern(
 
 
 @mcp.tool(
-    title="refresh(files)",
+    title="Refresh Files",
     tags={"admin", "discovery"},
     annotations={
         "title": "Refresh HDF5 Resources",
@@ -1813,7 +1813,7 @@ async def refresh_hdf5_resources(ctx: Optional[Context] = None) -> str:
 
 
 @mcp.tool(
-    title="list(files)",
+    title="List Files",
     tags={"discovery", "helper"},
     annotations={
         "title": "List Available HDF5 Files",
@@ -1847,7 +1847,7 @@ async def list_available_hdf5_files() -> str:
 
 
 @mcp.tool(
-    title="export(dataset)",
+    title="Export Dataset",
     tags={"dataset", "export", "interactive"},
     annotations={
         "title": "Export Dataset",

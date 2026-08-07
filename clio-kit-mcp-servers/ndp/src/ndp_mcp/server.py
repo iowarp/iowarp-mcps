@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, cast
 
 import httpx
 from dotenv import load_dotenv
@@ -11,6 +11,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 from pydantic import BaseModel, Field
+from typing_extensions import NotRequired, TypedDict
 
 # Environment setup
 load_dotenv()
@@ -213,6 +214,87 @@ class Dataset(BaseModel):
     extras: dict[str, Any] | None = None
 
 
+# --- Structured result shapes (drive real MCP outputSchema declarations) ----
+
+
+class ToolMeta(TypedDict):
+    """Per-call diagnostic metadata echoed back on every NDP tool response."""
+
+    tool: str
+    status: str
+
+
+class ListOrganizationsResult(TypedDict):
+    """Structured result for a successful organizations listing."""
+
+    organizations: list[str]
+    count: int
+    server: str
+    name_filter: str | None
+    _meta: ToolMeta
+
+
+class SearchParameters(TypedDict):
+    """Echo of the request parameters that produced a search result set."""
+
+    search_terms: list[str] | None
+    search_keys: list[str] | None
+    dataset_name: str | None
+    dataset_title: str | None
+    owner_org: str | None
+    resource_format: str | None
+    search_term: str | None
+    filter_list: list[str] | None
+    limit: int | str | None
+
+
+class SearchDatasetsResult(TypedDict):
+    """Structured result for a dataset search."""
+
+    datasets: list[Dataset]
+    count: int
+    total_found: int | str
+    server: str
+    search_parameters: SearchParameters
+    _meta: ToolMeta
+
+
+class DatasetIdentifier(TypedDict):
+    """Which identifier field and value resolved the returned dataset."""
+
+    type: str
+    value: str
+
+
+class GetDatasetDetailsResult(TypedDict):
+    """Structured result for a single dataset's detailed metadata."""
+
+    dataset: Dataset
+    identifier_used: DatasetIdentifier
+    server: str
+    resource_count: int
+    _meta: ToolMeta
+
+
+class StageResourceResult(TypedDict):
+    """Structured result for a staged dataset resource (HTTP or OSDF/Pelican).
+
+    Both staging paths populate ``ok``, ``local_path``, ``size_bytes``,
+    ``content_type``, ``url``, and ``method``. ``transport`` is present only
+    on the OSDF/Pelican path; ``_meta`` is present only on the direct-HTTP(S)
+    path.
+    """
+
+    ok: Literal[True]
+    local_path: str
+    size_bytes: int
+    content_type: str | None
+    url: str
+    method: Literal["http", "pelican"]
+    transport: NotRequired[Literal["osdf"]]
+    _meta: NotRequired[ToolMeta]
+
+
 class NDPClient:
     """Client for interacting with NDP API with retry logic and error handling."""
 
@@ -348,7 +430,7 @@ ndp_client = NDPClient()
 
 @mcp.tool(
     name="list_organizations",
-    title="list(orgs)",
+    title="List Organizations",
     description="List organizations available in the National Data Platform.",
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"organizations", "catalogs"},
@@ -360,7 +442,7 @@ async def list_organizations(
     server: Annotated[
         str, Field(description="Server to query: 'local', 'global', or 'pre_ckan'")
     ] = "global",
-) -> dict[str, Any]:
+) -> ListOrganizationsResult:
     """List organizations from the National Data Platform."""
     try:
         organizations = await ndp_client.list_organizations(name_filter, server)
@@ -378,7 +460,7 @@ async def list_organizations(
 
 @mcp.tool(
     name="search_datasets",
-    title="search(datasets)",
+    title="Search Datasets",
     description="Search for datasets in the NDP using term-based or field-specific criteria.",
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"datasets", "search"},
@@ -419,7 +501,7 @@ async def search_datasets(
     limit: Annotated[
         str | int | None, Field(description="Maximum results to return (default: 20)")
     ] = None,
-) -> dict[str, Any]:
+) -> SearchDatasetsResult:
     """Search for datasets in the National Data Platform."""
     try:
         # Determine which search method to use
@@ -465,33 +547,36 @@ async def search_datasets(
         # Convert datasets to dict format
         dataset_dicts = [dataset.model_dump() for dataset in datasets]
 
-        return {
-            "datasets": dataset_dicts,
-            "count": len(dataset_dicts),
-            "total_found": total_found
-            if not was_limited
-            else f"{len(dataset_dicts)} of {total_found}",
-            "server": server,
-            "search_parameters": {
-                "search_terms": search_terms,
-                "search_keys": search_keys,
-                "dataset_name": dataset_name,
-                "dataset_title": dataset_title,
-                "owner_org": owner_org,
-                "resource_format": resource_format,
-                "search_term": search_term,
-                "filter_list": filter_list,
-                "limit": limit,
+        return cast(
+            SearchDatasetsResult,
+            {
+                "datasets": dataset_dicts,
+                "count": len(dataset_dicts),
+                "total_found": total_found
+                if not was_limited
+                else f"{len(dataset_dicts)} of {total_found}",
+                "server": server,
+                "search_parameters": {
+                    "search_terms": search_terms,
+                    "search_keys": search_keys,
+                    "dataset_name": dataset_name,
+                    "dataset_title": dataset_title,
+                    "owner_org": owner_org,
+                    "resource_format": resource_format,
+                    "search_term": search_term,
+                    "filter_list": filter_list,
+                    "limit": limit,
+                },
+                "_meta": {"tool": "search_datasets", "status": "success"},
             },
-            "_meta": {"tool": "search_datasets", "status": "success"},
-        }
+        )
     except Exception as e:
         raise ToolError(str(e)) from e
 
 
 @mcp.tool(
     name="get_dataset_details",
-    title="get(dataset)",
+    title="Dataset Details",
     description="Retrieve detailed metadata for a specific dataset by ID or name.",
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"datasets", "metadata"},
@@ -502,7 +587,7 @@ async def get_dataset_details(
     ],
     identifier_type: Annotated[str, Field(description="Type of identifier: 'id' or 'name'")] = "id",
     server: Annotated[str, Field(description="Server to query: 'local' or 'global'")] = "global",
-) -> dict[str, Any]:
+) -> GetDatasetDetailsResult:
     """Get detailed information about a specific dataset."""
     try:
         # Search for the specific dataset
@@ -521,13 +606,16 @@ async def get_dataset_details(
         # Return detailed dataset information
         dataset_dict = matching_dataset.model_dump()
 
-        return {
-            "dataset": dataset_dict,
-            "identifier_used": {"type": identifier_type, "value": dataset_identifier},
-            "server": server,
-            "resource_count": len(dataset_dict.get("resources", [])),
-            "_meta": {"tool": "get_dataset_details", "status": "success"},
-        }
+        return cast(
+            GetDatasetDetailsResult,
+            {
+                "dataset": dataset_dict,
+                "identifier_used": {"type": identifier_type, "value": dataset_identifier},
+                "server": server,
+                "resource_count": len(dataset_dict.get("resources", [])),
+                "_meta": {"tool": "get_dataset_details", "status": "success"},
+            },
+        )
     except ToolError:
         raise
     except Exception as e:
@@ -536,7 +624,7 @@ async def get_dataset_details(
 
 @mcp.tool(
     name="stage_resource",
-    title="stage(resource)",
+    title="Stage Resource",
     description=(
         "Download/stage an HTTP(S) or OSDF/Pelican dataset resource to a local "
         "file and return its local_path, size, and content-type."
@@ -570,7 +658,7 @@ async def stage_resource(
         int | str | None,
         Field(description="Advertised resource size (bytes or '1.4 GB') for OSDF size checks."),
     ] = None,
-) -> dict[str, Any]:
+) -> StageResourceResult:
     """Stage a dataset resource to the configurable artifacts root.
 
     HTTP(S) resources are streamed with a size cap. ``osdf://`` resources are
@@ -593,12 +681,15 @@ async def stage_resource(
 
     is_osdf = target_url.lower().startswith("osdf://")
     if is_osdf:
-        return await asyncio.to_thread(
-            _stage_pelican_resource,
-            url=target_url,
-            output_path=output_path,
-            max_bytes=max_stage_bytes,
-            resource_size_bytes=_parse_resource_size_bytes(resource_size_bytes),
+        return cast(
+            StageResourceResult,
+            await asyncio.to_thread(
+                _stage_pelican_resource,
+                url=target_url,
+                output_path=output_path,
+                max_bytes=max_stage_bytes,
+                resource_size_bytes=_parse_resource_size_bytes(resource_size_bytes),
+            ),
         )
 
     timeout = httpx.Timeout(_HTTP_READ_TIMEOUT_S, connect=_HTTP_CONNECT_TIMEOUT_S)

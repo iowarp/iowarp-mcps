@@ -29,4 +29,4 @@ async def test_render_tool_runs_in_memory(tmp_path) -> None:
             },
         )
     assert out.is_file() and out.stat().st_size > 0
-    assert result.data["status"] == "success"
+    assert result.structured_content["status"] == "success"

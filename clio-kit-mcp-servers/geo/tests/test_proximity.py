@@ -261,8 +261,8 @@ async def test_tool_runs_in_memory(tmp_path):
                 "radius_km": 25.0,
             },
         )
-    assert result.data["ok"] is True
-    assert [p["name"] for p in result.data["points"]] == ["near", "mid", "far_in"]
+    assert result.structured_content["ok"] is True
+    assert [p["name"] for p in result.structured_content["points"]] == ["near", "mid", "far_in"]
 
 
 @pytest.mark.asyncio
