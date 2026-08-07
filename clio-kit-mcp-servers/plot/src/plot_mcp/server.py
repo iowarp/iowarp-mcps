@@ -6,7 +6,7 @@ pandas and matplotlib.
 """
 
 import os
-from typing import Annotated, Any, Literal, TypedDict, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -15,6 +15,7 @@ from fastmcp.tools import ToolResult
 from fastmcp.utilities.types import Image
 from dotenv import load_dotenv
 from pydantic import Field, TypeAdapter
+from typing_extensions import TypedDict
 import logging
 from .implementation.plot_capabilities import (
     create_line_plot,

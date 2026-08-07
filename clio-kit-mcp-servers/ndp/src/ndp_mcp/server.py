@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Annotated, Any, Literal, TypedDict, cast
+from typing import Annotated, Any, Literal, cast
 
 import httpx
 from dotenv import load_dotenv
@@ -11,7 +11,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts import Message
 from pydantic import BaseModel, Field
-from typing_extensions import NotRequired
+from typing_extensions import NotRequired, TypedDict
 
 # Environment setup
 load_dotenv()
