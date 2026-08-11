@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/web-mcp",
   "title": "CLIO Web",
   "description": "Web MCP server providing curated fetch + search tools for agentic web access",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.7.2",
+      "version": "2.8.0",
       "transport": {
         "type": "stdio"
       },
@@ -35,7 +35,7 @@
     },
     {
       "name": "search",
-      "description": "Search the web via a configurable provider (keyless DuckDuckGo by default; optional BYO-key Brave or Tavily) and return ranked results."
+      "description": "Search the web via a configurable provider (keyless DuckDuckGo by default; self-hosted SearXNG; optional BYO-key Brave or Tavily) and return ranked results. SearXNG supports category, engine, language, time-range, page, and safe-search selectors."
     }
   ],
   "resources": [

@@ -13,11 +13,13 @@ import os
 import pytest
 from fastmcp import Client
 
-from web_mcp.server import mcp
+from web_mcp import server
+from web_mcp.server import Settings, mcp
 
 from .helpers import parse_result
 
 _LIVE = os.getenv("WEB_MCP_LIVE") == "1"
+_SEARXNG_URL = os.getenv("WEB_SEARXNG_BASE_URL")
 
 pytestmark = [
     pytest.mark.integration,
@@ -44,3 +46,36 @@ async def test_live_search_ddg() -> None:
     data = parse_result(result)
     assert data["ok"] is True
     assert data["provider"] == "ddg"
+
+
+@pytest.mark.skipif(
+    not _SEARXNG_URL,
+    reason="set WEB_SEARXNG_BASE_URL to run the live SearXNG integration test",
+)
+@pytest.mark.asyncio
+async def test_live_search_searxng(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise category and engine selectors against the deployed instance."""
+    monkeypatch.setattr(
+        server,
+        "settings",
+        Settings(search_provider="searxng", searxng_base_url=_SEARXNG_URL),
+    )
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "search",
+            {
+                "query": "parallel I/O",
+                "count": 3,
+                "category": "science",
+                "engines": ["arxiv", "crossref"],
+                "language": "en",
+                "safesearch": 0,
+            },
+        )
+    data = parse_result(result)
+    assert data["ok"] is True
+    assert data["provider"] == "searxng"
+    assert data["count"] > 0
+    assert data["results"]
+    assert "engines_answered" in data
+    assert "unresponsive_engines" in data

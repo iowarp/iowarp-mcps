@@ -38,9 +38,14 @@ Query a configurable web-search provider and return ranked results.
   `search` and gets back a small list of `{title, url, snippet}` rows to triage
   and then `fetch`.
 - **Providers:** keyless **DuckDuckGo** (`ddg`, default, via the `ddgs`
-  package); optional BYO-key **Brave** and **Tavily**. Selecting a keyed
-  provider without its key raises a typed error naming the missing config — it
-  never silently falls back to `ddg`.
+  package); self-hosted **SearXNG** (`searxng`); optional BYO-key **Brave** and
+  **Tavily**. Selecting an unconfigured provider raises a typed error naming
+  the missing config — it never silently falls back to `ddg`.
+- **SearXNG selectors:** `category` (`general` / `science` / `it`), exact
+  `engines`, `language`, `time_range`, `pageno`, and `safesearch`. These are
+  rejected for other providers instead of being silently discarded. An exact
+  `engines` list takes precedence over `category`, because SearXNG otherwise
+  treats the two selectors as a broader union.
 - **Returns:** `{ok, provider, query, results: [{title, url, snippet}], count}`.
 
 ## Configuration
@@ -51,7 +56,8 @@ recommended path is a single source of config with clear defaults.
 
 | Field | Env var | Default | Meaning |
 | --- | --- | --- | --- |
-| `search_provider` | `WEB_SEARCH_PROVIDER` | `"ddg"` | Active search provider (`ddg` / `brave` / `tavily`). |
+| `search_provider` | `WEB_SEARCH_PROVIDER` | `"ddg"` | Active search provider (`ddg` / `searxng` / `brave` / `tavily`). |
+| `searxng_base_url` | `WEB_SEARXNG_BASE_URL` | `None` | Root URL of the self-hosted SearXNG instance (required for `searxng`). |
 | `brave_api_key` | `WEB_BRAVE_API_KEY` | `None` | Brave Search API key (required for `brave`). |
 | `tavily_api_key` | `WEB_TAVILY_API_KEY` | `None` | Tavily API key (required for `tavily`). |
 | `max_bytes` | `WEB_MAX_BYTES` | `5242880` | Fetch size cap in bytes (5 MiB). |
@@ -85,3 +91,15 @@ Real-network checks are opt-in and skipped by default:
 ```bash
 WEB_MCP_LIVE=1 uv run pytest -m integration
 ```
+
+To make the self-hosted instance the active backend:
+
+```bash
+WEB_SEARCH_PROVIDER=searxng \
+WEB_SEARXNG_BASE_URL=http://10.0.0.102:8088 \
+uv run web-mcp
+```
+
+No paid-provider credential is needed for SearXNG. The server forwards native
+selectors to the deployment and returns `engines_answered` plus normalized
+`unresponsive_engines` alongside the stable `{title, url, snippet}` rows.

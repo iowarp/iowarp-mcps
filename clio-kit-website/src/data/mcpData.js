@@ -41,7 +41,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -72,7 +72,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -94,7 +94,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.0.1",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -114,7 +114,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -142,7 +142,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -170,7 +170,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.3.0",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -215,7 +215,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -239,7 +239,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "3.6.2",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -264,7 +264,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "3.0.0",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -286,7 +286,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -315,7 +315,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -349,7 +349,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -380,7 +380,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -424,7 +424,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -446,7 +446,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -471,7 +471,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -491,7 +491,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "1.1.2",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -514,7 +514,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.3.0",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -537,7 +537,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "3.0.0",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -558,7 +558,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.1.0",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -578,7 +578,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-22"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -597,8 +597,8 @@ export const mcpData = {
       "search"
     ],
     "stats": {
-      "version": "1.0.0",
-      "updated": "2026-07-22"
+      "version": "1.1.0",
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",

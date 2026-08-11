@@ -132,6 +132,122 @@ async def test_search_tavily_without_key_raises(monkeypatch: pytest.MonkeyPatch)
 
 
 @pytest.mark.asyncio
+async def test_search_searxng_maps_results_and_native_selectors(
+    monkeypatch: pytest.MonkeyPatch, httpx_mock: HTTPXMock
+) -> None:
+    """SearXNG receives native selectors and exposes engine provenance."""
+    monkeypatch.setattr(
+        server,
+        "settings",
+        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088"),
+    )
+    httpx_mock.add_response(
+        url=(
+            "http://10.0.0.102:8088/search?q=parallel+io&format=json"
+            "&engines=arxiv%2Ccrossref&language=en"
+            "&time_range=year&pageno=2&safesearch=0"
+        ),
+        json={
+            "results": [
+                {
+                    "title": "Parallel I/O Paper",
+                    "url": "https://example.org/paper",
+                    "content": "A scientific result.",
+                    "engines": ["arxiv", "crossref"],
+                },
+                {
+                    "title": "Second Result",
+                    "url": "https://example.org/second",
+                    "content": "Not returned because count is one.",
+                    "engine": "arxiv",
+                },
+            ],
+            "unresponsive_engines": [["semantic scholar", "timeout"]],
+        },
+    )
+
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "search",
+            {
+                "query": "parallel io",
+                "count": 1,
+                "category": "science",
+                "engines": ["arxiv", "crossref"],
+                "language": "en",
+                "time_range": "year",
+                "pageno": 2,
+                "safesearch": 0,
+            },
+        )
+    data = parse_result(result)
+
+    assert data["provider"] == "searxng"
+    assert data["count"] == 1
+    assert data["results"] == [
+        {
+            "title": "Parallel I/O Paper",
+            "url": "https://example.org/paper",
+            "snippet": "A scientific result.",
+        }
+    ]
+    assert data["engines_answered"] == ["arxiv", "crossref"]
+    assert data["unresponsive_engines"] == [{"engine": "semantic scholar", "reason": "timeout"}]
+
+
+@pytest.mark.asyncio
+async def test_search_searxng_requires_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Selecting SearXNG without its deployment URL fails explicitly."""
+    monkeypatch.setattr(server, "settings", Settings(search_provider="searxng"))
+    async with Client(mcp) as client:
+        with pytest.raises(Exception) as excinfo:
+            await client.call_tool("search", {"query": "anything"})
+    assert "WEB_SEARXNG_BASE_URL" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_search_searxng_reports_disabled_json(
+    monkeypatch: pytest.MonkeyPatch, httpx_mock: HTTPXMock
+) -> None:
+    """A 403 identifies the disabled SearXNG JSON API instead of falling back."""
+    monkeypatch.setattr(
+        server,
+        "settings",
+        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088"),
+    )
+    httpx_mock.add_response(status_code=403)
+    async with Client(mcp) as client:
+        with pytest.raises(Exception) as excinfo:
+            await client.call_tool("search", {"query": "anything"})
+    assert "JSON" in str(excinfo.value)
+    assert "403" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider", ["ddg", "brave", "tavily"])
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"category": "science"},
+        {"engines": ["arxiv"]},
+        {"language": "en"},
+        {"time_range": "year"},
+        {"pageno": 1},
+        {"safesearch": 0},
+    ],
+)
+async def test_searxng_selectors_rejected_for_other_providers(
+    monkeypatch: pytest.MonkeyPatch, provider: str, selector: dict[str, Any]
+) -> None:
+    """Provider-specific selectors are never silently discarded."""
+    monkeypatch.setattr(server, "settings", Settings(search_provider=provider))
+    async with Client(mcp) as client:
+        with pytest.raises(Exception) as excinfo:
+            await client.call_tool("search", {"query": "x", **selector})
+    assert "only supported by provider 'searxng'" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
 async def test_search_provider_override_beats_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
