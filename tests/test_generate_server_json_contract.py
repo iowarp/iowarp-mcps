@@ -240,3 +240,52 @@ def test_plugin_versions_distinguish_contracts_from_the_root_wheel(
     assert plugin["version"] == "2.0.0"
     assert marketplace["metadata"]["version"] == "2.3.0"
     assert marketplace["plugins"][0]["version"] == "2.0.0"
+
+
+def test_every_shipped_server_resolves_to_exactly_one_published_scope() -> None:
+    """Scope is total over the server inventory and defaults to scientific."""
+    repo_root = Path(__file__).resolve().parents[1]
+    versions = GENERATOR.read_server_versions(repo_root)
+    scopes = GENERATOR.read_server_classification(repo_root, versions)
+
+    assert set(scopes) == set(versions)
+    assert set(scopes.values()) <= {"scientific", "general"}
+    assert scopes["web"] == "general"
+    assert scopes["hdf5"] == "scientific"
+
+
+def test_classifying_an_unknown_server_fails_generation(tmp_path: Path) -> None:
+    """A renamed or removed server cannot be left silently misclassified."""
+    versions_file = tmp_path / GENERATOR.SERVER_VERSIONS_FILE
+    versions_file.write_text(
+        'schema-version = 1\n\n[classification]\ngeneral = ["ghost"]\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unknown servers: ghost"):
+        GENERATOR.read_server_classification(tmp_path, {"web": "1.0.0"})
+
+
+def test_general_classification_inventory_must_be_sorted(tmp_path: Path) -> None:
+    """Deterministic manifests need a deterministic classification order."""
+    versions_file = tmp_path / GENERATOR.SERVER_VERSIONS_FILE
+    versions_file.write_text(
+        'schema-version = 1\n\n[classification]\ngeneral = ["web", "compression"]\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="must be sorted"):
+        GENERATOR.read_server_classification(
+            tmp_path, {"compression": "1.0.0", "web": "1.0.0"}
+        )
+
+
+def test_published_marketplace_categories_carry_real_scope() -> None:
+    """The marketplace category distinguishes servers instead of a fixed literal."""
+    repo_root = Path(__file__).resolve().parents[1]
+    marketplace = json.loads(
+        (repo_root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
+    )
+    categories = {plugin["category"] for plugin in marketplace["plugins"]}
+
+    assert categories == {"scientific", "general"}

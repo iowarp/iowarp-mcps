@@ -15,7 +15,7 @@
       "source": "./clio-kit-mcp-servers/adios",
       "description": "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes.",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "scientific-computing",
         "adios2",
@@ -31,7 +31,7 @@
       "source": "./clio-kit-mcp-servers/arxiv",
       "description": "ArXiv MCP server implementation using Model Context Protocol",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "research",
         "arxiv",
@@ -46,7 +46,7 @@
       "source": "./clio-kit-mcp-servers/chronolog",
       "description": "ChronoLog MCP server implementation using Model Context Protocol",
       "version": "2.0.1",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "logging",
         "distributed-systems",
@@ -61,7 +61,7 @@
       "source": "./clio-kit-mcp-servers/compression",
       "description": "Compression MCP server implementation using Model Context Protocol",
       "version": "2.2.3",
-      "category": "development",
+      "category": "general",
       "keywords": [
         "compression",
         "gzip",
@@ -76,7 +76,7 @@
       "source": "./clio-kit-mcp-servers/darshan",
       "description": "Darshan I/O profiler MCP server for analyzing I/O trace files",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "io-profiling",
         "performance-analysis",
@@ -91,7 +91,7 @@
       "source": "./clio-kit-mcp-servers/geo",
       "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
       "version": "2.3.0",
-      "category": "development",
+      "category": "scientific",
       "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
@@ -101,7 +101,7 @@
       "source": "./clio-kit-mcp-servers/hdf5",
       "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "scientific-computing",
         "hdf5",
@@ -116,7 +116,7 @@
       "source": "./clio-kit-mcp-servers/jarvis",
       "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
       "version": "3.6.2",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "pipeline-management",
         "hpc",
@@ -130,7 +130,7 @@
       "source": "./clio-kit-mcp-servers/lmod",
       "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "environment-modules",
         "hpc",
@@ -145,7 +145,7 @@
       "source": "./clio-kit-mcp-servers/ndp",
       "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "datasets",
         "ckan",
@@ -160,7 +160,7 @@
       "source": "./clio-kit-mcp-servers/node-hardware",
       "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "hardware-monitoring",
         "system-info",
@@ -174,7 +174,7 @@
       "source": "./clio-kit-mcp-servers/pandas",
       "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "data-analysis",
         "pandas",
@@ -189,7 +189,7 @@
       "source": "./clio-kit-mcp-servers/parallel-sort",
       "description": "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "log-processing",
         "sorting",
@@ -204,7 +204,7 @@
       "source": "./clio-kit-mcp-servers/paraview",
       "description": "MCP server for ParaView scientific visualization",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "scientific-visualization",
         "paraview",
@@ -219,7 +219,7 @@
       "source": "./clio-kit-mcp-servers/parquet",
       "description": "MCP server for Apache Parquet files",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "parquet",
         "apache-arrow",
@@ -234,7 +234,7 @@
       "source": "./clio-kit-mcp-servers/plot",
       "description": "MCP server for advanced data visualization and plotting operations",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "data-visualization",
         "matplotlib",
@@ -249,7 +249,7 @@
       "source": "./clio-kit-mcp-servers/sac",
       "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
       "version": "2.3.0",
-      "category": "development",
+      "category": "scientific",
       "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
@@ -259,7 +259,7 @@
       "source": "./clio-kit-mcp-servers/scientific-catalog",
       "description": "Operator-owned scientific dataset discovery for remote agents",
       "version": "1.1.2",
-      "category": "development",
+      "category": "scientific",
       "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
@@ -269,7 +269,7 @@
       "source": "./clio-kit-mcp-servers/slurm",
       "description": "MCP server for Slurm workload management and HPC job scheduling",
       "version": "3.0.0",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "hpc",
         "slurm",
@@ -284,7 +284,7 @@
       "source": "./clio-kit-mcp-servers/spack",
       "description": "Structured Spack discovery and installation tools for scientific agents",
       "version": "2.1.0",
-      "category": "development",
+      "category": "scientific",
       "keywords": [
         "package-management",
         "hpc",
@@ -298,7 +298,7 @@
       "source": "./clio-kit-mcp-servers/terrain",
       "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
       "version": "2.2.3",
-      "category": "development",
+      "category": "scientific",
       "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
@@ -308,7 +308,7 @@
       "source": "./clio-kit-mcp-servers/web",
       "description": "Web MCP server providing curated fetch + search tools for agentic web access",
       "version": "1.0.0",
-      "category": "development",
+      "category": "general",
       "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"

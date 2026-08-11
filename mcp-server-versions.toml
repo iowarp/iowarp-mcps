@@ -15,6 +15,14 @@ publish = ["geo", "sac"]
 [documentation]
 updated = "2026-07-22"
 
+# Agent-facing scope of each server. Servers are "scientific" unless listed
+# here, so this table records only the general-purpose exceptions. It is the
+# single source for the published marketplace category and for the launcher's
+# `clio-kit mcp-servers` grouping; every name must exist under [servers] below,
+# so a rename or removal fails generation instead of silently misclassifying.
+[classification]
+general = ["compression", "web"]
+
 # MCP Registry server versions describe each agent-facing contract. They are
 # intentionally independent of the clio-kit PyPI distribution version, which
 # only identifies the wheel containing the server implementations.

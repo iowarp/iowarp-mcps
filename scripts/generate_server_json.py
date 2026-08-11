@@ -121,6 +121,46 @@ def read_registry_publish_servers(repo_root: Path) -> tuple[str, ...]:
     return servers
 
 
+def read_server_classification(
+    repo_root: Path,
+    server_versions: dict[str, str],
+) -> dict[str, str]:
+    """Resolve every server's published scope from the version map.
+
+    Servers are scientific unless [classification] lists them as general, so the
+    table records only the exceptions. Every listed name must exist under
+    [servers]: a rename or removal then fails generation loudly instead of
+    leaving a server silently misclassified in the published manifests.
+    """
+    versions_path = repo_root / SERVER_VERSIONS_FILE
+    with open(versions_path, "rb") as f:
+        data = tomllib.load(f)
+    classification = data.get("classification")
+    raw_general = (
+        classification.get("general") if isinstance(classification, dict) else None
+    )
+    if not isinstance(raw_general, list):
+        raise ValueError(
+            f"{versions_path} must define classification.general as a list"
+        )
+    if not all(isinstance(server, str) and server for server in raw_general):
+        raise ValueError(f"{versions_path} has an invalid general server")
+    general = tuple(cast(str, server) for server in raw_general)
+    if len(set(general)) != len(general):
+        raise ValueError(f"{versions_path} has duplicate general servers")
+    if general != tuple(sorted(general)):
+        raise ValueError(f"{versions_path} general inventory must be sorted")
+    unknown = sorted(set(general) - set(server_versions))
+    if unknown:
+        raise ValueError(
+            f"{versions_path} classifies unknown servers: {', '.join(unknown)}"
+        )
+    return {
+        name: ("general" if name in set(general) else "scientific")
+        for name in server_versions
+    }
+
+
 def read_pyproject(server_dir: Path) -> dict[str, Any]:
     """Read pyproject.toml and return the [project] table."""
     pyproject_path = server_dir / "pyproject.toml"
@@ -331,6 +371,7 @@ def generate_all(mcps_dir: str) -> None:
     pypi_version = read_root_version(repo_root)
     server_versions = read_server_versions(repo_root)
     registry_publish_servers = read_registry_publish_servers(repo_root)
+    server_scopes = read_server_classification(repo_root, server_versions)
     print(f"Root PyPI version: {pypi_version}")
     generated: list[str] = []
     failed: list[str] = []
@@ -409,7 +450,7 @@ def generate_all(mcps_dir: str) -> None:
                 "source": f"./clio-kit-mcp-servers/{server_name}",
                 "description": description,
                 "version": server_versions[server_name],
-                "category": "development",
+                "category": server_scopes[server_name],
                 "keywords": SERVER_TAGS.get(server_name, []),
                 "license": "BSD-3-Clause",
                 "repository": REPO_URL,
