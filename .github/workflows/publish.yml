@@ -74,7 +74,8 @@ jobs:
           scripts/generate_mcp_user_contracts.py \
           scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py \
           scripts/release_authorization.py \
-          scripts/verify_mcp_registry_release.py src
+          scripts/verify_mcp_registry_release.py scripts/check_file_size.py src
+        python scripts/check_file_size.py
         uv run pytest -q tests --junitxml="$RUNNER_TEMP/root-junit.xml"
         python scripts/assert_no_skipped_tests.py "$RUNNER_TEMP/root-junit.xml"
         uv run --with 'pip-audit==2.10.1' pip-audit
