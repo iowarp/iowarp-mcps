@@ -22,6 +22,7 @@ from clio_kit.env_cache import (
     maintain_after_build,
     measure_cache_budget,
 )
+from clio_kit.retired_servers import unknown_server_lines
 from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
@@ -562,8 +563,7 @@ def mcp_server(server, branch, args):
     server_lower = server.lower()
 
     if server_lower not in server_command_map:
-        click.echo(f"Error: Unknown server '{server}'")
-        click.echo(f"Available servers: {', '.join(sorted(server_command_map.keys()))}")
+        click.echo("\n".join(unknown_server_lines(server, server_command_map)))
         sys.exit(1)
 
     # Get the entry point command and directory name
