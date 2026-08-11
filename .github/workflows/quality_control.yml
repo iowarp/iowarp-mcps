@@ -2,9 +2,9 @@ name: Quality Control
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, develop ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, dev, develop ]
 
 # Chronolog MCP tests are handled in dedicated workflow
 

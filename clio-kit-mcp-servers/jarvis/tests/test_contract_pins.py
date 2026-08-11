@@ -2,12 +2,24 @@
 
 These pins capture the server's wire surface as it stood before the
 ``server.py`` / ``jarvis_handler.py`` owner-module split: the full
-``tools/list`` (every tool's name, title, description, tags, annotations, and
-input/output JSON schema) and the structured ``tools/call`` result of four
-representative tools. They are the refactor's safety net -- committed BEFORE
-any file was split, they must stay green, unmodified, across it. Any
-wire-visible drift (a renamed tool, a reshaped schema, a changed result
-envelope) fails here first, independent of every other test in this suite.
+``tools/list`` registration -- every tool's LITERAL wire record
+(``Tool.model_dump(mode="json", by_alias=True)``: name, title, description,
+inputSchema, outputSchema, annotations, icons, execution, and ``_meta``
+including ``_meta.fastmcp.tags``) in actual registration order -- and the
+full ``tools/call`` result envelope (``content``, ``structured_content``,
+``meta``, ``is_error``) of four representative tools. They are the
+refactor's safety net -- committed BEFORE any file was split, they must stay
+green, unmodified, across it. Any wire-visible drift (a renamed tool, a
+reshaped schema, a reordered registration, a changed result envelope) fails
+here first, independent of every other test in this suite.
+
+Pinning the literal ``model_dump`` output (rather than a hand-picked field
+subset) is deliberate: an earlier version of this pin reconstructed
+``tags`` as a top-level field and dropped ``execution``/``icons``/``_meta``
+entirely, silently blessing a lossy projection of the wire contract (PR #364
+review finding 1). Pinning ``result.data`` alone made the same mistake for
+tools/call (finding 2) -- ``data`` is a client-side convenience view derived
+from ``structured_content``, not what the server puts on the wire.
 
 The four representative tools were chosen to cover the code this campaign
 moves:
@@ -22,6 +34,12 @@ moves:
 - ``jarvis_get_execution`` exercises ``JarvisExecutionResult.model_validate``
   (moving to ``jarvis_mcp.models.execution``), the one tool that re-validates
   its handler's raw dict through Pydantic before returning it.
+
+Both fixtures were verified byte-for-byte identical when captured against
+the pre-split commit (ea232ac, before server.py's owner-module split) and
+the post-split tree -- see the PR #364 wave-1 description for the
+verification method (a throwaway git worktree at the pre-split commit,
+diffed against the same capture run post-split).
 
 Regenerate a pin only when the wire contract is DELIBERATELY changing (never
 to make a refactor "pass"). To regenerate: reproduce the capture harness
@@ -46,22 +64,9 @@ TOOLS_LIST_PIN = FIXTURES_DIR / "jarvis_tools_list_pin.json"
 TOOL_CALL_PINS = FIXTURES_DIR / "jarvis_tool_call_pins.json"
 
 
-def _tool_contract(tool) -> dict:
-    """Project one FastMCP Tool onto its wire-relevant contract fields."""
-    return {
-        "name": tool.name,
-        "title": tool.title,
-        "description": tool.description or "",
-        "tags": sorted(tool.tags) if getattr(tool, "tags", None) else [],
-        "annotations": tool.annotations.model_dump() if tool.annotations else {},
-        "input_schema": tool.input_schema,
-        "output_schema": getattr(tool, "output_schema", None),
-    }
-
-
 @pytest.mark.asyncio
 async def test_tools_list_contract_pin() -> None:
-    """The full 36-tool registry's wire-relevant shape matches the pin exactly.
+    """The full 36-tool registry -- every field, in registration order -- matches the pin.
 
     Reloads ``jarvis_mcp.server`` for a clean, unfiltered 36-tool registry
     regardless of test order (mirrors test_tool_titles.py's rationale:
@@ -71,29 +76,30 @@ async def test_tools_list_contract_pin() -> None:
     try:
         async with Client(fresh_server.mcp) as client:
             tools = await client.list_tools()
-        actual = sorted((_tool_contract(t) for t in tools), key=lambda c: c["name"])
+        actual_order = [tool.name for tool in tools]
+        actual_by_name = {
+            tool.name: tool.model_dump(mode="json", by_alias=True) for tool in tools
+        }
     finally:
         importlib.reload(server)
 
-    expected = json.loads(TOOLS_LIST_PIN.read_text(encoding="utf-8"))
+    pinned = json.loads(TOOLS_LIST_PIN.read_text(encoding="utf-8"))
+    pinned_order: list[str] = pinned["order"]
+    pinned_by_name: dict[str, dict] = pinned["tools"]
 
-    actual_names = [t["name"] for t in actual]
-    expected_names = [t["name"] for t in expected]
-    assert actual_names == expected_names, (
-        "jarvis tool registry drifted from the contract pin -- a tool was "
-        "added, removed, or renamed. If this is deliberate, regenerate "
-        f"{TOOLS_LIST_PIN.name}.\n"
-        f"pinned:  {expected_names}\n"
-        f"actual:  {actual_names}"
+    assert actual_order == pinned_order, (
+        "jarvis tool REGISTRATION ORDER drifted from the contract pin -- a "
+        "tool was added, removed, renamed, or reordered. If this is "
+        f"deliberate, regenerate {TOOLS_LIST_PIN.name}.\n"
+        f"pinned:  {pinned_order}\n"
+        f"actual:  {actual_order}"
     )
-
-    by_name_actual = {t["name"]: t for t in actual}
-    by_name_expected = {t["name"]: t for t in expected}
-    for name in expected_names:
-        assert by_name_actual[name] == by_name_expected[name], (
-            f"tool {name!r} wire contract drifted from the pin:\n"
-            f"pinned:  {json.dumps(by_name_expected[name], indent=2, sort_keys=True)}\n"
-            f"actual:  {json.dumps(by_name_actual[name], indent=2, sort_keys=True)}"
+    assert set(actual_by_name) == set(pinned_by_name)
+    for name in pinned_order:
+        assert actual_by_name[name] == pinned_by_name[name], (
+            f"tool {name!r} FULL wire record drifted from the pin:\n"
+            f"pinned:  {json.dumps(pinned_by_name[name], indent=2, sort_keys=True)}\n"
+            f"actual:  {json.dumps(actual_by_name[name], indent=2, sort_keys=True)}"
         )
 
 
@@ -162,9 +168,19 @@ def tool_call_pins() -> dict:
     return json.loads(TOOL_CALL_PINS.read_text(encoding="utf-8"))
 
 
+def _envelope(result) -> dict:
+    """Project a CallToolResult onto the full wire envelope this pin covers."""
+    return {
+        "content": [item.model_dump(mode="json") for item in result.content],
+        "structured_content": result.structured_content,
+        "meta": result.meta,
+        "is_error": result.is_error,
+    }
+
+
 @pytest.mark.asyncio
 async def test_jarvis_describe_package_search_call_pin(tool_call_pins) -> None:
-    """Package-search discovery result shape (the code moving to package_discovery.py)."""
+    """Package-search discovery result envelope (the code moving to package_discovery.py)."""
     pin = tool_call_pins["jarvis_describe_package_search"]
     with (
         patch("jarvis_mcp.server.JarvisManager") as mock_manager_class,
@@ -178,7 +194,7 @@ async def test_jarvis_describe_package_search_call_pin(tool_call_pins) -> None:
         async with Client(server.mcp) as client:
             result = await client.call_tool("jarvis_describe", pin["args"])
 
-    assert result.data == pin["result"]
+    assert _envelope(result) == pin["result"]
 
 
 @pytest.mark.asyncio
@@ -190,28 +206,28 @@ async def test_jarvis_create_pipeline_call_pin(tool_call_pins) -> None:
         async with Client(server.mcp) as client:
             result = await client.call_tool("jarvis_create_pipeline", pin["args"])
 
-    assert result.data == pin["result"]
+    assert _envelope(result) == pin["result"]
 
 
 @pytest.mark.asyncio
 async def test_jarvis_run_call_pin(tool_call_pins) -> None:
-    """JarvisRunResult as a validated MCP tool OUTPUT SCHEMA."""
+    """JarvisRunResult as a validated MCP tool OUTPUT SCHEMA, full envelope."""
     pin = tool_call_pins["jarvis_run"]
     with patch("jarvis_mcp.server.run_pipeline") as mock_run:
         mock_run.return_value = dict(_RUN_RESULT)
         async with Client(server.mcp) as client:
             result = await client.call_tool("jarvis_run", pin["args"])
 
-    assert result.data == pin["result"]
+    assert _envelope(result) == pin["result"]
 
 
 @pytest.mark.asyncio
 async def test_jarvis_get_execution_call_pin(tool_call_pins) -> None:
-    """JarvisExecutionResult.model_validate re-validation of the handler's raw dict."""
+    """JarvisExecutionResult.model_validate re-validation, full envelope."""
     pin = tool_call_pins["jarvis_get_execution"]
     with patch("jarvis_mcp.server.get_execution") as mock_get:
         mock_get.return_value = dict(_EXECUTION_RESULT)
         async with Client(server.mcp) as client:
             result = await client.call_tool("jarvis_get_execution", pin["args"])
 
-    assert result.data == pin["result"]
+    assert _envelope(result) == pin["result"]

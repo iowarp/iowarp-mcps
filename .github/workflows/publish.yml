@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - develop
     paths:
       - '.github/workflows/publish.yml'
       - 'src/**'
@@ -20,6 +21,7 @@ on:
   push:
     branches:
       - main  # Validate release artifacts on main commits
+      - develop
     paths:
       - 'src/**'
       - 'tests/**'

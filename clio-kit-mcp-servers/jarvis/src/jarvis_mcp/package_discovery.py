@@ -31,6 +31,7 @@ from typing import Any
 from fastmcp.exceptions import ToolError
 from pydantic import BaseModel, ValidationError
 
+from .models.describe import PACKAGE_SEARCH_CURSOR_SCHEMA, PACKAGE_SEARCH_SCHEMA
 from .models.packages import (
     PACKAGE_DEPLOYMENT_SCHEMA,
     PACKAGE_DESCRIPTION_SCHEMA,
@@ -40,8 +41,6 @@ from .models.packages import (
     _PackageInventoryEntry,
 )
 
-PACKAGE_SEARCH_SCHEMA = "jarvis.package-search.v1"
-PACKAGE_SEARCH_CURSOR_SCHEMA = "clio-kit.jarvis-package-search-cursor.v1"
 PACKAGE_SEARCH_DEFAULT_PAGE_SIZE = 10
 PACKAGE_SEARCH_MAX_PAGE_SIZE = 25
 PACKAGE_SEARCH_MAX_RESULT_BYTES = 64 * 1024

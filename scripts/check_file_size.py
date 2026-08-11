@@ -2,22 +2,38 @@
 """Ratchet guard against god-files across clio-kit's packages.
 
 Ported from clio-agent's ``scripts/check_file_size.py`` (iowarp/clio-agent,
-#714/#767) for clio-kit campaign #362 ("server code health"), Slice 1. Walks
-every package's ``src/`` tree -- one per ``clio-kit-mcp-servers/<name>``
-(any directory with a ``pyproject.toml``) plus ``clio-agentic-search`` -- and
-enforces a per-file line-count ratchet:
+#714/#767) for clio-kit campaign #362 ("server code health"), Slice 1, and
+then hardened past what that script enforces (PR #364 review finding 4):
+clio-agent's version treats a baseline sitting ABOVE a file's real line count
+as merely advisory (an "OK (ratchet down)" message, exit 0) -- which means a
+single commit can grow a file AND raise its baseline to match, banking unused
+headroom with zero build signal. This version does not tolerate that gap: a
+baseline entry must be an EXACT mirror of reality at all times.
+
+Walks every package's ``src/`` tree -- the root ``clio_kit`` package plus one
+per ``clio-kit-mcp-servers/<name>`` (any directory with a ``pyproject.toml``)
+plus ``clio-agentic-search`` -- and enforces a per-file line-count ratchet:
 
 * A file **not** in :data:`RATCHET_BASELINE` may not exceed
   :data:`DEFAULT_MAX_LINES` -- a brand-new god-file fails the check.
 * A file **in** :data:`RATCHET_BASELINE` (a known-oversized module awaiting
-  decomposition) may not exceed its *recorded* line count -- it can shrink
-  but never grow past where it is today.
+  decomposition) must match its recorded line count EXACTLY:
 
-The baseline may only ratchet DOWN. When a file is brought under the cap, or
-merely shrinks, the check reports the ratchet-down and the same PR that
-shrank it updates :data:`RATCHET_BASELINE` (lowering the number, or removing
-the entry once the file is under ``DEFAULT_MAX_LINES``). Ratchet-down
-reports are advisory: they do not fail the build.
+  - Grow past it ("regressed") -- FAILS.
+  - Sit below it ("padded" -- the baseline claims more lines than the file
+    actually has, whether from an un-recorded shrink or a same-commit
+    baseline bump that outpaced the real growth) -- FAILS. There is no
+    advisory-only path here; every gram of ratchet headroom must be spent
+    the moment it's earned, never banked for later.
+  - A baseline entry pointing at a file that no longer exists ("stale") --
+    FAILS. A deleted or renamed file's old allowance must be removed in the
+    same change, so nothing can later resurrect at that path and inherit
+    unearned headroom.
+
+The baseline may only ratchet DOWN, and every entry must be live and exact.
+When a file shrinks, lower its :data:`RATCHET_BASELINE` number to match (or
+drop the entry once it falls under :data:`DEFAULT_MAX_LINES`) in the SAME
+change that shrank it -- the check fails until you do.
 
 Run as part of CI (blocking) and locally::
 
@@ -36,20 +52,25 @@ from typing import NamedTuple
 # contain. New files must stay under this cap.
 DEFAULT_MAX_LINES = 800
 
-# Per-file ratchet baseline: the known-oversized modules at their current line
-# counts (measured on campaign/362-kit-health, 2026-08-10/11), recorded so
-# they cannot regrow. These are the files awaiting further decomposition
-# (clio-kit campaign #362, Slice 1). This mapping may only ratchet DOWN --
-# when a file shrinks, lower its number here (or drop the entry once it falls
-# under DEFAULT_MAX_LINES) in the same change. Paths are relative to the
+# Per-file ratchet baseline: the known-oversized modules at their EXACT
+# current line counts (measured on campaign/362-kit-health, 2026-08-10/11),
+# recorded so they cannot regrow. These are the files awaiting further
+# decomposition (clio-kit campaign #362, Slice 1). Every entry must equal its
+# file's real line count at all times -- the check fails on any mismatch in
+# either direction (see the module docstring). Paths are relative to the
 # repository root and use forward slashes.
 RATCHET_BASELINE: dict[str, int] = {
     # #362 wave 1: server.py's 44 model classes + package-discovery/search
     # helpers moved to owner modules (jarvis_mcp/models/*, package_discovery.py),
-    # 3109 -> 1323. The remaining size is the `@mcp.tool` registration surface
-    # for 30+ tools plus the CLI entry points; ratchets down with a further
-    # per-concern tool-registration split if one is ever justified.
-    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/server.py": 1323,
+    # 3109 -> 1323, then +259 (PR #364 review findings 1/3: the contract pins'
+    # full tool-record capture plus the FULL backward-compatibility re-export
+    # surface -- every name importable from the pre-split server.py, not a
+    # hand-picked subset; see server.py's own header comment). The remaining
+    # size is the `@mcp.tool` registration surface for 30+ tools, the CLI
+    # entry points, and that compatibility re-export block; ratchets down
+    # with a further per-concern tool-registration split if one is ever
+    # justified (the re-export block would move with it).
+    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/server.py": 1582,
     # #362 wave 1: NOT split this wave (deferred -- see the wave-1 PR
     # description). Still the 6-class monolith measured at campaign kickoff.
     # Next wave: split into owner modules by concern (pipeline lifecycle,
@@ -64,6 +85,13 @@ RATCHET_BASELINE: dict[str, int] = {
     "clio-kit-mcp-servers/pandas/src/pandas_mcp/server.py": 1274,
     "clio-kit-mcp-servers/paraview/src/paraview_mcp/server.py": 1091,
     "clio-kit-mcp-servers/spack/src/spack_mcp/backend.py": 925,
+    # #362 (PR #364 review finding 5): discovery previously excluded the root
+    # `clio_kit` package (the `clio-kit` launcher CLI itself) entirely --
+    # these three were never scanned. Baselined at their measured counts, not
+    # split this wave.
+    "src/clio_kit/__init__.py": 958,
+    "src/clio_kit/mcp_contracts.py": 921,
+    "src/clio_kit/env_cache.py": 843,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,
     "clio-kit-mcp-servers/parquet/src/parquet_mcp/capabilities/parquet_handler.py": 839,
     "clio-kit-mcp-servers/node-hardware/src/node_hardware_mcp/mcp_handlers.py": 819,
@@ -74,33 +102,20 @@ MCP_SERVERS_ROOT = "clio-kit-mcp-servers"
 
 # Additional package roots outside clio-kit-mcp-servers, checked for a `src/`
 # tree the same way. clio-agentic-search is a standalone service (not an MCP
-# server) but is still a first-class package in this repo's code-health scope.
-EXTRA_PACKAGE_ROOTS = ("clio-agentic-search",)
+# server) but is still a first-class package in this repo's code-health
+# scope; the repository root itself ships the `clio_kit` launcher package
+# (its own `pyproject.toml` + `src/clio_kit/`) and was previously the one
+# first-class package this scan silently skipped (PR #364 review finding 5).
+EXTRA_PACKAGE_ROOTS = (".", "clio-agentic-search")
 
 
 class Failure(NamedTuple):
-    """A file that breaks the ratchet (fails the check)."""
+    """A file (or baseline entry) that breaks the ratchet (fails the check)."""
 
     rel: str
-    line_count: int
-    kind: str  # "new" (non-baselined over cap) or "regressed" (over recorded)
-    limit: int  # the cap it broke (DEFAULT_MAX_LINES or the recorded baseline)
-
-
-class RatchetDown(NamedTuple):
-    """A baselined file that shrank -- advisory, not a failure."""
-
-    rel: str
-    line_count: int
-    baseline: int
-    under_cap: bool  # True once line_count <= max_lines (drop the entry entirely)
-
-
-class Result(NamedTuple):
-    """Outcome of a scan: failures fail the build, ratchet_downs are advisory."""
-
-    failures: list[Failure]
-    ratchet_downs: list[RatchetDown]
+    line_count: int | None  # None only for "stale" -- the file does not exist
+    kind: str  # "new" | "regressed" | "padded" | "stale"
+    limit: int | None  # the cap/baseline it broke; None only for "new" with no baseline
 
 
 def _repo_root() -> Path:
@@ -125,14 +140,23 @@ def _is_test_file(path: Path) -> bool:
 def discover_package_src_roots(repo_root: Path) -> list[Path]:
     """Discover every package's ``src/`` tree.
 
-    One per ``clio-kit-mcp-servers/<name>`` directory that has a
-    ``pyproject.toml`` (mirroring ``.github/workflows/quality_control.yml``'s
-    ``discover-mcps`` step, minus its Chronolog exclusion -- this is a
-    code-health scan, not a release gate, and Chronolog can grow a god-file
-    same as any other package), plus any :data:`EXTRA_PACKAGE_ROOTS` that
-    have a ``src/`` tree of their own.
+    The repository root's own ``src/`` (the ``clio_kit`` launcher package,
+    if ``repo_root/pyproject.toml`` exists), one per
+    ``clio-kit-mcp-servers/<name>`` directory that has a ``pyproject.toml``
+    (mirroring ``.github/workflows/quality_control.yml``'s ``discover-mcps``
+    step, minus its Chronolog exclusion -- this is a code-health scan, not a
+    release gate, and Chronolog can grow a god-file same as any other
+    package), plus any other :data:`EXTRA_PACKAGE_ROOTS` that have a
+    ``src/`` tree of their own.
     """
     roots: list[Path] = []
+    for extra in EXTRA_PACKAGE_ROOTS:
+        pkg_dir = repo_root / extra
+        if not (pkg_dir / "pyproject.toml").is_file():
+            continue
+        src_dir = pkg_dir / "src"
+        if src_dir.is_dir():
+            roots.append(src_dir)
     servers_dir = repo_root / MCP_SERVERS_ROOT
     if servers_dir.is_dir():
         for pkg_dir in sorted(servers_dir.iterdir()):
@@ -141,10 +165,6 @@ def discover_package_src_roots(repo_root: Path) -> list[Path]:
             src_dir = pkg_dir / "src"
             if src_dir.is_dir():
                 roots.append(src_dir)
-    for extra in EXTRA_PACKAGE_ROOTS:
-        src_dir = repo_root / extra / "src"
-        if src_dir.is_dir():
-            roots.append(src_dir)
     return roots
 
 
@@ -154,7 +174,7 @@ def check_file_size(
     rel_to: Path,
     max_lines: int = DEFAULT_MAX_LINES,
     baseline: dict[str, int] | None = None,
-) -> Result:
+) -> list[Failure]:
     """Evaluate the per-file line-count ratchet under every root in ``scan_roots``.
 
     Args:
@@ -163,18 +183,19 @@ def check_file_size(
         rel_to: Base directory used to compute the forward-slash relative
             path that keys into ``baseline`` (the repository root).
         max_lines: Cap applied to files not present in ``baseline``.
-        baseline: Per-file recorded line counts. Defaults to
+        baseline: Per-file EXACT recorded line counts. Defaults to
             :data:`RATCHET_BASELINE`.
 
     Returns:
-        A :class:`Result` splitting build-failing offenders from advisory
-        ratchet-down reports.
+        Every offense: a brand-new god-file, a baselined file that grew past
+        its recorded count, a baselined file that no longer matches its
+        recorded count exactly (in either direction), or a baseline entry
+        whose file no longer exists. Empty means the ratchet holds.
     """
     if baseline is None:
         baseline = RATCHET_BASELINE
 
     failures: list[Failure] = []
-    ratchet_downs: list[RatchetDown] = []
     seen: set[str] = set()
     for scan_root in scan_roots:
         for path in sorted(scan_root.rglob("*.py")):
@@ -193,46 +214,58 @@ def check_file_size(
             if count > recorded:
                 failures.append(Failure(rel, count, "regressed", recorded))
             elif count < recorded:
-                ratchet_downs.append(
-                    RatchetDown(rel, count, recorded, under_cap=count <= max_lines)
-                )
-    return Result(failures=failures, ratchet_downs=ratchet_downs)
+                failures.append(Failure(rel, count, "padded", recorded))
+            # count == recorded: the baseline is exact -- no failure.
+
+    for rel, recorded in baseline.items():
+        if rel not in seen:
+            failures.append(Failure(rel, None, "stale", recorded))
+
+    return failures
 
 
-def _print_report(result: Result, max_lines: int) -> None:
-    """Print the ratchet report (failures then advisory ratchet-downs)."""
-    for entry in result.ratchet_downs:
-        if entry.under_cap:
-            print(
-                f"OK (ratchet down): {entry.rel} is now {entry.line_count} lines "
-                f"(<= {max_lines}) -- remove it from RATCHET_BASELINE in "
-                "scripts/check_file_size.py."
-            )
-        else:
-            print(
-                f"OK (ratchet down): {entry.rel} shrank {entry.baseline} -> "
-                f"{entry.line_count} -- lower its RATCHET_BASELINE entry to "
-                f"{entry.line_count} in scripts/check_file_size.py."
-            )
-
-    if not result.failures:
+def _print_report(failures: list[Failure], max_lines: int) -> None:
+    """Print the ratchet report."""
+    if not failures:
         print(
-            f"OK: no package source file exceeds its ratchet baseline "
-            f"(cap {max_lines} for new files)."
+            "OK: every ratchet baseline entry exactly matches its file's real "
+            f"line count, and no new file exceeds the cap ({max_lines})."
         )
         return
 
-    print(f"FAIL: {len(result.failures)} file(s) break the size ratchet (#362):")
-    for failure in result.failures:
+    print(f"FAIL: {len(failures)} file(s) break the size ratchet (#362):")
+    for failure in failures:
         if failure.kind == "new":
             print(
                 f"  {failure.rel}:{failure.line_count} "
                 f"(new file exceeds cap {failure.limit})"
             )
-        else:
+        elif failure.kind == "regressed":
             print(
                 f"  {failure.rel}:{failure.line_count} "
                 f"(regressed past recorded baseline {failure.limit})"
+            )
+        elif failure.kind == "padded":
+            assert failure.line_count is not None
+            if failure.line_count <= max_lines:
+                print(
+                    f"  {failure.rel}:{failure.line_count} (baseline claims "
+                    f"{failure.limit} but the file is only {failure.line_count} "
+                    f"lines, under the {max_lines} cap -- remove its "
+                    "RATCHET_BASELINE entry in scripts/check_file_size.py)"
+                )
+            else:
+                print(
+                    f"  {failure.rel}:{failure.line_count} (baseline claims "
+                    f"{failure.limit} but the file is only {failure.line_count} "
+                    f"lines -- lower its RATCHET_BASELINE entry to "
+                    f"{failure.line_count} in scripts/check_file_size.py)"
+                )
+        elif failure.kind == "stale":
+            print(
+                f"  {failure.rel} (baselined at {failure.limit} lines but the "
+                "file no longer exists -- remove its RATCHET_BASELINE entry "
+                "in scripts/check_file_size.py)"
             )
 
 
@@ -249,13 +282,13 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = _repo_root()
     scan_roots = discover_package_src_roots(repo_root)
-    result = check_file_size(
+    failures = check_file_size(
         scan_roots,
         rel_to=repo_root,
         max_lines=args.max,
     )
-    _print_report(result, args.max)
-    return 1 if result.failures else 0
+    _print_report(failures, args.max)
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
