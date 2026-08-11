@@ -1,0 +1,134 @@
+{
+  "jarvis_create_pipeline": {
+    "args": {
+      "pipeline_id": "pin_pipeline"
+    },
+    "result": {
+      "pipeline_id": "pin_pipeline",
+      "status": "created"
+    }
+  },
+  "jarvis_describe_package_search": {
+    "args": {
+      "query": "proc",
+      "target": "package_search"
+    },
+    "result": {
+      "inventory_revision": "c3997476927a492d85a8c9ff0c3ae5772d7bb5c1ef4556871c3a202e3545c451",
+      "next_cursor": null,
+      "packages": [],
+      "query": "proc",
+      "returned_count": 0,
+      "schema_version": "jarvis.package-search.v1",
+      "target": "package_search",
+      "total_matches": 0
+    }
+  },
+  "jarvis_get_execution": {
+    "args": {
+      "execution_id": "pin-exec-0001",
+      "pipeline_id": "pin_pipeline"
+    },
+    "result": {
+      "artifact_page": null,
+      "execution_handle": {
+        "cluster": null,
+        "execution_id": "pin-exec-0001",
+        "mode": "direct",
+        "pipeline_id": "pin_pipeline",
+        "scheduler_native_id": null,
+        "scheduler_provider": null,
+        "schema_version": "jarvis.execution.handle.v1"
+      },
+      "execution_id": "pin-exec-0001",
+      "execution_record": {
+        "cluster": null,
+        "created_at": "2026-08-01T00:00:00Z",
+        "error": null,
+        "execution_id": "pin-exec-0001",
+        "metadata": {},
+        "mode": "direct",
+        "pipeline_id": "pin_pipeline",
+        "pipeline_name": "pin_pipeline",
+        "return_code": null,
+        "scheduler_native_id": null,
+        "scheduler_provider": null,
+        "schema_version": "jarvis.execution.record.v1",
+        "state": "running",
+        "submitted": false,
+        "terminal": false,
+        "updated_at": "2026-08-01T00:00:01Z"
+      },
+      "pipeline_id": "pin_pipeline",
+      "progress": {
+        "execution_id": "pin-exec-0001",
+        "execution_state": "running",
+        "packages": [],
+        "pipeline_id": "pin_pipeline",
+        "schema_version": "jarvis.execution.progress.v1",
+        "terminal": false
+      },
+      "runtime_metadata": {
+        "schema_version": "jarvis.runtime.v1",
+        "source": "jarvis_mcp"
+      },
+      "schema_version": "clio-kit.jarvis-execution.v2",
+      "service_runtimes": null
+    }
+  },
+  "jarvis_run": {
+    "args": {
+      "execution_id": "pin-exec-0001",
+      "pipeline_id": "pin_pipeline"
+    },
+    "result": {
+      "execution_handle": {
+        "cluster": null,
+        "execution_id": "pin-exec-0001",
+        "mode": "direct",
+        "pipeline_id": "pin_pipeline",
+        "scheduler_native_id": null,
+        "scheduler_provider": null,
+        "schema_version": "jarvis.execution.handle.v1"
+      },
+      "execution_id": "pin-exec-0001",
+      "execution_record": {
+        "cluster": null,
+        "created_at": "2026-08-01T00:00:00Z",
+        "error": null,
+        "execution_id": "pin-exec-0001",
+        "metadata": {},
+        "mode": "direct",
+        "pipeline_id": "pin_pipeline",
+        "pipeline_name": "pin_pipeline",
+        "return_code": null,
+        "scheduler_native_id": null,
+        "scheduler_provider": null,
+        "schema_version": "jarvis.execution.record.v1",
+        "state": "running",
+        "submitted": false,
+        "terminal": false,
+        "updated_at": "2026-08-01T00:00:01Z"
+      },
+      "mode": "direct",
+      "pipeline_id": "pin_pipeline",
+      "progress": {
+        "execution_id": "pin-exec-0001",
+        "execution_state": "running",
+        "packages": [],
+        "pipeline_id": "pin_pipeline",
+        "schema_version": "jarvis.execution.progress.v1",
+        "terminal": false
+      },
+      "runtime_metadata": {
+        "schema_version": "jarvis.runtime.v1",
+        "source": "jarvis_mcp"
+      },
+      "scheduler": null,
+      "schema_version": "clio-kit.jarvis-run.v1",
+      "script_path": null,
+      "status": "running",
+      "wait": false
+    }
+  }
+}
