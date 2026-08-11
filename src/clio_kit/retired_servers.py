@@ -8,6 +8,8 @@ that looks like a typo.
 Kept for one major after the merge, then removed with the entry here.
 """
 
+from collections.abc import Collection
+
 RETIRED_SERVERS: dict[str, tuple[str, str]] = {
     "geojson": (
         "geo",
@@ -40,7 +42,7 @@ def retirement_notice(server_name: str) -> str | None:
     )
 
 
-def unknown_server_lines(server_name: str, available: object) -> list[str]:
+def unknown_server_lines(server_name: str, available: Collection[str]) -> list[str]:
     """Return the output for a server name the launcher cannot resolve.
 
     A retired name gets its successor and the reason; anything else gets the
