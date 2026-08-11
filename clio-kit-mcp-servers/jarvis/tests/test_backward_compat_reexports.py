@@ -228,9 +228,7 @@ def test_presplit_name_count_is_190() -> None:
 
 def test_every_presplit_name_is_still_importable_from_server() -> None:
     """``from jarvis_mcp.server import X`` must keep working for every X."""
-    missing = [
-        name for name in _PRESPLIT_TOP_LEVEL_NAMES if not hasattr(server, name)
-    ]
+    missing = [name for name in _PRESPLIT_TOP_LEVEL_NAMES if not hasattr(server, name)]
     assert not missing, (
         f"{len(missing)} name(s) that used to be importable from "
         f"jarvis_mcp.server no longer are: {missing}"
