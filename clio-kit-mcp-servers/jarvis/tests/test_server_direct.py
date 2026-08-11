@@ -1256,7 +1256,7 @@ class TestPipelineToolsDirect:
         pkg_file = pkg_dir / "pkg.py"
         pkg_file.write_text('"""Demo."""\n')
         with patch(
-            "jarvis_mcp.server._package_agent_metadata",
+            "jarvis_mcp.package_discovery._package_agent_metadata",
             return_value=_PackageAgentMetadata(
                 settings=[{"name": "x"}],
                 deployment=None,
@@ -1307,7 +1307,7 @@ class TestPipelineToolsDirect:
         with (
             patch("jarvis_mcp.server.get_manager", return_value=manager),
             patch(
-                "jarvis_mcp.server._package_agent_metadata",
+                "jarvis_mcp.package_discovery._package_agent_metadata",
                 return_value=_PackageAgentMetadata(settings=None, deployment=None),
             ),
         ):
@@ -1354,7 +1354,7 @@ class TestPipelineToolsDirect:
         with (
             patch("jarvis_mcp.server.get_manager", return_value=manager),
             patch(
-                "jarvis_mcp.server._package_agent_metadata",
+                "jarvis_mcp.package_discovery._package_agent_metadata",
                 return_value=_PackageAgentMetadata(settings=None, deployment=None),
             ),
         ):

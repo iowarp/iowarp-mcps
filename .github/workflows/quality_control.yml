@@ -2,9 +2,9 @@ name: Quality Control
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, develop ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, dev, develop ]
 
 # Chronolog MCP tests are handled in dedicated workflow
 
@@ -88,6 +88,49 @@ jobs:
           echo "search_changed=true" >> $GITHUB_OUTPUT
         else
           echo "search_changed=false" >> $GITHUB_OUTPUT
+        fi
+
+  file-size-ratchet:
+    name: File size ratchet
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: '3.11'
+
+    - name: Check per-file size ratchet (campaign #362)
+      run: python scripts/check_file_size.py
+
+  ratchet-baseline-diff-guard:
+    name: Ratchet baseline diff guard (PR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        fetch-depth: 0  # need full history to compute the merge-base
+
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: '3.11'
+
+    - name: Diff RATCHET_BASELINE against the PR's merge-base
+      shell: bash
+      run: |
+        # check_file_size.py's static checker only ever sees ONE tree, so it
+        # cannot catch a same-commit "grow the file AND its baseline entry to
+        # match" bump, or a rename that mints a fresh baseline entry and sheds
+        # the file's history (#364 review finding 4, round 2). This step
+        # closes both by diffing the embedded RATCHET_BASELINE dict between
+        # the PR head and the merge-base with the target branch.
+        merge_base="$(git merge-base HEAD "origin/${{ github.base_ref }}")"
+        echo "merge-base: $merge_base"
+        if git show "$merge_base:scripts/check_file_size.py" > /tmp/base_check_file_size.py 2>/dev/null; then
+          python scripts/check_baseline_diff.py /tmp/base_check_file_size.py scripts/check_file_size.py
+        else
+          echo "OK: scripts/check_file_size.py did not exist at the merge-base ($merge_base) -- nothing to diff, guard inactive for this PR."
         fi
 
   ruff:
