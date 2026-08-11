@@ -2,11 +2,20 @@
 
 PR #364 review finding 4 hardened this checker past a straight port of
 clio-agent's script: a baseline sitting ABOVE a file's real line count used
-to be advisory-only (an "OK (ratchet down)" message, exit 0), which meant a
-single commit could grow a file AND raise its baseline to match with zero
-build signal -- banking unused headroom nobody had to justify. These tests
-prove that gap is closed: every baseline entry must exactly mirror its
-file's real line count, in both directions, or the check fails.
+to be advisory-only (an "OK (ratchet down)" message, exit 0). These tests
+prove that specific gap is closed: at any ONE tree, every baseline entry
+must exactly mirror its file's real line count, in both directions, or the
+check fails -- no padding/slack is tolerated even when it looks directionally
+plausible (see test_exact_match_invariant_rejects_padding_even_when_it_looks_
+like_a_legitimate_bump).
+
+What this module's checker does NOT, and structurally cannot, prove on its
+own: whether a baseline NUMBER rose between two real commits (grow a file
+and bump its baseline to an exact new match in the same commit -- padding
+never enters into it, so the exact-match invariant alone does not catch
+this). That is a cross-commit question a single-tree checker has no way to
+answer; scripts/check_baseline_diff.py (tests/test_check_baseline_diff.py)
+closes it by diffing the baseline between two commits instead.
 """
 
 from __future__ import annotations
@@ -167,30 +176,42 @@ def test_stale_baseline_entry_for_a_deleted_file_fails(tmp_path: Path) -> None:
     assert failure.limit == 1200
 
 
-def test_grown_file_plus_grown_baseline_commit_fails(tmp_path: Path) -> None:
-    """Meta-test (PR #364 review finding 4c): a same-commit "grow both together"
-    bypass -- inflate the file AND inflate its baseline to a number ABOVE the
-    new real count -- still fails. There is no way to bank padding: the
-    baseline must land exactly on the file's new real count, or the check
-    fails and names it.
+def test_exact_match_invariant_rejects_padding_even_when_it_looks_like_a_legitimate_bump(
+    tmp_path: Path,
+) -> None:
+    """What the STATIC checker (this module) actually guarantees, precisely:
+    at any ONE (file, baseline) snapshot, a baseline entry must equal the
+    file's real line count EXACTLY -- never "at or above". This function has
+    no concept of "before" or "after" at all; each call here is an
+    independent, self-contained check of one (file-on-disk, baseline-dict)
+    pair, not a simulated commit sequence.
+
+    The baseline used below (1600, for a file that happens to be 1500 lines)
+    is deliberately chosen to LOOK like a plausible bump -- growth is the
+    direction a file's size usually moves in, so a reader could mistake a
+    passing result here for "the checker tolerates a baseline that's ahead of
+    the file, as long as the file might catch up." It does not: 1600 != 1500
+    fails as "padded" on this single snapshot alone, for the same reason
+    500 (under the file's real count) would also fail -- the invariant is
+    EXACT match, full stop, with no directional exception.
+
+    What this test does NOT and CANNOT prove: that a baseline NUMBER rising
+    between two real commits (the same-commit "grow the file and its
+    baseline together" attack, PR #364 review finding 4) is caught. That is
+    a CROSS-COMMIT question -- it requires comparing the baseline dict as it
+    stood at a PRIOR commit against its current value, which a checker that
+    only ever reads one tree structurally cannot do. That protection lives
+    in scripts/check_baseline_diff.py instead; see
+    tests/test_check_baseline_diff.py, in particular
+    test_same_commit_inflation_is_caught_even_when_the_static_checker_would_pass
+    and the CLI meta-test test_cli_ignores_a_head_side_cap_increase.
     """
     src = tmp_path / "pkg" / "src"
-    _write_lines(src / "legacy.py", 1000)
-    starting_baseline = {"pkg/src/legacy.py": 1000}
-    assert (
-        check_file_size(
-            [src], rel_to=tmp_path, max_lines=800, baseline=starting_baseline
-        )
-        == []
-    )
-
-    # Attacker grows the file to 1500 lines AND pads the baseline to 1600 in
-    # the same change, banking 100 lines of unjustified future headroom.
     _write_lines(src / "legacy.py", 1500)
-    inflated_baseline = {"pkg/src/legacy.py": 1600}
 
+    padded_baseline = {"pkg/src/legacy.py": 1600}
     failures = check_file_size(
-        [src], rel_to=tmp_path, max_lines=800, baseline=inflated_baseline
+        [src], rel_to=tmp_path, max_lines=800, baseline=padded_baseline
     )
 
     assert len(failures) == 1
@@ -199,10 +220,10 @@ def test_grown_file_plus_grown_baseline_commit_fails(tmp_path: Path) -> None:
     assert failure.line_count == 1500
     assert failure.limit == 1600
 
-    # The only baseline that passes is the EXACT new real count -- no padding.
-    honest_baseline = {"pkg/src/legacy.py": 1500}
+    # The only baseline that passes for THIS snapshot is the exact real count.
+    exact_baseline = {"pkg/src/legacy.py": 1500}
     assert (
-        check_file_size([src], rel_to=tmp_path, max_lines=800, baseline=honest_baseline)
+        check_file_size([src], rel_to=tmp_path, max_lines=800, baseline=exact_baseline)
         == []
     )
 

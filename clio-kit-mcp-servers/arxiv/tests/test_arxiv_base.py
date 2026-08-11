@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from arxiv_mcp.capabilities.arxiv_base import (
+    _RATE_LIMIT_BACKOFF_SECONDS,
     _RATE_LIMIT_MAX_DELAY_SECONDS,
     _RATE_LIMIT_TOTAL_BUDGET_SECONDS,
     _parse_retry_after,
@@ -529,6 +530,69 @@ class TestRateLimitRetry:
 
     def test_parse_retry_after_rejects_negative_values(self):
         assert _parse_retry_after("-5") == 0.0
+
+    def test_parse_retry_after_ignores_non_numeric_garbage(self):
+        """A malformed Retry-After (not a number, not a recognized date) must
+        parse to None -- never raise -- so the caller falls back to the
+        default exponential backoff instead of crashing the retry loop.
+        """
+        assert _parse_retry_after("banana") is None
+        assert _parse_retry_after("") is None
+        assert _parse_retry_after("12abc") is None
+
+    def test_parse_retry_after_ignores_http_date_form(self):
+        """Retry-After may legally be an HTTP-date (RFC 9110 10.2.3) instead
+        of a delay-seconds integer, e.g. 'Wed, 21 Oct 2026 07:28:00 GMT'.
+        This parser only understands delay-seconds; a date form must parse
+        to None (never raise), falling back to the default backoff -- exactly
+        like any other value it doesn't understand.
+        """
+        assert _parse_retry_after("Wed, 21 Oct 2026 07:28:00 GMT") is None
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_malformed_retry_after_falls_back_to_default_backoff(
+        self, mock_sleep
+    ):
+        """End-to-end: a 429 with a garbage Retry-After header must not raise
+        or hang -- it retries using the default exponential backoff, exactly
+        as if no Retry-After header had been sent at all.
+        """
+        malformed = self._rate_limited_response()
+        malformed.headers = {"Retry-After": "banana"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [malformed, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            result = await execute_arxiv_query(
+                {"search_query": "test", "max_results": 1}
+            )
+
+            assert len(result) == 1
+            mock_sleep.assert_awaited_once_with(_RATE_LIMIT_BACKOFF_SECONDS)
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_http_date_retry_after_falls_back_to_default_backoff(
+        self, mock_sleep
+    ):
+        """Same as above, for the HTTP-date form specifically."""
+        dated = self._rate_limited_response()
+        dated.headers = {"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [dated, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            result = await execute_arxiv_query(
+                {"search_query": "test", "max_results": 1}
+            )
+
+            assert len(result) == 1
+            mock_sleep.assert_awaited_once_with(_RATE_LIMIT_BACKOFF_SECONDS)
 
     @pytest.mark.asyncio
     @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)

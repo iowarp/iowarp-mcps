@@ -12,9 +12,9 @@ round 2):
    match, not a change; nothing fails.
 2. Rename an oversized file to a fresh path and mint a brand-new baseline
    entry at its current (grown) size -- the checker sees a "new" entry,
-   which only fails if it lands above :data:`DEFAULT_MAX_LINES`; a value at
-   or under the cap passes with zero history-aware signal, and the file's
-   lineage (it used to be smaller, under a different name) is gone.
+   which only fails if it lands above the cap; a value at or under the cap
+   passes with zero history-aware signal, and the file's lineage (it used to
+   be smaller, under a different name) is gone.
 
 Neither is visible to a script that only ever reads one tree. This module
 closes both by comparing the embedded ``RATCHET_BASELINE`` dict between two
@@ -30,13 +30,21 @@ locally with no git history at all); this module is PR-context-only (it
 needs two versions of the same file to diff) and is wired into CI as its own
 guard, not folded into the static checker's own logic.
 
+The cap a brand-new entry must stay under is read from ``DEFAULT_MAX_LINES``
+in the BASE (merge-base) file's source, never imported from
+``check_file_size.py`` live and never read from the head file (PR #364
+review, round 3): a PR controls its own head content, so a PR that raised
+its own ``DEFAULT_MAX_LINES`` alongside a brand-new over-cap baseline entry
+must not get to grade its own homework with its own inflated cap.
+
 If ``RATCHET_BASELINE`` did not exist at the base version at all (the target
 branch has never had this file -- i.e. this PR is introducing the ratchet
-system itself), there is no prior baseline to launder against, so
-:func:`extract_baseline` simply returns an empty dict for a base file that
-doesn't parse as containing the assignment because it's missing entirely;
-see the CLI's ``--base-missing-ok`` handling below for the exact contract
-the CI step relies on.
+system itself), there is no prior baseline to launder against; the CI step
+that invokes this script skips calling it entirely in that case (see
+``quality_control.yml``'s ``ratchet-baseline-diff-guard`` job), so this
+module never has to special-case a base file that legitimately doesn't
+exist -- ``base_file`` is always assumed to exist and parse correctly by the
+time ``main`` runs.
 
 Run as part of CI (PR-context only, blocking) or locally::
 
@@ -51,9 +59,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_file_size import DEFAULT_MAX_LINES  # noqa: E402
-
 
 @dataclass(frozen=True)
 class BaselineViolation:
@@ -65,8 +70,8 @@ class BaselineViolation:
     head_value: int
 
 
-class MissingRatchetBaselineError(ValueError):
-    """``RATCHET_BASELINE`` could not be found in a file that does exist."""
+class MissingConstantError(ValueError):
+    """A required top-level constant could not be found in checker source."""
 
 
 def extract_baseline(source: str) -> dict[str, int]:
@@ -74,10 +79,9 @@ def extract_baseline(source: str) -> dict[str, int]:
 
     Uses ``ast`` (parse + ``literal_eval``), never ``exec``/``import``, so
     this is safe to run against untrusted historical file content. Raises
-    :class:`MissingRatchetBaselineError` if no such assignment is found --
-    callers decide whether a missing assignment is a hard failure (a
-    malformed edit) or an expected "file didn't exist yet" case (handled
-    before ever calling this, by the CLI's missing-file branch).
+    :class:`MissingConstantError` if no such assignment is found -- a
+    malformed edit, since the CI step never calls this for a base file that
+    legitimately doesn't exist (see the module docstring).
     """
     tree = ast.parse(source)
     for node in ast.walk(tree):
@@ -91,20 +95,43 @@ def extract_baseline(source: str) -> dict[str, int]:
             if not isinstance(value, dict):
                 break
             return {str(k): int(v) for k, v in value.items()}
-    raise MissingRatchetBaselineError(
+    raise MissingConstantError(
         "RATCHET_BASELINE: dict[str, int] = {...} assignment not found"
     )
 
 
+def extract_default_max_lines(source: str) -> int:
+    """Parse ``DEFAULT_MAX_LINES = <int>`` out of checker source, safely.
+
+    Callers must pass the BASE (merge-base) file's source here, never the
+    head file's -- see the module docstring for why the cap must come from
+    history the PR itself cannot have edited.
+    """
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(
+            isinstance(target, ast.Name) and target.id == "DEFAULT_MAX_LINES"
+            for target in node.targets
+        ):
+            value = ast.literal_eval(node.value)
+            if isinstance(value, int):
+                return value
+    raise MissingConstantError("DEFAULT_MAX_LINES = <int> assignment not found")
+
+
 def diff_baselines(
-    base: dict[str, int], head: dict[str, int], *, cap: int = DEFAULT_MAX_LINES
+    base: dict[str, int], head: dict[str, int], *, cap: int
 ) -> list[BaselineViolation]:
     """Compare two baseline dicts and report every same-commit-inflation violation.
 
     Args:
         base: The baseline as it stood at the merge-base with the target branch.
         head: The baseline as it stands at the PR head (or the tree under test).
-        cap: The line-count cap a brand-new entry must stay at or under.
+        cap: The line-count cap a brand-new entry must stay at or under. Callers
+            must derive this from the BASE side (see :func:`extract_default_max_lines`),
+            never from head -- there is no safe default here on purpose.
 
     Returns:
         One :class:`BaselineViolation` per offending entry, sorted by path.
@@ -137,7 +164,7 @@ def _print_report(violations: list[BaselineViolation], cap: int) -> None:
         return
     print(
         f"FAIL: {len(violations)} RATCHET_BASELINE change(s) look like same-commit "
-        "inflation or rename laundering (#364 review finding 4, round 2):"
+        "inflation or rename laundering (#364 review finding 4):"
     )
     for violation in violations:
         if violation.kind == "increased":
@@ -171,15 +198,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--cap",
         type=int,
-        default=DEFAULT_MAX_LINES,
-        help=f"Cap a brand-new baseline entry must stay under (default: {DEFAULT_MAX_LINES}).",
+        default=None,
+        help=(
+            "Override the cap a brand-new entry must stay under. Defaults to "
+            "DEFAULT_MAX_LINES read from base_file (the merge-base version) -- "
+            "NEVER head_file -- so a PR cannot raise its own cap and bless its "
+            "own brand-new over-cap baseline entry."
+        ),
     )
     args = parser.parse_args(argv)
 
-    base = extract_baseline(args.base_file.read_text(encoding="utf-8"))
-    head = extract_baseline(args.head_file.read_text(encoding="utf-8"))
-    violations = diff_baselines(base, head, cap=args.cap)
-    _print_report(violations, args.cap)
+    base_source = args.base_file.read_text(encoding="utf-8")
+    head_source = args.head_file.read_text(encoding="utf-8")
+    base = extract_baseline(base_source)
+    head = extract_baseline(head_source)
+    cap = args.cap if args.cap is not None else extract_default_max_lines(base_source)
+    violations = diff_baselines(base, head, cap=cap)
+    _print_report(violations, cap)
     return 1 if violations else 0
 
 

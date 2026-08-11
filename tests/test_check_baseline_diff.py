@@ -1,11 +1,14 @@
-"""Tests for the PR-context ratchet-baseline diff guard (#364 review finding 4, round 2).
+"""Tests for the PR-context ratchet-baseline diff guard (#364 review finding 4).
 
 scripts/check_file_size.py's static checker can only ever see ONE tree; these
 tests are the meta-test the review asked for on the CROSS-COMMIT half of the
 guard: growing a file and its baseline entry together, or renaming an
 oversized file into a fresh baseline entry, only becomes visible when two
 versions of the baseline are diffed against each other -- which is what
-scripts/check_baseline_diff.py does and what this file proves.
+scripts/check_baseline_diff.py does and what this file proves. Round 3 added
+the cap-provenance meta-test: the cap must come from the BASE (merge-base)
+file, never the head file, so a PR cannot raise its own cap alongside a
+brand-new over-cap entry and have the guard bless it.
 """
 
 from __future__ import annotations
@@ -33,17 +36,18 @@ def _load_module() -> ModuleType:
 
 _GUARD = _load_module()
 BaselineViolation = _GUARD.BaselineViolation
-MissingRatchetBaselineError = _GUARD.MissingRatchetBaselineError
+MissingConstantError = _GUARD.MissingConstantError
 diff_baselines = _GUARD.diff_baselines
 extract_baseline = _GUARD.extract_baseline
+extract_default_max_lines = _GUARD.extract_default_max_lines
 main = _GUARD.main
 
 
-def _checker_source(entries: dict[str, int]) -> str:
+def _checker_source(entries: dict[str, int], *, default_max_lines: int = 800) -> str:
     """Render a minimal check_file_size.py-shaped source with the given baseline."""
     lines = "\n".join(f'    "{rel}": {count},' for rel, count in entries.items())
     return (
-        "DEFAULT_MAX_LINES = 800\n\n"
+        f"DEFAULT_MAX_LINES = {default_max_lines}\n\n"
         f"RATCHET_BASELINE: dict[str, int] = {{\n{lines}\n}}\n"
     )
 
@@ -155,7 +159,7 @@ def test_extract_baseline_handles_an_empty_dict() -> None:
 
 
 def test_extract_baseline_raises_when_assignment_is_absent() -> None:
-    with pytest.raises(MissingRatchetBaselineError):
+    with pytest.raises(MissingConstantError):
         extract_baseline("DEFAULT_MAX_LINES = 800\n")
 
 
@@ -172,6 +176,24 @@ def test_extract_baseline_does_not_execute_the_source() -> None:
     import os as _os
 
     assert "PWNED" not in _os.environ
+
+
+# --- extract_default_max_lines: the cap must come from the BASE file -------
+
+
+def test_extract_default_max_lines_parses_a_real_shaped_source() -> None:
+    source = _checker_source({}, default_max_lines=800)
+    assert extract_default_max_lines(source) == 800
+
+
+def test_extract_default_max_lines_parses_a_non_default_value() -> None:
+    source = _checker_source({}, default_max_lines=650)
+    assert extract_default_max_lines(source) == 650
+
+
+def test_extract_default_max_lines_raises_when_assignment_is_absent() -> None:
+    with pytest.raises(MissingConstantError):
+        extract_default_max_lines("RATCHET_BASELINE: dict[str, int] = {}\n")
 
 
 # --- CLI end-to-end ----------------------------------------------------------
@@ -217,3 +239,28 @@ def test_cli_respects_custom_cap(tmp_path: Path) -> None:
 
     assert main([str(base_file), str(head_file), "--cap", "400"]) == 1
     assert main([str(base_file), str(head_file), "--cap", "600"]) == 0
+
+
+def test_cli_ignores_a_head_side_cap_increase(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The meta-test PR #364 review round 3 asked for: a PR that raises its
+    OWN DEFAULT_MAX_LINES alongside a brand-new, over-(old-)cap baseline
+    entry must not get to grade its own homework. The cap is read from
+    base_file (DEFAULT_MAX_LINES=800, the merge-base's real cap), never from
+    head_file (DEFAULT_MAX_LINES=999999, the PR's own inflated one) -- so the
+    new entry at 5000 lines still fails even though it's comfortably under
+    the PR's self-raised cap.
+    """
+    base_file = tmp_path / "base.py"
+    head_file = tmp_path / "head.py"
+    base_file.write_text(_checker_source({}, default_max_lines=800), encoding="utf-8")
+    head_file.write_text(
+        _checker_source({"pkg/new_god_file.py": 5000}, default_max_lines=999999),
+        encoding="utf-8",
+    )
+
+    assert main([str(base_file), str(head_file)]) == 1
+    out = capsys.readouterr().out
+    assert "pkg/new_god_file.py" in out
+    assert "800" in out  # the cap actually applied is the base's, not 999999
