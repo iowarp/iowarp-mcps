@@ -2,11 +2,16 @@
 Tests for ArXiv base utilities.
 """
 
+import math
 import pytest
 import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from arxiv_mcp.capabilities.arxiv_base import (
+    _RATE_LIMIT_BACKOFF_SECONDS,
+    _RATE_LIMIT_MAX_DELAY_SECONDS,
+    _RATE_LIMIT_TOTAL_BUDGET_SECONDS,
+    _parse_retry_after,
     parse_arxiv_entry,
     execute_arxiv_query,
     generate_bibtex,
@@ -391,3 +396,270 @@ class TestGenerateBibtex:
             assert (
                 f"@article{{{expected_id}," in result or "@article{unknown," in result
             )
+
+
+class TestRateLimitRetry:
+    """execute_arxiv_query retries a 429 with bounded backoff (real ArXiv
+    rate-limit behavior, not a test-only accommodation -- see arxiv_base.py's
+    _get_with_rate_limit_retry). asyncio.sleep is patched to a no-op so these
+    stay instant; the retry COUNT and terminal behavior are what's verified.
+    """
+
+    @staticmethod
+    def _feed_response() -> MagicMock:
+        content = """
+        <feed xmlns="http://www.w3.org/2005/Atom">
+            <entry>
+                <id>http://arxiv.org/abs/2401.12345v1</id>
+                <title>Test Paper</title>
+            </entry>
+        </feed>
+        """
+        response = MagicMock()
+        response.status_code = 200
+        response.content = content.encode()
+        response.raise_for_status.return_value = None
+        return response
+
+    @staticmethod
+    def _rate_limited_response() -> MagicMock:
+        response = MagicMock()
+        response.status_code = 429
+        response.url = "https://export.arxiv.org/api/query"
+        response.request = MagicMock()
+        response.headers = {}
+        return response
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_retries_once_on_429_then_succeeds(self, mock_sleep):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [
+                self._rate_limited_response(),
+                self._feed_response(),
+            ]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            result = await execute_arxiv_query(
+                {"search_query": "test", "max_results": 1}
+            )
+
+            assert len(result) == 1
+            assert mock_client.get.call_count == 2
+            mock_sleep.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_exhausts_retries_and_raises_429(self, mock_sleep):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [
+                self._rate_limited_response() for _ in range(4)
+            ]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            with pytest.raises(Exception, match="ArXiv API error: 429"):
+                await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            assert mock_client.get.call_count == 4
+            assert mock_sleep.await_count == 3
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_honors_retry_after_header(self, mock_sleep):
+        rate_limited = self._rate_limited_response()
+        rate_limited.headers = {"Retry-After": "2.5"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [rate_limited, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            mock_sleep.assert_awaited_once_with(2.5)
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_non_429_status_is_not_retried(self, mock_sleep):
+        """A non-429 error fails immediately -- only 429 is treated as transient."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            error_response = MagicMock()
+            error_response.status_code = 500
+
+            from httpx import HTTPStatusError, Request
+
+            error_response.raise_for_status.side_effect = HTTPStatusError(
+                "Server Error",
+                request=MagicMock(spec=Request),
+                response=error_response,
+            )
+            mock_client.get.return_value = error_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            with pytest.raises(Exception, match="ArXiv API error: 500"):
+                await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            assert mock_client.get.call_count == 1
+            mock_sleep.assert_not_awaited()
+
+    # -- PR #364 review round 2, finding 2: Retry-After is untrusted input and
+    # must never be allowed to produce an unbounded or non-finite sleep. --
+
+    def test_parse_retry_after_rejects_oversized_values(self):
+        """A malicious/misconfigured server naming a day-long delay is not
+        trusted verbatim; parsing succeeds (it's a real number) but bounding
+        it is the caller's job -- see test_oversized_retry_after_is_capped.
+        """
+        assert _parse_retry_after("86400") == 86400.0
+
+    def test_parse_retry_after_rejects_non_finite_values(self):
+        """inf/nan parse as valid floats in Python but must not be treated as
+        a legitimate delay -- an inf Retry-After must never reach
+        asyncio.sleep as a seemingly normal number.
+        """
+        assert _parse_retry_after("inf") is None
+        assert _parse_retry_after("Infinity") is None
+        assert _parse_retry_after("-inf") is None
+        assert _parse_retry_after("nan") is None
+
+    def test_parse_retry_after_rejects_negative_values(self):
+        assert _parse_retry_after("-5") == 0.0
+
+    def test_parse_retry_after_ignores_non_numeric_garbage(self):
+        """A malformed Retry-After (not a number, not a recognized date) must
+        parse to None -- never raise -- so the caller falls back to the
+        default exponential backoff instead of crashing the retry loop.
+        """
+        assert _parse_retry_after("banana") is None
+        assert _parse_retry_after("") is None
+        assert _parse_retry_after("12abc") is None
+
+    def test_parse_retry_after_ignores_http_date_form(self):
+        """Retry-After may legally be an HTTP-date (RFC 9110 10.2.3) instead
+        of a delay-seconds integer, e.g. 'Wed, 21 Oct 2026 07:28:00 GMT'.
+        This parser only understands delay-seconds; a date form must parse
+        to None (never raise), falling back to the default backoff -- exactly
+        like any other value it doesn't understand.
+        """
+        assert _parse_retry_after("Wed, 21 Oct 2026 07:28:00 GMT") is None
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_malformed_retry_after_falls_back_to_default_backoff(
+        self, mock_sleep
+    ):
+        """End-to-end: a 429 with a garbage Retry-After header must not raise
+        or hang -- it retries using the default exponential backoff, exactly
+        as if no Retry-After header had been sent at all.
+        """
+        malformed = self._rate_limited_response()
+        malformed.headers = {"Retry-After": "banana"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [malformed, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            result = await execute_arxiv_query(
+                {"search_query": "test", "max_results": 1}
+            )
+
+            assert len(result) == 1
+            mock_sleep.assert_awaited_once_with(_RATE_LIMIT_BACKOFF_SECONDS)
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_http_date_retry_after_falls_back_to_default_backoff(
+        self, mock_sleep
+    ):
+        """Same as above, for the HTTP-date form specifically."""
+        dated = self._rate_limited_response()
+        dated.headers = {"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [dated, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            result = await execute_arxiv_query(
+                {"search_query": "test", "max_results": 1}
+            )
+
+            assert len(result) == 1
+            mock_sleep.assert_awaited_once_with(_RATE_LIMIT_BACKOFF_SECONDS)
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_oversized_retry_after_is_capped(self, mock_sleep):
+        """Retry-After: 86400 (a day) must sleep for seconds, not a day."""
+        oversized = self._rate_limited_response()
+        oversized.headers = {"Retry-After": "86400"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [oversized, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            mock_sleep.assert_awaited_once()
+            (slept,) = mock_sleep.await_args.args
+            assert slept <= _RATE_LIMIT_MAX_DELAY_SECONDS
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_infinite_retry_after_is_capped(self, mock_sleep):
+        """Retry-After: inf must not hang forever -- falls back to backoff,
+        itself bounded, never an unbounded/non-finite sleep.
+        """
+        infinite = self._rate_limited_response()
+        infinite.headers = {"Retry-After": "inf"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [infinite, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            mock_sleep.assert_awaited_once()
+            (slept,) = mock_sleep.await_args.args
+            assert math.isfinite(slept)
+            assert slept <= _RATE_LIMIT_MAX_DELAY_SECONDS
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_total_retry_budget_is_bounded(self, mock_sleep):
+        """Even with every attempt requesting a large Retry-After, the SUM of
+        every sleep across the whole retry loop never exceeds
+        _RATE_LIMIT_TOTAL_BUDGET_SECONDS -- independent of the per-attempt cap.
+        """
+
+        def _rate_limited_15s() -> MagicMock:
+            response = self._rate_limited_response()
+            response.headers = {"Retry-After": "15"}
+            return response
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            # Every attempt (up to the max) is rate-limited with a large ask.
+            mock_client.get.side_effect = [_rate_limited_15s() for _ in range(4)]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            with pytest.raises(Exception, match="ArXiv API error: 429"):
+                await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            total_slept = sum(call.args[0] for call in mock_sleep.await_args_list)
+            assert total_slept <= _RATE_LIMIT_TOTAL_BUDGET_SECONDS
+            for call in mock_sleep.await_args_list:
+                assert call.args[0] <= _RATE_LIMIT_MAX_DELAY_SECONDS
+            # The budget being exhausted stops the loop before every possible
+            # attempt is spent retrying -- fewer GET calls than the max.
+            assert mock_client.get.call_count < 4

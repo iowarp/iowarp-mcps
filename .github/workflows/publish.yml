@@ -4,11 +4,13 @@ on:
   pull_request:
     branches:
       - main
+      - develop
     paths:
       - '.github/workflows/publish.yml'
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'build-constraints.txt'
       - 'mcp-server-versions.toml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -20,10 +22,12 @@ on:
   push:
     branches:
       - main  # Validate release artifacts on main commits
+      - develop
     paths:
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'build-constraints.txt'
       - 'mcp-server-versions.toml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -74,7 +78,9 @@ jobs:
           scripts/generate_mcp_user_contracts.py \
           scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py \
           scripts/release_authorization.py \
-          scripts/verify_mcp_registry_release.py src
+          scripts/verify_mcp_registry_release.py scripts/check_file_size.py \
+          scripts/check_baseline_diff.py src
+        python scripts/check_file_size.py
         uv run pytest -q tests --junitxml="$RUNNER_TEMP/root-junit.xml"
         python scripts/assert_no_skipped_tests.py "$RUNNER_TEMP/root-junit.xml"
         uv run --with 'pip-audit==2.10.1' pip-audit
@@ -133,6 +139,8 @@ jobs:
 
     - name: Build every root-wheel server package
       shell: bash
+      env:
+        UV_BUILD_CONSTRAINT: ${{ github.workspace }}/build-constraints.txt
       run: |
         server_dist="$(mktemp -d)"
         trap 'rm -rf "$server_dist"' EXIT
@@ -229,6 +237,8 @@ jobs:
         grep "version =" pyproject.toml
     
     - name: Build package
+      env:
+        UV_BUILD_CONSTRAINT: ${{ github.workspace }}/build-constraints.txt
       run: |
         uv build
         uvx --from 'twine==6.2.0' twine check dist/*

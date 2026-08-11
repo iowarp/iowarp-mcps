@@ -6,7 +6,7 @@ This is a proper v1 web-tooling surface for CLIO. Two tools are exposed:
   convert HTML to Markdown (trafilatura -> readability -> plain-text strip),
   and either return the content inline or write it to a local file.
 * ``search`` -- query a configurable web-search provider (keyless DuckDuckGo by
-  default, optional BYO-key Brave / Tavily).
+  default, self-hosted SearXNG, or optional BYO-key Brave / Tavily).
 
 Documented extension points (NOT implemented in v1 -- honest, typed gaps, never
 a silent fallback):
@@ -27,7 +27,7 @@ import ipaddress
 import os
 import re
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from urllib.parse import urlparse
 
 import httpx
@@ -39,6 +39,8 @@ from fastmcp.prompts import Message
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from readability import Document as ReadabilityDocument
+
+from web_mcp.searxng import search_searxng
 
 # Environment setup
 load_dotenv()
@@ -61,8 +63,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="WEB_", env_file=".env", extra="ignore")
 
     # Search provider selection. Keyless "ddg" is the default so search works
-    # out of the box; "brave"/"tavily" are opt-in and require their own key.
+    # out of the box; self-hosted "searxng" requires its deployment URL, while
+    # "brave"/"tavily" are opt-in and require their own key.
     search_provider: str = "ddg"
+    searxng_base_url: str | None = None
     brave_api_key: str | None = None
     tavily_api_key: str | None = None
 
@@ -650,18 +654,38 @@ async def _search_tavily(query: str, count: int) -> list[dict[str, str]]:
     title="Search Web",
     description=(
         "Search the web via a configurable provider (keyless DuckDuckGo by "
-        "default; optional BYO-key Brave or Tavily) and return ranked results."
+        "default; self-hosted SearXNG; optional BYO-key Brave or Tavily) and "
+        "return ranked results. SearXNG supports category, engine, language, "
+        "time-range, page, and safe-search selectors."
     ),
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": False},
     tags={"web", "search"},
 )
 async def search(
     query: Annotated[str, Field(description="The search query.")],
-    provider: Annotated[
-        str | None,
-        Field(description="Override the configured provider: 'ddg', 'brave', or 'tavily'."),
-    ] = None,
+    provider: Annotated[str | None, Field(description="Search provider override.")] = None,
     count: Annotated[int, Field(description="Maximum number of results to return.")] = 5,
+    category: Annotated[
+        Literal["general", "science", "it"] | None,
+        Field(description="SearXNG category: general, science, or it."),
+    ] = None,
+    engines: Annotated[
+        list[str] | None,
+        Field(description="Exact SearXNG engines; takes precedence over category."),
+    ] = None,
+    language: Annotated[str | None, Field(description="SearXNG result language.")] = None,
+    time_range: Annotated[
+        Literal["day", "month", "year"] | None,
+        Field(description="SearXNG recency: day, month, or year."),
+    ] = None,
+    pageno: Annotated[
+        int | None,
+        Field(description="SearXNG-only result page, 1 through 3.", ge=1, le=3),
+    ] = None,
+    safesearch: Annotated[
+        int | None,
+        Field(description="SearXNG safe-search level, 0 through 2.", ge=0, le=2),
+    ] = None,
 ) -> dict[str, Any]:
     """Search the web and return ``{title, url, snippet}`` results.
 
@@ -674,25 +698,60 @@ async def search(
         raise ToolError("A non-empty query is required.")
     effective_count = min(count if count and count > 0 else 5, _MAX_SEARCH_COUNT)
     selected = (provider or settings.search_provider or "ddg").lower()
+    has_searxng_selectors = any(
+        (
+            category is not None,
+            bool(engines),
+            bool(language and language.strip()),
+            time_range is not None,
+            pageno is not None,
+            safesearch is not None,
+        )
+    )
+    if selected != "searxng" and has_searxng_selectors:
+        raise ToolError(
+            "category, engines, language, time_range, pageno, and safesearch are "
+            "only supported by provider 'searxng'."
+        )
 
+    engines_answered: list[str] = []
+    unresponsive_engines: list[dict[str, str]] = []
     if selected == "ddg":
         results = await _search_ddg(text, effective_count)
     elif selected == "brave":
         results = await _search_brave(text, effective_count)
     elif selected == "tavily":
         results = await _search_tavily(text, effective_count)
+    elif selected == "searxng":
+        results, engines_answered, unresponsive_engines = await search_searxng(
+            text,
+            effective_count,
+            base_url=settings.searxng_base_url,
+            connect_timeout_s=settings.connect_timeout_s,
+            read_timeout_s=settings.read_timeout_s,
+            category=category,
+            engines=engines,
+            language=language,
+            time_range=time_range,
+            pageno=pageno or 1,
+            safesearch=safesearch,
+        )
     else:
         raise ToolError(
-            f"Unknown search provider {selected!r}. Supported: 'ddg', 'brave', 'tavily'."
+            f"Unknown search provider {selected!r}. Supported: 'ddg', 'searxng', 'brave', 'tavily'."
         )
 
-    return {
+    response: dict[str, Any] = {
         "ok": True,
         "provider": selected,
         "query": text,
         "results": results,
         "count": len(results),
     }
+    if selected == "searxng":
+        response["engines_answered"] = engines_answered
+        response["unresponsive_engines"] = unresponsive_engines
+    return response
 
 
 @mcp.resource("web://providers")
@@ -700,8 +759,9 @@ def search_providers() -> dict[str, Any]:
     """The active + available web-search providers and current fetch limits."""
     return {
         "active_provider": settings.search_provider,
-        "available_providers": ["ddg", "brave", "tavily"],
+        "available_providers": ["ddg", "searxng", "brave", "tavily"],
         "keyless_default": "ddg",
+        "searxng_configured": bool((settings.searxng_base_url or "").strip()),
         "max_bytes": settings.max_bytes,
         "allow_private_hosts": settings.allow_private_hosts,
     }

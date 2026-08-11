@@ -58,7 +58,9 @@ async def test_named_package_loads_settings_for_only_the_selected_package(
 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
-        patch("jarvis_mcp.server._package_agent_metadata", side_effect=metadata),
+        patch(
+            "jarvis_mcp.package_discovery._package_agent_metadata", side_effect=metadata
+        ),
     ):
         short = await jarvis_describe_tool("package", package_name="PARAVIEW")
         canonical = await jarvis_describe_tool(
@@ -316,7 +318,9 @@ async def test_ambiguous_short_name_fails_with_canonical_candidates(
 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
-        patch("jarvis_mcp.server._package_agent_metadata", side_effect=metadata),
+        patch(
+            "jarvis_mcp.package_discovery._package_agent_metadata", side_effect=metadata
+        ),
     ):
         with pytest.raises(
             ToolError,
@@ -358,7 +362,7 @@ async def test_package_search_is_ranked_summary_only_and_cursor_bound(
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
         patch(
-            "jarvis_mcp.server._package_agent_metadata",
+            "jarvis_mcp.package_discovery._package_agent_metadata",
             side_effect=AssertionError("search must not load settings"),
         ),
     ):
@@ -419,7 +423,7 @@ async def test_package_search_enforces_response_byte_ceiling(tmp_path: Path) -> 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
         patch(
-            "jarvis_mcp.server._package_agent_metadata",
+            "jarvis_mcp.package_discovery._package_agent_metadata",
             side_effect=AssertionError("search must not load settings"),
         ),
     ):
@@ -499,7 +503,7 @@ async def test_package_search_finds_packages_by_declared_input_binding(
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
         patch(
-            "jarvis_mcp.server._package_configuration_search_text",
+            "jarvis_mcp.package_discovery._package_configuration_search_text",
             side_effect=configuration_text,
         ),
     ):
@@ -627,7 +631,9 @@ async def test_legacy_packages_target_remains_exhaustive_with_settings(
 
     with (
         patch("jarvis_mcp.server.get_manager", return_value=_manager_for(repo)),
-        patch("jarvis_mcp.server._package_agent_metadata", side_effect=metadata),
+        patch(
+            "jarvis_mcp.package_discovery._package_agent_metadata", side_effect=metadata
+        ),
     ):
         result = await jarvis_describe_tool("packages")
 

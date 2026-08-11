@@ -11,8 +11,6 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Any, Literal, Optional, cast
 
-from typing_extensions import NotRequired, TypedDict
-
 from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
@@ -25,6 +23,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from typing_extensions import NotRequired, TypedDict
 
 from .capabilities.jarvis_handler import (
     create_pipeline,
@@ -41,142 +40,314 @@ from .capabilities.jarvis_handler import (
     update_pipeline,
     build_pipeline_env,
 )
+from .models._base import _ClosedDocument
+from .models.artifact_documents import (
+    ExecutionArtifactQuery,
+    JarvisArtifactDocument,
+    JarvisArtifactLocationDocument,
+    JarvisExecutionArtifactPageDocument,
+)
+from .models.compat import _CurrentJarvisManager, _load_jarvis_manager_class
+from .models.datasets import (
+    JarvisDatasetArrayDocument,
+    JarvisDatasetDescriptorDocument,
+    JarvisDatasetFingerprintDocument,
+    JarvisDatasetMemberDocument,
+    JarvisDatasetSourceArtifactDocument,
+)
+from .models.describe import (
+    JarvisDescribePackageResult,
+    JarvisDescribePackageSearchResult,
+    JarvisDescribePackagesResult,
+    JarvisDescribePipelineResult,
+    JarvisDescribeResult,
+    JarvisDescribeStepResult,
+    PACKAGE_SEARCH_CURSOR_SCHEMA,
+    PACKAGE_SEARCH_SCHEMA,
+)
+from .models.execution import (
+    ExecutionIntent,
+    JarvisExecutionHandleDocument,
+    JarvisExecutionRecordDocument,
+    JarvisExecutionResult,
+    JarvisRunResult,
+    _EXECUTION_MODES,
+    _HOST_ENTRY,
+    _SCHEDULER_EXECUTION_FIELDS,
+    _SCHEDULER_TOKEN,
+    _bounded_single_line,
+    _detect_scheduler_name,
+    _execution_intent_to_pipeline_config,
+    _validated_execution_intent,
+)
+from .models.packages import (
+    CONFIGURATION_INPUT_BINDING_SCHEMA,
+    JarvisConfigurationInputBindingDocument,
+    JarvisPackageConditionDocument,
+    JarvisPackageConfigurationRuleDocument,
+    JarvisPackageDeploymentDocument,
+    JarvisPackageDescriptionDocument,
+    JarvisPackageExecutionProfileDocument,
+    JarvisPackageReadinessDocument,
+    JarvisPackageSettingDocument,
+    JarvisPackageSummaryDocument,
+    JarvisProviderQueryDocument,
+    JarvisProviderResolutionDocument,
+    JarvisRuntimeRequirementDocument,
+    JarvisRuntimeRequirementStatusDocument,
+    PACKAGE_DEPLOYMENT_SCHEMA,
+    PACKAGE_DESCRIPTION_SCHEMA,
+    PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES,
+    _PackageInventoryEntry,
+    _bounded_package_search_description,
+)
+from .models.progress import (
+    JarvisPackageProgressDocument,
+    JarvisProgressEventDocument,
+    JarvisProgressSnapshotDocument,
+)
+from .models.service_runtime import (
+    JarvisServiceAuthorizationDocument,
+    JarvisServiceRuntimeDocument,
+    JarvisServiceRuntimeSnapshotDocument,
+    JarvisServiceRuntimeV1Document,
+    JarvisServiceRuntimeV2Document,
+    _JarvisServiceRuntimeDocumentBase,
+)
+from .package_discovery import (
+    PACKAGE_SEARCH_DEFAULT_PAGE_SIZE,
+    PACKAGE_SEARCH_MAX_CURSOR_LENGTH,
+    PACKAGE_SEARCH_MAX_PAGE_SIZE,
+    PACKAGE_SEARCH_MAX_RESULT_BYTES,
+    _PACKAGE_SEARCH_CURSOR_TEXT,
+    _PACKAGE_SEARCH_SHA256,
+    _PackageAgentMetadata,
+    _decode_package_search_cursor,
+    _discover_package_inventory,
+    _discover_packages,
+    _encode_package_search_cursor,
+    _find_package_description,
+    _first_docstring_or_comment,
+    _package_agent_metadata,
+    _package_configuration_search_text,
+    _package_description_from_inventory,
+    _package_from_pkg_file,
+    _package_inventory_entry,
+    _package_inventory_revision,
+    _package_search_json_bytes,
+    _package_search_rank,
+    _package_search_terms,
+    _reject_package_search_duplicate_keys,
+    _search_packages,
+    _setting_accepts_null,
+    _setting_from_menu_item,
+    _setting_is_agent_visible,
+    _step_snapshot,
+)
 
-
-class _CurrentJarvisManager:
-    """Compatibility adapter over the current JARVIS-CD Jarvis singleton."""
-
-    @classmethod
-    def get_instance(cls) -> "_CurrentJarvisManager":
-        jarvis_module = importlib.import_module("jarvis_cd.core.config")
-        return cls(jarvis_module.Jarvis.get_instance())
-
-    def __init__(self, jarvis: Any) -> None:
-        self.jarvis = jarvis
-
-    def create(
-        self, config_dir: str, private_dir: str, shared_dir: Optional[str] = None
-    ) -> "_CurrentJarvisManager":
-        self.jarvis.initialize(
-            config_dir=config_dir,
-            private_dir=private_dir,
-            shared_dir=shared_dir or private_dir,
-        )
-        return self
-
-    def load(self) -> "_CurrentJarvisManager":
-        _ = self.jarvis.config
-        return self
-
-    def save(self) -> "_CurrentJarvisManager":
-        if getattr(self.jarvis, "_config", None) is not None:
-            self.jarvis.save_config(self.jarvis.config)
-        if getattr(self.jarvis, "_repos", None) is not None:
-            self.jarvis.save_repos(self.jarvis.repos)
-        return self
-
-    def set_hostfile(self, path: str) -> "_CurrentJarvisManager":
-        self.jarvis.set_hostfile(path)
-        return self
-
-    def bootstrap_from(self, machine: str) -> "_CurrentJarvisManager":
-        raise NotImplementedError(
-            f"bootstrap templates are not exposed by current JARVIS-CD: {machine}"
-        )
-
-    def bootstrap_list(self) -> list[str]:
-        return []
-
-    def reset(self) -> "_CurrentJarvisManager":
-        raise NotImplementedError(
-            "reset is not exposed through the compatibility adapter"
-        )
-
-    def list_pipelines(self) -> list[str]:
-        pipelines_dir = self.jarvis.get_pipelines_dir()
-        if not pipelines_dir.exists():
-            return []
-        return sorted(path.name for path in pipelines_dir.iterdir() if path.is_dir())
-
-    def cd(self, pipeline_id: str) -> "_CurrentJarvisManager":
-        self.jarvis.set_current_pipeline(pipeline_id)
-        return self
-
-    def list_repos(self) -> list[str]:
-        return list(self.jarvis.repos.get("repos", []))
-
-    def add_repo(self, path: str, force: bool = False) -> "_CurrentJarvisManager":
-        self.jarvis.add_repo(path, force=force)
-        return self
-
-    def remove_repo(self, repo_name: str) -> "_CurrentJarvisManager":
-        repo_paths = list(self.jarvis.repos.get("repos", []))
-        matches = [
-            repo_path
-            for repo_path in repo_paths
-            if repo_path == repo_name or Path(repo_path).name == repo_name
-        ]
-        if not matches:
-            self.jarvis.remove_repo(repo_name)
-        for repo_path in matches:
-            self.jarvis.remove_repo(repo_path)
-        return self
-
-    def promote_repo(self, repo_name: str) -> "_CurrentJarvisManager":
-        repos = self.jarvis.repos.copy()
-        repo_paths = list(repos.get("repos", []))
-        matches = [
-            repo_path
-            for repo_path in repo_paths
-            if repo_path == repo_name or Path(repo_path).name == repo_name
-        ]
-        if not matches:
-            raise ValueError(f"repository not found: {repo_name}")
-        for repo_path in reversed(matches):
-            repo_paths.remove(repo_path)
-            repo_paths.insert(0, repo_path)
-        repos["repos"] = repo_paths
-        self.jarvis.save_repos(repos)
-        return self
-
-    def get_repo(self, repo_name: str) -> dict[str, Any] | None:
-        for index, repo_path in enumerate(self.jarvis.repos.get("repos", []), start=1):
-            if repo_path == repo_name or Path(repo_path).name == repo_name:
-                return {
-                    "index": index,
-                    "name": Path(repo_path).name,
-                    "path": repo_path,
-                    "exists": Path(repo_path).exists(),
-                }
-        return None
-
-    def construct_pkg(self, pkg_type: str) -> Any:
-        raise NotImplementedError(
-            f"package construction is not exposed by current JARVIS-CD: {pkg_type}"
-        )
-
-    def resource_graph_show(self) -> dict[str, Any]:
-        return self.jarvis.resource_graph
-
-    def resource_graph_build(self, net_sleep: float) -> dict[str, Any]:
-        _ = net_sleep
-        raise NotImplementedError(
-            "resource graph build is not exposed through the compatibility adapter"
-        )
-
-    def resource_graph_modify(self, net_sleep: float) -> dict[str, Any]:
-        _ = net_sleep
-        raise NotImplementedError(
-            "resource graph modify is not exposed through the compatibility adapter"
-        )
-
-
-def _load_jarvis_manager_class() -> Any:
-    try:
-        module = importlib.import_module("jarvis_cd.basic.jarvis_manager")
-        return module.JarvisManager
-    except ModuleNotFoundError:
-        return _CurrentJarvisManager
+# Re-exported so ``jarvis_mcp.server.X`` keeps working for every name that was
+# importable from this module before the models/package_discovery owner-module
+# split (clio-kit campaign #362, Slice 1; PR #364 review finding 3). This is
+# the FULL top-level surface of the pre-split server.py -- not a hand-picked
+# subset -- covering both the wire-facing document classes/constants that
+# moved to jarvis_mcp.models.* and jarvis_mcp.package_discovery, and the
+# stdlib/third-party names (json, re, BaseModel, ...) that were incidentally
+# module attributes here too. Many entries below are not otherwise referenced
+# in this file; that is the point of a compatibility re-export, not a mistake
+# for a linter to "clean up". tests/test_backward_compat_reexports.py asserts
+# every one of these is importable from jarvis_mcp.server.
+__all__ = [
+    "ADMIN_TOOLS",
+    "Annotated",
+    "Any",
+    "BaseModel",
+    "CONFIGURATION_INPUT_BINDING_SCHEMA",
+    "ConfigDict",
+    "Context",
+    "ExecutionArtifactQuery",
+    "ExecutionIntent",
+    "FastMCP",
+    "Field",
+    "JarvisArtifactDocument",
+    "JarvisArtifactLocationDocument",
+    "JarvisConfigurationInputBindingDocument",
+    "JarvisDatasetArrayDocument",
+    "JarvisDatasetDescriptorDocument",
+    "JarvisDatasetFingerprintDocument",
+    "JarvisDatasetMemberDocument",
+    "JarvisDatasetSourceArtifactDocument",
+    "JarvisDescribePackageResult",
+    "JarvisDescribePackageSearchResult",
+    "JarvisDescribePackagesResult",
+    "JarvisDescribePipelineResult",
+    "JarvisDescribeResult",
+    "JarvisDescribeStepResult",
+    "JarvisExecutionArtifactPageDocument",
+    "JarvisExecutionHandleDocument",
+    "JarvisExecutionRecordDocument",
+    "JarvisExecutionResult",
+    "JarvisManager",
+    "JarvisPackageConditionDocument",
+    "JarvisPackageConfigurationRuleDocument",
+    "JarvisPackageDeploymentDocument",
+    "JarvisPackageDescriptionDocument",
+    "JarvisPackageExecutionProfileDocument",
+    "JarvisPackageProgressDocument",
+    "JarvisPackageReadinessDocument",
+    "JarvisPackageSettingDocument",
+    "JarvisPackageSummaryDocument",
+    "JarvisProgressEventDocument",
+    "JarvisProgressSnapshotDocument",
+    "JarvisProviderQueryDocument",
+    "JarvisProviderResolutionDocument",
+    "JarvisRunResult",
+    "JarvisRuntimeRequirementDocument",
+    "JarvisRuntimeRequirementStatusDocument",
+    "JarvisServiceAuthorizationDocument",
+    "JarvisServiceRuntimeDocument",
+    "JarvisServiceRuntimeSnapshotDocument",
+    "JarvisServiceRuntimeV1Document",
+    "JarvisServiceRuntimeV2Document",
+    "Literal",
+    "MCP_METADATA_PROFILE",
+    "Mapping",
+    "Message",
+    "NotRequired",
+    "Optional",
+    "PACKAGE_DEPLOYMENT_SCHEMA",
+    "PACKAGE_DESCRIPTION_SCHEMA",
+    "PACKAGE_SEARCH_CURSOR_SCHEMA",
+    "PACKAGE_SEARCH_DEFAULT_PAGE_SIZE",
+    "PACKAGE_SEARCH_MAX_CURSOR_LENGTH",
+    "PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES",
+    "PACKAGE_SEARCH_MAX_PAGE_SIZE",
+    "PACKAGE_SEARCH_MAX_RESULT_BYTES",
+    "PACKAGE_SEARCH_SCHEMA",
+    "Path",
+    "PurePosixPath",
+    "ToolError",
+    "TypedDict",
+    "USER_TOOLS",
+    "ValidationError",
+    "_ClosedDocument",
+    "_CurrentJarvisManager",
+    "_EXECUTION_MODES",
+    "_HOST_ENTRY",
+    "_JarvisServiceRuntimeDocumentBase",
+    "_PACKAGE_SEARCH_CURSOR_TEXT",
+    "_PACKAGE_SEARCH_SHA256",
+    "_PackageAgentMetadata",
+    "_PackageInventoryEntry",
+    "_SCHEDULER_EXECUTION_FIELDS",
+    "_SCHEDULER_TOKEN",
+    "_bounded_package_search_description",
+    "_bounded_single_line",
+    "_context_has_progress_token",
+    "_decode_package_search_cursor",
+    "_detect_scheduler_name",
+    "_discover_package_inventory",
+    "_discover_packages",
+    "_encode_package_search_cursor",
+    "_execution_intent_to_pipeline_config",
+    "_existing_directory_path",
+    "_find_package_description",
+    "_first_docstring_or_comment",
+    "_load_jarvis_manager_class",
+    "_manager",
+    "_package_agent_metadata",
+    "_package_configuration_search_text",
+    "_package_description_from_inventory",
+    "_package_from_pkg_file",
+    "_package_inventory_entry",
+    "_package_inventory_revision",
+    "_package_search_json_bytes",
+    "_package_search_rank",
+    "_package_search_terms",
+    "_protocol_stdout_to_stderr",
+    "_registered_tools",
+    "_reject_package_search_duplicate_keys",
+    "_search_packages",
+    "_setting_accepts_null",
+    "_setting_from_menu_item",
+    "_setting_is_agent_visible",
+    "_spack_command_path",
+    "_step_snapshot",
+    "_validated_execution_intent",
+    "add_jarvis_root_argument",
+    "add_spack_command_argument",
+    "admin_main",
+    "append_pkg",
+    "append_pkg_tool",
+    "apply_tool_profile",
+    "argparse",
+    "base64",
+    "binascii",
+    "build_pipeline_env",
+    "build_pipeline_env_tool",
+    "cast",
+    "configure_jarvis_root",
+    "configure_pkg",
+    "configure_pkg_tool",
+    "configure_spack_command",
+    "create_pipeline",
+    "create_pipeline_tool",
+    "create_pipeline_workflow",
+    "dataclass",
+    "destroy_pipeline",
+    "destroy_pipeline_tool",
+    "export_pipeline",
+    "export_pipeline_tool",
+    "field_validator",
+    "get_execution",
+    "get_manager",
+    "get_pkg_config",
+    "get_pkg_config_tool",
+    "hashlib",
+    "importlib",
+    "jarvis_add_step_tool",
+    "jarvis_capabilities",
+    "jarvis_create_pipeline_tool",
+    "jarvis_describe_tool",
+    "jarvis_edit_step_tool",
+    "jarvis_get_execution_tool",
+    "jarvis_run_tool",
+    "jm_add_repo",
+    "jm_bootstrap_from",
+    "jm_bootstrap_list",
+    "jm_cd",
+    "jm_construct_pkg",
+    "jm_create_config",
+    "jm_get_repo",
+    "jm_graph_build",
+    "jm_graph_modify",
+    "jm_graph_show",
+    "jm_list_pipelines",
+    "jm_list_repos",
+    "jm_load_config",
+    "jm_promote_repo",
+    "jm_remove_repo",
+    "jm_reset",
+    "jm_save_config",
+    "jm_set_hostfile",
+    "json",
+    "load_dotenv",
+    "load_pipeline",
+    "load_pipeline_tool",
+    "main",
+    "manager",
+    "mcp",
+    "model_validator",
+    "os",
+    "re",
+    "remove_pkg",
+    "remove_pkg_tool",
+    "run_pipeline",
+    "run_pipeline_tool",
+    "unlink_pkg",
+    "unlink_pkg_tool",
+    "update_pipeline",
+    "update_pipeline_tool",
+]
 
 
 # Load environment variables from .env file
@@ -192,780 +363,6 @@ mcp: FastMCP = FastMCP(
     list_page_size=10,
 )
 MCP_METADATA_PROFILE = "user"
-
-PACKAGE_SEARCH_SCHEMA = "jarvis.package-search.v1"
-PACKAGE_SEARCH_CURSOR_SCHEMA = "clio-kit.jarvis-package-search-cursor.v1"
-PACKAGE_DESCRIPTION_SCHEMA = "jarvis.package-description.v1"
-PACKAGE_DEPLOYMENT_SCHEMA = "jarvis.package-deployment.v1"
-CONFIGURATION_INPUT_BINDING_SCHEMA = "jarvis.configuration-input-binding.v1"
-PACKAGE_SEARCH_DEFAULT_PAGE_SIZE = 10
-PACKAGE_SEARCH_MAX_PAGE_SIZE = 25
-PACKAGE_SEARCH_MAX_RESULT_BYTES = 64 * 1024
-PACKAGE_SEARCH_MAX_CURSOR_LENGTH = 1024
-PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES = 4096
-_PACKAGE_SEARCH_CURSOR_TEXT = re.compile(r"^[A-Za-z0-9_-]+$")
-_PACKAGE_SEARCH_SHA256 = re.compile(r"^[0-9a-f]{64}$")
-
-
-@dataclass(frozen=True)
-class _PackageInventoryEntry:
-    """Lightweight package identity discovered from one registered repository."""
-
-    name: str
-    short_name: str
-    repository: str
-    description: str | None
-    repo: Path
-    package_file: Path
-
-    def summary(self) -> dict[str, Any]:
-        """Return the bounded search representation without package settings."""
-
-        summary: dict[str, Any] = {
-            "name": self.name,
-            "short_name": self.short_name,
-            "repository": self.repository,
-            "description": _bounded_package_search_description(self.description),
-        }
-        return {key: value for key, value in summary.items() if value is not None}
-
-
-@dataclass(frozen=True)
-class _PackageAgentMetadata:
-    """Package-owned metadata safe to return through the user MCP surface."""
-
-    settings: list[dict[str, Any]] | None
-    deployment: dict[str, Any] | None
-
-
-class _ClosedDocument(BaseModel):
-    """Base for agent-visible documents with no undeclared fields."""
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class JarvisPackageConditionDocument(_ClosedDocument):
-    """One package-owned predicate over a canonical configuration setting."""
-
-    parameter: str
-    operator: Literal["equals", "greater_than", "is_empty", "is_not_empty"]
-    value: str | int | float | bool | None = None
-
-
-class JarvisPackageReadinessDocument(_ClosedDocument):
-    """Observable condition that makes one execution profile ready."""
-
-    mechanism: Literal["process_exit", "progress_event", "service_runtime"]
-    condition: str
-    capability: str | None = None
-
-
-class JarvisPackageExecutionProfileDocument(_ClosedDocument):
-    """Package-owned execution kind, applicability, requirements, and readiness."""
-
-    name: str
-    execution_kind: Literal["batch", "service"]
-    when: list[JarvisPackageConditionDocument]
-    runtime_requirements: list[str]
-    readiness: JarvisPackageReadinessDocument
-    description: str | None = None
-
-
-class JarvisConfigurationInputBindingDocument(_ClosedDocument):
-    """Declared client-local input that must be staged before package use."""
-
-    schema_version: Literal["jarvis.configuration-input-binding.v1"]
-    kind: Literal["local_file"]
-    structure: Literal["regular_file"]
-
-
-class JarvisRuntimeRequirementStatusDocument(_ClosedDocument):
-    """Package observation of whether a runtime requirement can be used."""
-
-    state: Literal["ready", "unavailable", "unknown"]
-    usable: bool | None
-    reason_code: str
-
-
-class JarvisProviderQueryDocument(_ClosedDocument):
-    """Provider-neutral query that can resolve one runtime requirement."""
-
-    kind: str
-    value: str
-
-
-class JarvisProviderResolutionDocument(_ClosedDocument):
-    """One provider and query capable of resolving a runtime requirement."""
-
-    provider: str
-    query: JarvisProviderQueryDocument
-
-
-class JarvisRuntimeRequirementDocument(_ClosedDocument):
-    """Runtime capabilities and provider resolutions owned by a package."""
-
-    id: str
-    description: str
-    required_capabilities: list[str]
-    available_capabilities: list[str]
-    status: JarvisRuntimeRequirementStatusDocument
-    provider_resolutions: list[JarvisProviderResolutionDocument]
-
-
-class JarvisPackageConfigurationRuleDocument(_ClosedDocument):
-    """Conditional requirement over canonical package configuration settings."""
-
-    when: list[JarvisPackageConditionDocument]
-    requires: list[JarvisPackageConditionDocument]
-    description: str
-
-
-class JarvisPackageDeploymentDocument(_ClosedDocument):
-    """Versioned deployment and readiness contract supplied by JARVIS."""
-
-    schema_version: Literal["jarvis.package-deployment.v1"]
-    package: str
-    execution_profiles: list[JarvisPackageExecutionProfileDocument]
-    runtime_requirements: list[JarvisRuntimeRequirementDocument]
-    configuration_rules: list[JarvisPackageConfigurationRuleDocument]
-
-
-class JarvisPackageSettingDocument(TypedDict):
-    """One package parser setting with truthful default and null semantics."""
-
-    name: str
-    description: NotRequired[str]
-    type: NotRequired[str]
-    default: NotRequired[Any]
-    choices: NotRequired[list[Any]]
-    required: bool
-    nullable: bool
-    aliases: NotRequired[list[str]]
-    input_binding: NotRequired[JarvisConfigurationInputBindingDocument]
-
-
-class JarvisPackageDescriptionDocument(_ClosedDocument):
-    """Path-free package detail returned after selecting one canonical package."""
-
-    schema_version: Literal["jarvis.package-description.v1"]
-    name: str
-    short_name: str
-    description: str | None
-    deployment: JarvisPackageDeploymentDocument | None
-    settings: list[JarvisPackageSettingDocument] | None = None
-
-
-class JarvisPackageSummaryDocument(_ClosedDocument):
-    """Bounded package identity returned during search."""
-
-    name: str
-    short_name: str
-    repository: str
-    description: str | None = None
-
-
-class JarvisDescribePackagesResult(_ClosedDocument):
-    """Exhaustive legacy package inventory result."""
-
-    target: Literal["packages"]
-    packages: list[JarvisPackageDescriptionDocument]
-
-
-class JarvisDescribePackageSearchResult(_ClosedDocument):
-    """Bounded package search page."""
-
-    schema_version: Literal["jarvis.package-search.v1"]
-    target: Literal["package_search"]
-    query: str
-    inventory_revision: str
-    packages: list[JarvisPackageSummaryDocument]
-    total_matches: int
-    returned_count: int
-    next_cursor: str | None
-
-
-class JarvisDescribePackageResult(_ClosedDocument):
-    """Exact package description result."""
-
-    target: Literal["package"]
-    package: JarvisPackageDescriptionDocument
-
-
-class JarvisDescribePipelineResult(_ClosedDocument):
-    """Stored pipeline snapshot result."""
-
-    target: Literal["pipeline"]
-    pipeline: dict[str, Any]
-
-
-class JarvisDescribeStepResult(_ClosedDocument):
-    """Stored pipeline step and package configuration result."""
-
-    target: Literal["step"]
-    step: dict[str, Any]
-    config: dict[str, Any]
-
-
-JarvisDescribeResult = Annotated[
-    JarvisDescribePackagesResult
-    | JarvisDescribePackageSearchResult
-    | JarvisDescribePackageResult
-    | JarvisDescribePipelineResult
-    | JarvisDescribeStepResult,
-    Field(discriminator="target"),
-]
-
-
-class JarvisExecutionHandleDocument(TypedDict):
-    """Stable JARVIS-CD execution-handle document."""
-
-    schema_version: Literal["jarvis.execution.handle.v1"]
-    execution_id: str
-    pipeline_id: str
-    mode: Literal["direct", "scheduler"]
-    scheduler_provider: str | None
-    scheduler_native_id: str | None
-    cluster: str | None
-
-
-class JarvisExecutionRecordDocument(TypedDict):
-    """Stable JARVIS-CD durable execution-record document."""
-
-    schema_version: Literal["jarvis.execution.record.v1"]
-    execution_id: str
-    pipeline_id: str
-    pipeline_name: str
-    mode: Literal["direct", "scheduler"]
-    scheduler_provider: str | None
-    scheduler_native_id: str | None
-    cluster: str | None
-    state: Literal[
-        "preparing",
-        "scripted",
-        "submitting",
-        "submitted",
-        "running",
-        "completed",
-        "failed",
-        "canceled",
-        "unknown",
-    ]
-    submitted: bool
-    terminal: bool
-    created_at: str
-    updated_at: str
-    return_code: int | None
-    error: str | None
-    metadata: dict[str, Any]
-
-
-class JarvisProgressEventDocument(BaseModel):
-    """One closed, JARVIS-owned package progress observation."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    schema_version: Literal["jarvis.progress.v1"]
-    package_name: str = Field(min_length=1, max_length=256)
-    package_id: str = Field(min_length=1, max_length=256)
-    execution_id: str = Field(min_length=1, max_length=256)
-    label: str = Field(min_length=1, max_length=256)
-    state: Literal[
-        "pending",
-        "starting",
-        "running",
-        "ready",
-        "completed",
-        "failed",
-        "canceled",
-    ]
-    current: float | None = Field(default=None, ge=0, allow_inf_nan=False)
-    total: float | None = Field(default=None, gt=0, allow_inf_nan=False)
-    unit: str | None = Field(default=None, min_length=1, max_length=256)
-    message: str | None = Field(default=None, min_length=1, max_length=4096)
-    sequence: int = Field(ge=0)
-    observed_at_epoch: float = Field(ge=0, allow_inf_nan=False)
-    determinate: bool
-    metadata: dict[str, Any]
-
-    @field_validator(
-        "package_name",
-        "package_id",
-        "execution_id",
-        "label",
-        "unit",
-        "message",
-        mode="after",
-    )
-    @classmethod
-    def validate_nonblank_text(cls, value: str | None) -> str | None:
-        """Reject whitespace-only text while preserving producer spelling."""
-        if value is not None and not value.strip():
-            raise ValueError("progress text fields must not be blank")
-        return value
-
-    @model_validator(mode="after")
-    def validate_quantitative_progress(self) -> "JarvisProgressEventDocument":
-        """Keep the public determination flag consistent with numeric fields."""
-        if self.total is not None and self.current is None:
-            raise ValueError("progress total requires current")
-        if (
-            self.current is not None
-            and self.total is not None
-            and self.current > self.total
-        ):
-            raise ValueError("progress current cannot exceed total")
-        expected = self.current is not None and self.total is not None
-        if self.determinate is not expected:
-            raise ValueError(
-                "progress determinate must match the presence of current and total"
-            )
-        return self
-
-
-class JarvisPackageProgressDocument(BaseModel):
-    """Latest stable progress observation for one package alias."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    package_id: str = Field(min_length=1, max_length=256)
-    package_name: str = Field(min_length=1, max_length=256)
-    event_count: int = Field(ge=0)
-    latest: JarvisProgressEventDocument | None
-
-    @model_validator(mode="after")
-    def validate_latest_event(self) -> "JarvisPackageProgressDocument":
-        """Cross-check the package identity and event-count sentinel."""
-        if self.latest is None:
-            if self.event_count != 0:
-                raise ValueError("progress event count requires a latest event")
-            return self
-        if self.event_count == 0:
-            raise ValueError("latest progress event requires a positive event count")
-        if (
-            self.latest.package_id != self.package_id
-            or self.latest.package_name != self.package_name
-        ):
-            raise ValueError("latest progress event package identity did not match")
-        return self
-
-
-class JarvisProgressSnapshotDocument(BaseModel):
-    """Stable aggregate returned by JARVIS-CD's execution progress API."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    schema_version: Literal["jarvis.execution.progress.v1"]
-    execution_id: str = Field(min_length=1, max_length=256)
-    pipeline_id: str = Field(min_length=1, max_length=256)
-    execution_state: Literal[
-        "preparing",
-        "scripted",
-        "submitting",
-        "submitted",
-        "running",
-        "completed",
-        "failed",
-        "canceled",
-        "unknown",
-    ]
-    terminal: bool
-    packages: list[JarvisPackageProgressDocument] = Field(max_length=4096)
-
-    @model_validator(mode="after")
-    def validate_package_identities(self) -> "JarvisProgressSnapshotDocument":
-        """Bind every package event to this execution and reject aliases twice."""
-        package_ids: set[str] = set()
-        for package in self.packages:
-            if package.package_id in package_ids:
-                raise ValueError("progress package aliases must be unique")
-            package_ids.add(package.package_id)
-            if (
-                package.latest is not None
-                and package.latest.execution_id != self.execution_id
-            ):
-                raise ValueError("progress event execution identity did not match")
-        return self
-
-
-class JarvisArtifactLocationDocument(TypedDict):
-    """Transport-neutral location in a JARVIS artifact manifest."""
-
-    kind: Literal["execution_path", "cluster_path", "external_uri"]
-    value: str
-
-
-class JarvisArtifactDocument(TypedDict):
-    """Current JARVIS-owned lifecycle observation for one generated artifact."""
-
-    schema_version: Literal["jarvis.artifact.v1"]
-    package_name: str
-    package_id: str
-    execution_id: str
-    artifact_id: str
-    logical_name: str
-    kind: str
-    role: Literal[
-        "intermediate",
-        "output",
-        "log",
-        "checkpoint",
-        "provenance",
-        "validation",
-    ]
-    structure: Literal["file", "directory", "collection", "stream"]
-    ownership: Literal["execution", "external", "shared"]
-    state: Literal["producing", "available", "finalized", "incomplete", "failed"]
-    revision: int
-    sequence: int
-    observed_at_epoch: float
-    metadata: dict[str, Any]
-    location: NotRequired[JarvisArtifactLocationDocument]
-    media_type: NotRequired[str]
-    format: NotRequired[str]
-    size_bytes: NotRequired[int]
-    checksum: NotRequired[str]
-    message: NotRequired[str]
-
-
-class JarvisRunResult(TypedDict):
-    """Frozen top-level result envelope for ``jarvis_run``."""
-
-    schema_version: Literal["clio-kit.jarvis-run.v1"]
-    pipeline_id: str
-    execution_id: str
-    status: Literal[
-        "preparing",
-        "scripted",
-        "submitting",
-        "submitted",
-        "running",
-        "completed",
-        "failed",
-        "canceled",
-        "unknown",
-    ]
-    mode: Literal["direct", "scheduler"]
-    scheduler: dict[str, Any] | None
-    script_path: str | None
-    wait: bool
-    execution_handle: JarvisExecutionHandleDocument
-    execution_record: JarvisExecutionRecordDocument
-    progress: JarvisProgressSnapshotDocument
-    runtime_metadata: dict[str, Any]
-
-
-class JarvisExecutionArtifactPageDocument(BaseModel):
-    """Bounded artifact page nested in a unified execution query."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    producer_schema_version: Literal["jarvis.execution.artifacts.v1"]
-    pipeline_id: str
-    execution_id: str
-    execution_state: Literal[
-        "preparing",
-        "scripted",
-        "submitting",
-        "submitted",
-        "running",
-        "completed",
-        "failed",
-        "canceled",
-        "unknown",
-    ]
-    terminal: bool
-    artifacts: list[JarvisArtifactDocument]
-    matching_artifact_count: int
-    returned_artifact_count: int
-    next_cursor: str | None
-
-
-class JarvisDatasetMemberDocument(BaseModel):
-    """One ordered member in a JARVIS service dataset descriptor."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    index: int = Field(ge=0)
-    location: str = Field(min_length=1, max_length=4096)
-    timestep: float | None = Field(default=None, allow_inf_nan=False)
-
-    @field_validator("location")
-    @classmethod
-    def validate_cluster_location(cls, value: str) -> str:
-        """Require the normalized absolute POSIX path emitted by JARVIS."""
-        path = PurePosixPath(value)
-        if (
-            "\\" in value
-            or not path.is_absolute()
-            or path.as_posix() != value
-            or ".." in path.parts
-        ):
-            raise ValueError(
-                "dataset member location must be a normalized absolute path"
-            )
-        return value
-
-
-class JarvisDatasetArrayDocument(BaseModel):
-    """One intrinsic array exposed by a JARVIS-owned service."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    name: str = Field(min_length=1, max_length=512)
-    association: Literal["point", "cell", "field"]
-    components: int = Field(ge=1, le=64)
-    units: str | None = Field(default=None, min_length=1, max_length=256)
-
-
-class JarvisDatasetFingerprintDocument(BaseModel):
-    """Canonical identity digest for one bounded dataset descriptor."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    algorithm: Literal["sha256"]
-    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
-
-
-class JarvisDatasetSourceArtifactDocument(BaseModel):
-    """Optional content identity of a JARVIS-generated source artifact."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    artifact_id: str = Field(pattern=r"^art_[A-Za-z0-9_-]{22,86}$")
-    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-
-
-class JarvisDatasetDescriptorDocument(BaseModel):
-    """Intrinsic, recipe-free dataset identity owned by JARVIS."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    schema_version: Literal["jarvis.dataset-descriptor.v1"]
-    dataset_id: str = Field(min_length=1, max_length=256)
-    kind: str = Field(min_length=1, max_length=256)
-    format: str = Field(min_length=1, max_length=256)
-    members: list[JarvisDatasetMemberDocument] = Field(min_length=1, max_length=512)
-    arrays: list[JarvisDatasetArrayDocument] = Field(max_length=256)
-    bounds: list[float] | None = Field(default=None, min_length=6, max_length=6)
-    fingerprint: JarvisDatasetFingerprintDocument
-    source_artifact: JarvisDatasetSourceArtifactDocument | None
-
-    @model_validator(mode="after")
-    def validate_intrinsic_identity(self) -> "JarvisDatasetDescriptorDocument":
-        """Reject ambiguous ordering and verify the canonical fingerprint."""
-        if [member.index for member in self.members] != list(range(len(self.members))):
-            raise ValueError("dataset member indexes must be contiguous and ordered")
-        locations = [member.location for member in self.members]
-        if len(locations) != len(set(locations)):
-            raise ValueError("dataset member locations must be unique")
-        array_keys = [(array.association, array.name) for array in self.arrays]
-        if len(array_keys) != len(set(array_keys)):
-            raise ValueError("dataset array identities must be unique")
-        if self.bounds is not None:
-            for lower, upper in zip(self.bounds[::2], self.bounds[1::2]):
-                if lower > upper:
-                    raise ValueError("dataset bounds must be ordered")
-        members: list[dict[str, Any]] = []
-        for member in self.members:
-            value: dict[str, Any] = {
-                "index": member.index,
-                "location": member.location,
-            }
-            if member.timestep is not None:
-                value["timestep"] = member.timestep
-            members.append(value)
-        arrays: list[dict[str, Any]] = []
-        for array in self.arrays:
-            value = {
-                "name": array.name,
-                "association": array.association,
-                "components": array.components,
-            }
-            if array.units is not None:
-                value["units"] = array.units
-            arrays.append(value)
-        canonical = {
-            "schema_version": self.schema_version,
-            "dataset_id": self.dataset_id,
-            "kind": self.kind,
-            "format": self.format,
-            "members": members,
-            "arrays": arrays,
-            "bounds": list(self.bounds) if self.bounds is not None else None,
-            "source_artifact": (
-                self.source_artifact.model_dump(mode="json")
-                if self.source_artifact is not None
-                else None
-            ),
-        }
-        digest = hashlib.sha256(
-            json.dumps(
-                canonical,
-                allow_nan=False,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest()
-        if digest != self.fingerprint.digest:
-            raise ValueError("dataset fingerprint did not match its descriptor")
-        return self
-
-
-class JarvisServiceAuthorizationDocument(BaseModel):
-    """Non-secret fingerprint for an execution-owned runtime capability."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        strict=True,
-        hide_input_in_errors=True,
-    )
-
-    scheme: Literal["bearer"]
-    token_sha256: str = Field(
-        min_length=64,
-        max_length=64,
-        pattern=r"^[0-9a-f]{64}$",
-        repr=False,
-    )
-
-
-class _JarvisServiceRuntimeDocumentBase(BaseModel):
-    """Fields shared by every released JARVIS service-runtime revision."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        strict=True,
-        hide_input_in_errors=True,
-    )
-
-    execution_id: str = Field(min_length=1, max_length=256)
-    package_name: str = Field(min_length=1, max_length=256)
-    package_id: str = Field(min_length=1, max_length=256)
-    service_instance_id: str = Field(min_length=1, max_length=256)
-    revision: int = Field(ge=1)
-    lifecycle: Literal["starting", "ready", "degraded", "stopping", "stopped", "failed"]
-    host: str = Field(min_length=1, max_length=255)
-    port: int = Field(ge=1, le=65535)
-    protocol: Literal["http", "https"]
-    health_path: str = Field(min_length=1, max_length=256)
-    live_data_path: str = Field(min_length=1, max_length=256)
-    events_path: str = Field(min_length=1, max_length=256)
-    state_path: str = Field(min_length=1, max_length=256)
-    command_path: str = Field(min_length=1, max_length=256)
-    delivery_mode: Literal["push"]
-    dataset_descriptor: JarvisDatasetDescriptorDocument
-    message: str | None = Field(default=None, min_length=1, max_length=4096)
-    observed_at_epoch: float = Field(ge=0, allow_inf_nan=False)
-
-    @model_validator(mode="after")
-    def validate_private_endpoint_metadata(
-        self,
-    ) -> "_JarvisServiceRuntimeDocumentBase":
-        """Reject wildcard hosts and ambiguous or duplicated HTTP paths."""
-        if self.host in {"0.0.0.0", "::", "*", "localhost"}:
-            raise ValueError("service runtime host cannot be a wildcard or alias")
-        paths = (
-            self.health_path,
-            self.live_data_path,
-            self.events_path,
-            self.state_path,
-            self.command_path,
-        )
-        if len(set(paths)) != len(paths):
-            raise ValueError("service runtime endpoint paths must be distinct")
-        for value in paths:
-            path = PurePosixPath(value)
-            if (
-                not value.startswith("/")
-                or value.startswith("//")
-                or path.as_posix() != value
-                or ".." in path.parts
-                or any(character in value for character in "?#\\")
-            ):
-                raise ValueError("service runtime endpoint path is invalid")
-        return self
-
-
-class JarvisServiceRuntimeV1Document(_JarvisServiceRuntimeDocumentBase):
-    """Released unauthenticated service-runtime v1 document."""
-
-    schema_version: Literal["jarvis.service-runtime.v1"]
-
-
-class JarvisServiceRuntimeV2Document(_JarvisServiceRuntimeDocumentBase):
-    """Service-runtime v2 document with a non-secret capability fingerprint."""
-
-    schema_version: Literal["jarvis.service-runtime.v2"]
-    authorization: JarvisServiceAuthorizationDocument
-
-
-JarvisServiceRuntimeDocument = Annotated[
-    JarvisServiceRuntimeV1Document | JarvisServiceRuntimeV2Document,
-    Field(discriminator="schema_version"),
-]
-
-
-class JarvisServiceRuntimeSnapshotDocument(BaseModel):
-    """Execution-bound current service runtimes returned by JARVIS."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        strict=True,
-        hide_input_in_errors=True,
-    )
-
-    schema_version: Literal["jarvis.execution.service-runtimes.v1"]
-    execution_id: str = Field(min_length=1, max_length=256)
-    pipeline_id: str = Field(min_length=1, max_length=256)
-    execution_state: Literal[
-        "preparing",
-        "scripted",
-        "submitting",
-        "submitted",
-        "running",
-        "completed",
-        "failed",
-        "canceled",
-        "unknown",
-    ]
-    terminal: bool
-    service_runtimes: list[JarvisServiceRuntimeDocument] = Field(max_length=4096)
-
-    @model_validator(mode="after")
-    def validate_runtime_identities(self) -> "JarvisServiceRuntimeSnapshotDocument":
-        """Bind every service to this execution and reject duplicate instances."""
-        identities: set[str] = set()
-        for runtime in self.service_runtimes:
-            if runtime.execution_id != self.execution_id:
-                raise ValueError("service runtime execution identity did not match")
-            if runtime.service_instance_id in identities:
-                raise ValueError("service runtime instance identities must be unique")
-            identities.add(runtime.service_instance_id)
-        return self
-
-
-class JarvisExecutionResult(BaseModel):
-    """Frozen top-level result envelope for a selectable execution query."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        hide_input_in_errors=True,
-    )
-
-    schema_version: Literal["clio-kit.jarvis-execution.v2"]
-    pipeline_id: str
-    execution_id: str
-    execution_handle: JarvisExecutionHandleDocument
-    execution_record: JarvisExecutionRecordDocument
-    runtime_metadata: dict[str, Any]
-    progress: JarvisProgressSnapshotDocument | None
-    artifact_page: JarvisExecutionArtifactPageDocument | None
-    service_runtimes: JarvisServiceRuntimeSnapshotDocument | None
 
 
 # Resolve the JARVIS manager lazily so MCP metadata discovery does not require a
@@ -1027,209 +424,6 @@ ADMIN_TOOLS = {
     "jm_graph_modify",
     "destroy_pipeline",
 }
-
-
-_EXECUTION_MODES = {
-    "auto",
-    "local",
-    "direct",
-    "cluster",
-    "scheduler",
-    "hostfile",
-}
-_SCHEDULER_EXECUTION_FIELDS = {
-    "job_name",
-    "nodes",
-    "tasks",
-    "tasks_per_node",
-    "cpus_per_task",
-    "walltime",
-    "partition",
-    "account",
-    "qos",
-    "output",
-    "error",
-    "exclusive",
-    "gpus",
-    "gpus_per_node",
-}
-_SCHEDULER_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@%+,-]{0,255}$")
-_HOST_ENTRY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$")
-
-
-def _bounded_single_line(value: str, *, field: str, limit: int = 4096) -> str:
-    """Reject control characters and unbounded scheduler/path text."""
-    if not value or len(value.encode("utf-8")) > limit:
-        raise ValueError(f"execution.{field} must be a non-empty bounded string")
-    if any(ord(character) < 32 or ord(character) == 127 for character in value):
-        raise ValueError(f"execution.{field} cannot contain control characters")
-    return value
-
-
-class ExecutionIntent(BaseModel):
-    """Validated, backend-neutral execution request for a JARVIS pipeline."""
-
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-    mode: Literal["auto", "local", "direct", "cluster", "scheduler", "hostfile"] = (
-        "auto"
-    )
-    hostfile: str | None = None
-    hosts: list[str] | None = Field(default=None, min_length=1)
-    job_name: str | None = None
-    nodes: int | None = Field(default=None, gt=0)
-    tasks: int | None = Field(default=None, gt=0)
-    tasks_per_node: int | None = Field(default=None, gt=0)
-    cpus_per_task: int | None = Field(default=None, gt=0)
-    walltime: str | None = None
-    partition: str | None = None
-    account: str | None = None
-    qos: str | None = None
-    output: str | None = None
-    error: str | None = None
-    exclusive: bool | None = None
-    gpus: int | None = Field(default=None, gt=0)
-    gpus_per_node: int | None = Field(default=None, gt=0)
-
-    @field_validator("mode", mode="before")
-    @classmethod
-    def normalize_mode(cls, value: object) -> object:
-        """Normalize a textual mode while preserving strict rejection of other types."""
-        if isinstance(value, str):
-            return value.strip().lower()
-        return value
-
-    @field_validator("hostfile", mode="after")
-    @classmethod
-    def validate_hostfile(cls, value: str | None) -> str | None:
-        """Validate a hostfile path without forbidding platform separators."""
-        if value is None:
-            return None
-        return _bounded_single_line(value, field="hostfile")
-
-    @field_validator("output", "error", mode="after")
-    @classmethod
-    def validate_scheduler_path(cls, value: str | None, info: Any) -> str | None:
-        """Require a single printable directive path token."""
-        if value is None:
-            return None
-        rendered = _bounded_single_line(value, field=info.field_name)
-        if any(character.isspace() for character in rendered) or "#" in rendered:
-            raise ValueError(
-                f"execution.{info.field_name} must be one printable path token"
-            )
-        return rendered
-
-    @field_validator(
-        "job_name",
-        "walltime",
-        "partition",
-        "account",
-        "qos",
-        mode="after",
-    )
-    @classmethod
-    def validate_scheduler_token(cls, value: str | None, info: Any) -> str | None:
-        """Reject whitespace/control injection in scheduler directive values."""
-        if value is None:
-            return None
-        rendered = _bounded_single_line(value, field=info.field_name, limit=256)
-        if _SCHEDULER_TOKEN.fullmatch(rendered) is None:
-            raise ValueError(
-                f"execution.{info.field_name} is not a valid scheduler token"
-            )
-        return rendered
-
-    @field_validator("hosts", mode="after")
-    @classmethod
-    def validate_hosts(cls, value: list[str] | None) -> list[str] | None:
-        """Validate semantic host names before writing a scheduler hostfile."""
-        if value is None:
-            return None
-        if len(value) > 4096:
-            raise ValueError("execution.hosts cannot contain more than 4096 entries")
-        if any(_HOST_ENTRY.fullmatch(host) is None for host in value):
-            raise ValueError("execution.hosts contains an invalid host name")
-        return value
-
-    @model_validator(mode="after")
-    def validate_mode_fields(self) -> "ExecutionIntent":
-        """Reject fields that cannot be represented by the selected execution mode."""
-        populated = self.model_fields_set
-        scheduler_fields = sorted(populated & _SCHEDULER_EXECUTION_FIELDS)
-        host_fields = sorted(populated & {"hostfile", "hosts"})
-
-        if self.mode in {"local", "direct"} and (scheduler_fields or host_fields):
-            incompatible = ", ".join(scheduler_fields + host_fields)
-            raise ValueError(
-                f"execution.mode='{self.mode}' does not accept fields: {incompatible}"
-            )
-        if self.mode == "hostfile":
-            if scheduler_fields:
-                raise ValueError(
-                    "execution.mode='hostfile' does not accept scheduler fields: "
-                    + ", ".join(scheduler_fields)
-                )
-            if (self.hostfile is None) == (self.hosts is None):
-                raise ValueError(
-                    "execution.hostfile requires exactly one of hostfile or hosts "
-                    "when execution.mode='hostfile'"
-                )
-        elif host_fields:
-            raise ValueError(
-                f"execution.mode='{self.mode}' does not accept fields: "
-                + ", ".join(host_fields)
-            )
-        return self
-
-
-class ExecutionArtifactQuery(BaseModel):
-    """Optional filters for one bounded page of execution artifacts."""
-
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-    package_id: str | None = Field(
-        default=None,
-        description="Exact JARVIS package alias filter.",
-        max_length=256,
-    )
-    role: (
-        Literal[
-            "intermediate",
-            "output",
-            "log",
-            "checkpoint",
-            "provenance",
-            "validation",
-        ]
-        | None
-    ) = None
-    state: (
-        Literal[
-            "producing",
-            "available",
-            "finalized",
-            "incomplete",
-            "failed",
-        ]
-        | None
-    ) = None
-    artifact_id: str | None = Field(
-        default=None,
-        description="Exact opaque JARVIS artifact ID filter.",
-        max_length=90,
-    )
-    page_size: int = Field(
-        default=50,
-        description="Maximum artifacts to return in this page.",
-        ge=1,
-        le=100,
-    )
-    cursor: str | None = Field(
-        default=None,
-        description="Opaque next-page cursor.",
-        max_length=1024,
-    )
 
 
 # ─── RESOURCE ────────────────────────────────────────────────────────────────
@@ -2252,727 +1446,6 @@ def jm_graph_modify(net_sleep: float) -> list:
         return [{"type": "text", "text": "Resource graph modified."}]
     except Exception as e:
         raise ToolError(f"Error: {e}")
-
-
-def _discover_packages() -> list[dict[str, Any]]:
-    """Return the legacy exhaustive package descriptions with full settings."""
-
-    return [
-        _package_description_from_inventory(entry)
-        for entry in _discover_package_inventory()
-    ]
-
-
-def _discover_package_inventory() -> list[_PackageInventoryEntry]:
-    """Discover lightweight package identities without importing package classes."""
-
-    packages: list[_PackageInventoryEntry] = []
-    seen: set[str] = set()
-    try:
-        manager = get_manager()
-        repos = [Path(str(repo)) for repo in manager.list_repos()]
-    except Exception:
-        repos = []
-    for repo in repos:
-        if not repo.exists():
-            continue
-        package_files = sorted(
-            (*repo.rglob("pkg.py"), *repo.rglob("package.py")),
-            key=lambda path: (path.parent.as_posix(), path.name != "pkg.py"),
-        )
-        for pkg_file in package_files:
-            package = _package_inventory_entry(repo, pkg_file)
-            name = package.name
-            if not name or name in seen:
-                continue
-            seen.add(name)
-            packages.append(package)
-    return sorted(packages, key=lambda package: (package.name.casefold(), package.name))
-
-
-def _find_package_description(package_name: str) -> dict[str, Any] | None:
-    """Resolve one exact canonical or short name and load only its settings."""
-
-    normalized = package_name.strip().casefold()
-    inventory = _discover_package_inventory()
-    canonical = next(
-        (package for package in inventory if package.name.casefold() == normalized),
-        None,
-    )
-    if canonical is not None:
-        return _package_description_from_inventory(canonical)
-
-    short_matches = [
-        package for package in inventory if package.short_name.casefold() == normalized
-    ]
-    if len(short_matches) == 1:
-        return _package_description_from_inventory(short_matches[0])
-    if len(short_matches) > 1:
-        candidates = ", ".join(package.name for package in short_matches)
-        raise ToolError(
-            f"package short name is ambiguous: {package_name}; use one of: {candidates}"
-        )
-    return None
-
-
-def _package_from_pkg_file(repo: Path, pkg_file: Path) -> dict[str, Any]:
-    """Build one full package description from a repository source file."""
-
-    return _package_description_from_inventory(_package_inventory_entry(repo, pkg_file))
-
-
-def _package_inventory_entry(repo: Path, pkg_file: Path) -> _PackageInventoryEntry:
-    """Build one lightweight package inventory entry from its source location."""
-
-    relative = pkg_file.relative_to(repo)
-    parts = list(relative.parts[:-1])
-    short_name = parts[-1] if parts else repo.name
-    dotted = ".".join(parts) if parts else short_name
-    description = _first_docstring_or_comment(pkg_file)
-    repository = parts[0] if parts else repo.name
-    return _PackageInventoryEntry(
-        name=dotted,
-        short_name=short_name,
-        repository=repository,
-        description=description,
-        repo=repo,
-        package_file=pkg_file,
-    )
-
-
-def _package_description_from_inventory(
-    entry: _PackageInventoryEntry,
-) -> dict[str, Any]:
-    """Load one selected package's path-free agent contract."""
-
-    metadata = _package_agent_metadata(entry.name)
-    package: dict[str, Any] = {
-        "schema_version": PACKAGE_DESCRIPTION_SCHEMA,
-        "name": entry.name,
-        "short_name": entry.short_name,
-        "description": entry.description,
-        "deployment": metadata.deployment,
-    }
-    if metadata.settings is not None:
-        package["settings"] = metadata.settings
-    return package
-
-
-def _search_packages(
-    *,
-    query: str,
-    page_size: int = PACKAGE_SEARCH_DEFAULT_PAGE_SIZE,
-    cursor: str | None = None,
-) -> dict[str, Any]:
-    """Return a bounded, summary-only page from the registered package inventory."""
-
-    normalized_query = " ".join(query.split())
-    if not normalized_query:
-        raise ToolError("package_search query must not be blank")
-    if (
-        isinstance(page_size, bool)
-        or not isinstance(page_size, int)
-        or not 1 <= page_size <= PACKAGE_SEARCH_MAX_PAGE_SIZE
-    ):
-        raise ToolError(
-            "package_search page_size must be between 1 and "
-            f"{PACKAGE_SEARCH_MAX_PAGE_SIZE}"
-        )
-
-    inventory = _discover_package_inventory()
-    # The declared configuration contract is part of what ranks and pages this
-    # search, so it is also part of the revision the cursor is bound to: a menu
-    # that changes between pages must invalidate the cursor exactly as a
-    # changed docstring already does.
-    configuration_texts = {
-        package.name: _package_configuration_search_text(package.name)
-        for package in inventory
-    }
-    inventory_revision = _package_inventory_revision(inventory, configuration_texts)
-    query_sha256 = hashlib.sha256(
-        normalized_query.casefold().encode("utf-8")
-    ).hexdigest()
-    ranked = sorted(
-        (
-            (rank, package)
-            for package in inventory
-            if (
-                rank := _package_search_rank(
-                    package,
-                    normalized_query,
-                    configuration_texts.get(package.name, ""),
-                )
-            )
-            is not None
-        ),
-        key=lambda item: (item[0], item[1].name.casefold(), item[1].name),
-    )
-    matches = [package for _, package in ranked]
-
-    start = 0
-    if cursor is not None:
-        decoded = _decode_package_search_cursor(cursor)
-        if decoded["query_sha256"] != query_sha256:
-            raise ToolError("package_search cursor does not match the requested query")
-        if decoded["inventory_revision"] != inventory_revision:
-            raise ToolError(
-                "package_search cursor is stale because the package inventory changed"
-            )
-        anchor = decoded["after_package_name"]
-        try:
-            start = next(
-                index + 1
-                for index, package in enumerate(matches)
-                if package.name == anchor
-            )
-        except StopIteration as exc:
-            raise ToolError(
-                "package_search cursor is stale because its package anchor disappeared"
-            ) from exc
-
-    page = [package.summary() for package in matches[start : start + page_size]]
-    while True:
-        has_more = start + len(page) < len(matches)
-        next_cursor = None
-        if has_more and page:
-            next_cursor = _encode_package_search_cursor(
-                after_package_name=str(page[-1]["name"]),
-                query_sha256=query_sha256,
-                inventory_revision=inventory_revision,
-            )
-        result: dict[str, Any] = {
-            "schema_version": PACKAGE_SEARCH_SCHEMA,
-            "target": "package_search",
-            "query": normalized_query,
-            "inventory_revision": inventory_revision,
-            "packages": page,
-            "total_matches": len(matches),
-            "returned_count": len(page),
-            "next_cursor": next_cursor,
-        }
-        if len(_package_search_json_bytes(result)) <= PACKAGE_SEARCH_MAX_RESULT_BYTES:
-            return result
-        if len(page) <= 1:
-            raise ToolError(
-                "one package_search result exceeded the response byte limit"
-            )
-        page.pop()
-
-
-def _package_configuration_search_text(package_name: str) -> str:
-    """Return one package's declared agent-visible configuration as search text.
-
-    Discovery ranks over what a package DECLARES, not only over the module
-    docstring that ``_first_docstring_or_comment`` scrapes. A caller looking
-    for a package that accepts a *staged local input* has no other way to find
-    one: the bounded search summary carries identity only, and a setting's
-    ``input_binding`` -- the single authoritative staging signal -- lives in
-    the package's configure menu, which search never consulted. Every term
-    here is package-declared (setting names, setting prose, and the binding's
-    own ``kind``/``structure`` vocabulary); nothing about specific packages is
-    encoded in this function.
-
-    Loading is best-effort by design and mirrors
-    :func:`_package_agent_metadata`'s existing treatment of an unloadable
-    menu: a package that cannot be imported contributes no configuration text
-    and stays rankable by identity exactly as before, so one broken package in
-    a registered repository can never fail a whole search.
-    """
-
-    try:
-        from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
-
-        pkg = Pkg.load_standalone(package_name)
-        settings = [
-            _setting_from_menu_item(item)
-            for item in pkg.configure_menu()
-            if _setting_is_agent_visible(item)
-        ]
-    except Exception:
-        return ""
-
-    terms: list[str] = []
-    for setting in settings:
-        for field in ("name", "description"):
-            value = setting.get(field)
-            if isinstance(value, str) and value:
-                terms.append(value)
-        binding = setting.get("input_binding")
-        if isinstance(binding, dict):
-            terms.append("input_binding")
-            for field in ("kind", "structure"):
-                value = binding.get(field)
-                if isinstance(value, str) and value:
-                    terms.append(value)
-    return " ".join(terms)
-
-
-def _package_search_rank(
-    package: _PackageInventoryEntry,
-    query: str,
-    configuration_text: str = "",
-) -> int | None:
-    """Return a deterministic relevance rank, or ``None`` when no field matches.
-
-    Ranks 0-4 are identity and docstring matches and are unchanged. Ranks 5
-    and 6 are the package's own declared configuration contract, which ranks
-    below every identity match so an exact name never loses to a setting that
-    merely mentions the query.
-    """
-
-    folded_query = query.casefold()
-    folded_name = package.name.casefold()
-    folded_short_name = package.short_name.casefold()
-    if folded_query in {folded_name, folded_short_name}:
-        return 0
-    if folded_name.startswith(folded_query) or folded_short_name.startswith(
-        folded_query
-    ):
-        return 1
-    if folded_query in folded_name or folded_query in folded_short_name:
-        return 2
-    folded_description = (package.description or "").casefold()
-    if folded_query in folded_description:
-        return 3
-
-    normalized_query = _package_search_terms(folded_query)
-    if not normalized_query:
-        return None
-    identity_terms = _package_search_terms(
-        " ".join(
-            (
-                package.name,
-                package.short_name,
-                package.description or "",
-            )
-        ).casefold()
-    )
-    if all(term in identity_terms for term in normalized_query):
-        return 4
-
-    folded_configuration = configuration_text.casefold()
-    if folded_configuration and folded_query in folded_configuration:
-        return 5
-    searchable = identity_terms + _package_search_terms(folded_configuration)
-    if all(term in searchable for term in normalized_query):
-        return 6
-    return None
-
-
-def _package_search_terms(value: str) -> list[str]:
-    """Tokenize package names and prose without locale-dependent behavior."""
-
-    return [term for term in re.split(r"[^a-z0-9]+", value) if term]
-
-
-def _package_inventory_revision(
-    inventory: list[_PackageInventoryEntry],
-    configuration_texts: Mapping[str, str] | None = None,
-) -> str:
-    """Hash the full inventory used to rank and page package search."""
-
-    texts = configuration_texts or {}
-    hasher = hashlib.sha256()
-    hasher.update(b"clio-kit.jarvis-package-inventory.v1\0")
-    for package in inventory:
-        encoded = _package_search_json_bytes(
-            {
-                "name": package.name,
-                "short_name": package.short_name,
-                "repository": package.repository,
-                "description": package.description,
-                "configuration": texts.get(package.name, ""),
-            }
-        )
-        hasher.update(len(encoded).to_bytes(8, "big"))
-        hasher.update(encoded)
-    return hasher.hexdigest()
-
-
-def _encode_package_search_cursor(
-    *,
-    after_package_name: str,
-    query_sha256: str,
-    inventory_revision: str,
-) -> str:
-    """Encode an opaque cursor bound to one query and inventory revision."""
-
-    payload = _package_search_json_bytes(
-        {
-            "schema_version": PACKAGE_SEARCH_CURSOR_SCHEMA,
-            "after_package_name": after_package_name,
-            "query_sha256": query_sha256,
-            "inventory_revision": inventory_revision,
-        }
-    )
-    cursor = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
-    if len(cursor) > PACKAGE_SEARCH_MAX_CURSOR_LENGTH:
-        raise ToolError("package_search cursor exceeded its byte limit")
-    return cursor
-
-
-def _decode_package_search_cursor(cursor: str) -> dict[str, str]:
-    """Decode and strictly validate one package-search cursor."""
-
-    if (
-        not cursor
-        or len(cursor) > PACKAGE_SEARCH_MAX_CURSOR_LENGTH
-        or _PACKAGE_SEARCH_CURSOR_TEXT.fullmatch(cursor) is None
-    ):
-        raise ToolError("package_search cursor is invalid")
-    padding = "=" * (-len(cursor) % 4)
-    try:
-        payload = base64.b64decode(
-            cursor + padding,
-            altchars=b"-_",
-            validate=True,
-        )
-        if len(payload) > PACKAGE_SEARCH_MAX_CURSOR_LENGTH:
-            raise ToolError("package_search cursor exceeded its byte limit")
-        value = json.loads(
-            payload.decode("utf-8"),
-            object_pairs_hook=_reject_package_search_duplicate_keys,
-        )
-    except ToolError:
-        raise
-    except (
-        binascii.Error,
-        UnicodeDecodeError,
-        json.JSONDecodeError,
-        ValueError,
-    ) as exc:
-        raise ToolError("package_search cursor is invalid") from exc
-    expected_fields = {
-        "schema_version",
-        "after_package_name",
-        "query_sha256",
-        "inventory_revision",
-    }
-    if not isinstance(value, dict) or set(value) != expected_fields:
-        raise ToolError("package_search cursor schema is invalid")
-    if value.get("schema_version") != PACKAGE_SEARCH_CURSOR_SCHEMA:
-        raise ToolError("package_search cursor schema is unsupported")
-    after_package_name = value.get("after_package_name")
-    query_sha256 = value.get("query_sha256")
-    inventory_revision = value.get("inventory_revision")
-    if (
-        not isinstance(after_package_name, str)
-        or not after_package_name
-        or not isinstance(query_sha256, str)
-        or _PACKAGE_SEARCH_SHA256.fullmatch(query_sha256) is None
-        or not isinstance(inventory_revision, str)
-        or _PACKAGE_SEARCH_SHA256.fullmatch(inventory_revision) is None
-    ):
-        raise ToolError("package_search cursor fields are invalid")
-    return {
-        "after_package_name": after_package_name,
-        "query_sha256": query_sha256,
-        "inventory_revision": inventory_revision,
-    }
-
-
-def _bounded_package_search_description(value: str | None) -> str | None:
-    """Truncate only search summaries to their documented UTF-8 byte ceiling."""
-
-    if value is None:
-        return None
-    encoded = value.encode("utf-8")
-    if len(encoded) <= PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES:
-        return value
-    suffix = "..."
-    budget = PACKAGE_SEARCH_MAX_DESCRIPTION_BYTES - len(suffix)
-    prefix = encoded[:budget]
-    while prefix:
-        try:
-            return prefix.decode("utf-8") + suffix
-        except UnicodeDecodeError:
-            prefix = prefix[:-1]
-    return suffix
-
-
-def _package_search_json_bytes(value: object) -> bytes:
-    """Serialize bounded search state using a deterministic UTF-8 encoding."""
-
-    return json.dumps(
-        value,
-        allow_nan=False,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    ).encode("utf-8")
-
-
-def _reject_package_search_duplicate_keys(
-    pairs: list[tuple[str, Any]],
-) -> dict[str, Any]:
-    """Reject ambiguous JSON objects inside opaque package-search cursors."""
-
-    value: dict[str, Any] = {}
-    for key, item in pairs:
-        if key in value:
-            raise ValueError(f"duplicate package_search cursor key: {key}")
-        value[key] = item
-    return value
-
-
-def _first_docstring_or_comment(path: Path) -> str | None:
-    try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return None
-    in_docstring = False
-    docstring_quote: str | None = None
-    collected: list[str] = []
-    for raw_line in lines[:80]:
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith("#"):
-            comment = line.lstrip("#").strip()
-            if comment:
-                return comment
-            continue
-        if in_docstring and docstring_quote is not None:
-            if line.endswith(docstring_quote):
-                line = line[: -len(docstring_quote)]
-                if line:
-                    collected.append(line.strip())
-                return " ".join(collected).strip() or None
-            collected.append(line)
-            continue
-        if line.startswith(('"""', "'''")):
-            docstring_quote = line[:3]
-            remainder = line[3:]
-            if remainder.endswith(docstring_quote):
-                remainder = remainder[:-3]
-                return remainder.strip() or None
-            in_docstring = True
-            if remainder:
-                collected.append(remainder.strip())
-            continue
-        return None
-    return " ".join(collected).strip() or None
-
-
-def _step_snapshot(
-    pipeline_snapshot: dict[str, Any], step_id: str
-) -> dict[str, Any] | None:
-    for package in pipeline_snapshot.get("packages", []):
-        if not isinstance(package, dict):
-            continue
-        identifiers = {
-            str(package.get("pkg_id", "")),
-            str(package.get("global_id", "")),
-        }
-        if step_id in identifiers:
-            return package
-    return None
-
-
-def _package_agent_metadata(package_name: str) -> _PackageAgentMetadata:
-    """Load package-owned configuration and deployment metadata once.
-
-    Older JARVIS packages do not implement ``describe_deployment`` and are
-    represented with ``deployment=None``. If a package advertises the method,
-    however, its document must match the versioned, path-free contract instead
-    of being silently downgraded to legacy behavior.
-    """
-
-    try:
-        from jarvis_cd.core.pkg import Pkg  # type: ignore[import-untyped]
-
-        pkg = Pkg.load_standalone(package_name)
-    except Exception:
-        return _PackageAgentMetadata(settings=None, deployment=None)
-
-    try:
-        menu = pkg.configure_menu()
-        settings = [
-            _setting_from_menu_item(item)
-            for item in menu
-            if _setting_is_agent_visible(item)
-        ]
-    except Exception:
-        settings = None
-
-    describe_deployment = getattr(pkg, "describe_deployment", None)
-    if not callable(describe_deployment):
-        return _PackageAgentMetadata(settings=settings, deployment=None)
-    try:
-        raw_deployment = describe_deployment()
-    except Exception:
-        raise ToolError(
-            f"package '{package_name}' failed to describe its deployment contract"
-        ) from None
-    if raw_deployment is None:
-        return _PackageAgentMetadata(settings=settings, deployment=None)
-    if isinstance(raw_deployment, BaseModel):
-        raw_deployment = raw_deployment.model_dump(mode="json")
-    if not isinstance(raw_deployment, dict):
-        raise ToolError(
-            f"package '{package_name}' returned an invalid deployment contract"
-        )
-    try:
-        deployment = json.loads(
-            json.dumps(
-                raw_deployment,
-                allow_nan=False,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            )
-        )
-    except (TypeError, ValueError):
-        raise ToolError(
-            f"package '{package_name}' returned a non-JSON deployment contract"
-        ) from None
-    try:
-        validated = JarvisPackageDeploymentDocument.model_validate(deployment)
-    except ValidationError:
-        raise ToolError(
-            f"package '{package_name}' returned an invalid deployment contract"
-        ) from None
-    if (
-        validated.schema_version != PACKAGE_DEPLOYMENT_SCHEMA
-        or validated.package != package_name
-    ):
-        raise ToolError(
-            f"package '{package_name}' returned an invalid deployment contract"
-        )
-    return _PackageAgentMetadata(settings=settings, deployment=deployment)
-
-
-def _setting_from_menu_item(item: dict[str, Any]) -> dict[str, Any]:
-    setting: dict[str, Any] = {
-        "name": item.get("name"),
-        "description": item.get("msg"),
-        "required": bool(item.get("required", False)),
-        "nullable": _setting_accepts_null(item),
-    }
-    kind = item.get("type")
-    if isinstance(kind, type):
-        setting["type"] = kind.__name__
-    elif kind is not None:
-        setting["type"] = str(kind)
-    if "default" in item:
-        setting["default"] = item["default"]
-    choices = item.get("choices")
-    if isinstance(choices, (list, tuple)):
-        setting["choices"] = list(choices)
-    aliases = item.get("aliases")
-    if isinstance(aliases, (list, tuple)) and all(
-        isinstance(alias, str) and alias for alias in aliases
-    ):
-        setting["aliases"] = list(aliases)
-    if "input_binding" in item:
-        try:
-            input_binding = JarvisConfigurationInputBindingDocument.model_validate(
-                item["input_binding"]
-            )
-        except ValidationError as error:
-            raise ValueError("invalid package configuration input binding") from error
-        setting["input_binding"] = input_binding.model_dump(mode="json")
-    return {
-        key: value
-        for key, value in setting.items()
-        if value is not None or key == "default"
-    }
-
-
-def _setting_is_agent_visible(item: dict[str, Any]) -> bool:
-    """Return whether package metadata exposes a setting to user agents."""
-
-    return item.get("agent_visible", True) is not False
-
-
-def _setting_accepts_null(item: dict[str, Any]) -> bool:
-    """Return whether the structured add-step path accepts explicit null."""
-
-    return "default" in item and item["default"] is None
-
-
-def _validated_execution_intent(
-    execution: ExecutionIntent | dict[str, Any],
-) -> ExecutionIntent:
-    if isinstance(execution, ExecutionIntent):
-        return execution
-    raw_mode = execution.get("mode", "auto")
-    if (
-        not isinstance(raw_mode, str)
-        or raw_mode.strip().lower() not in _EXECUTION_MODES
-    ):
-        raise ToolError(
-            "execution.mode must be one of: auto, local, direct, cluster, scheduler, hostfile"
-        )
-    try:
-        return ExecutionIntent.model_validate(execution)
-    except ValidationError as error:
-        details = []
-        for item in error.errors(include_url=False, include_context=False):
-            location = ".".join(str(part) for part in item["loc"])
-            prefix = f"{location}: " if location else ""
-            details.append(f"{prefix}{item['msg']}")
-        raise ToolError("invalid execution intent: " + "; ".join(details)) from error
-
-
-def _execution_intent_to_pipeline_config(
-    execution: ExecutionIntent | dict[str, Any],
-) -> dict[str, Any]:
-    intent = _validated_execution_intent(execution)
-    values = intent.model_dump(exclude_none=True)
-    mode = intent.mode
-    if mode in {"local", "direct"}:
-        return {"scheduler": None, "hostfile": None}
-    if mode == "hostfile":
-        if intent.hostfile is not None:
-            return {"scheduler": None, "hostfile": intent.hostfile}
-        if intent.hosts is not None:
-            return {
-                "scheduler": None,
-                "hostfile_entries": intent.hosts,
-            }
-        raise AssertionError("validated hostfile intent has no target")
-    if mode in {"cluster", "scheduler", "auto"}:
-        scheduler_name = _detect_scheduler_name()
-        if scheduler_name is None:
-            if mode == "auto" and set(values) <= {"mode"}:
-                return {}
-            raise ToolError("no supported cluster scheduler detected on this machine")
-        if mode == "auto" and set(values) <= {"mode"}:
-            return {}
-        scheduler: dict[str, Any] = {"name": scheduler_name}
-        mapping = {
-            "job_name": "job_name",
-            "nodes": "nodes",
-            "tasks": "ntasks",
-            "tasks_per_node": "ntasks_per_node",
-            "cpus_per_task": "cpus_per_task",
-            "walltime": "time",
-            "partition": "partition",
-            "account": "account",
-            "qos": "qos",
-            "output": "output",
-            "error": "error",
-            "exclusive": "exclusive",
-            "gpus": "gpus",
-            "gpus_per_node": "gpus_per_node",
-        }
-        for public_key, scheduler_key in mapping.items():
-            if public_key in values:
-                scheduler[scheduler_key] = values[public_key]
-        return {"scheduler": scheduler}
-    raise AssertionError(f"validated execution intent has unsupported mode: {mode}")
-
-
-def _detect_scheduler_name() -> str | None:
-    configured = os.getenv("JARVIS_MCP_SCHEDULER") or os.getenv("JARVIS_SCHEDULER")
-    if configured:
-        return configured.strip().lower()
-    from shutil import which
-
-    if which("sbatch") is not None:
-        return "slurm"
-    return None
 
 
 def _protocol_stdout_to_stderr() -> Any:
