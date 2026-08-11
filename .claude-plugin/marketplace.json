@@ -134,7 +134,7 @@
       "name": "clio-lmod",
       "source": "./clio-kit-mcp-servers/lmod",
       "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
-      "version": "2.2.3",
+      "version": "3.0.0",
       "category": "scientific",
       "keywords": [
         "environment-modules",

@@ -10,12 +10,12 @@ import MCPDetail from '@site/src/components/MCPDetail';
   icon="📦"
   category="System Management"
   description="Lmod MCP - Environment Module Management for LLMs with comprehensive module operations"
-  version="2.2.3"
-  actions={["module_list", "module_avail", "module_show", "module_load", "module_unload", "module_swap", "module_spider", "module_save", "module_restore", "module_savelist"]}
+  version="3.0.0"
+  actions={["module_list", "module_avail", "module_show", "module_spider", "module_save", "module_restore", "module_savelist"]}
   platforms={["claude", "cursor", "vscode"]}
   keywords={["lmod", "environment-modules", "module-management", "hpc", "scientific-computing", "supercomputing", "cluster-computing", "module-system"]}
   license="BSD-3-Clause"
-  tools={[{"name": "module_list", "description": "List all currently loaded environment modules.", "function_name": "module_list"}, {"name": "module_avail", "description": "Search for available modules, optionally filtered by name pattern.", "function_name": "module_avail"}, {"name": "module_show", "description": "Display detailed information about a specific module.", "function_name": "module_show"}, {"name": "module_load", "description": "Load one or more environment modules into the current session.", "function_name": "module_load"}, {"name": "module_unload", "description": "Unload one or more currently loaded modules from the environment.", "function_name": "module_unload"}, {"name": "module_swap", "description": "Swap one module for another atomically.", "function_name": "module_swap"}, {"name": "module_spider", "description": "Search the entire module tree comprehensively for matching modules.", "function_name": "module_spider"}, {"name": "module_save", "description": "Save currently loaded modules as a named collection.", "function_name": "module_save"}, {"name": "module_restore", "description": "Restore a previously saved module collection.", "function_name": "module_restore"}, {"name": "module_savelist", "description": "List all saved module collections.", "function_name": "module_savelist"}]}
+  tools={[{"name": "module_list", "description": "List all currently loaded environment modules.", "function_name": "module_list"}, {"name": "module_avail", "description": "Search for available modules, optionally filtered by name pattern.", "function_name": "module_avail"}, {"name": "module_show", "description": "Display detailed information about a specific module.", "function_name": "module_show"}, {"name": "module_spider", "description": "Search the entire module tree comprehensively for matching modules.", "function_name": "module_spider"}, {"name": "module_save", "description": "Save currently loaded modules as a named collection.", "function_name": "module_save"}, {"name": "module_restore", "description": "Restore a previously saved module collection.", "function_name": "module_restore"}, {"name": "module_savelist", "description": "List all saved module collections.", "function_name": "module_savelist"}]}
 >
 
 ### 1. HPC Development Environment Setup

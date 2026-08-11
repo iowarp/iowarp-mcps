@@ -257,16 +257,13 @@ export const mcpData = {
       "module_list",
       "module_avail",
       "module_show",
-      "module_load",
-      "module_unload",
-      "module_swap",
       "module_spider",
       "module_save",
       "module_restore",
       "module_savelist"
     ],
     "stats": {
-      "version": "2.2.3",
+      "version": "3.0.0",
       "updated": "2026-07-22"
     },
     "platforms": [
