@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/sac-mcp",
   "title": "CLIO Sac",
   "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute...",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -40,6 +40,14 @@
     {
       "name": "plot_traces",
       "description": "Plot selected SAC traces from a file or archive to a PNG artifact. Traces are amplitude-normalized and vertically offset. Writes a file; returns the output path, plotted member names, and render duration."
+    },
+    {
+      "name": "analyze_sequence",
+      "description": "Compute the descriptive statistics of a saved earthquake catalog: completeness magnitude (Mc), the Gutenberg-Richter b-value with uncertainty, the largest event, the Bath-law magnitude gap to the second-largest, the share of events before vs after the largest, the spatial extent, and the Omori post-event rate decay. Returns statistics ONLY - it does not classify the sequence."
+    },
+    {
+      "name": "plot_sequence",
+      "description": "Render the three-panel earthquake-sequence figure from a saved catalog: (1) an epicenter map sized by magnitude and coloured by time, (2) the Gutenberg-Richter magnitude-frequency distribution with an optional b-value fit line, and (3) the cumulative count over time. Writes a PNG and returns its path; pass mc/b_value to draw the G-R fit line."
     }
   ],
   "resources": [
@@ -53,6 +61,10 @@
     {
       "name": "analyze_sac_archive",
       "description": "Guided workflow for inspecting and analyzing a SAC file or archive."
+    },
+    {
+      "name": "characterize_sequence",
+      "description": "Guided workflow for characterizing a saved earthquake catalog."
     }
   ],
   "tags": []

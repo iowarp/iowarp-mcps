@@ -1,9 +1,0 @@
-{
-  "clio-seismic": {
-    "command": "clio-kit",
-    "args": [
-      "mcp-server",
-      "seismic"
-    ]
-  }
-}

@@ -491,10 +491,12 @@ export const mcpData = {
     "actions": [
       "inspect_archive",
       "compute_trace_statistics",
-      "plot_traces"
+      "plot_traces",
+      "analyze_sequence",
+      "plot_sequence"
     ],
     "stats": {
-      "version": "2.2.3",
+      "version": "2.3.0",
       "updated": "2026-07-22"
     },
     "platforms": [
@@ -523,26 +525,6 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "scientific_catalog"
-  },
-  "seismic": {
-    "name": "Seismic",
-    "category": "Analysis & Visualization",
-    "description": "MCP server for earthquake-sequence analysis on saved catalogs: completeness magnitude, Gutenberg-Richter b-value, Bath gap, Omori decay, and a three-panel figure",
-    "icon": "\ud83d\udd27",
-    "actions": [
-      "analyze_sequence",
-      "plot_sequence"
-    ],
-    "stats": {
-      "version": "2.2.3",
-      "updated": "2026-07-22"
-    },
-    "platforms": [
-      "claude",
-      "cursor",
-      "vscode"
-    ],
-    "slug": "seismic"
   },
   "slurm": {
     "name": "Slurm",
@@ -633,12 +615,12 @@ export const mcpData = {
 // Categories with counts and colors
 export const categories = {
   "All": {
-    "count": 24,
+    "count": 23,
     "color": "#6b7280",
     "icon": "\ud83d\udd0d"
   },
   "Analysis & Visualization": {
-    "count": 6,
+    "count": 5,
     "color": "#10b981",
     "icon": "\ud83d\udcc8"
   },

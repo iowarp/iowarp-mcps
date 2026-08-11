@@ -128,13 +128,6 @@
         "scientific-catalog"
       ]
     },
-    "clio-seismic": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "seismic"
-      ]
-    },
     "clio-slurm": {
       "command": "clio-kit",
       "args": [
