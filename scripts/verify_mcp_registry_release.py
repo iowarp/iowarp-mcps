@@ -44,7 +44,7 @@ PACKAGE_FIELDS = frozenset(
     }
 )
 LOCAL_DISCOVERY_EXTENSION_FIELDS = frozenset(
-    {"tools", "resources", "resource_templates", "prompts", "tags"}
+    {"tools", "resources", "resource_templates", "prompts", "tags", "scope"}
 )
 
 

@@ -72,5 +72,6 @@
     "sac",
     "waveform",
     "geophysics"
-  ]
+  ],
+  "scope": "scientific"
 }

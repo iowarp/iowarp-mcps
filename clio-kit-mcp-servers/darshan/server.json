@@ -88,5 +88,6 @@
     "performance-analysis",
     "hpc",
     "darshan"
-  ]
+  ],
+  "scope": "scientific"
 }

@@ -214,6 +214,7 @@ def build_server_json(
     *,
     server_version: str,
     pypi_version: str,
+    scope: str,
 ) -> dict[str, Any]:
     """Build a registry manifest with independent server and wheel versions."""
     description = project.get("description", "")
@@ -273,6 +274,9 @@ def build_server_json(
         server_json["prompts"] = prompts
 
     server_json["tags"] = SERVER_TAGS.get(server_name, [])
+    # Shipped beside each server so the launcher can group its listing without
+    # the version map, which the wheel's shared-data does not carry.
+    server_json["scope"] = scope
     return server_json
 
 
@@ -427,6 +431,7 @@ def generate_all(mcps_dir: str) -> None:
                 metadata,
                 server_version=server_versions[server_name],
                 pypi_version=pypi_version,
+                scope=server_scopes[server_name],
             )
             _write_json(server_dir / "server.json", server_json)
             tool_count = len(server_json.get("tools", []))

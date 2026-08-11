@@ -88,5 +88,6 @@
     "mapping",
     "geojson",
     "visualization"
-  ]
+  ],
+  "scope": "scientific"
 }

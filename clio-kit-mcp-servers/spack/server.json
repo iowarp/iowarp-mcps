@@ -59,5 +59,6 @@
     "package-management",
     "hpc",
     "scientific-computing"
-  ]
+  ],
+  "scope": "scientific"
 }

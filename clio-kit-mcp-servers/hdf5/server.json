@@ -178,5 +178,6 @@
     "hdf5",
     "data-analysis",
     "hierarchical-data"
-  ]
+  ],
+  "scope": "scientific"
 }

@@ -56,5 +56,6 @@
     "gzip",
     "file-operations",
     "data-management"
-  ]
+  ],
+  "scope": "general"
 }

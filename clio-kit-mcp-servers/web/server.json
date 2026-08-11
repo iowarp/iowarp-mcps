@@ -56,5 +56,6 @@
     "fetch",
     "search",
     "agentic-web"
-  ]
+  ],
+  "scope": "general"
 }

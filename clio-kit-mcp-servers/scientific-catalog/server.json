@@ -55,5 +55,6 @@
     "dataset-catalog",
     "scientific-computing",
     "discovery"
-  ]
+  ],
+  "scope": "scientific"
 }

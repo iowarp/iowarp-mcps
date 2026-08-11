@@ -88,5 +88,6 @@
     "hpc",
     "lmod",
     "system-administration"
-  ]
+  ],
+  "scope": "scientific"
 }

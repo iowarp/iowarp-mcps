@@ -69,5 +69,6 @@
     "bp5",
     "data-io",
     "hpc"
-  ]
+  ],
+  "scope": "scientific"
 }

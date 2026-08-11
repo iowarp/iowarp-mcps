@@ -100,5 +100,6 @@
     "sorting",
     "large-files",
     "hpc"
-  ]
+  ],
+  "scope": "scientific"
 }

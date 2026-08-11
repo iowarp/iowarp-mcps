@@ -64,5 +64,6 @@
     "distributed-systems",
     "hpc",
     "time-series"
-  ]
+  ],
+  "scope": "scientific"
 }

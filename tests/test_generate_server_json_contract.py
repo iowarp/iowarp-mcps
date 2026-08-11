@@ -55,6 +55,7 @@ def test_pypi_manifest_uses_standard_fixed_package_arguments() -> None:
         {"tools": []},
         server_version="2.0.0",
         pypi_version="2.3.0",
+        scope="scientific",
     )
 
     assert manifest["version"] == "2.0.0"

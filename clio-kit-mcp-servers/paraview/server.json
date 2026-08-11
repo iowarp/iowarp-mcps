@@ -152,5 +152,6 @@
     "paraview",
     "3d-rendering",
     "hpc"
-  ]
+  ],
+  "scope": "scientific"
 }

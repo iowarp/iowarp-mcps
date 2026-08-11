@@ -56,5 +56,6 @@
     "dem",
     "point-cloud",
     "geospatial"
-  ]
+  ],
+  "scope": "scientific"
 }
