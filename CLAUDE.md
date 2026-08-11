@@ -35,6 +35,8 @@ clio-kit/                           # Monorepo root
 │   ├── plot/                          # Data visualization
 │   ├── adios/                         # ADIOS2 data I/O
 │   └── [each has its own pyproject.toml, dependencies, tests]
+├── skills/                         # Cross-server workflows (see CONTRIBUTING.md)
+│   └── <name>/SKILL.md             # Generated into .claude-plugin/plugin.json
 ├── clio-agentic-search/             # Standalone hybrid retrieval engine (not an MCP server)
 ├── clio-kit-website/                # Docusaurus documentation site
 ├── scripts/                           # Utility scripts (generate_docs.py, etc)
@@ -115,6 +117,24 @@ uv run hdf5-mcp
 # List all available MCPs
 uvx clio-kit
 ```
+
+### Using Skills
+
+Skills are markdown workflows that span more than one MCP server. Anything a
+single server can sequence belongs in that server's MCP prompt instead.
+
+```bash
+clio-kit skills                  # shipped workflows, grouped by category
+clio-kit skill <name>            # print one SKILL.md
+clio-kit skills-install          # copy into ~/.claude/skills for Claude Code
+clio-kit skills-validate [path]  # check skills against the servers this kit ships
+```
+
+`scripts/generate_server_json.py` reads each `SKILL.md`'s frontmatter and
+generates `.claude-plugin/plugin.json` plus the marketplace entry, so a new
+skill needs no manual registration. Authoring rules are in `CONTRIBUTING.md`;
+`skills-validate` and `tests/test_skills.py` enforce them through one shared
+implementation, so an externally authored skill is held to the same rules.
 
 ### Code Formatting & Fixing
 

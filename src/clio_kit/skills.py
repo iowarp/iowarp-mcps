@@ -199,4 +199,121 @@ def install_skills_command(scope: str) -> None:
     click.echo("\n".join(format_install_result(_shipped_root(), scope)))
 
 
-SKILL_COMMANDS = (list_skills_command, show_skill_command, install_skills_command)
+def read_server_inventory(servers_root: Path) -> dict[str, set[str]]:
+    """Map each client-facing server name to the tools it exposes.
+
+    Clients register these servers as ``clio-<name>``, which is what the
+    generated Claude Desktop, Claude Code and Gemini configs all use, so skills
+    are validated against the names an agent actually sees.
+    """
+    import json
+
+    inventory: dict[str, set[str]] = {}
+    for manifest in sorted(servers_root.glob("*/server.json")):
+        try:
+            document = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        inventory[f"clio-{manifest.parent.name}"] = {
+            tool["name"] for tool in document.get("tools", []) if "name" in tool
+        }
+    return inventory
+
+
+def validate_skill(manifest: Path, tools_by_server: dict[str, set[str]]) -> list[str]:
+    """Return every problem with one skill, empty when it is sound.
+
+    Shared by the repository's own test suite and the `skills validate` command,
+    so a skill written outside this repository is held to exactly the same rules
+    as the shipped collection. Reports all problems at once rather than the
+    first, because fixing them one build at a time is the slow way.
+    """
+    problems: list[str] = []
+    text = manifest.read_text(encoding="utf-8")
+    fields = parse_frontmatter(text)
+    body = text.split("---", 2)[-1]
+
+    for key in REQUIRED_FRONTMATTER:
+        if not fields.get(key):
+            problems.append(f"missing frontmatter '{key}'")
+    if not problems and fields["name"] != manifest.parent.name:
+        problems.append(
+            f"frontmatter name {fields['name']!r} does not match "
+            f"directory {manifest.parent.name!r}"
+        )
+    if "Use when" not in fields.get("description", ""):
+        problems.append("description does not say when to use the skill")
+    if len(fields.get("description", "")) > 1024:
+        problems.append("description exceeds 1024 characters")
+
+    servers = {s.strip() for s in fields.get("servers", "").split(",") if s.strip()}
+    if len(servers) < 2:
+        problems.append(
+            "a skill must span more than one server; single-server sequencing "
+            "belongs in that server's MCP prompt"
+        )
+
+    declared = {t.strip() for t in fields.get("tools", "").split(",") if t.strip()}
+    for reference in sorted(declared):
+        server, delimiter, tool = reference.partition(":")
+        if not delimiter:
+            problems.append(f"'{reference}' is unqualified; use server:tool")
+            continue
+        if server not in tools_by_server:
+            problems.append(f"'{reference}' names unknown server '{server}'")
+        elif tool not in tools_by_server[server]:
+            problems.append(f"'{server}' does not expose '{tool}'")
+        elif f"`{reference}`" not in body:
+            problems.append(f"'{reference}' is declared but never used in the steps")
+
+    for server, tools in tools_by_server.items():
+        for tool in tools:
+            if f"`{server}:{tool}`" in body and f"{server}:{tool}" not in declared:
+                problems.append(f"'{server}:{tool}' is used but never declared")
+            elif f"`{tool}`" in body and f":{tool}`" not in body:
+                problems.append(f"'{tool}' is cited without a server prefix")
+    return problems
+
+
+@click.command("skills-validate")
+@click.argument(
+    "path",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    required=False,
+)
+def validate_skills_command(path: Path | None) -> None:
+    """Check a skill collection against the servers this kit ships.
+
+    Defaults to the shipped collection. Point it at your own directory to hold
+    an external skill to the same rules.
+    """
+    from clio_kit import get_servers_path
+
+    root = path or _shipped_root()
+    skills = discover_skills(root)
+    if not skills:
+        click.echo(f"No skills found in {root}")
+        sys.exit(1)
+    inventory = read_server_inventory(get_servers_path())
+    failures = 0
+    for name, manifest in skills.items():
+        problems = validate_skill(manifest, inventory)
+        if problems:
+            failures += 1
+            click.echo(f"FAIL: {name}")
+            for problem in problems:
+                click.echo(f"  - {problem}")
+        else:
+            click.echo(f"OK:   {name}")
+    if failures:
+        click.echo(f"\n{failures} of {len(skills)} skills have problems.")
+        sys.exit(1)
+    click.echo(f"\nAll {len(skills)} skills validate against this kit's servers.")
+
+
+SKILL_COMMANDS: tuple[click.Command, ...] = (
+    list_skills_command,
+    show_skill_command,
+    install_skills_command,
+    validate_skills_command,
+)

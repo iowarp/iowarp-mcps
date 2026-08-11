@@ -310,6 +310,106 @@ uvx clio-kit
 uvx clio-kit my-server
 ```
 
+## Adding a Skill
+
+A **skill** is a markdown workflow that spans more than one MCP server. Anything
+a single server can sequence on its own belongs in that server's MCP prompt
+instead, where it ships and versions with the server's contract.
+
+### 1. Create the directory
+
+Use the gerund form, matching the frontmatter `name`:
+
+```bash
+mkdir -p skills/profiling-memory-usage
+```
+
+### 2. Write `SKILL.md`
+
+```markdown
+---
+name: profiling-memory-usage
+description: Profiles a job's memory use and correlates it with the node it ran on. Use when a run was killed for memory, when the user asks how much memory a workload needs, or when they mention OOM, resident set size, or memory limits.
+category: Performance
+servers: clio-node-hardware, clio-pandas
+tools: clio-node-hardware:get_memory_info, clio-pandas:optimize_memory
+---
+
+# Profiling memory usage
+
+[Steps, referencing every tool as `clio-<server>:<tool>`]
+```
+
+All five frontmatter fields are required.
+
+- **`name`** must equal the directory name: lowercase, hyphens, 64 characters
+  max, gerund form.
+- **`description`** must say *what the skill does* **and** *when to use it*, in
+  third person, within 1024 characters. Only the name and description are loaded
+  until a skill triggers, so the "Use when" half is what makes it discoverable.
+- **`category`** groups it in `clio-kit skills`.
+- **`servers`** must list at least two, named as clients see them: `clio-<name>`.
+- **`tools`** must be fully qualified, `clio-<server>:<tool>`. Bare names are
+  ambiguous — `identify_io_bottlenecks` exists on both darshan and hdf5 and
+  means different things.
+
+Keep the body under 500 lines and assume the reader is already competent; do not
+explain what HDF5 or BibTeX are.
+
+### 3. Regenerate and validate
+
+```bash
+uv run python scripts/generate_server_json.py clio-kit-mcp-servers
+uv run clio-kit skills-validate
+uv run pytest tests/test_skills.py -v
+```
+
+The generator picks the skill up automatically: it appears in `clio-kit skills`,
+in `.claude-plugin/plugin.json`, and in the marketplace entry with no manual
+edit anywhere.
+
+### What is enforced
+
+`clio-kit skills-validate` and the test suite share one implementation, so the
+same rules apply to a skill written anywhere:
+
+| Rule | Why |
+|---|---|
+| Spans more than one server | single-server sequencing belongs in that server's MCP prompt |
+| Every declared tool exists on the server named | catches renames and tools moving between servers |
+| Every declared tool is used in the steps | the declaration cannot drift from the prose |
+| Every tool used in the steps is declared | otherwise it is invisible to the checks above |
+| No bare tool names | two servers can define the same tool name |
+| Description contains "Use when" | it is all that is loaded until the skill triggers |
+
+### Using a skill
+
+`clio-kit skills-install --scope user` copies the collection into
+`~/.claude/skills` (or `--scope project` for `.claude/skills`), where Claude Code
+discovers it. Installing through the plugin marketplace does the same thing:
+
+```
+/plugin marketplace add iowarp/clio-kit
+/plugin install clio-skills@iowarp-clio-kit
+```
+
+Either way the agent loads each skill's name and description at startup and
+reads the body only when a request matches.
+
+### Skills from elsewhere
+
+Claude Code merges skills from `~/.claude/skills`, `.claude/skills`, and every
+installed plugin, so a skill from another source needs nothing from this kit —
+`skills-install` replaces only the skills it ships and leaves the rest alone.
+
+If an external skill drives these servers, hold it to the same rules:
+
+```bash
+uv run clio-kit skills-validate /path/to/your/skills
+```
+
+---
+
 ## Issue Reporting
 
 ### Bug Reports

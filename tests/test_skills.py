@@ -16,12 +16,12 @@ from click.testing import CliRunner
 from clio_kit import main
 from clio_kit.skills import (
     _shipped_root,
-    REQUIRED_FRONTMATTER,
     discover_skills,
     find_skills_root,
     format_skill_listing,
     install_skills,
     parse_frontmatter,
+    validate_skill,
 )
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -62,132 +62,63 @@ def test_the_repository_ships_at_least_one_skill() -> None:
 
 
 @pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_skill_declares_the_required_frontmatter(name: str, manifest: Path) -> None:
-    fields = parse_frontmatter(manifest.read_text(encoding="utf-8"))
+def test_shipped_skill_satisfies_every_rule(name: str, manifest: Path) -> None:
+    """The suite and `clio-kit skills-validate` enforce one implementation.
 
-    for key in REQUIRED_FRONTMATTER:
-        assert fields.get(key), f"{name} is missing frontmatter '{key}'"
-    assert fields["name"] == name, "frontmatter name must match the directory"
+    validate_skill covers the frontmatter, the more-than-one-server rule, and
+    the tool declarations in both directions -- declared tools must exist on the
+    server named and be used in the steps, and tools used in the steps must be
+    declared. Sharing it means an externally authored skill is held to exactly
+    the rules the shipped collection is.
+    """
+    problems = validate_skill(manifest, _shipped_tools_by_server())
+
+    assert not problems, f"{name}: " + "; ".join(problems)
 
 
-@pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_skill_names_only_servers_that_ship(name: str, manifest: Path) -> None:
-    """A skill pointing at a removed or renamed server sends an agent nowhere."""
-    fields = parse_frontmatter(manifest.read_text(encoding="utf-8"))
-    declared = {s.strip() for s in fields.get("servers", "").split(",") if s.strip()}
-
-    assert declared, f"{name} must declare which servers it spans"
-    assert declared <= _shipped_server_names(), (
-        f"{name} names servers that do not ship: {sorted(declared - _shipped_server_names())}"
+def test_validation_reports_every_problem_at_once(tmp_path: Path) -> None:
+    """Fixing one problem per build is the slow way to write a skill."""
+    skill = tmp_path / "broken-skill"
+    skill.mkdir()
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: wrong-name\n"
+        "description: Does a thing.\n"
+        "category: Custom\n"
+        "servers: clio-hdf5\n"
+        "tools: clio-hdf5:get_shape, clio-hdf5:no_such_tool\n"
+        "---\n"
+        "Call `get_shape`.\n",
+        encoding="utf-8",
     )
 
+    problems = validate_skill(skill / "SKILL.md", _shipped_tools_by_server())
 
-@pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_every_tool_a_skill_declares_still_exists(name: str, manifest: Path) -> None:
-    """The check that makes skills survive #357's merges and renames.
-
-    A skill declares its tools in frontmatter rather than having them inferred
-    from prose: a body legitimately mentions parameter names, and this one
-    deliberately names a tool that does not exist ("do not look for spack_load")
-    to stop an agent hunting for it.
-    """
-    fields = parse_frontmatter(manifest.read_text(encoding="utf-8"))
-    declared = {t.strip() for t in fields.get("tools", "").split(",") if t.strip()}
-
-    assert declared, f"{name} declares no tools; it is not describing a workflow"
-    shipped = _shipped_tools_by_server()
-    for reference in sorted(declared):
-        server, delimiter, tool = reference.partition(":")
-        assert delimiter, (
-            f"{name} cites '{reference}' unqualified; MCP references must be "
-            "server:tool or an agent with several servers mounted cannot resolve them"
-        )
-        assert server in shipped, f"{name} cites unknown server '{server}'"
-        assert tool in shipped[server], (
-            f"{name} cites '{tool}' which {server} does not expose"
-        )
+    assert any("does not match" in p for p in problems)
+    assert any("when to use" in p for p in problems)
+    assert any("more than one server" in p for p in problems)
+    assert any("does not expose 'no_such_tool'" in p for p in problems)
+    assert any("without a server prefix" in p for p in problems)
 
 
-@pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_declared_tools_are_actually_used_in_the_body(
-    name: str, manifest: Path
-) -> None:
-    """The declaration and the prose must not drift apart."""
-    body = manifest.read_text(encoding="utf-8")
-    fields = parse_frontmatter(body)
-    declared = {t.strip() for t in fields.get("tools", "").split(",") if t.strip()}
-    steps = body.split("---", 2)[-1]
-
-    unused = sorted(tool for tool in declared if f"`{tool}`" not in steps)
-    assert not unused, f"{name} declares tools its steps never mention: {unused}"
-
-
-def test_a_skill_spans_more_than_one_server() -> None:
-    """Single-server sequencing belongs in that server's MCP prompt instead.
-
-    Prompts ship and version with the server's contract; a skill that duplicates
-    one just gives the agent two sources that can disagree.
-    """
-    for name, manifest in SKILLS:
-        fields = parse_frontmatter(manifest.read_text(encoding="utf-8"))
-        declared = {
-            s.strip() for s in fields.get("servers", "").split(",") if s.strip()
-        }
-        assert len(declared) > 1, (
-            f"{name} spans one server; make it an MCP prompt on that server"
-        )
-
-
-@pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_body_cites_nothing_the_frontmatter_did_not_declare(
-    name: str, manifest: Path
-) -> None:
-    """The declared list is what the drift guard checks, so it must be complete.
-
-    A tool used in the steps but missing from `tools:` is invisible to the
-    existence check above, which is exactly how a skill would survive a rename
-    it should have failed.
-    """
-    body = manifest.read_text(encoding="utf-8")
-    declared = {t.strip() for t in parse_frontmatter(body).get("tools", "").split(",")}
-    steps = body.split("---", 2)[-1]
-    cited = {
-        f"{server}:{tool}"
-        for server, tools in _shipped_tools_by_server().items()
-        for tool in tools
-        if f"`{server}:{tool}`" in steps
-    }
-
-    undeclared = sorted(cited - declared)
-    assert not undeclared, f"{name} uses tools it never declared: {undeclared}"
-
-
-@pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_body_never_cites_a_tool_unqualified(name: str, manifest: Path) -> None:
-    """`identify_io_bottlenecks` exists on two servers; bare names are ambiguous."""
-    shipped = _shipped_tools_by_server()
-    every_tool = {tool for tools in shipped.values() for tool in tools}
-    body = manifest.read_text(encoding="utf-8").split("---", 2)[-1]
-
-    bare = sorted(
-        tool for tool in every_tool if f"`{tool}`" in body and f":{tool}`" not in body
+def test_an_external_skill_can_be_validated_against_this_kit(tmp_path: Path) -> None:
+    """Third parties writing skills for these servers get the same guard."""
+    skill = tmp_path / "checking-node-health-before-a-run"
+    skill.mkdir()
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: checking-node-health-before-a-run\n"
+        "description: Checks a node before submitting. Use when a job must not "
+        "land on an unhealthy node.\n"
+        "category: Custom\n"
+        "servers: clio-node-hardware, clio-slurm\n"
+        "tools: clio-node-hardware:health_check, clio-slurm:slurm_cluster\n"
+        "---\n"
+        "Run `clio-node-hardware:health_check`, then `clio-slurm:slurm_cluster`.\n",
+        encoding="utf-8",
     )
-    assert not bare, f"{name} cites tools without a server prefix: {bare}"
 
-
-@pytest.mark.parametrize("name,manifest", SKILLS, ids=[n for n, _ in SKILLS])
-def test_description_says_when_to_use_the_skill(name: str, manifest: Path) -> None:
-    """The description is the only thing loaded until a skill triggers.
-
-    Anthropic's authoring guidance is explicit: it must carry both what the
-    skill does and when to reach for it, in third person, within 1024
-    characters. Without the trigger half an agent cannot select it.
-    """
-    description = parse_frontmatter(manifest.read_text(encoding="utf-8"))["description"]
-
-    assert "Use when" in description, f"{name} never says when to use it"
-    assert len(description) <= 1024, f"{name} description exceeds 1024 characters"
-    assert not description.startswith(("I ", "You ")), "write in third person"
+    assert validate_skill(skill / "SKILL.md", _shipped_tools_by_server()) == []
 
 
 def test_skill_names_follow_one_convention() -> None:
@@ -288,3 +219,21 @@ def test_installing_replaces_a_stale_copy_rather_than_merging(tmp_path: Path) ->
 
 def test_installing_into_an_empty_collection_reports_nothing(tmp_path: Path) -> None:
     assert install_skills(tmp_path / "absent", tmp_path / "dest") == []
+
+
+def test_installing_leaves_skills_from_other_sources_alone(tmp_path: Path) -> None:
+    """An install must not own the directory, only the skills it ships.
+
+    Claude Code merges skills from the user directory, the project directory and
+    every installed plugin, so a user's own skill lives beside these. Clearing
+    the destination would delete it.
+    """
+    destination = tmp_path / "skills"
+    foreign = destination / "someone-elses-skill"
+    foreign.mkdir(parents=True)
+    (foreign / "SKILL.md").write_text("---\nname: x\n---\n", encoding="utf-8")
+
+    install_skills(REPOSITORY_ROOT / "skills", destination)
+
+    assert (foreign / "SKILL.md").is_file(), "installing clobbered a foreign skill"
+    assert len(list(destination.iterdir())) == len(SKILLS) + 1
