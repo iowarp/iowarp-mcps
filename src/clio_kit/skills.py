@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 SKILL_FILENAME = "SKILL.md"
-REQUIRED_FRONTMATTER = ("name", "description")
+REQUIRED_FRONTMATTER = ("name", "description", "category", "servers", "tools")
 
 
 def find_skills_root(module_dir: Path) -> Path:
@@ -86,16 +86,35 @@ def describe_skill(manifest: Path) -> str:
     return parse_frontmatter(text).get("description", "")
 
 
+def skill_field(manifest: Path, field: str) -> str:
+    """Return one frontmatter field, or an empty string."""
+    try:
+        text = manifest.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    return parse_frontmatter(text).get(field, "")
+
+
 def format_skill_listing(skills_root: Path) -> list[str]:
-    """Render `clio-kit skills` as output lines."""
+    """Render `clio-kit skills` grouped by category."""
     skills = discover_skills(skills_root)
     if not skills:
         return ["No skills found."]
-    width = max(len(name) for name in skills)
-    lines = ["Available skills:"]
+    by_category: dict[str, list[tuple[str, Path]]] = {}
     for name, manifest in skills.items():
-        description = describe_skill(manifest)
-        lines.append(f"  {name.ljust(width)}  {description}".rstrip())
+        category = skill_field(manifest, "category") or "Uncategorized"
+        by_category.setdefault(category, []).append((name, manifest))
+
+    lines: list[str] = []
+    for category in sorted(by_category):
+        if lines:
+            lines.append("")
+        lines.append(f"{category}:")
+        for name, manifest in sorted(by_category[category]):
+            lines.append(f"  {name}")
+            summary = describe_skill(manifest).split(". Use when")[0].rstrip(".")
+            if summary:
+                lines.append(f"      {summary}.")
     lines.append("")
     lines.append("Usage: clio-kit skill <skill-name>")
     return lines
