@@ -21,14 +21,26 @@ inline `content`, or — with `to_file=True` — writes it under the artifacts r
 - **`(url, prompt)` extraction** is the agent's job (an MCP server has no model access): use
   `to_file=True` and pipe the saved file through the agent's own model.
 
-## `search(query, *, provider=None, count=5)`
+## `search(query, *, provider=None, count=5, category=None, engines=None, language=None, time_range=None, pageno=None, safesearch=None)`
 
-Search via a configurable provider. Keyless **DuckDuckGo** (`ddg`) by default; BYO-key **Brave**
-(`WEB_BRAVE_API_KEY`) / **Tavily** (`WEB_TAVILY_API_KEY`). Selecting a keyed provider without its
-key is a typed error — never a silent fallback to `ddg`. `count` is capped at 25. Returns
+Search via a configurable provider. Keyless **DuckDuckGo** (`ddg`) is the default;
+self-hosted **SearXNG** (`searxng`) uses `WEB_SEARXNG_BASE_URL`; optional **Brave**
+and **Tavily** retain their BYO-key configuration. Selecting an unconfigured provider is a
+typed error — never a silent fallback to `ddg`. `count` is capped at 25. Returns
 `{title, url, snippet}` results.
+
+SearXNG accepts native `category` (`general`, `science`, or `it`), exact `engines`,
+`language`, `time_range` (`day`, `month`, or `year`), `pageno` (1 through 3), and
+`safesearch` (0 through 2) selectors. Its response also includes `engines_answered` and
+normalized `unresponsive_engines`. An explicit `engines` list takes precedence over
+`category`, avoiding SearXNG's broader union of both selectors. Passing these selectors to
+another provider is an error.
 
 ## Configuration (`WEB_`-prefixed env or a `.env`)
 
-`WEB_SEARCH_PROVIDER`, `WEB_BRAVE_API_KEY`, `WEB_TAVILY_API_KEY`, `WEB_MAX_BYTES`,
-`WEB_CONNECT_TIMEOUT_S`, `WEB_READ_TIMEOUT_S`, `WEB_ARTIFACTS_ROOT`, `WEB_ALLOW_PRIVATE_HOSTS`.
+`WEB_SEARCH_PROVIDER`, `WEB_SEARXNG_BASE_URL`, `WEB_BRAVE_API_KEY`, `WEB_TAVILY_API_KEY`,
+`WEB_MAX_BYTES`, `WEB_CONNECT_TIMEOUT_S`, `WEB_READ_TIMEOUT_S`, `WEB_ARTIFACTS_ROOT`,
+`WEB_ALLOW_PRIVATE_HOSTS`.
+
+For the LAN deployment, set `WEB_SEARCH_PROVIDER=searxng` and
+`WEB_SEARXNG_BASE_URL=http://10.0.0.102:8088`. No paid-provider credential is required.

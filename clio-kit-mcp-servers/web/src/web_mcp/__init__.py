@@ -9,4 +9,4 @@ It is the seed of CLIO's web tooling and the test instrument for the sandbox
 campaign's egress recording.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"

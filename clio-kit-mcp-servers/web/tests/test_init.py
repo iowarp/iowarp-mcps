@@ -18,7 +18,7 @@ class TestPackageMetadata:
 
     def test_version_value(self):
         """Test that version has expected value."""
-        assert web_mcp.__version__ == "1.0.0"
+        assert web_mcp.__version__ == "1.1.0"
 
     def test_docstring_exists(self):
         """Test that package has a docstring."""

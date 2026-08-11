@@ -1,6 +1,6 @@
 [project]
 name = "web-mcp"
-version = "1.0.0"
+version = "1.1.0"
 description = "Web MCP server providing curated fetch + search tools for agentic web access"
 readme = "README.md"
 requires-python = ">=3.10"
