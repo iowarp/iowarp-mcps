@@ -40,6 +40,7 @@ SERVER_TAGS: dict[str, list[str]] = {
     "chronolog": ["logging", "distributed-systems", "hpc", "time-series"],
     "compression": ["compression", "gzip", "file-operations", "data-management"],
     "darshan": ["io-profiling", "performance-analysis", "hpc", "darshan"],
+    "geo": ["geospatial", "mapping", "geojson", "visualization"],
     "hdf5": ["scientific-computing", "hdf5", "data-analysis", "hierarchical-data"],
     "jarvis": ["pipeline-management", "hpc", "workflow-automation"],
     "lmod": ["environment-modules", "hpc", "lmod", "system-administration"],
@@ -50,8 +51,12 @@ SERVER_TAGS: dict[str, list[str]] = {
     "paraview": ["scientific-visualization", "paraview", "3d-rendering", "hpc"],
     "parquet": ["parquet", "apache-arrow", "columnar-data", "data-analysis"],
     "plot": ["data-visualization", "matplotlib", "plotting", "charts"],
+    "sac": ["seismic", "sac", "waveform", "geophysics"],
+    "scientific-catalog": ["dataset-catalog", "scientific-computing", "discovery"],
     "slurm": ["hpc", "slurm", "job-scheduling", "cluster-management"],
     "spack": ["package-management", "hpc", "scientific-computing"],
+    "terrain": ["terrain", "dem", "point-cloud", "geospatial"],
+    "web": ["web", "fetch", "search", "agentic-web"],
 }
 
 

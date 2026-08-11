@@ -51,5 +51,10 @@
       "description": "Guided search then fetch workflow for researching a topic on the web."
     }
   ],
-  "tags": []
+  "tags": [
+    "web",
+    "fetch",
+    "search",
+    "agentic-web"
+  ]
 }

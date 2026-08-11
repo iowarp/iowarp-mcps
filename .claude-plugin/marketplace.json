@@ -92,7 +92,12 @@
       "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
       "version": "2.3.0",
       "category": "scientific",
-      "keywords": [],
+      "keywords": [
+        "geospatial",
+        "mapping",
+        "geojson",
+        "visualization"
+      ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     },
@@ -250,7 +255,12 @@
       "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
       "version": "2.3.0",
       "category": "scientific",
-      "keywords": [],
+      "keywords": [
+        "seismic",
+        "sac",
+        "waveform",
+        "geophysics"
+      ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     },
@@ -260,7 +270,11 @@
       "description": "Operator-owned scientific dataset discovery for remote agents",
       "version": "1.1.2",
       "category": "scientific",
-      "keywords": [],
+      "keywords": [
+        "dataset-catalog",
+        "scientific-computing",
+        "discovery"
+      ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     },
@@ -299,7 +313,12 @@
       "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
       "version": "2.2.3",
       "category": "scientific",
-      "keywords": [],
+      "keywords": [
+        "terrain",
+        "dem",
+        "point-cloud",
+        "geospatial"
+      ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     },
@@ -309,7 +328,12 @@
       "description": "Web MCP server providing curated fetch + search tools for agentic web access",
       "version": "1.0.0",
       "category": "general",
-      "keywords": [],
+      "keywords": [
+        "web",
+        "fetch",
+        "search",
+        "agentic-web"
+      ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     }

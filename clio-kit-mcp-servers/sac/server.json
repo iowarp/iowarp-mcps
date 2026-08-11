@@ -67,5 +67,10 @@
       "description": "Guided workflow for characterizing a saved earthquake catalog."
     }
   ],
-  "tags": []
+  "tags": [
+    "seismic",
+    "sac",
+    "waveform",
+    "geophysics"
+  ]
 }

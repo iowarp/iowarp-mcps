@@ -51,5 +51,10 @@
       "description": "Guided workflow for assessing site suitability from terrain data."
     }
   ],
-  "tags": []
+  "tags": [
+    "terrain",
+    "dem",
+    "point-cloud",
+    "geospatial"
+  ]
 }

@@ -289,3 +289,4 @@ def test_published_marketplace_categories_carry_real_scope() -> None:
     categories = {plugin["category"] for plugin in marketplace["plugins"]}
 
     assert categories == {"scientific", "general"}
+    assert all(plugin["keywords"] for plugin in marketplace["plugins"])

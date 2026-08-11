@@ -83,5 +83,10 @@
       "description": "Guided workflow: retrieve an ArcGIS layer and render it on a map."
     }
   ],
-  "tags": []
+  "tags": [
+    "geospatial",
+    "mapping",
+    "geojson",
+    "visualization"
+  ]
 }
