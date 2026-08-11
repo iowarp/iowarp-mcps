@@ -18,6 +18,7 @@ class TestSettingsDefaults:
         cfg = Settings()
         assert cfg.brave_api_key is None
         assert cfg.tavily_api_key is None
+        assert cfg.searxng_base_url is None
 
     def test_default_max_bytes_is_5_mib(self):
         cfg = Settings()
@@ -40,6 +41,7 @@ class TestSettingsOverride:
         cfg = Settings(
             search_provider="brave",
             brave_api_key="secret",
+            searxng_base_url="http://10.0.0.102:8088",
             max_bytes=123,
             connect_timeout_s=1.5,
             read_timeout_s=9.0,
@@ -47,6 +49,7 @@ class TestSettingsOverride:
         )
         assert cfg.search_provider == "brave"
         assert cfg.brave_api_key == "secret"
+        assert cfg.searxng_base_url == "http://10.0.0.102:8088"
         assert cfg.max_bytes == 123
         assert cfg.connect_timeout_s == 1.5
         assert cfg.read_timeout_s == 9.0
@@ -54,7 +57,9 @@ class TestSettingsOverride:
 
     def test_override_via_env_prefix(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("WEB_SEARCH_PROVIDER", "tavily")
+        monkeypatch.setenv("WEB_SEARXNG_BASE_URL", "http://10.0.0.102:8088")
         monkeypatch.setenv("WEB_MAX_BYTES", "2048")
         cfg = Settings()
         assert cfg.search_provider == "tavily"
+        assert cfg.searxng_base_url == "http://10.0.0.102:8088"
         assert cfg.max_bytes == 2048

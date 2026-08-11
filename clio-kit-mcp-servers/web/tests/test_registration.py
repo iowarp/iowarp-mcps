@@ -7,7 +7,8 @@ import json
 import pytest
 from fastmcp import Client
 
-from web_mcp.server import mcp
+from web_mcp import server
+from web_mcp.server import Settings, mcp
 
 
 @pytest.mark.asyncio
@@ -28,3 +29,26 @@ async def test_providers_resource_reports_active_backend() -> None:
     payload = json.loads(result[0].text)  # resource contents expose .text (JSON)
     assert payload["active_provider"] == "ddg"  # keyless default
     assert "brave" in payload["available_providers"] and "tavily" in payload["available_providers"]
+    assert "searxng" in payload["available_providers"]
+    assert payload["searxng_configured"] is False
+
+
+@pytest.mark.asyncio
+async def test_providers_resource_reports_configured_searxng(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Discovery reports SearXNG readiness without exposing its deployment URL."""
+    monkeypatch.setattr(
+        server,
+        "settings",
+        Settings(
+            search_provider="searxng",
+            searxng_base_url="http://10.0.0.102:8088",
+        ),
+    )
+    async with Client(mcp) as client:
+        result = await client.read_resource("web://providers")
+    payload = json.loads(result[0].text)
+    assert payload["active_provider"] == "searxng"
+    assert payload["searxng_configured"] is True
+    assert "10.0.0.102" not in result[0].text
