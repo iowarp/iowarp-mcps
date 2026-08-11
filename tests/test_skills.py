@@ -13,12 +13,14 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from clio_kit import get_skills_path, main
+from clio_kit import main
 from clio_kit.skills import (
+    _shipped_root,
     REQUIRED_FRONTMATTER,
     discover_skills,
     find_skills_root,
     format_skill_listing,
+    install_skills,
     parse_frontmatter,
 )
 
@@ -226,7 +228,7 @@ def test_skills_root_resolves_inside_the_source_checkout() -> None:
     assert find_skills_root(REPOSITORY_ROOT / "src" / "clio_kit") == (
         REPOSITORY_ROOT / "skills"
     )
-    assert get_skills_path().is_dir()
+    assert _shipped_root().is_dir()
 
 
 def test_cli_prints_a_skill_and_rejects_an_unknown_one() -> None:
@@ -241,3 +243,48 @@ def test_cli_prints_a_skill_and_rejects_an_unknown_one() -> None:
     assert missing.exit_code == 1
     assert "Unknown skill" in missing.output
     assert name in missing.output
+
+
+def test_the_skills_plugin_manifest_matches_what_ships() -> None:
+    """The plugin is generated, so it cannot drift from the collection."""
+    manifest = json.loads(
+        (REPOSITORY_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )
+
+    assert manifest["name"] == "clio-skills"
+    assert manifest["skills"] == "./skills/", (
+        "must point at the repository's skills directory, the documented layout"
+    )
+    for name, _ in SKILLS:
+        assert name in manifest["description"]
+
+
+def test_the_marketplace_offers_the_skills_plugin() -> None:
+    """`/plugin install` has to be able to reach the workflows, not just servers."""
+    marketplace = json.loads(
+        (REPOSITORY_ROOT / ".claude-plugin" / "marketplace.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    entry = next(p for p in marketplace["plugins"] if p["name"] == "clio-skills")
+
+    assert entry["source"] == "./"
+    assert entry["category"] == "workflows"
+
+
+def test_installing_replaces_a_stale_copy_rather_than_merging(tmp_path: Path) -> None:
+    """An upgrade must not leave a file from the previous release behind."""
+    destination = tmp_path / "skills"
+    first = install_skills(REPOSITORY_ROOT / "skills", destination)
+    stale = destination / first[0] / "LEFTOVER.md"
+    stale.write_text("from an older release", encoding="utf-8")
+
+    second = install_skills(REPOSITORY_ROOT / "skills", destination)
+
+    assert sorted(second) == sorted(first)
+    assert not stale.exists()
+    assert (destination / first[0] / "SKILL.md").is_file()
+
+
+def test_installing_into_an_empty_collection_reports_nothing(tmp_path: Path) -> None:
+    assert install_skills(tmp_path / "absent", tmp_path / "dest") == []

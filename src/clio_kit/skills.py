@@ -17,6 +17,8 @@ Each SKILL.md opens with YAML-style frontmatter carrying at least ``name`` and
 import sys
 from pathlib import Path
 
+import click
+
 SKILL_FILENAME = "SKILL.md"
 REQUIRED_FRONTMATTER = ("name", "description", "category", "servers", "tools")
 
@@ -118,3 +120,83 @@ def format_skill_listing(skills_root: Path) -> list[str]:
     lines.append("")
     lines.append("Usage: clio-kit skill <skill-name>")
     return lines
+
+
+SKILL_INSTALL_SCOPES = {
+    "user": Path.home() / ".claude" / "skills",
+    "project": Path(".claude") / "skills",
+}
+
+
+def format_install_result(skills_root: Path, scope: str) -> list[str]:
+    """Install for one scope and render the outcome as output lines."""
+    destination = SKILL_INSTALL_SCOPES[scope].expanduser().resolve()
+    installed = install_skills(skills_root, destination)
+    if not installed:
+        return ["No skills found to install."]
+    return [f"Installed {len(installed)} skills to {destination}:"] + [
+        f"  - {name}" for name in installed
+    ]
+
+
+def install_skills(skills_root: Path, destination: Path) -> list[str]:
+    """Copy the shipped skills to where an agent discovers them.
+
+    Claude Code reads skills from ~/.claude/skills or ./.claude/skills; the kit
+    ships them inside its wheel, so they are invisible there until copied. Each
+    skill is replaced wholesale rather than merged, so a stale file from an
+    older release cannot survive an upgrade.
+    """
+    import shutil
+
+    skills = discover_skills(skills_root)
+    if not skills:
+        return []
+    destination.mkdir(parents=True, exist_ok=True)
+    installed: list[str] = []
+    for name, manifest in skills.items():
+        target = destination / name
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(manifest.parent, target)
+        installed.append(name)
+    return installed
+
+
+def _shipped_root() -> Path:
+    """Resolve the collection relative to this module's own install location."""
+    return find_skills_root(Path(__file__).resolve().parent)
+
+
+@click.command("skills")
+def list_skills_command() -> None:
+    """List the shipped cross-server skills, grouped by category."""
+    click.echo("\n".join(format_skill_listing(_shipped_root())))
+
+
+@click.command("skill")
+@click.argument("skill_name")
+def show_skill_command(skill_name: str) -> None:
+    """Print one skill's SKILL.md to stdout."""
+    skills = discover_skills(_shipped_root())
+    manifest = skills.get(skill_name.lower())
+    if manifest is None:
+        click.echo(f"Error: Unknown skill '{skill_name}'")
+        click.echo(f"Available skills: {', '.join(skills) or 'none'}")
+        sys.exit(1)
+    click.echo(manifest.read_text(encoding="utf-8"))
+
+
+@click.command("skills-install")
+@click.option(
+    "--scope",
+    type=click.Choice(sorted(SKILL_INSTALL_SCOPES)),
+    default="user",
+    help="Install for this user (~/.claude/skills) or this project (.claude/skills).",
+)
+def install_skills_command(scope: str) -> None:
+    """Copy the shipped skills to where an agent discovers them."""
+    click.echo("\n".join(format_install_result(_shipped_root(), scope)))
+
+
+SKILL_COMMANDS = (list_skills_command, show_skill_command, install_skills_command)

@@ -86,9 +86,12 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
             encoding="utf-8"
         )
     )
+    # clio-skills is a kit-level plugin carrying cross-server workflows, not a
+    # server, so it is excluded from the per-server coordinate comparison below.
     marketplace_plugins = {
         plugin["name"].removeprefix("clio-"): plugin
         for plugin in marketplace["plugins"]
+        if plugin["name"] != "clio-skills"
     }
     gemini_extension = json.loads(
         (repository_root / "gemini-extension.json").read_text(encoding="utf-8")

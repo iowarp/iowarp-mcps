@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from clio_kit.mcp_contracts import generate_user_contract_artifacts
+from clio_kit.skills import parse_frontmatter as parse_skill_frontmatter
 
 try:
     import tomllib
@@ -260,6 +261,56 @@ def write_claude_plugin_files(
     _write_json(server_dir / ".mcp.json", mcp_json)
 
 
+def read_shipped_skills(repo_root: Path) -> list[dict[str, str]]:
+    """Read the skill collection's frontmatter, sorted by name.
+
+    Skills are cross-server by construction, so they cannot belong to any one
+    server's plugin; they ship as a single kit-level plugin instead.
+    """
+    skills_root = repo_root / "skills"
+    collected: list[dict[str, str]] = []
+    for manifest in sorted(skills_root.glob("*/SKILL.md")):
+        fields = parse_skill_frontmatter(manifest.read_text(encoding="utf-8"))
+        missing = [
+            key for key in ("name", "description", "category") if not fields.get(key)
+        ]
+        if missing:
+            raise ValueError(f"{manifest} is missing frontmatter: {', '.join(missing)}")
+        if fields["name"] != manifest.parent.name:
+            raise ValueError(
+                f"{manifest} declares name {fields['name']!r} "
+                f"but lives in {manifest.parent.name!r}"
+            )
+        collected.append(fields)
+    return collected
+
+
+def build_skills_plugin_json(
+    skills: list[dict[str, str]],
+    *,
+    pypi_version: str,
+) -> dict[str, Any]:
+    """Build the kit-level plugin manifest that carries the skill collection.
+
+    `skills` points Claude Code at the repository's top-level directory, which
+    is already the documented plugin layout (<plugin root>/skills/<name>/
+    SKILL.md), so installing this plugin registers every shipped workflow.
+    """
+    categories = sorted({skill["category"] for skill in skills})
+    return {
+        "name": "clio-skills",
+        "description": (
+            "Cross-server workflows for CLIO Kit's MCP servers: "
+            + ", ".join(skill["name"] for skill in skills)
+        ),
+        "version": pypi_version,
+        "skills": "./skills/",
+        "keywords": ["skills", "workflows", *(c.lower() for c in categories)],
+        "license": "BSD-3-Clause",
+        "repository": REPO_URL,
+    }
+
+
 def build_marketplace_json(
     server_entries: list[dict[str, Any]],
     *,
@@ -417,6 +468,25 @@ def generate_all(mcps_dir: str) -> None:
         )
 
         generated.append(server_name)
+
+    # Kit-level skills plugin: one entry carrying every cross-server workflow
+    skills = read_shipped_skills(repo_root)
+    if skills:
+        skills_plugin = build_skills_plugin_json(skills, pypi_version=pypi_version)
+        _write_json(repo_root / ".claude-plugin" / "plugin.json", skills_plugin)
+        marketplace_plugins.append(
+            {
+                "name": skills_plugin["name"],
+                "source": "./",
+                "description": skills_plugin["description"],
+                "version": pypi_version,
+                "category": "workflows",
+                "keywords": skills_plugin["keywords"],
+                "license": "BSD-3-Clause",
+                "repository": REPO_URL,
+            }
+        )
+        print(f"  Wrote .claude-plugin/plugin.json ({len(skills)} skills)")
 
     # Claude Code marketplace manifest
     marketplace = build_marketplace_json(

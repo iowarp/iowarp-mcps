@@ -22,11 +22,7 @@ from clio_kit.env_cache import (
     maintain_after_build,
     measure_cache_budget,
 )
-from clio_kit.skills import (
-    discover_skills,
-    find_skills_root,
-    format_skill_listing,
-)
+from clio_kit.skills import SKILL_COMMANDS
 from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
@@ -120,11 +116,6 @@ def _distribution_shared_data_roots(shared_name: str) -> list[Path]:
 def _is_servers_root(path: Path) -> bool:
     """Return whether a directory contains at least one embedded server project."""
     return path.is_dir() and any(path.glob("*/pyproject.toml"))
-
-
-def get_skills_path() -> Path:
-    """Return the shipped skill collection (source checkout or installed wheel)."""
-    return find_skills_root(MODULE_DIR)
 
 
 def get_search_path():
@@ -726,26 +717,6 @@ def search(args):
         sys.exit(1)
 
 
-@main.command("skills")
-def list_skills() -> None:
-    """List the shipped cross-server skills."""
-    for line in format_skill_listing(get_skills_path()):
-        click.echo(line)
-
-
-@main.command("skill")
-@click.argument("skill_name")
-def show_skill(skill_name: str) -> None:
-    """Print one skill's SKILL.md to stdout."""
-    skills = discover_skills(get_skills_path())
-    manifest = skills.get(skill_name.lower())
-    if manifest is None:
-        click.echo(f"Error: Unknown skill '{skill_name}'")
-        click.echo(f"Available skills: {', '.join(skills) or 'none'}")
-        sys.exit(1)
-    click.echo(manifest.read_text(encoding="utf-8"))
-
-
 @main.group("cache")
 def cache_group() -> None:
     """Inspect and reclaim the private MCP runtime cache."""
@@ -846,6 +817,10 @@ def cache_status() -> None:
             sort_keys=True,
         )
     )
+
+
+for _skill_command in SKILL_COMMANDS:
+    main.add_command(_skill_command)
 
 
 def cli():

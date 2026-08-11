@@ -89,7 +89,7 @@ RATCHET_BASELINE: dict[str, int] = {
     # `clio_kit` package (the `clio-kit` launcher CLI itself) entirely --
     # these three were never scanned. Baselined at their measured counts, not
     # split this wave.
-    "src/clio_kit/__init__.py": 857,
+    "src/clio_kit/__init__.py": 832,
     "src/clio_kit/mcp_contracts.py": 921,
     "src/clio_kit/env_cache.py": 843,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,

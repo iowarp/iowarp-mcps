@@ -1,0 +1,16 @@
+{
+  "name": "clio-skills",
+  "description": "Cross-server workflows for CLIO Kit's MCP servers: analyzing-scientific-datasets, diagnosing-io-performance, running-spack-packages-with-jarvis, surveying-research-literature, tracking-cluster-runs",
+  "version": "2.8.0",
+  "skills": "./skills/",
+  "keywords": [
+    "skills",
+    "workflows",
+    "data analysis",
+    "hpc",
+    "performance",
+    "research"
+  ],
+  "license": "BSD-3-Clause",
+  "repository": "https://github.com/iowarp/clio-kit"
+}
