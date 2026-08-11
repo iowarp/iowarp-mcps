@@ -11,7 +11,7 @@ async def test_all_tools_have_compact_titles() -> None:
     async with Client(mcp) as client:
         tools = await client.list_tools()
 
-    assert len(tools) == 3
+    assert len(tools) == 5
     for tool in tools:
         assert tool.title, f"{tool.name} is missing a title"
         assert len(tool.title) <= 24, f"{tool.name} title too long: {tool.title!r}"
