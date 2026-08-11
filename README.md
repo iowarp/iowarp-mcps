@@ -6,7 +6,6 @@
 <!-- mcp-name: io.github.iowarp/compression-mcp -->
 <!-- mcp-name: io.github.iowarp/darshan-mcp -->
 <!-- mcp-name: io.github.iowarp/geo-mcp -->
-<!-- mcp-name: io.github.iowarp/geojson-mcp -->
 <!-- mcp-name: io.github.iowarp/hdf5-mcp -->
 <!-- mcp-name: io.github.iowarp/jarvis-mcp -->
 <!-- mcp-name: io.github.iowarp/lmod-mcp -->
@@ -247,8 +246,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`chronolog`** | 2.0.1 | Logging | Log and retrieve data from ChronoLog | `clio-kit mcp-server chronolog` |
 | **`compression`** | 2.2.3 | Utilities | File compression with gzip | `clio-kit mcp-server compression` |
 | **`darshan`** | 2.2.3 | Performance | I/O performance trace analysis | `clio-kit mcp-server darshan` |
-| **`geo`** | 2.2.3 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
-| **`geojson`** | 2.2.3 | Geospatial | Inspect, validate, and summarize GeoJSON | `clio-kit mcp-server geojson` |
+| **`geo`** | 2.3.0 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
 | **`hdf5`** | 2.2.3 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `clio-kit mcp-server hdf5` |
 | **`jarvis`** | 3.6.2 | Workflow | Durable pipeline, bounded package discovery, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
 | **`lmod`** | 2.2.3 | Environment | Environment module management | `clio-kit mcp-server lmod` |

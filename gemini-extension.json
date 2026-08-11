@@ -44,13 +44,6 @@
         "geo"
       ]
     },
-    "clio-geojson": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "geojson"
-      ]
-    },
     "clio-hdf5": {
       "command": "clio-kit",
       "args": [

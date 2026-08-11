@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/geo-mcp",
   "title": "CLIO Geo",
   "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -39,7 +39,7 @@
     },
     {
       "name": "bounding_box",
-      "description": "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON features (inline or file path), optionally padded by buffer_km. A deterministic geometry op for deriving an analysis region from a fire perimeter."
+      "description": "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of the VALID geometry in GeoJSON features (inline or file path), optionally padded by pad_km and rounded to 4 decimal places. Features whose geometry cannot be parsed are skipped, so feature_count reports valid geometries only. Use this to derive an analysis region for mapping or a spatial query; use feature_bbox instead to measure a document's raw coordinate extent including malformed features."
     },
     {
       "name": "query_arcgis_features",
@@ -52,6 +52,22 @@
     {
       "name": "filter_points_by_radius",
       "description": "Filter/rank any table of points by great-circle distance to a center. Reads a CSV (or GeoJSON points) of locations, computes the haversine distance from (center_lat, center_lon) to each row, and returns the rows within radius_km sorted ascending by distance, each annotated with distance_km. Latitude/longitude columns are auto-detected from common names (latitude/lat, longitude/lon/long) when not given. Domain-neutral: works for sensors, sites, cities, samples, or any lon/lat table."
+    },
+    {
+      "name": "inspect_geojson",
+      "description": "Inspect a GeoJSON document and report its geometry types and counts, feature count, property keys (schema), bounding box [min_lon, min_lat, max_lon, max_lat], CRS if present, and total vertex count. Reads the document as written, without a geometry engine, so it reports what the file actually contains. Accepts a file path or inline GeoJSON."
+    },
+    {
+      "name": "validate_geojson",
+      "description": "Validate the structural well-formedness of a GeoJSON document: that the top-level type is recognized and every geometry's type and coordinates are well-formed (correct nesting depth, finite numeric positions). Returns {valid, errors}. Run this before a rendering or overlap tool, which silently skip geometry they cannot parse."
+    },
+    {
+      "name": "summarize_geojson",
+      "description": "Produce a compact human-readable summary of a GeoJSON document: counts per geometry type, bounding box, property keys, and a few sample feature property sets. Accepts a file path or inline GeoJSON."
+    },
+    {
+      "name": "feature_bbox",
+      "description": "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of EVERY coordinate in a GeoJSON document, without validating geometry and without rounding. feature_count counts all features in the document, including malformed ones. Use this to inspect a file's raw extent; use bounding_box instead for the extent of valid geometry, padded and rounded, when feeding a map render or spatial query."
     }
   ],
   "resources": [

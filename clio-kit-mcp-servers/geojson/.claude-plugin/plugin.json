@@ -1,5 +1,0 @@
-{
-  "name": "clio-geojson",
-  "description": "MCP server for inspecting, validating, and summarizing GeoJSON documents (stdlib only)",
-  "version": "2.2.3"
-}

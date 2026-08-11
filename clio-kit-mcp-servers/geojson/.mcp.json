@@ -1,9 +1,0 @@
-{
-  "clio-geojson": {
-    "command": "clio-kit",
-    "args": [
-      "mcp-server",
-      "geojson"
-    ]
-  }
-}
