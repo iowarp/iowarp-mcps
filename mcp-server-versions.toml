@@ -8,7 +8,7 @@ schema-version = 1
 # change, add it here WITH a real version bump under [servers] in the same
 # PR, then remove it again once published.
 [mcp-registry-release]
-publish = ["geo", "lmod", "sac"]
+publish = ["geo", "lmod", "seismology"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
@@ -43,8 +43,8 @@ parallel-sort = "2.2.3"
 paraview = "2.2.3"
 parquet = "2.2.3"
 plot = "2.2.3"
-sac = "2.3.0"
 scientific-catalog = "1.1.2"
+seismology = "2.3.0"
 slurm = "3.0.0"
 spack = "2.1.0"
 terrain = "2.2.3"

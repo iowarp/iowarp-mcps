@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""SAC MCP server: seismology on files the user already has on disk.
+"""Seismology MCP server: waveforms and earthquake catalogs already on disk.
 
 Two families of tool. Waveforms: inspect a ``.sac`` file or a TAR archive of
 SAC files, compute per-trace amplitude statistics, and plot traces to a PNG.
 Earthquake catalogs: compute sequence statistics (Mc, Gutenberg-Richter
 b-value, Bath gap, Omori decay) and render the three-panel sequence figure --
-ported from the seismic MCP server when it merged into sac (clio-kit #357).
+ported from the seismic MCP server when it merged in (clio-kit #357).
 
 It retrieves nothing; it only reads local files.
 """
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 mcp: FastMCP = FastMCP(
-    "sac",
+    "seismology",
     instructions=(
         "Analyzes SAC seismic-waveform files that already exist on disk. Accepts a "
         "single .sac file or a .tar/.tar.gz/.tgz archive containing SAC files. Use "
@@ -301,8 +301,8 @@ async def plot_sequence_tool(
         raise ToolError(f"Could not plot sequence: {exc}") from exc
 
 
-@mcp.resource("sac://capabilities")
-def sac_capabilities() -> dict[str, Any]:
+@mcp.resource("seismology://capabilities")
+def seismology_capabilities() -> dict[str, Any]:
     """What this server can do and the inputs it accepts."""
     return {
         "waveform_tools": [

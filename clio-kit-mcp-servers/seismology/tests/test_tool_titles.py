@@ -3,7 +3,7 @@
 import pytest
 from fastmcp import Client
 
-from sac_mcp.server import mcp
+from seismology_mcp.server import mcp
 
 
 @pytest.mark.asyncio

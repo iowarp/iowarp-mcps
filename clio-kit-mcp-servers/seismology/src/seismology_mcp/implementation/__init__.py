@@ -1,9 +1,8 @@
-"""Implementation helpers for the SAC MCP server.
+"""Implementation helpers for the seismology MCP server.
 
 Two families live here. The ``sac_io``/``analysis`` modules read SAC waveform
 files and archives; the ``catalog_*`` modules analyse and plot earthquake
-catalogs, ported from the seismic MCP server when it merged into sac
-(clio-kit #357).
+catalogs, ported from the seismic MCP server when it merged in (clio-kit #357).
 """
 
 from .analysis import compute_trace_statistics, inspect_archive, plot_traces

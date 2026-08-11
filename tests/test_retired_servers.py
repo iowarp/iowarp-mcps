@@ -40,5 +40,14 @@ def test_launcher_prints_the_notice_and_exits_nonzero() -> None:
     result = CliRunner().invoke(main, ["mcp-server", "seismic"])
 
     assert result.exit_code == 1
-    assert "merged into 'sac'" in result.output
+    assert "provided by 'seismology'" in result.output
     assert "analyze_sequence" in result.output
+
+
+def test_the_renamed_server_is_reachable_under_its_old_name() -> None:
+    """sac was renamed, not merged away; the notice must say so."""
+    result = CliRunner().invoke(main, ["mcp-server", "sac"])
+
+    assert result.exit_code == 1
+    assert "renamed" in result.output
+    assert "clio-kit mcp-server seismology" in result.output

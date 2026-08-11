@@ -14,9 +14,15 @@ RETIRED_SERVERS: dict[str, tuple[str, str]] = {
         "Its tools (inspect_geojson, validate_geojson, summarize_geojson, "
         "feature_bbox) ship in geo under the same names.",
     ),
+    "sac": (
+        "seismology",
+        "It was renamed: SAC is a waveform file format, but the server also "
+        "analyses earthquake catalogs. Every tool keeps its name.",
+    ),
     "seismic": (
-        "sac",
-        "Its tools (analyze_sequence, plot_sequence) ship in sac under the same names.",
+        "seismology",
+        "Its tools (analyze_sequence, plot_sequence) ship in seismology under "
+        "the same names.",
     ),
 }
 
@@ -28,9 +34,9 @@ def retirement_notice(server_name: str) -> str | None:
         return None
     successor, detail = entry
     return (
-        f"'{server_name}' merged into '{successor}' in clio-kit 2.8. {detail} "
-        f"Run `clio-kit mcp-server {successor}` and update any client config "
-        f"that still names '{server_name}'."
+        f"'{server_name}' is provided by '{successor}' as of clio-kit 2.8. "
+        f"{detail} Run `clio-kit mcp-server {successor}` and update any client "
+        f"config that still names '{server_name}'."
     )
 
 

@@ -114,18 +114,18 @@
         "plot"
       ]
     },
-    "clio-sac": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "sac"
-      ]
-    },
     "clio-scientific-catalog": {
       "command": "clio-kit",
       "args": [
         "mcp-server",
         "scientific-catalog"
+      ]
+    },
+    "clio-seismology": {
+      "command": "clio-kit",
+      "args": [
+        "mcp-server",
+        "seismology"
       ]
     },
     "clio-slurm": {

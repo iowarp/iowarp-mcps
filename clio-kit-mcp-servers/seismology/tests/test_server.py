@@ -8,7 +8,7 @@ import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from sac_mcp.server import mcp
+from seismology_mcp.server import mcp
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_resource_and_prompt_registered() -> None:
     async with Client(mcp) as client:
         resources = {str(r.uri) for r in await client.list_resources()}
         prompts = {p.name for p in await client.list_prompts()}
-    assert "sac://capabilities" in resources
+    assert "seismology://capabilities" in resources
     assert "analyze_sac_archive" in prompts
 
 

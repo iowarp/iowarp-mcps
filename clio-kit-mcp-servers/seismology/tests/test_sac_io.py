@@ -8,8 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from sac_mcp.implementation import SacAnalysisError, load_sac_traces, trace_statistics
-from sac_mcp.implementation.sac_io import (
+from seismology_mcp.implementation import (
+    SacAnalysisError,
+    load_sac_traces,
+    trace_statistics,
+)
+from seismology_mcp.implementation.sac_io import (
     clean_positive_int,
     iter_archive_sac_members,
     member_phase,

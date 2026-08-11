@@ -16,7 +16,7 @@
 <!-- mcp-name: io.github.iowarp/paraview-mcp -->
 <!-- mcp-name: io.github.iowarp/parquet-mcp -->
 <!-- mcp-name: io.github.iowarp/plot-mcp -->
-<!-- mcp-name: io.github.iowarp/sac-mcp -->
+<!-- mcp-name: io.github.iowarp/seismology-mcp -->
 <!-- mcp-name: io.github.iowarp/scientific-catalog-mcp -->
 <!-- mcp-name: io.github.iowarp/slurm-mcp -->
 <!-- mcp-name: io.github.iowarp/spack-mcp -->
@@ -256,7 +256,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`paraview`** | 2.2.3 | Visualization | Scientific 3D visualization and analysis | `clio-kit mcp-server paraview` |
 | **`parquet`** | 2.2.3 | Data I/O | Read Parquet file columns | `clio-kit mcp-server parquet` |
 | **`plot`** | 2.2.3 | Visualization | Generate plots from CSV data | `clio-kit mcp-server plot` |
-| **`sac`** | 2.3.0 | Seismology | Analyze SAC waveforms and archives | `clio-kit mcp-server sac` |
+| **`seismology`** | 2.3.0 | Seismology | Analyze SAC waveforms and archives | `clio-kit mcp-server seismology` |
 | **`scientific-catalog`** | 1.1.2 | Discovery | Operator-owned scientific dataset discovery | `clio-kit mcp-server scientific-catalog` |
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
 | **`spack`** | 2.1.0 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |

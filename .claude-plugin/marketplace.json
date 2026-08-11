@@ -250,21 +250,6 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
-      "name": "clio-sac",
-      "source": "./clio-kit-mcp-servers/sac",
-      "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
-      "version": "2.3.0",
-      "category": "scientific",
-      "keywords": [
-        "seismic",
-        "sac",
-        "waveform",
-        "geophysics"
-      ],
-      "license": "BSD-3-Clause",
-      "repository": "https://github.com/iowarp/clio-kit"
-    },
-    {
       "name": "clio-scientific-catalog",
       "source": "./clio-kit-mcp-servers/scientific-catalog",
       "description": "Operator-owned scientific dataset discovery for remote agents",
@@ -274,6 +259,22 @@
         "dataset-catalog",
         "scientific-computing",
         "discovery"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-seismology",
+      "source": "./clio-kit-mcp-servers/seismology",
+      "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
+      "version": "2.3.0",
+      "category": "scientific",
+      "keywords": [
+        "seismology",
+        "earthquake",
+        "waveform",
+        "sac",
+        "catalog"
       ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"

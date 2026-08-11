@@ -480,29 +480,6 @@ export const mcpData = {
     ],
     "slug": "plot"
   },
-  "sac": {
-    "name": "Sac",
-    "category": "Analysis & Visualization",
-    "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
-    "icon": "\ud83d\udd27",
-    "actions": [
-      "inspect_archive",
-      "compute_trace_statistics",
-      "plot_traces",
-      "analyze_sequence",
-      "plot_sequence"
-    ],
-    "stats": {
-      "version": "2.3.0",
-      "updated": "2026-07-22"
-    },
-    "platforms": [
-      "claude",
-      "cursor",
-      "vscode"
-    ],
-    "slug": "sac"
-  },
   "scientific_catalog": {
     "name": "Scientific-Catalog",
     "category": "Data Processing",
@@ -522,6 +499,29 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "scientific_catalog"
+  },
+  "seismology": {
+    "name": "Seismology",
+    "category": "Analysis & Visualization",
+    "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "inspect_archive",
+      "compute_trace_statistics",
+      "plot_traces",
+      "analyze_sequence",
+      "plot_sequence"
+    ],
+    "stats": {
+      "version": "2.3.0",
+      "updated": "2026-07-22"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "seismology"
   },
   "slurm": {
     "name": "Slurm",

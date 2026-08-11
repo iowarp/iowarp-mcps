@@ -1,9 +1,9 @@
 {
-  "clio-sac": {
+  "clio-seismology": {
     "command": "clio-kit",
     "args": [
       "mcp-server",
-      "sac"
+      "seismology"
     ]
   }
 }
