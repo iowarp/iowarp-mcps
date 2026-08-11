@@ -2,12 +2,21 @@
 Base utilities for ArXiv search capabilities.
 """
 
+import asyncio
 import httpx
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Any, Union, cast
 import logging
 
 logger = logging.getLogger(__name__)
+
+# ArXiv's public API rate-limits aggressively under concurrent load (HTTP 429).
+# A well-behaved client retries a 429 with backoff rather than failing the
+# caller's request outright -- this is standard practice for this API, not a
+# test-only accommodation. Bounded (a few seconds worst case) so a genuinely
+# sustained block still surfaces as a real failure instead of hanging.
+_RATE_LIMIT_MAX_ATTEMPTS = 4
+_RATE_LIMIT_BACKOFF_SECONDS = 1.0
 
 
 def parse_arxiv_entry(
@@ -95,10 +104,7 @@ async def execute_arxiv_query(
     base_url = "https://export.arxiv.org/api/query"
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            logger.info(f"Executing ArXiv query with params: {params}")
-            response = await client.get(base_url, params=params)
-            response.raise_for_status()
+        response = await _get_with_rate_limit_retry(base_url, params)
 
         # Parse XML response
         root = ET.fromstring(response.content)
@@ -126,6 +132,56 @@ async def execute_arxiv_query(
     except Exception as e:
         logger.error(f"Unexpected error in ArXiv query: {str(e)}")
         raise Exception(f"ArXiv query failed: {str(e)}")
+
+
+async def _get_with_rate_limit_retry(
+    base_url: str, params: Dict[str, Any]
+) -> httpx.Response:
+    """Issue the ArXiv API GET, retrying a 429 response with bounded backoff.
+
+    Every other outcome (success, timeout, a non-429 HTTP error, a connection
+    error) is returned or raised on the first attempt unchanged -- only a 429
+    is treated as transient and retried, honoring ``Retry-After`` when the API
+    sends one.
+    """
+    last_error: httpx.HTTPStatusError | None = None
+    for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            logger.info(f"Executing ArXiv query with params: {params}")
+            response = await client.get(base_url, params=params)
+            if response.status_code != 429:
+                response.raise_for_status()
+                return response
+            last_error = httpx.HTTPStatusError(
+                f"Client error '429 Too Many Requests' for url '{response.url}'",
+                request=response.request,
+                response=response,
+            )
+        if attempt + 1 >= _RATE_LIMIT_MAX_ATTEMPTS:
+            break
+        retry_after = _parse_retry_after(response.headers.get("Retry-After"))
+        delay = (
+            retry_after
+            if retry_after is not None
+            else (_RATE_LIMIT_BACKOFF_SECONDS * (2**attempt))
+        )
+        logger.warning(
+            f"ArXiv API rate-limited (429); retrying in {delay:.1f}s "
+            f"(attempt {attempt + 1}/{_RATE_LIMIT_MAX_ATTEMPTS})"
+        )
+        await asyncio.sleep(delay)
+    assert last_error is not None
+    raise last_error
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse a numeric ``Retry-After`` header value in seconds, if present."""
+    if value is None:
+        return None
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        return None
 
 
 def generate_bibtex(

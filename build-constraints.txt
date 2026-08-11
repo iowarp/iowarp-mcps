@@ -1,0 +1,17 @@
+# Build-time constraints for `uv build` (passed via --build-constraints),
+# NOT a runtime/dependency constraint -- see .github/workflows/publish.yml.
+#
+# hatchling 1.32.0 (released 2026-08-11) bumped its default emitted wheel
+# Metadata-Version from 2.4 to 2.5:
+# https://github.com/pypa/hatch/blob/master/docs/history/hatchling.md
+# The `twine==6.2.0` version pinned for `twine check` in publish.yml bundles
+# pkginfo 1.12.1.2 (the latest published pkginfo as of this pin), which does
+# not recognize Metadata-Version 2.5 and rejects every wheel hatchling>=1.32.0
+# produces with `InvalidDistribution: Invalid distribution metadata: '2.5' is
+# not a valid metadata version`. No released twine/pkginfo understands 2.5 yet
+# (verified against the latest published versions of both, 2026-08-11).
+#
+# Pin hatchling below the breaking release until pkginfo adds Metadata-Version
+# 2.5 support (https://pypi.org/project/pkginfo/) and twine picks it up, then
+# delete this file and the --build-constraints flags that reference it.
+hatchling<1.32.0

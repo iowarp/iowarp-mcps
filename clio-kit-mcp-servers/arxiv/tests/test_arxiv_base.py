@@ -391,3 +391,114 @@ class TestGenerateBibtex:
             assert (
                 f"@article{{{expected_id}," in result or "@article{unknown," in result
             )
+
+
+class TestRateLimitRetry:
+    """execute_arxiv_query retries a 429 with bounded backoff (real ArXiv
+    rate-limit behavior, not a test-only accommodation -- see arxiv_base.py's
+    _get_with_rate_limit_retry). asyncio.sleep is patched to a no-op so these
+    stay instant; the retry COUNT and terminal behavior are what's verified.
+    """
+
+    @staticmethod
+    def _feed_response() -> MagicMock:
+        content = """
+        <feed xmlns="http://www.w3.org/2005/Atom">
+            <entry>
+                <id>http://arxiv.org/abs/2401.12345v1</id>
+                <title>Test Paper</title>
+            </entry>
+        </feed>
+        """
+        response = MagicMock()
+        response.status_code = 200
+        response.content = content.encode()
+        response.raise_for_status.return_value = None
+        return response
+
+    @staticmethod
+    def _rate_limited_response() -> MagicMock:
+        response = MagicMock()
+        response.status_code = 429
+        response.url = "https://export.arxiv.org/api/query"
+        response.request = MagicMock()
+        response.headers = {}
+        return response
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_retries_once_on_429_then_succeeds(self, mock_sleep):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [
+                self._rate_limited_response(),
+                self._feed_response(),
+            ]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            result = await execute_arxiv_query(
+                {"search_query": "test", "max_results": 1}
+            )
+
+            assert len(result) == 1
+            assert mock_client.get.call_count == 2
+            mock_sleep.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_exhausts_retries_and_raises_429(self, mock_sleep):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [
+                self._rate_limited_response() for _ in range(4)
+            ]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            with pytest.raises(Exception, match="ArXiv API error: 429"):
+                await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            assert mock_client.get.call_count == 4
+            assert mock_sleep.await_count == 3
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_honors_retry_after_header(self, mock_sleep):
+        rate_limited = self._rate_limited_response()
+        rate_limited.headers = {"Retry-After": "2.5"}
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = [rate_limited, self._feed_response()]
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            mock_sleep.assert_awaited_once_with(2.5)
+
+    @pytest.mark.asyncio
+    @patch("arxiv_mcp.capabilities.arxiv_base.asyncio.sleep", new_callable=AsyncMock)
+    async def test_non_429_status_is_not_retried(self, mock_sleep):
+        """A non-429 error fails immediately -- only 429 is treated as transient."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            error_response = MagicMock()
+            error_response.status_code = 500
+
+            from httpx import HTTPStatusError, Request
+
+            error_response.raise_for_status.side_effect = HTTPStatusError(
+                "Server Error",
+                request=MagicMock(spec=Request),
+                response=error_response,
+            )
+            mock_client.get.return_value = error_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client_class.return_value.__aexit__.return_value = None
+
+            with pytest.raises(Exception, match="ArXiv API error: 500"):
+                await execute_arxiv_query({"search_query": "test", "max_results": 1})
+
+            assert mock_client.get.call_count == 1
+            mock_sleep.assert_not_awaited()

@@ -136,6 +136,8 @@ jobs:
 
     - name: Build every root-wheel server package
       shell: bash
+      env:
+        UV_BUILD_CONSTRAINT: ${{ github.workspace }}/build-constraints.txt
       run: |
         server_dist="$(mktemp -d)"
         trap 'rm -rf "$server_dist"' EXIT
@@ -232,6 +234,8 @@ jobs:
         grep "version =" pyproject.toml
     
     - name: Build package
+      env:
+        UV_BUILD_CONSTRAINT: ${{ github.workspace }}/build-constraints.txt
       run: |
         uv build
         uvx --from 'twine==6.2.0' twine check dist/*
