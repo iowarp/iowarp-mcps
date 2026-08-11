@@ -125,147 +125,6 @@ async def test_module_show_tool_error():
 
 
 @pytest.mark.asyncio
-async def test_module_load_tool():
-    """Test module_load tool."""
-    mock_result = {
-        "success": True,
-        "results": [
-            {
-                "module": "gcc/11.2.0",
-                "success": True,
-                "message": "Successfully loaded gcc/11.2.0",
-            },
-            {
-                "module": "python/3.9.0",
-                "success": True,
-                "message": "Successfully loaded python/3.9.0",
-            },
-        ],
-    }
-
-    with patch(
-        "lmod_mcp.server.lmod_handler.load_modules", new_callable=AsyncMock
-    ) as mock_handler:
-        mock_handler.return_value = mock_result
-
-        result = await server.module_load_tool(["gcc/11.2.0", "python/3.9.0"])
-
-        assert result == mock_result
-        mock_handler.assert_called_once_with(["gcc/11.2.0", "python/3.9.0"])
-
-
-@pytest.mark.asyncio
-async def test_module_load_tool_error():
-    """Test module_load tool raises ToolError on failure."""
-    mock_result = {
-        "success": False,
-        "results": [
-            {
-                "module": "bad/1.0",
-                "success": False,
-                "error": "Module bad/1.0 not found",
-            }
-        ],
-    }
-
-    with patch(
-        "lmod_mcp.server.lmod_handler.load_modules", new_callable=AsyncMock
-    ) as mock_handler:
-        mock_handler.return_value = mock_result
-
-        with pytest.raises(ToolError, match="Failed to load modules"):
-            await server.module_load_tool(["bad/1.0"])
-
-
-@pytest.mark.asyncio
-async def test_module_unload_tool():
-    """Test module_unload tool."""
-    mock_result = {
-        "success": True,
-        "results": [
-            {
-                "module": "python/3.9.0",
-                "success": True,
-                "message": "Successfully unloaded python/3.9.0",
-            }
-        ],
-    }
-
-    with patch(
-        "lmod_mcp.server.lmod_handler.unload_modules", new_callable=AsyncMock
-    ) as mock_handler:
-        mock_handler.return_value = mock_result
-
-        result = await server.module_unload_tool(["python/3.9.0"])
-
-        assert result == mock_result
-        mock_handler.assert_called_once_with(["python/3.9.0"])
-
-
-@pytest.mark.asyncio
-async def test_module_unload_tool_error():
-    """Test module_unload tool raises ToolError on failure."""
-    mock_result = {
-        "success": False,
-        "results": [
-            {
-                "module": "notloaded/1.0",
-                "success": False,
-                "error": "Module notloaded/1.0 is not loaded",
-            }
-        ],
-    }
-
-    with patch(
-        "lmod_mcp.server.lmod_handler.unload_modules", new_callable=AsyncMock
-    ) as mock_handler:
-        mock_handler.return_value = mock_result
-
-        with pytest.raises(ToolError, match="Failed to unload modules"):
-            await server.module_unload_tool(["notloaded/1.0"])
-
-
-@pytest.mark.asyncio
-async def test_module_swap_tool():
-    """Test module_swap tool."""
-    mock_result = {
-        "success": True,
-        "message": "Successfully swapped gcc/10.2.0 with gcc/11.2.0",
-        "old_module": "gcc/10.2.0",
-        "new_module": "gcc/11.2.0",
-    }
-
-    with patch(
-        "lmod_mcp.server.lmod_handler.swap_modules", new_callable=AsyncMock
-    ) as mock_handler:
-        mock_handler.return_value = mock_result
-
-        result = await server.module_swap_tool("gcc/10.2.0", "gcc/11.2.0")
-
-        assert result == mock_result
-        mock_handler.assert_called_once_with("gcc/10.2.0", "gcc/11.2.0")
-
-
-@pytest.mark.asyncio
-async def test_module_swap_tool_error():
-    """Test module_swap tool raises ToolError on failure."""
-    mock_result = {
-        "success": False,
-        "error": "Failed to swap old with new",
-        "old_module": "old",
-        "new_module": "new",
-    }
-
-    with patch(
-        "lmod_mcp.server.lmod_handler.swap_modules", new_callable=AsyncMock
-    ) as mock_handler:
-        mock_handler.return_value = mock_result
-
-        with pytest.raises(ToolError, match="Failed to swap old with new"):
-            await server.module_swap_tool("old", "new")
-
-
-@pytest.mark.asyncio
 async def test_module_spider_tool():
     """Test module_spider tool."""
     mock_result = {
@@ -449,8 +308,18 @@ def test_module_system_status_resource():
     result = server.module_system_status()
     assert result["system"] == "lmod"
     assert "list" in result["operations"]
-    assert "load" in result["operations"]
+    assert "show" in result["operations"]
     assert "spider" in result["operations"]
+    assert "load" not in result["operations"]
+
+
+def test_module_capabilities_declares_no_stateful_load() -> None:
+    """The server states where module loading actually happens."""
+    result = server.module_capabilities()
+    assert result["stateful_load_exposed"] is False
+    assert result["runtime_owner"] == "jarvis_run"
+    assert "load" not in result["operations"]
+    assert result["collection_operations"] == ["save", "restore", "savelist"]
 
 
 def test_setup_environment_prompt():

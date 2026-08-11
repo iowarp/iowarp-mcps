@@ -26,8 +26,12 @@ load_dotenv()
 mcp: FastMCP = FastMCP(
     "lmod",
     instructions=(
-        "Manages Lmod environment modules on HPC systems. "
-        "Load, unload, swap, and search modules. Save and restore module collections."
+        "Inspects Lmod environment modules on HPC systems: list loaded modules, "
+        "search what is available, show module details, and manage saved "
+        "collections. This server does not load modules. A module load only "
+        "lives for the process that performed it, so loading here could not "
+        "affect any later tool call or job; ask the system that owns the "
+        "runtime environment to load modules instead."
     ),
     list_page_size=10,
 )
@@ -87,69 +91,6 @@ async def module_show_tool(module_name: str) -> dict:
     result = await lmod_handler.show_module_details(module_name)
     if not result.get("success"):
         raise ToolError(result.get("error", f"Module {module_name} not found"))
-    return result
-
-
-@mcp.tool(
-    name="module_load",
-    title="Load Modules",
-    description="Load one or more environment modules into the current session.",
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-    },
-    tags={"modules", "management"},
-)
-async def module_load_tool(modules: list[str]) -> dict:
-    """Load one or more environment modules with dependency resolution."""
-    result = await lmod_handler.load_modules(modules)
-    if not result.get("success"):
-        failed = [r for r in result.get("results", []) if not r.get("success")]
-        errors = "; ".join(r.get("error", "unknown error") for r in failed)
-        raise ToolError(f"Failed to load modules: {errors}")
-    return result
-
-
-@mcp.tool(
-    name="module_unload",
-    title="Unload Modules",
-    description="Unload one or more currently loaded modules from the environment.",
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-    },
-    tags={"modules", "management"},
-)
-async def module_unload_tool(modules: list[str]) -> dict:
-    """Unload one or more modules, reversing their environment changes."""
-    result = await lmod_handler.unload_modules(modules)
-    if not result.get("success"):
-        failed = [r for r in result.get("results", []) if not r.get("success")]
-        errors = "; ".join(r.get("error", "unknown error") for r in failed)
-        raise ToolError(f"Failed to unload modules: {errors}")
-    return result
-
-
-@mcp.tool(
-    name="module_swap",
-    title="Swap Module",
-    description="Swap one module for another atomically.",
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-    },
-    tags={"modules", "management"},
-)
-async def module_swap_tool(old_module: str, new_module: str) -> dict:
-    """Swap one module for another, useful for switching versions."""
-    result = await lmod_handler.swap_modules(old_module, new_module)
-    if not result.get("success"):
-        raise ToolError(
-            result.get("error", f"Failed to swap {old_module} with {new_module}")
-        )
     return result
 
 
@@ -242,13 +183,23 @@ def module_system_status() -> dict:
         "operations": [
             "list",
             "avail",
-            "load",
-            "unload",
-            "swap",
+            "show",
+            "spider",
             "save",
             "restore",
-            "spider",
+            "savelist",
         ],
+    }
+
+
+@mcp.resource("lmod://capabilities")
+def module_capabilities() -> dict:
+    """Describe the stateless Lmod contract exposed by this server."""
+    return {
+        "operations": ["list", "avail", "show", "spider"],
+        "collection_operations": ["save", "restore", "savelist"],
+        "stateful_load_exposed": False,
+        "runtime_owner": "jarvis_run",
     }
 
 
@@ -258,8 +209,10 @@ def setup_environment(software: str) -> list[Message]:
     return [
         Message(
             f"I need to set up an environment for {software}. "
-            "Search available modules, load the appropriate version, "
-            "verify it's loaded, and save the collection for future use."
+            "Search available modules with module_avail, inspect the candidate "
+            "with module_show, then hand the exact module names to whatever "
+            "runs the job (jarvis_run) so it loads them in the runtime "
+            "environment. This server reports modules; it does not load them."
         ),
     ]
 

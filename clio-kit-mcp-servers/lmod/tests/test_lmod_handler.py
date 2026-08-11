@@ -86,50 +86,6 @@ conflict("python")
 
 
 @pytest.mark.asyncio
-async def test_load_modules():
-    """Test loading modules."""
-    with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
-        mock_cmd.return_value = ("", "", 0)
-
-        result = await lmod_handler.load_modules(["gcc/11.2.0", "python/3.9.0"])
-
-        assert result["success"] is True
-        assert len(result["results"]) == 2
-        assert all(r["success"] for r in result["results"])
-        assert mock_cmd.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_load_modules_partial_failure():
-    """Test loading modules with partial failure."""
-    with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
-        # First module succeeds, second fails
-        mock_cmd.side_effect = [("", "", 0), ("", "Module not found", 1)]
-
-        result = await lmod_handler.load_modules(["gcc/11.2.0", "invalid/module"])
-
-        assert result["success"] is False
-        assert result["results"][0]["success"] is True
-        assert result["results"][1]["success"] is False
-
-
-@pytest.mark.asyncio
-async def test_swap_modules():
-    """Test swapping modules."""
-    with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
-        mock_cmd.return_value = ("", "", 0)
-
-        result = await lmod_handler.swap_modules("gcc/10.2.0", "gcc/11.2.0")
-
-        assert result["success"] is True
-        assert result["old_module"] == "gcc/10.2.0"
-        assert result["new_module"] == "gcc/11.2.0"
-        mock_cmd.assert_called_once_with(
-            ["swap", "gcc/10.2.0", "gcc/11.2.0"], capture_stderr=True
-        )
-
-
-@pytest.mark.asyncio
 async def test_spider_search():
     """Test spider search functionality."""
     mock_output = """
@@ -273,44 +229,6 @@ async def test_spider_search_failure():
 
 
 @pytest.mark.asyncio
-async def test_unload_modules():
-    """Test unloading modules successfully."""
-    with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
-        mock_cmd.return_value = ("", "", 0)  # Success
-
-        result = await lmod_handler.unload_modules(["python/3.9.0", "gcc/11.2.0"])
-
-        assert result["success"] is True
-        assert len(result["results"]) == 2
-        assert all(r["success"] for r in result["results"])
-        assert result["results"][0]["message"] == "Successfully unloaded python/3.9.0"
-        assert result["results"][1]["message"] == "Successfully unloaded gcc/11.2.0"
-
-
-@pytest.mark.asyncio
-async def test_unload_modules_partial_failure():
-    """Test unloading modules with partial failures."""
-
-    def mock_unload_side_effect(args, capture_stderr=False):
-        module = args[1]  # Second arg is the module name
-        if module == "python/3.9.0":
-            return ("", "", 0)  # Success
-        else:
-            return ("", "Module not loaded", 1)  # Failure
-
-    with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
-        mock_cmd.side_effect = mock_unload_side_effect
-
-        result = await lmod_handler.unload_modules(["python/3.9.0", "gcc/11.2.0"])
-
-        assert result["success"] is False
-        assert len(result["results"]) == 2
-        assert result["results"][0]["success"] is True
-        assert result["results"][1]["success"] is False
-        assert "Module not loaded" in result["results"][1]["error"]
-
-
-@pytest.mark.asyncio
 async def test_save_module_collection_failure():
     """Test save_module_collection when command fails."""
     with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
@@ -430,17 +348,3 @@ setenv("CC", "gcc")
 
         assert result["success"] is True
         assert "/apps/modulefiles/gcc/11.2.0.tcl" in result["path"]
-
-
-@pytest.mark.asyncio
-async def test_swap_modules_failure():
-    """Test swap_modules when command fails."""
-    with patch("lmod_mcp.capabilities.lmod_handler._run_module_command") as mock_cmd:
-        mock_cmd.return_value = ("", "Module swap failed", 1)
-
-        result = await lmod_handler.swap_modules("gcc/10.2.0", "gcc/11.2.0")
-
-        assert result["success"] is False
-        assert "Module swap failed" in result["error"]
-        assert result["old_module"] == "gcc/10.2.0"
-        assert result["new_module"] == "gcc/11.2.0"
