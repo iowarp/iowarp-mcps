@@ -8,6 +8,7 @@ on disk. Nothing here touches the network.
 from __future__ import annotations
 
 import json
+
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,37 @@ async def test_resource_and_prompt_registered() -> None:
         prompts = {p.name for p in await client.list_prompts()}
     assert "seismology://capabilities" in resources
     assert "characterize_sequence" in prompts
+
+
+@pytest.mark.asyncio
+async def test_capabilities_resource_separates_the_two_tool_families() -> None:
+    """Reading the resource, not just listing it: an agent needs the content."""
+    async with Client(mcp) as client:
+        result = await client.read_resource("seismology://capabilities")
+
+    payload = json.loads(result[0].text)
+    assert payload["waveform_tools"] == [
+        "inspect_archive",
+        "compute_trace_statistics",
+        "plot_traces",
+    ]
+    assert payload["catalog_tools"] == ["analyze_sequence", "plot_sequence"]
+    assert ".sac" in payload["accepted_inputs"]
+    assert ".csv" in payload["accepted_catalog_inputs"]
+
+
+@pytest.mark.asyncio
+async def test_characterize_sequence_prompt_names_the_catalog_and_both_steps() -> None:
+    """The ported prompt must still carry the workflow it encoded."""
+    async with Client(mcp) as client:
+        rendered = await client.get_prompt(
+            "characterize_sequence", {"catalog_path": "/data/quakes.geojson"}
+        )
+
+    text = " ".join(m.content.text for m in rendered.messages)
+    assert "/data/quakes.geojson" in text
+    assert "analyze_sequence" in text
+    assert "plot_sequence" in text
 
 
 # ----------------------------- science -----------------------------------
