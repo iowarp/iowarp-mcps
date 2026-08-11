@@ -10,6 +10,7 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'build-constraints.txt'
       - 'mcp-server-versions.toml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -26,6 +27,7 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
+      - 'build-constraints.txt'
       - 'mcp-server-versions.toml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -76,7 +78,8 @@ jobs:
           scripts/generate_mcp_user_contracts.py \
           scripts/extract_mcp_metadata.py scripts/verify_pypi_release.py \
           scripts/release_authorization.py \
-          scripts/verify_mcp_registry_release.py scripts/check_file_size.py src
+          scripts/verify_mcp_registry_release.py scripts/check_file_size.py \
+          scripts/check_baseline_diff.py src
         python scripts/check_file_size.py
         uv run pytest -q tests --junitxml="$RUNNER_TEMP/root-junit.xml"
         python scripts/assert_no_skipped_tests.py "$RUNNER_TEMP/root-junit.xml"

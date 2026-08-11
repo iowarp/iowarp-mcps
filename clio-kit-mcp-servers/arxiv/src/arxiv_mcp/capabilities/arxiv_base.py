@@ -4,6 +4,7 @@ Base utilities for ArXiv search capabilities.
 
 import asyncio
 import httpx
+import math
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Any, Union, cast
 import logging
@@ -15,8 +16,17 @@ logger = logging.getLogger(__name__)
 # caller's request outright -- this is standard practice for this API, not a
 # test-only accommodation. Bounded (a few seconds worst case) so a genuinely
 # sustained block still surfaces as a real failure instead of hanging.
+#
+# `Retry-After` is untrusted external input: a misconfigured or hostile server
+# response naming an enormous or non-finite value (86400, inf, nan) must never
+# make this hang -- _RATE_LIMIT_MAX_DELAY_SECONDS caps every individual sleep
+# regardless of source (server-supplied or our own exponential backoff), and
+# _RATE_LIMIT_TOTAL_BUDGET_SECONDS caps the SUM of all sleeps across the whole
+# retry loop as an independent, defense-in-depth ceiling.
 _RATE_LIMIT_MAX_ATTEMPTS = 4
 _RATE_LIMIT_BACKOFF_SECONDS = 1.0
+_RATE_LIMIT_MAX_DELAY_SECONDS = 10.0
+_RATE_LIMIT_TOTAL_BUDGET_SECONDS = 20.0
 
 
 def parse_arxiv_entry(
@@ -142,9 +152,13 @@ async def _get_with_rate_limit_retry(
     Every other outcome (success, timeout, a non-429 HTTP error, a connection
     error) is returned or raised on the first attempt unchanged -- only a 429
     is treated as transient and retried, honoring ``Retry-After`` when the API
-    sends one.
+    sends one. Every sleep is clamped to ``_RATE_LIMIT_MAX_DELAY_SECONDS`` and
+    the loop stops early once ``_RATE_LIMIT_TOTAL_BUDGET_SECONDS`` of
+    cumulative sleep has been spent, so an oversized or non-finite
+    ``Retry-After`` (86400, inf, nan) can never make this hang.
     """
     last_error: httpx.HTTPStatusError | None = None
+    total_slept = 0.0
     for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
         async with httpx.AsyncClient(timeout=30.0) as client:
             logger.info(f"Executing ArXiv query with params: {params}")
@@ -159,29 +173,50 @@ async def _get_with_rate_limit_retry(
             )
         if attempt + 1 >= _RATE_LIMIT_MAX_ATTEMPTS:
             break
+        remaining_budget = _RATE_LIMIT_TOTAL_BUDGET_SECONDS - total_slept
+        if remaining_budget <= 0:
+            logger.warning(
+                "ArXiv API rate-limited (429); retry time budget "
+                f"({_RATE_LIMIT_TOTAL_BUDGET_SECONDS:.0f}s) exhausted, giving up"
+            )
+            break
         retry_after = _parse_retry_after(response.headers.get("Retry-After"))
-        delay = (
+        requested_delay = (
             retry_after
             if retry_after is not None
             else (_RATE_LIMIT_BACKOFF_SECONDS * (2**attempt))
+        )
+        delay = max(
+            0.0, min(requested_delay, _RATE_LIMIT_MAX_DELAY_SECONDS, remaining_budget)
         )
         logger.warning(
             f"ArXiv API rate-limited (429); retrying in {delay:.1f}s "
             f"(attempt {attempt + 1}/{_RATE_LIMIT_MAX_ATTEMPTS})"
         )
         await asyncio.sleep(delay)
+        total_slept += delay
     assert last_error is not None
     raise last_error
 
 
 def _parse_retry_after(value: str | None) -> float | None:
-    """Parse a numeric ``Retry-After`` header value in seconds, if present."""
+    """Parse a numeric ``Retry-After`` header value in seconds, if present.
+
+    ``Retry-After`` is untrusted external input. ``inf``/``nan`` parse
+    successfully as floats in Python but are rejected here explicitly --
+    callers still clamp the result to ``_RATE_LIMIT_MAX_DELAY_SECONDS``
+    regardless, but a non-finite value should never reach that clamp as a
+    seemingly legitimate number in the first place.
+    """
     if value is None:
         return None
     try:
-        return max(0.0, float(value))
+        parsed = float(value)
     except ValueError:
         return None
+    if not math.isfinite(parsed):
+        return None
+    return max(0.0, parsed)
 
 
 def generate_bibtex(
