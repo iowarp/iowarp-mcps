@@ -22,6 +22,11 @@ from clio_kit.env_cache import (
     maintain_after_build,
     measure_cache_budget,
 )
+from clio_kit.skills import (
+    discover_skills,
+    find_skills_root,
+    format_skill_listing,
+)
 from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
@@ -117,46 +122,9 @@ def _is_servers_root(path: Path) -> bool:
     return path.is_dir() and any(path.glob("*/pyproject.toml"))
 
 
-def get_prompts_path():
-    """Get the path to prompts directory (dev or installed)"""
-    # First try development path (../../prompts from module)
-    dev_path = MODULE_DIR.parent.parent / "prompts"
-    if dev_path.exists():
-        return dev_path
-
-    # Try to find shared data in the installed package
-    possible_paths = [
-        # Standard site-packages installation
-        MODULE_DIR.parent / "prompts",  # ../prompts from module
-        # Alternative installation paths
-        MODULE_DIR / "prompts",  # ./prompts from module
-        # System-wide data directory
-        Path(sys.prefix) / "share" / "clio-kit" / "prompts",
-        # Local data directory
-        Path.home() / ".local" / "share" / "clio-kit" / "prompts",
-    ]
-
-    # Try each possible path
-    for path in possible_paths:
-        if path.exists() and path.is_dir():
-            return path
-
-    # If none found, check if we're in an isolated environment (like uvx)
-    python_path = Path(sys.executable)
-    isolated_paths = [
-        # uvx style isolated environment
-        python_path.parent.parent / "prompts",
-        python_path.parent.parent / "share" / "prompts",
-        python_path.parent.parent / "purelib" / "prompts",
-        python_path.parent.parent / "data" / "prompts",
-    ]
-
-    for path in isolated_paths:
-        if path.exists() and path.is_dir():
-            return path
-
-    # Last resort: return the dev path
-    return dev_path
+def get_skills_path() -> Path:
+    """Return the shipped skill collection (source checkout or installed wheel)."""
+    return find_skills_root(MODULE_DIR)
 
 
 def get_search_path():
@@ -238,47 +206,10 @@ def auto_discover_mcps():
     return server_command_map, dir_name_map
 
 
-def auto_discover_prompts():
-    """Auto-discover prompts from the prompts directory (recursively)"""
-    prompts_path = get_prompts_path()
-    if not prompts_path.exists():
-        return {}
-
-    prompt_map = {}
-
-    # Recursively scan for .md files
-    for md_file in prompts_path.rglob("*.md"):
-        # Get relative path from prompts directory
-        relative_path = md_file.relative_to(prompts_path)
-
-        # Create prompt name from relative path without extension
-        # e.g., "code-coverage-prompt.md" -> "code-coverage-prompt"
-        # e.g., "testing/foo.md" -> "testing/foo"
-        prompt_name = str(relative_path.with_suffix(""))
-
-        # Also support underscore version
-        # "code-coverage-prompt" -> also accessible as "code_coverage_prompt"
-        prompt_map[prompt_name] = md_file
-        prompt_map[prompt_name.replace("-", "_")] = md_file
-
-    return prompt_map
-
-
 def list_available_servers():
     """List all available servers"""
     server_command_map, _ = auto_discover_mcps()
     return sorted(server_command_map.keys())
-
-
-def list_available_prompts():
-    """List all available prompts"""
-    prompt_map = auto_discover_prompts()
-    # Remove duplicates (dash vs underscore versions)
-    unique_prompts = set()
-    for name in prompt_map.keys():
-        # Normalize to dash version for display
-        unique_prompts.add(name.replace("_", "-"))
-    return sorted(unique_prompts)
 
 
 def subprocess_env_with_github_https_rewrite() -> dict[str, str]:
@@ -519,23 +450,21 @@ def _locked_server_environment_path(
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx):
-    """clio-kit: Unified launcher for MCP servers and AI prompts"""
+    """clio-kit: Unified launcher for MCP servers, skills, and services"""
     if ctx.invoked_subcommand is None:
-        click.echo(
-            "clio-kit: Unified launcher for MCP servers, AI prompts, and services"
-        )
+        click.echo("clio-kit: Unified launcher for MCP servers, skills, and services")
         click.echo("\nAvailable commands:")
         click.echo("  mcp-server   Run an MCP server")
         click.echo("  mcp-servers  List all available MCP servers")
         click.echo(
             "  search       Run agentic search (query, index, serve, list, seed)"
         )
-        click.echo("  prompt       Print a prompt to stdout")
-        click.echo("  prompts      List all available prompts")
+        click.echo("  skill        Print a skill to stdout")
+        click.echo("  skills       List all available skills")
         click.echo("\nUsage:")
         click.echo("  clio-kit mcp-server <server-name>")
         click.echo("  clio-kit search <subcommand>")
-        click.echo("  clio-kit prompt <prompt-name>")
+        click.echo("  clio-kit skill <skill-name>")
         click.echo("\nFor more help: clio-kit <command> --help")
 
 
@@ -749,56 +678,6 @@ def show_mcp_contract(contract_id: str) -> None:
     click.echo(json.dumps(artifact, separators=(",", ":"), sort_keys=True))
 
 
-@main.command("prompt")
-@click.argument("prompt_name", required=False)
-def prompt(prompt_name):
-    """Print a prompt to stdout. List all if no name specified."""
-
-    prompt_map = auto_discover_prompts()
-
-    if not prompt_name:
-        # List all prompts
-        prompts = list_available_prompts()
-        if prompts:
-            click.echo("Available prompts:")
-            for p in prompts:
-                click.echo(f"  - {p}")
-        else:
-            click.echo("No prompts found.")
-        click.echo("\nUsage: clio-kit prompt <prompt-name>")
-        return
-
-    # Normalize prompt name (support both dash and underscore)
-    prompt_lower = prompt_name.lower()
-
-    if prompt_lower not in prompt_map:
-        click.echo(f"Error: Unknown prompt '{prompt_name}'")
-        click.echo(f"Available prompts: {', '.join(list_available_prompts())}")
-        sys.exit(1)
-
-    # Read and print the prompt file
-    prompt_file = prompt_map[prompt_lower]
-    try:
-        with open(prompt_file, "r") as f:
-            content = f.read()
-        click.echo(content)
-    except Exception as e:
-        click.echo(f"Error reading prompt file: {e}")
-        sys.exit(1)
-
-
-@main.command("prompts")
-def list_prompts_cmd():
-    """List all available prompts"""
-    prompts = list_available_prompts()
-    if prompts:
-        click.echo("Available prompts:")
-        for p in prompts:
-            click.echo(f"  - {p}")
-    else:
-        click.echo("No prompts found.")
-
-
 @main.command(
     "search",
     context_settings=dict(
@@ -845,6 +724,26 @@ def search(args):
             "Error: uvx not found. Please install uv: https://github.com/astral-sh/uv"
         )
         sys.exit(1)
+
+
+@main.command("skills")
+def list_skills() -> None:
+    """List the shipped cross-server skills."""
+    for line in format_skill_listing(get_skills_path()):
+        click.echo(line)
+
+
+@main.command("skill")
+@click.argument("skill_name")
+def show_skill(skill_name: str) -> None:
+    """Print one skill's SKILL.md to stdout."""
+    skills = discover_skills(get_skills_path())
+    manifest = skills.get(skill_name.lower())
+    if manifest is None:
+        click.echo(f"Error: Unknown skill '{skill_name}'")
+        click.echo(f"Available skills: {', '.join(skills) or 'none'}")
+        sys.exit(1)
+    click.echo(manifest.read_text(encoding="utf-8"))
 
 
 @main.group("cache")
