@@ -1032,6 +1032,7 @@ class TestPipelineToolsDirect:
                     "artifact_id": "art_AAAAAAAAAAAAAAAAAAAAAA",
                     "page_size": 25,
                     "cursor": "opaque-cursor",
+                    "content_max_bytes": None,
                 },
             ),
         ]

@@ -75,7 +75,13 @@ RATCHET_BASELINE: dict[str, int] = {
     # description). Still the 6-class monolith measured at campaign kickoff.
     # Next wave: split into owner modules by concern (pipeline lifecycle,
     # execution/progress, artifacts) the same way server.py was split.
-    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/capabilities/jarvis_handler.py": 3521,
+    # gating fix (2026-08-12): jarvis_get_execution's artifact page gained a
+    # bounded role="log" content read (content_max_bytes) -- the substantial
+    # logic (path resolution, tail read, per-item error typing) went into a
+    # NEW owner module (artifact_content.py), not here; this file only grew
+    # by the trivial call-site wiring inside get_execution() that has to live
+    # where get_execution() itself lives, 3521 -> 3529.
+    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/capabilities/jarvis_handler.py": 3529,
     # #362: NOT split this wave -- out of wave-1 scope (jarvis-only). Flat
     # FastMCP function surface, no god-class; still needs an owner-module cut.
     "clio-kit-mcp-servers/hdf5/src/hdf5_mcp/server.py": 2415,
@@ -90,7 +96,21 @@ RATCHET_BASELINE: dict[str, int] = {
     # these three were never scanned. Baselined at their measured counts, not
     # split this wave.
     "src/clio_kit/__init__.py": 958,
-    "src/clio_kit/mcp_contracts.py": 921,
+    # clio-kit#370: spack contract spec bumped to v2.2 (search/info tools
+    # added to the curated surface) and a new historical-artifact entry
+    # (spack-user-v2.1.json) recorded, 921 -> 930 (ruff-formatted). Fix round
+    # (review kit-spack-review.md, R2): search gained repos_unreadable/
+    # truncated fields, forcing v2.2 -> v2.3; one more historical-artifact
+    # entry (spack-user-v2.2.json) recorded, 930 -> 931.
+    # gating fix (2026-08-12): jarvis contract spec bumped v3.6 -> v3.7
+    # (jarvis_get_execution's artifacts filter gained content_max_bytes, a
+    # deliberate wire-visible additive change); one more historical-artifact
+    # entry (jarvis-user-v3.6.json) recorded, 931 -> 932.
+    # release/2.10.2: v3.7.1 mint (execution-output declarations, #252) adds
+    # one more historical-artifact entry (jarvis-user-v3.7.json) -- count
+    # verified against the real merged tree below, not guessed.
+    "src/clio_kit/mcp_contracts.py": 932,
+    "src/clio_kit/env_cache.py": 843,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,
     "clio-kit-mcp-servers/parquet/src/parquet_mcp/capabilities/parquet_handler.py": 839,
     "clio-kit-mcp-servers/node-hardware/src/node_hardware_mcp/mcp_handlers.py": 819,
