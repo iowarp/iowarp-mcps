@@ -272,6 +272,7 @@ jobs:
         grep -Fq 'clio-kit-scientific-catalog-user-v1.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-scientific-catalog-user-v1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-slurm-user-v3' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-spack-user-v2.2' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2' <<< "$listed_contracts"
         jarvis_contract="$("$clio_kit" \
@@ -315,9 +316,13 @@ jobs:
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-slurm-user-v3"' \
           <<< "$slurm_contract"
         spack_contract="$("$clio_kit" \
+          mcp-contract clio-kit-spack-user-v2.2)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v2.2"; assert {tool["name"] for tool in value["tools"]} == {"spack_find", "spack_install", "spack_locate", "spack_search", "spack_info"}' \
+          <<< "$spack_contract"
+        historical_spack_contract_v21="$("$clio_kit" \
           mcp-contract clio-kit-spack-user-v2.1)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v2.1"' \
-          <<< "$spack_contract"
+          <<< "$historical_spack_contract_v21"
         historical_spack_contract_v2="$("$clio_kit" \
           mcp-contract clio-kit-spack-user-v2)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-spack-user-v2"' \

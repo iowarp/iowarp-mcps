@@ -18,28 +18,39 @@ from spack_mcp.backend import (
     SpackBackendError,
     SpackEnvironmentResult,
     SpackFindResult,
-    SpackInstallResult,
     SpackLocateResult,
     find_installed,
-    install_spec,
     locate_installed,
     resolve_environment,
 )
+from spack_mcp.discovery import (
+    SpackInfoResult,
+    SpackSearchResult,
+    describe_package,
+    enrich_not_installed,
+    search_packages,
+)
+from spack_mcp.provisioning import SpackInstallResult, install_spec
 
 mcp: FastMCP = FastMCP(
     "spack",
     instructions=(
-        "Discover, locate, and install Spack packages using structured results. "
-        "A find with no installed matches succeeds with count=0 and packages=[]; "
-        "locating an absent package returns the structured not_installed error. "
-        "This server never pretends that a shell-local `spack load` changes later "
-        "agent or scheduler processes. Runtime environment materialization is an "
-        "admin diagnostic. Copy spack_locate.output.load_spec unchanged into "
-        "jarvis_run.input.spack_specs so JARVIS persists the runtime environment."
+        "Discover, locate, search, describe, and install Spack packages using "
+        "structured results. A find with no installed matches succeeds with "
+        "count=0 and packages=[]; locating an absent package returns the "
+        "structured not_installed error, enriched with whether a recipe is "
+        "available to install. Search answers recipe AVAILABILITY across every "
+        "registered repo -- broader than find/locate, which only see what is "
+        "already installed. This server never pretends that a shell-local "
+        "`spack load` changes later agent or scheduler processes. Runtime "
+        "environment materialization is an admin diagnostic. Copy "
+        "spack_locate.output.load_spec (or spack_install.output.load_spec) "
+        "unchanged into jarvis_run.input.spack_specs so JARVIS persists the "
+        "runtime environment."
     ),
 )
 
-USER_TOOLS = {"spack_find", "spack_locate", "spack_install"}
+USER_TOOLS = {"spack_find", "spack_locate", "spack_search", "spack_info", "spack_install"}
 ADMIN_TOOLS = {"spack_environment"}
 MCP_METADATA_PROFILE = "user"
 ResultT = TypeVar("ResultT")
@@ -73,7 +84,8 @@ async def spack_find_tool(query: str | None = None) -> SpackFindResult:
         "spack_locate.output.load_spec unchanged into one element of "
         "jarvis_run.input.spack_specs; do not derive or pass an executable path from "
         "the returned prefix. An absent package returns the structured not_installed "
-        "error."
+        "error, whose detail now says whether a recipe is available to install "
+        "(call spack_install) or exists in no registered repo at all."
     ),
     annotations={
         "readOnlyHint": True,
@@ -85,15 +97,70 @@ async def spack_find_tool(query: str | None = None) -> SpackFindResult:
 )
 async def spack_locate_tool(spec: str) -> SpackLocateResult:
     """Return one exact package identity and prefix or a protocol error."""
-    return await _call_backend(locate_installed, spec)
+    return await _call_backend(
+        locate_installed,
+        spec,
+        enrich_error=lambda error: enrich_not_installed(error, spec),
+    )
+
+
+@mcp.tool(
+    name="spack_search",
+    title="Search Recipes",
+    description=(
+        "Search recipe AVAILABILITY across every registered Spack repo -- broader "
+        "than spack_find/spack_locate, which only see what is already installed. "
+        "Answers 'does a recipe exist', 'in which repo', and 'is it already "
+        "installed' in one call. No matches is a successful result with count=0."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    tags={"spack", "packages", "user"},
+)
+async def spack_search_tool(query: str) -> SpackSearchResult:
+    """Return fuzzy-matched recipe candidates with repo and install state."""
+    return await _call_backend(search_packages, query)
+
+
+@mcp.tool(
+    name="spack_info",
+    title="Describe Recipe",
+    description=(
+        "Describe one recipe: versions, variants, and description. Probes "
+        "`spack info` first; if that subcommand is unavailable or fails on this "
+        "deployment, falls back to statically parsing the recipe's package.py and "
+        "marks the result degraded=true with degraded_reason explaining why -- "
+        "never silently. A package absent from every registered repo returns the "
+        "structured recipe_not_found error."
+    ),
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    tags={"spack", "packages", "user"},
+)
+async def spack_info_tool(package: str) -> SpackInfoResult:
+    """Return one recipe's versions/variants/description, degraded-flagged."""
+    return await _call_backend(describe_package, package)
 
 
 @mcp.tool(
     name="spack_install",
     title="Install Package",
     description=(
-        "Install one Spack spec with explicit reusable or fresh concretization and "
-        "verify that a matching install is observable."
+        "Install one Spack spec with explicit reusable or fresh concretization. "
+        "Runs synchronously (streaming/task augmentation is deferred to the kit "
+        "tasks-semantics slice, SEP-2663) with a configurable timeout; captures the "
+        "full build log to disk and returns its path plus a bounded tail, and the "
+        "install prefix on success. A missing recipe, a failed build, and a timeout "
+        "are distinct typed errors (recipe_not_found / build_failure / timed_out), "
+        "each naming the recovery affordance (searched repos / log tail / log path)."
     ),
     annotations={
         "readOnlyHint": False,
@@ -150,7 +217,7 @@ async def spack_environment_tool(specs: list[str]) -> SpackEnvironmentResult:
 def spack_capabilities() -> dict[str, object]:
     """Describe the stateless Spack contract exposed by this server."""
     return {
-        "operations": ["find", "locate", "install"],
+        "operations": ["find", "locate", "search", "info", "install"],
         "admin_operations": ["environment"],
         "stateful_load_exposed": False,
         "runtime_owner": "jarvis_run",
@@ -159,11 +226,15 @@ def spack_capabilities() -> dict[str, object]:
 
 @mcp.prompt()
 def prepare_spack_package(spec: str) -> list[Message]:
-    """Guide an agent through deterministic package preparation."""
+    """Guide an agent through the provisioning loop: locate, search, install."""
     return [
         Message(
-            f"Prepare Spack package {spec!r}. First call spack_find, install only if "
-            "needed, then call spack_locate. Copy spack_locate.output.load_spec "
+            f"Prepare Spack package {spec!r}. First call spack_find (or spack_locate) "
+            "to check whether it is already installed. If not, call spack_search to "
+            "confirm a recipe exists and spack_info to see its versions/variants "
+            "before proposing an install. Install only after that check (and any "
+            "required approval), then call spack_locate. Copy "
+            "spack_locate.output.load_spec (or spack_install.output.load_spec) "
             "unchanged into jarvis_run.input.spack_specs so JARVIS persists the "
             "runtime environment."
         )
@@ -173,11 +244,14 @@ def prepare_spack_package(spec: str) -> list[Message]:
 async def _call_backend(
     function: Callable[..., ResultT],
     *args: object,
+    enrich_error: Callable[[SpackBackendError], SpackBackendError] | None = None,
     **kwargs: object,
 ) -> ResultT:
     try:
         return await asyncio.to_thread(function, *args, **kwargs)
     except SpackBackendError as exc:
+        if enrich_error is not None:
+            exc = await asyncio.to_thread(enrich_error, exc)
         raise ToolError(exc.as_json()) from exc
 
 

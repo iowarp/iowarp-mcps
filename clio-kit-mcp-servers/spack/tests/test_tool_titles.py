@@ -16,6 +16,8 @@ from spack_mcp.server import mcp
 EXPECTED_TOOLS = {
     "spack_find",
     "spack_locate",
+    "spack_search",
+    "spack_info",
     "spack_install",
     "spack_environment",
 }

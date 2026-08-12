@@ -450,6 +450,7 @@ def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     assert "mcp-contract clio-kit-scientific-catalog-user-v1.1" in smoke_block
     assert "mcp-contract clio-kit-scientific-catalog-user-v1" in smoke_block
     assert "mcp-contract clio-kit-slurm-user-v3" in smoke_block
+    assert "mcp-contract clio-kit-spack-user-v2.2" in smoke_block
     assert "mcp-contract clio-kit-spack-user-v2.1" in smoke_block
     assert "mcp-contract clio-kit-spack-user-v2" in smoke_block
     assert "clio-kit-jarvis-user-v3.6" in smoke_block

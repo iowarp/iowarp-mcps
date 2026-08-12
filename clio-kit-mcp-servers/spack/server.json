@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/spack-mcp",
   "title": "CLIO Spack",
   "description": "Structured Spack discovery and installation tools for scientific agents",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -35,11 +35,19 @@
     },
     {
       "name": "spack_locate",
-      "description": "Resolve one unique installed Spack spec. Copy spack_locate.output.load_spec unchanged into one element of jarvis_run.input.spack_specs; do not derive or pass an executable path from the returned prefix. An absent package returns the structured not_installed error."
+      "description": "Resolve one unique installed Spack spec. Copy spack_locate.output.load_spec unchanged into one element of jarvis_run.input.spack_specs; do not derive or pass an executable path from the returned prefix. An absent package returns the structured not_installed error, enriched with whether a recipe is available to install."
+    },
+    {
+      "name": "spack_search",
+      "description": "Search recipe availability across every registered Spack repo -- broader than spack_find/spack_locate, which only see what is already installed."
+    },
+    {
+      "name": "spack_info",
+      "description": "Describe one recipe's versions, variants, and description; falls back to parsing package.py and says so when spack info is unavailable."
     },
     {
       "name": "spack_install",
-      "description": "Install one Spack spec with explicit reusable or fresh concretization and verify that a matching install is observable."
+      "description": "Install one Spack spec with explicit reusable or fresh concretization. Captures the full build log to disk and returns the install prefix on success."
     }
   ],
   "resources": [

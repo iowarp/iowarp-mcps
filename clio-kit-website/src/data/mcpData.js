@@ -593,11 +593,13 @@ export const mcpData = {
     "actions": [
       "spack_find",
       "spack_locate",
+      "spack_search",
+      "spack_info",
       "spack_install"
     ],
     "stats": {
-      "version": "2.1.0",
-      "updated": "2026-07-18"
+      "version": "2.2.0",
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",

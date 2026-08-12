@@ -84,13 +84,22 @@ RATCHET_BASELINE: dict[str, int] = {
     "clio-kit-mcp-servers/paraview/src/paraview_mcp/implementation/paraview_capabilities.py": 2202,
     "clio-kit-mcp-servers/pandas/src/pandas_mcp/server.py": 1274,
     "clio-kit-mcp-servers/paraview/src/paraview_mcp/server.py": 1091,
-    "clio-kit-mcp-servers/spack/src/spack_mcp/backend.py": 925,
+    # clio-kit#370: SpackInstallResult + install_spec moved to a new owner
+    # module (provisioning.py, real installs with a full on-disk build log
+    # and typed recipe_not_found/build_failure/timed_out errors), shedding
+    # this file to 890 lines. Not fully split below the cap this wave --
+    # still the `find`/`locate`/`environment` backend plus the bounded
+    # subprocess/Windows-job primitives every owner module composes with.
+    "clio-kit-mcp-servers/spack/src/spack_mcp/backend.py": 890,
     # #362 (PR #364 review finding 5): discovery previously excluded the root
     # `clio_kit` package (the `clio-kit` launcher CLI itself) entirely --
     # these three were never scanned. Baselined at their measured counts, not
     # split this wave.
     "src/clio_kit/__init__.py": 958,
-    "src/clio_kit/mcp_contracts.py": 921,
+    # clio-kit#370: spack contract spec bumped to v2.2 (search/info tools
+    # added to the curated surface) and a new historical-artifact entry
+    # (spack-user-v2.1.json) recorded, 921 -> 930 (ruff-formatted).
+    "src/clio_kit/mcp_contracts.py": 930,
     "src/clio_kit/env_cache.py": 843,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,
     "clio-kit-mcp-servers/parquet/src/parquet_mcp/capabilities/parquet_handler.py": 839,

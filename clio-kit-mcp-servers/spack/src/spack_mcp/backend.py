@@ -27,7 +27,6 @@ SPACK_ERROR_SCHEMA: Final = "spack.mcp.error.v1"
 _MAX_CAPTURE_BYTES = 8 * 1024 * 1024
 _MAX_DIAGNOSTIC_BYTES = 32 * 1024
 _MAX_SPEC_LENGTH = 1024
-_MAX_INSTALL_TIMEOUT_SECONDS = 86_400
 _MAX_ENVIRONMENT_VARIABLES = 512
 _MAX_ENVIRONMENT_VALUE_BYTES = 256 * 1024
 _MAX_PACKAGE_RECORDS = 10_000
@@ -137,21 +136,6 @@ class SpackLocateResult(BaseModel):
     prefix: str
 
 
-class SpackInstallResult(BaseModel):
-    """Completed Spack install operation and observed matching installs."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    schema_version: Literal["spack.mcp.result.v1"] = SPACK_RESULT_SCHEMA
-    operation: Literal["install"] = "install"
-    requested_spec: str
-    reuse: bool
-    status: Literal["installed"] = "installed"
-    duration_seconds: float
-    packages: list[SpackPackage]
-    stdout_excerpt: str | None = None
-
-
 class SpackEnvironmentResult(BaseModel):
     """Admin-only structured runtime environment for installed specs."""
 
@@ -216,19 +200,28 @@ class _CommandResult:
 
 
 class _BoundedCapture:
-    """Drain one child stream while retaining only a bounded tail."""
+    """Drain one child stream while retaining only a bounded tail.
 
-    def __init__(self, stream: BinaryIO) -> None:
+    ``sink``, when given, is called with every raw chunk read from the
+    stream before the bounded in-memory tail is trimmed -- an unbounded,
+    full-fidelity side channel (e.g. a build-log file) that a caller can
+    tee output into without duplicating this drain/trim/thread machinery.
+    """
+
+    def __init__(self, stream: BinaryIO, *, sink: Callable[[bytes], None] | None = None) -> None:
         self.stream = stream
         self.chunks: deque[bytes] = deque()
         self.size = 0
         self.truncated = False
         self.error: OSError | None = None
+        self.sink = sink
 
     def drain(self) -> None:
         """Drain until EOF without allowing retained data to grow unbounded."""
         try:
             while chunk := self.stream.read(_STREAM_CHUNK_BYTES):
+                if self.sink is not None:
+                    self.sink(chunk)
                 self.chunks.append(chunk)
                 self.size += len(chunk)
                 self._trim()
@@ -348,41 +341,6 @@ def locate_installed(spec: str) -> SpackLocateResult:
         load_spec=exact,
         package=package,
         prefix=prefix,
-    )
-
-
-def install_spec(
-    spec: str,
-    *,
-    reuse: bool = True,
-    timeout_seconds: int = 14_400,
-) -> SpackInstallResult:
-    """Install one Spack spec with explicit reuse semantics and no shell."""
-    normalized = _validated_spec(spec)
-    if timeout_seconds < 1 or timeout_seconds > _MAX_INSTALL_TIMEOUT_SECONDS:
-        raise SpackBackendError(
-            "invalid_timeout",
-            f"timeout_seconds must be between 1 and {_MAX_INSTALL_TIMEOUT_SECONDS}",
-            operation="install",
-        )
-    args = ["install", "--reuse" if reuse else "--fresh", normalized]
-    result = _run_spack(args, operation="install", timeout_seconds=timeout_seconds)
-    found = find_installed(normalized)
-    if not found.packages:
-        raise SpackBackendError(
-            "install_not_observed",
-            "Spack exited successfully but no matching installed package was observed",
-            operation="install",
-        )
-    excerpt = result.stdout.strip()
-    if len(excerpt) > 4000:
-        excerpt = "[tail truncated]\n" + excerpt[-4000:]
-    return SpackInstallResult(
-        requested_spec=normalized,
-        reuse=reuse,
-        duration_seconds=round(result.duration_seconds, 3),
-        packages=found.packages,
-        stdout_excerpt=excerpt or None,
     )
 
 
@@ -540,8 +498,15 @@ def _run_bounded_command(
     env: dict[str, str],
     timeout_seconds: int,
     stdin_payload: bytes | None = None,
+    stdout_sink: Callable[[bytes], None] | None = None,
+    stderr_sink: Callable[[bytes], None] | None = None,
 ) -> _CommandResult:
-    """Run argv with bounded retained output and a bounded optional stdin file."""
+    """Run argv with bounded retained output and a bounded optional stdin file.
+
+    ``stdout_sink``/``stderr_sink`` additionally tee every raw chunk to a
+    caller-owned sink (e.g. an on-disk build log) with no retention bound,
+    independent of the in-memory tail this function always returns.
+    """
     if stdin_payload is not None and len(stdin_payload) > _MAX_CAPTURE_BYTES + 64:
         raise ValueError("subprocess input exceeded the configured limit")
 
@@ -588,8 +553,8 @@ def _run_bounded_command(
             windows_job.close(process)
         raise RuntimeError("subprocess capture pipes were not created")
 
-    stdout_capture = _BoundedCapture(cast(BinaryIO, process.stdout))
-    stderr_capture = _BoundedCapture(cast(BinaryIO, process.stderr))
+    stdout_capture = _BoundedCapture(cast(BinaryIO, process.stdout), sink=stdout_sink)
+    stderr_capture = _BoundedCapture(cast(BinaryIO, process.stderr), sink=stderr_sink)
     threads = [
         threading.Thread(target=stdout_capture.drain, daemon=True),
         threading.Thread(target=stderr_capture.drain, daemon=True),

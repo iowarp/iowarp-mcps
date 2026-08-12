@@ -5,6 +5,8 @@ Spack MCP exposes a compact, structured package-management surface:
 ```text
 spack_find
 spack_locate
+spack_search
+spack_info
 spack_install
 ```
 
@@ -15,13 +17,33 @@ not affect a later agent or scheduler job. Pass installed specs to JARVIS throug
 persists it in the pipeline, and reloads it inside direct or scheduled execution.
 `spack_locate` returns a canonical `load_spec` in `/<dag_hash>` form; pass that
 value to `jarvis_run` so a later install cannot make the runtime selection
-ambiguous.
+ambiguous. `spack_install` echoes the same `load_spec` on success, so a caller
+never has to re-locate what it just installed.
 
 An ordinary `spack_find` query with no installed matches is successful typed
 data: `count` is `0` and `packages` is `[]`. Calling `spack_locate` for an absent
-package instead returns the structured `not_installed` semantic so an agent can
-decide whether its policy permits `spack_install`. Other nonzero Spack
-invocations remain structured MCP errors.
+package instead returns the structured `not_installed` semantic, enriched with
+whether a recipe is available to install (and in which repo) or exists in no
+registered repo at all, so an agent can decide whether its policy permits
+`spack_install` without a separate lookup. Other nonzero Spack invocations
+remain structured MCP errors.
+
+## Recipe discovery
+
+`spack_find`/`spack_locate` only see what is already **installed**.
+`spack_search(query)` and `spack_info(package)` answer the broader question of
+recipe **availability**:
+
+- `spack_search` enumerates every repo registered with `spack repo list` and
+  walks each repo's `packages/` directory directly (never `spack list`, which
+  is broken on at least one deployment this server targets) to fuzzy-match the
+  query against real recipe names. Each match reports which repo(s) declare it
+  and whether it is already installed.
+- `spack_info` describes one recipe's versions, variants, and description.
+  It probes `spack info` first; if that subcommand is unavailable or fails,
+  it falls back to statically parsing the recipe's `package.py` (never
+  imported or executed, only read as source) and marks the result
+  `degraded: true` with a `degraded_reason` explaining why -- never silently.
 
 ## Install concretization
 
@@ -36,6 +58,23 @@ Fresh concretization does not mean "blindly reinstall an existing concrete
 hash." Agents should first call `spack_find`, install only when the required
 software is absent, then call `spack_locate` and pass its canonical `load_spec`
 to `jarvis_run`.
+
+`spack_install` runs synchronously today (streaming/task augmentation is
+deferred to the kit tasks-semantics slice, SEP-2663) with a configurable
+`timeout_seconds`. The full build log is captured to disk -- unbounded, not
+just the response's bounded tail -- under `SPACK_MCP_INSTALL_LOG_DIR` (default
+a `spack-mcp/install-logs` directory under the system temp dir). On success the
+result carries `prefix`, `load_spec`, `log_path`, and a bounded `log_tail`.
+Failure is one of three typed, distinguishable errors, each naming the
+recovery affordance:
+
+- `recipe_not_found` -- no registered repo declares this package; `detail`
+  lists the repos actually searched (composes with `spack_search`'s
+  discovery). Spack is never even invoked in this case.
+- `build_failure` -- Spack ran and exited nonzero; `detail` carries the log
+  path and a tail of the failure.
+- `timed_out` -- exceeded `timeout_seconds`; `detail` carries the log path so
+  progress can be inspected without re-running the install.
 
 Run the default server with:
 

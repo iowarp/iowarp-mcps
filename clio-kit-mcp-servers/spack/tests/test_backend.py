@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import subprocess
@@ -220,49 +221,6 @@ def test_locate_returns_exact_prefix(
     assert result.load_spec == "/abc123"
 
 
-def test_specs_are_argv_not_shell_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    observed: list[list[str]] = []
-
-    def fake_run(
-        args: list[str],
-        *,
-        operation: str,
-        timeout_seconds: int,
-    ) -> backend._CommandResult:
-        observed.append(args)
-        if operation == "install":
-            return _result("installed", operation=operation)
-        return _result('[{"name":"demo","hash":"hash"}]')
-
-    monkeypatch.setattr(backend, "_run_spack", fake_run)
-
-    backend.install_spec("demo@1.0 +mpi", timeout_seconds=5)
-
-    assert observed[0] == ["install", "--reuse", "demo@1.0 +mpi"]
-
-
-def test_install_can_explicitly_disable_reuse(monkeypatch: pytest.MonkeyPatch) -> None:
-    observed: list[list[str]] = []
-
-    def fake_run(
-        args: list[str],
-        *,
-        operation: str,
-        timeout_seconds: int,
-    ) -> backend._CommandResult:
-        observed.append(args)
-        if operation == "install":
-            return _result("installed", operation=operation)
-        return _result('[{"name":"demo","hash":"hash"}]')
-
-    monkeypatch.setattr(backend, "_run_spack", fake_run)
-
-    result = backend.install_spec("demo@1.0", reuse=False, timeout_seconds=5)
-
-    assert observed[0] == ["install", "--fresh", "demo@1.0"]
-    assert result.reuse is False
-
-
 def test_spack_command_failure_is_structured(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backend, "_spack_executable", lambda: "/opt/spack/bin/spack")
     monkeypatch.setattr(
@@ -332,6 +290,45 @@ def test_bounded_command_drains_streams_and_retains_only_tail(
     assert len(result.stderr_bytes) == 64
     assert result.stdout_bytes.endswith(b"TAIL")
     assert result.stderr_bytes.endswith(b"ERR")
+
+
+def test_bounded_command_sink_receives_full_unbounded_stream(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A sink sees every byte even when the in-memory tail is trimmed.
+
+    This is the seam ``provisioning.install_spec`` composes with to write a
+    full build log to disk while still returning a small bounded tail.
+    """
+    monkeypatch.setattr(backend, "_MAX_CAPTURE_BYTES", 8)
+    stdout_sunk = bytearray()
+    stderr_sunk = bytearray()
+
+    result = backend._run_bounded_command(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write(b'x' * 4096); "
+            "sys.stderr.buffer.write(b'y' * 2048)",
+        ],
+        env=os.environ.copy(),
+        timeout_seconds=10,
+        stdout_sink=stdout_sunk.extend,
+        stderr_sink=stderr_sunk.extend,
+    )
+
+    assert result.stdout_truncated is True
+    assert len(stdout_sunk) == 4096
+    assert len(stderr_sunk) == 2048
+    assert result.stdout_bytes is not None
+    assert len(result.stdout_bytes) == 8
+
+
+def test_bounded_capture_sink_is_optional(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No sink given (every pre-existing caller) behaves exactly as before."""
+    capture = backend._BoundedCapture(io.BytesIO(b"hello"))
+    capture.drain()
+    assert capture.raw() == b"hello"
 
 
 def test_bounded_command_timeout_terminates_child() -> None:

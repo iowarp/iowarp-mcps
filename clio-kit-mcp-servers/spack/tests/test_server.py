@@ -95,6 +95,7 @@ async def test_backend_failures_become_is_error_tool_errors(
         )
 
     monkeypatch.setattr(server, "locate_installed", fail)
+    monkeypatch.setattr(server, "enrich_not_installed", lambda error, spec: error)
 
     with pytest.raises(ToolError) as error:
         await server.spack_locate_tool("missing")
@@ -102,8 +103,78 @@ async def test_backend_failures_become_is_error_tool_errors(
     assert json.loads(str(error.value))["error"]["code"] == "not_installed"
 
 
+@pytest.mark.asyncio
+async def test_locate_not_installed_error_is_enriched_with_recipe_availability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """spack_locate composes with recipe-availability so an agent learns whether
+    to call spack_install or give up, instead of a bare not_installed."""
+
+    def fail(spec: str) -> object:
+        raise SpackBackendError("not_installed", f"missing: {spec}", operation="locate")
+
+    observed: dict[str, object] = {}
+
+    def enrich(error: SpackBackendError, spec: str) -> SpackBackendError:
+        observed.update(code=error.code, spec=spec)
+        return SpackBackendError(
+            error.code,
+            error.message,
+            operation=error.operation,
+            detail="recipe available in repo 'builtin' via spack_install",
+        )
+
+    monkeypatch.setattr(server, "locate_installed", fail)
+    monkeypatch.setattr(server, "enrich_not_installed", enrich)
+
+    with pytest.raises(ToolError) as error:
+        await server.spack_locate_tool("lammps")
+
+    payload = json.loads(str(error.value))
+    assert observed == {"code": "not_installed", "spec": "lammps"}
+    assert payload["error"]["detail"] == "recipe available in repo 'builtin' via spack_install"
+
+
+@pytest.mark.asyncio
+async def test_search_tool_forwards_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed: dict[str, object] = {}
+
+    def search(query: str) -> object:
+        observed["query"] = query
+        return object()
+
+    monkeypatch.setattr(server, "search_packages", search)
+
+    result = await server.spack_search_tool("lammps")
+
+    assert result is not None
+    assert observed == {"query": "lammps"}
+
+
+@pytest.mark.asyncio
+async def test_info_tool_forwards_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed: dict[str, object] = {}
+
+    def describe(package: str) -> object:
+        observed["package"] = package
+        return object()
+
+    monkeypatch.setattr(server, "describe_package", describe)
+
+    result = await server.spack_info_tool("hdf5")
+
+    assert result is not None
+    assert observed == {"package": "hdf5"}
+
+
 def test_user_surface_hides_environment_materialization() -> None:
-    assert server.USER_TOOLS == {"spack_find", "spack_locate", "spack_install"}
+    assert server.USER_TOOLS == {
+        "spack_find",
+        "spack_locate",
+        "spack_search",
+        "spack_info",
+        "spack_install",
+    }
     assert "spack_environment" not in server.USER_TOOLS
     assert "spack_load" not in server.USER_TOOLS | server.ADMIN_TOOLS
 
@@ -204,11 +275,21 @@ def test_main_runs_http_and_admin_main_selects_admin_profile(
 @pytest.mark.parametrize(
     ("profile", "expected"),
     [
-        ("user", {"spack_find", "spack_locate", "spack_install"}),
+        (
+            "user",
+            {"spack_find", "spack_locate", "spack_search", "spack_info", "spack_install"},
+        ),
         ("admin", {"spack_environment"}),
         (
             "all",
-            {"spack_find", "spack_locate", "spack_install", "spack_environment"},
+            {
+                "spack_find",
+                "spack_locate",
+                "spack_search",
+                "spack_info",
+                "spack_install",
+                "spack_environment",
+            },
         ),
     ],
 )

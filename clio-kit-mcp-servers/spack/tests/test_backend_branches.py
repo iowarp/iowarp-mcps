@@ -87,36 +87,6 @@ def test_locate_rejects_missing_and_invalid_prefix(
     assert invalid.value.code == "invalid_prefix"
 
 
-def test_install_validates_timeout_observation_and_excerpt(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    for timeout in (0, backend._MAX_INSTALL_TIMEOUT_SECONDS + 1):
-        with pytest.raises(backend.SpackBackendError, match="timeout_seconds"):
-            backend.install_spec("demo", timeout_seconds=timeout)
-
-    monkeypatch.setattr(backend, "_run_spack", lambda *args, **kwargs: _result())
-    monkeypatch.setattr(
-        backend,
-        "find_installed",
-        lambda query: backend.SpackFindResult(query=query, packages=[], count=0),
-    )
-    with pytest.raises(backend.SpackBackendError) as not_observed:
-        backend.install_spec("demo", timeout_seconds=1)
-    assert not_observed.value.code == "install_not_observed"
-
-    package = backend.SpackPackage(name="demo")
-    monkeypatch.setattr(
-        backend,
-        "find_installed",
-        lambda query: backend.SpackFindResult(query=query, packages=[package], count=1),
-    )
-    monkeypatch.setattr(backend, "_run_spack", lambda *args, **kwargs: _result("x" * 5000))
-    installed = backend.install_spec("demo", timeout_seconds=1)
-    assert installed.stdout_excerpt is not None
-    assert installed.stdout_excerpt.startswith("[tail truncated]")
-    assert len(installed.stdout_excerpt) < 4100
-
-
 def test_environment_rejects_invalid_input_and_spack_script(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

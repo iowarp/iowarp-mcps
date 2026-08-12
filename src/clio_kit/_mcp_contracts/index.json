@@ -19,13 +19,13 @@
       "wire_sha256": "8da5ea375d75d04052f766b02071fa4f41a2b61494b739e0e806eed02da532db"
     },
     {
-      "artifact": "spack-user-v2.1.json",
-      "artifact_sha256": "b8da9a3cad05ad734ac3a20adb635f11fa45a8870afe08a9f4e261fdc713b57d",
-      "contract_id": "clio-kit-spack-user-v2.1",
-      "contract_sha256": "4a065d2c67c0dd34e2cc18bca9dc53ed87ce35aa4ac524ef3e5c954a875c19db",
+      "artifact": "spack-user-v2.2.json",
+      "artifact_sha256": "be74d7f2cb8e2ad1812d6ff39093167b79fbb6a42f9588db430799f52f1f400a",
+      "contract_id": "clio-kit-spack-user-v2.2",
+      "contract_sha256": "e16a4e6922b63229b9169c8ccb6db15dccd74b12d9ab2398b0b02f54be886b13",
       "profile": "user",
       "server_name": "spack",
-      "wire_sha256": "c7f1d1a4ce35b58664b46d2994863257a1e5a30e5c4ab7501b0a96a4becc08b7"
+      "wire_sha256": "80c8abfbfca449a9fbfe9676aee318e2b50a4b45fcec41a483ab60fc4166288e"
     },
     {
       "artifact": "scientific-catalog-user-v1.1.json",
@@ -107,6 +107,15 @@
       "profile": "user",
       "server_name": "spack",
       "wire_sha256": "e575c901226a34a1f4286228b3f71966fe55b68d82bae5c6fd6582af0e43fd2d"
+    },
+    {
+      "artifact": "spack-user-v2.1.json",
+      "artifact_sha256": "b8da9a3cad05ad734ac3a20adb635f11fa45a8870afe08a9f4e261fdc713b57d",
+      "contract_id": "clio-kit-spack-user-v2.1",
+      "contract_sha256": "4a065d2c67c0dd34e2cc18bca9dc53ed87ce35aa4ac524ef3e5c954a875c19db",
+      "profile": "user",
+      "server_name": "spack",
+      "wire_sha256": "c7f1d1a4ce35b58664b46d2994863257a1e5a30e5c4ab7501b0a96a4becc08b7"
     }
   ],
   "schema_version": "clio-kit.mcp-user-contract-index.v1"
