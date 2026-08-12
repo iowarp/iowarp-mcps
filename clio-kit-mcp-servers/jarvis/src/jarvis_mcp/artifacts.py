@@ -14,10 +14,15 @@ import json
 import math
 import re
 from collections.abc import Mapping
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, cast
 from urllib.parse import urlsplit
 
+# Content-reading (``ArtifactContentError``/``artifact_with_content``) lives
+# in ``artifact_content.py``, not here: this module owns snapshot VALIDATION
+# and paging; that one owns the bounded, ``role="log"``-only file read
+# layered on top of a page's results.
+from jarvis_mcp.artifact_content import ARTIFACT_MAX_CONTENT_BYTES, artifact_with_content
 
 ARTIFACT_SNAPSHOT_SCHEMA = "jarvis.execution.artifacts.v1"
 ARTIFACT_EVENT_SCHEMA = "jarvis.artifact.v1"
@@ -194,12 +199,24 @@ def artifact_query_page(
     artifact_id: str | None = None,
     page_size: int = ARTIFACT_DEFAULT_PAGE_SIZE,
     cursor: str | None = None,
+    content_max_bytes: int | None = None,
+    execution_root: Path | None = None,
 ) -> dict[str, Any]:
     """Filter and page one previously validated native artifact snapshot.
 
     Cursors bind the exact filters and a digest of the filtered producer
     snapshot. A changed artifact, execution state, or terminal flag makes an
     existing cursor stale instead of silently shifting an offset-based page.
+
+    ``content_max_bytes`` is a response-enrichment knob, not a filter: it is
+    deliberately excluded from the cursor's filter digest so a cursor minted
+    without it stays valid on a follow-up call that requests it (or vice
+    versa). When set, every ``role="log"`` artifact in the returned page gets
+    a bounded tail read of its own file (``content``/``content_truncated``/
+    ``content_bytes_read``); every other artifact, and every log artifact
+    whose content could not be resolved, gets a typed ``content_error``
+    instead -- never a silent omission, never a page-wide failure for one
+    unreadable file.
     """
     _validate_query_filters(
         package_id=package_id,
@@ -207,6 +224,7 @@ def artifact_query_page(
         state=state,
         artifact_id=artifact_id,
         page_size=page_size,
+        content_max_bytes=content_max_bytes,
     )
     filters = {
         "package_id": package_id,
@@ -309,6 +327,13 @@ def artifact_query_page(
             filter_digest=filter_digest,
             snapshot_digest=snapshot_digest,
         )
+    if content_max_bytes is not None:
+        page = [
+            artifact_with_content(
+                item, execution_root=execution_root, max_bytes=content_max_bytes
+            )
+            for item in page
+        ]
     return {
         "producer_schema_version": snapshot["schema_version"],
         "pipeline_id": snapshot["pipeline_id"],
@@ -329,7 +354,18 @@ def _validate_query_filters(
     state: str | None,
     artifact_id: str | None,
     page_size: int,
+    content_max_bytes: int | None = None,
 ) -> None:
+    if content_max_bytes is not None and (
+        isinstance(content_max_bytes, bool)
+        or not isinstance(content_max_bytes, int)
+        or not 1 <= content_max_bytes <= ARTIFACT_MAX_CONTENT_BYTES
+    ):
+        raise ArtifactQueryError(
+            "jarvis_artifact_content_max_bytes_invalid",
+            f"JARVIS artifact content_max_bytes must be between 1 and "
+            f"{ARTIFACT_MAX_CONTENT_BYTES}",
+        )
     if package_id is not None:
         try:
             _validate_text(package_id, field="package_id filter", maximum=256)
@@ -667,3 +703,4 @@ def _finite_nonnegative(value: object) -> bool:
         and math.isfinite(float(value))
         and float(value) >= 0
     )
+

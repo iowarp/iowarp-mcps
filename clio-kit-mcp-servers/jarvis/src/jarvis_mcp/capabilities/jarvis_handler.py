@@ -25,6 +25,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
 
+from jarvis_mcp.artifact_content import execution_root_from_record
 from jarvis_mcp.artifacts import (
     ArtifactQueryError,
     ArtifactSnapshotError,
@@ -923,6 +924,7 @@ async def get_execution(
             if artifacts is not None:
                 if artifact_snapshot is None:
                     raise RuntimeError("JARVIS artifact query omitted its snapshot")
+                content_max_bytes = artifacts.get("content_max_bytes")
                 artifact_page = artifact_query_page(
                     artifact_snapshot,
                     package_id=artifacts.get("package_id"),
@@ -931,6 +933,12 @@ async def get_execution(
                     artifact_id=artifacts.get("artifact_id"),
                     page_size=artifacts.get("page_size", 50),
                     cursor=artifacts.get("cursor"),
+                    content_max_bytes=content_max_bytes,
+                    execution_root=(
+                        execution_root_from_record(record_document)
+                        if content_max_bytes is not None
+                        else None
+                    ),
                 )
             query_submit, query_wait = _execution_query_flags(record_document)
             runtime_metadata = _runtime_metadata_from_documents(

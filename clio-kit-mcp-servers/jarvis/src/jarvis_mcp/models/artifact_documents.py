@@ -47,6 +47,14 @@ class JarvisArtifactDocument(TypedDict):
     size_bytes: NotRequired[int]
     checksum: NotRequired[str]
     message: NotRequired[str]
+    # Present only when the query set ``content_max_bytes``: a bounded tail
+    # read of this artifact's own file (``role="log"`` only). ``content`` is
+    # ``None`` and ``content_error`` names why whenever the read could not
+    # happen -- never a silent gap. See ``artifacts.py::_artifact_with_content``.
+    content: NotRequired[str | None]
+    content_truncated: NotRequired[bool]
+    content_bytes_read: NotRequired[int]
+    content_error: NotRequired[str | None]
 
 
 class JarvisExecutionArtifactPageDocument(BaseModel):
@@ -121,4 +129,16 @@ class ExecutionArtifactQuery(BaseModel):
         default=None,
         description="Opaque next-page cursor.",
         max_length=1024,
+    )
+    content_max_bytes: int | None = Field(
+        default=None,
+        description=(
+            "When set, return a bounded tail read (this many bytes, from the "
+            "end of the file) of every role=\"log\" artifact in this page. "
+            "Every other artifact -- and any log artifact whose content could "
+            "not be read -- carries a typed content_error instead. Omit to "
+            "keep the manifest content-free."
+        ),
+        ge=1,
+        le=65536,
     )

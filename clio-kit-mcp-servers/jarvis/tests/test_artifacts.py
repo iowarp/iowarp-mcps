@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+from jarvis_mcp.artifact_content import ArtifactContentError, read_artifact_tail, resolve_artifact_path
 from jarvis_mcp.artifacts import (
     ArtifactQueryError,
     ArtifactSnapshotError,
@@ -384,3 +386,189 @@ def test_artifact_query_rejects_invalid_or_oversized_cursor(cursor: str) -> None
     )
     with pytest.raises(RuntimeError, match="cursor is invalid"):
         artifact_query_page(validated, cursor=cursor)
+
+
+def _log_snapshot(
+    *,
+    execution_id: str = "execution-a",
+    location: dict[str, str],
+    state: str = "finalized",
+) -> dict[str, Any]:
+    artifact = _artifact(
+        "L", package_id="lammps-cu-elastic", role="log", state=state
+    )
+    artifact["execution_id"] = execution_id
+    artifact["location"] = location
+    return {
+        "schema_version": "jarvis.execution.artifacts.v1",
+        "execution_id": execution_id,
+        "pipeline_id": "pipeline-a",
+        "execution_state": "failed",
+        "terminal": True,
+        "artifacts": [artifact],
+    }
+
+
+def _validated_log_snapshot(**kwargs: Any) -> dict[str, Any]:
+    return artifact_snapshot_document(
+        _log_snapshot(**kwargs),
+        expected_execution_id=kwargs.get("execution_id", "execution-a"),
+        expected_pipeline_id="pipeline-a",
+    )
+
+
+class TestArtifactContentMaxBytes:
+    """FAILING-FIRST (gating fix): the LAMMPS demo's compute expert reached a
+    real terminal failure with no curated way to read the actual stdout/
+    stderr text -- jarvis_get_execution's artifact manifest was content-free
+    by design. ``content_max_bytes`` adds a narrow, bounded tail read scoped
+    to ``role="log"`` artifacts only."""
+
+    def test_reads_the_tail_of_an_execution_scoped_log_file(self, tmp_path: Path) -> None:
+        execution_root = tmp_path / "jarvis_c658476089200e8ee78951f11054b737"
+        execution_root.mkdir()
+        (execution_root / "stdout.log").write_bytes(
+            b"line-1\nline-2\nline-3\nLAMMPS failed with exit status 1\n"
+        )
+        snapshot = _validated_log_snapshot(
+            location={"kind": "execution_path", "value": "stdout.log"}
+        )
+
+        page = artifact_query_page(
+            snapshot, role="log", content_max_bytes=4096, execution_root=execution_root
+        )
+
+        artifact = page["artifacts"][0]
+        assert artifact["content"] == (
+            "line-1\nline-2\nline-3\nLAMMPS failed with exit status 1\n"
+        )
+        assert artifact["content_truncated"] is False
+        assert artifact["content_bytes_read"] == len(artifact["content"])
+        assert artifact["content_error"] is None
+
+    def test_reads_only_the_tail_when_the_file_exceeds_the_bound(self, tmp_path: Path) -> None:
+        execution_root = tmp_path / "exec"
+        execution_root.mkdir()
+        body = "".join(f"step {i}\n" for i in range(1000))
+        (execution_root / "stdout.log").write_bytes(body.encode("utf-8"))
+        snapshot = _validated_log_snapshot(
+            location={"kind": "execution_path", "value": "stdout.log"}
+        )
+
+        page = artifact_query_page(
+            snapshot, role="log", content_max_bytes=64, execution_root=execution_root
+        )
+
+        artifact = page["artifacts"][0]
+        assert artifact["content_truncated"] is True
+        assert artifact["content_bytes_read"] == 64
+        assert artifact["content"] == body.encode("utf-8")[-64:].decode(
+            "utf-8", errors="replace"
+        )
+        # The tail carries the LAST lines -- nearest a crash -- not the head.
+        assert artifact["content"].endswith("step 999\n")
+
+    def test_resolves_a_cluster_path_location_directly_without_an_execution_root(
+        self, tmp_path: Path
+    ) -> None:
+        """Unit-level (bypassing the POSIX-only cluster-path string validation
+        exercised elsewhere in this file): ``cluster_path`` locations are
+        already-absolute paths on the SAME host jarvis_mcp runs on (it is
+        co-located with the execution it reports on), so resolution is a
+        direct ``Path(value)`` -- no ``execution_root`` join, unlike
+        ``execution_path``. This is exactly the ``log.lammps`` case."""
+        log_file = tmp_path / "log.lammps"
+        log_file.write_bytes(b"LAMMPS (2 Aug2026)\n")
+
+        resolved = resolve_artifact_path(
+            {"kind": "cluster_path", "value": str(log_file)}, execution_root=None
+        )
+        content, truncated, bytes_read = read_artifact_tail(resolved, max_bytes=4096)
+
+        assert resolved == log_file
+        assert content == "LAMMPS (2 Aug2026)\n"
+        assert truncated is False
+        assert bytes_read == len(b"LAMMPS (2 Aug2026)\n")
+
+    def test_execution_path_location_requires_an_execution_root(self) -> None:
+        with pytest.raises(ArtifactContentError, match="root directory could not be resolved"):
+            resolve_artifact_path(
+                {"kind": "execution_path", "value": "stdout.log"}, execution_root=None
+            )
+
+    def test_types_a_reason_for_non_log_roles_instead_of_silently_omitting(self) -> None:
+        snapshot = artifact_snapshot_document(
+            _snapshot(),  # default artifact role="output"
+            expected_execution_id="execution-a",
+            expected_pipeline_id="pipeline-a",
+        )
+
+        page = artifact_query_page(snapshot, content_max_bytes=4096)
+
+        artifact = page["artifacts"][0]
+        assert artifact["content"] is None
+        assert artifact["content_truncated"] is False
+        assert artifact["content_bytes_read"] == 0
+        assert artifact["content_error"] is not None
+        assert "log" in artifact["content_error"]
+
+    def test_types_a_reason_when_execution_root_cannot_be_resolved(self) -> None:
+        snapshot = _validated_log_snapshot(
+            location={"kind": "execution_path", "value": "stdout.log"}
+        )
+
+        page = artifact_query_page(
+            snapshot, role="log", content_max_bytes=4096, execution_root=None
+        )
+
+        artifact = page["artifacts"][0]
+        assert artifact["content"] is None
+        assert artifact["content_error"] is not None
+        assert "root" in artifact["content_error"]
+
+    def test_types_a_reason_for_an_unreadable_file_without_failing_the_page(
+        self, tmp_path: Path
+    ) -> None:
+        execution_root = tmp_path / "exec"
+        execution_root.mkdir()
+        # stdout.log deliberately not created -- exercises the missing-file path.
+        snapshot = _validated_log_snapshot(
+            location={"kind": "execution_path", "value": "stdout.log"}
+        )
+
+        page = artifact_query_page(
+            snapshot, role="log", content_max_bytes=4096, execution_root=execution_root
+        )
+
+        artifact = page["artifacts"][0]
+        assert artifact["content"] is None
+        assert artifact["content_error"] is not None
+        assert page["returned_artifact_count"] == 1  # the page itself still succeeds
+
+    def test_omits_content_fields_entirely_when_not_requested(self) -> None:
+        """Regression: the default (content_max_bytes=None) path must be
+        byte-identical to pre-fix behavior -- no new keys, no schema drift
+        for every existing caller that never asks for content."""
+        snapshot = _validated_log_snapshot(
+            location={"kind": "execution_path", "value": "stdout.log"}
+        )
+
+        page = artifact_query_page(snapshot, role="log")
+
+        artifact = page["artifacts"][0]
+        assert "content" not in artifact
+        assert "content_truncated" not in artifact
+        assert "content_bytes_read" not in artifact
+        assert "content_error" not in artifact
+
+    @pytest.mark.parametrize("content_max_bytes", [0, 65537, True, "10"])
+    def test_rejects_invalid_content_max_bytes(self, content_max_bytes: object) -> None:
+        snapshot = _validated_log_snapshot(
+            location={"kind": "execution_path", "value": "stdout.log"}
+        )
+        with pytest.raises(ArtifactQueryError, match="content_max_bytes must be between"):
+            artifact_query_page(
+                snapshot,
+                role="log",
+                content_max_bytes=content_max_bytes,  # type: ignore[arg-type]
+            )
