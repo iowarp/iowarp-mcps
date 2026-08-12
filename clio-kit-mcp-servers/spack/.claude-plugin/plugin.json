@@ -1,5 +1,5 @@
 {
   "name": "clio-spack",
   "description": "Structured Spack discovery and installation tools for scientific agents",
-  "version": "2.2.0"
+  "version": "2.3.0"
 }

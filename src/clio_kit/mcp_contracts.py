@@ -147,8 +147,8 @@ USER_CONTRACT_SPECS: Final = (
         ),
     ),
     UserContractSpec(
-        contract_id="clio-kit-spack-user-v2.2",
-        artifact_name="spack-user-v2.2.json",
+        contract_id="clio-kit-spack-user-v2.3",
+        artifact_name="spack-user-v2.3.json",
         server_name="spack",
         distribution_name="spack-mcp",
         entry_command="spack-mcp",
@@ -188,6 +188,7 @@ HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = (
     "scientific-catalog-user-v1.json",
     "spack-user-v2.json",
     "spack-user-v2.1.json",
+    "spack-user-v2.2.json",
 )
 
 

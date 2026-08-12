@@ -251,7 +251,18 @@ async def _call_backend(
         return await asyncio.to_thread(function, *args, **kwargs)
     except SpackBackendError as exc:
         if enrich_error is not None:
-            exc = await asyncio.to_thread(enrich_error, exc)
+            try:
+                exc = await asyncio.to_thread(enrich_error, exc)
+            except Exception:
+                # Enrichment must never be able to destroy the primary typed
+                # error it was only supposed to add context to. discovery's
+                # R1/R2 fixes make this structurally unreachable today (an
+                # unreadable repo degrades to typed data inside
+                # classify_recipe_availability, never an exception), but
+                # keep the guard so a future enrichment path can't regress
+                # a caller from a typed not_installed error to a raw
+                # traceback string.
+                pass
         raise ToolError(exc.as_json()) from exc
 
 

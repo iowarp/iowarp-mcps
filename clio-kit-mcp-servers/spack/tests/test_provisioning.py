@@ -31,6 +31,20 @@ def _unavailable() -> discovery.RecipeAvailability:
     )
 
 
+def _unavailable_due_to_unreadable_repo(*, repo: str = "iowarp") -> discovery.RecipeAvailability:
+    return discovery.RecipeAvailability(
+        available=False,
+        repo=None,
+        repos_searched=["builtin"],
+        repos_unreadable=[f"{repo} (permission denied)"],
+        message=(
+            f"could not confirm recipe availability: repo(s) {repo} (permission denied) "
+            "could not be read; the remaining registered repos do not declare this recipe, "
+            "but availability could not be fully determined"
+        ),
+    )
+
+
 def _command_result(
     *, returncode: int = 0, stdout: str = "installed", duration_seconds: float = 0.05
 ) -> backend._CommandResult:
@@ -100,6 +114,36 @@ def test_install_raises_recipe_not_found_without_invoking_spack(
     assert invoked == []  # never shelled out once availability said no
 
 
+# ── unreadable repo: never hard-refuse on an unverified catalog (R2) ──
+
+
+def test_install_returns_availability_unknown_instead_of_hard_refusing_when_repos_unreadable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """R2: a repo that could not be scanned might have declared the recipe;
+    refusing outright (recipe_not_found) would be a false veto spack itself
+    was never given the chance to correct. install_spec must name which
+    repos were unreadable and refuse to guess, instead of pretending the
+    catalog's negative answer is confirmed."""
+    monkeypatch.setattr(
+        discovery,
+        "classify_recipe_availability",
+        lambda name: _unavailable_due_to_unreadable_repo(),
+    )
+    invoked: list[object] = []
+    monkeypatch.setattr(
+        backend, "_run_bounded_command", lambda *a, **k: invoked.append(1) or _command_result()
+    )
+
+    with pytest.raises(backend.SpackBackendError) as error:
+        provisioning.install_spec("lammps", timeout_seconds=60)
+
+    assert error.value.code == "availability_unknown"
+    assert "iowarp" in (error.value.detail or "")
+    assert "builtin" in (error.value.detail or "")
+    assert invoked == []  # still never shelled out -- refusing to guess, not attempting blindly
+
+
 # ── build failure: nonzero exit becomes a typed error with log path + tail ──
 
 
@@ -166,6 +210,50 @@ def test_install_launch_failure_is_typed(monkeypatch: pytest.MonkeyPatch) -> Non
         provisioning.install_spec("demo@1.0", timeout_seconds=60)
 
     assert error.value.code == "launch_failed"
+
+
+def test_install_capture_failure_is_typed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """R1: backend._run_bounded_command raises a bare RuntimeError when its
+    output pipes fail to close (backend.py's own _run_spack wrapper types
+    this as capture_failed; install_spec bypasses _run_spack and must type
+    it identically instead of letting it escape as an untyped exception."""
+    monkeypatch.setattr(discovery, "classify_recipe_availability", lambda name: _available())
+    monkeypatch.setattr(
+        backend,
+        "_run_bounded_command",
+        lambda *a, **k: (_ for _ in ()).throw(
+            RuntimeError("subprocess output pipes did not close")
+        ),
+    )
+
+    with pytest.raises(backend.SpackBackendError) as error:
+        provisioning.install_spec("demo@1.0", timeout_seconds=60)
+
+    assert error.value.code == "capture_failed"
+    assert "log_path=" in (error.value.detail or "")
+
+
+def test_install_log_directory_unwritable_is_typed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """R1: _new_log_path -> _install_log_dir -> mkdir() sits outside every
+    handler in the original implementation; an unwritable
+    SPACK_MCP_INSTALL_LOG_DIR must raise a typed error, never a raw OSError,
+    and spack must never be invoked."""
+    monkeypatch.setattr(discovery, "classify_recipe_availability", lambda name: _available())
+    blocking_file = tmp_path / "not-a-directory"
+    blocking_file.write_text("blocks mkdir underneath it", encoding="utf-8")
+    monkeypatch.setenv("SPACK_MCP_INSTALL_LOG_DIR", str(blocking_file / "install-logs"))
+    invoked: list[object] = []
+    monkeypatch.setattr(
+        backend, "_run_bounded_command", lambda *a, **k: invoked.append(1) or _command_result()
+    )
+
+    with pytest.raises(backend.SpackBackendError) as error:
+        provisioning.install_spec("demo@1.0", timeout_seconds=60)
+
+    assert error.value.code == "log_unwritable"
+    assert invoked == []
 
 
 # ── success: composes with locate_installed for prefix/load_spec ──
@@ -307,3 +395,24 @@ def test_new_log_path_slugifies_spec(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert path.parent == tmp_path / "logs"
     assert " " not in path.name
     assert path.name.startswith("py-numpy")
+
+
+# ── locking sink: a late write after close must not crash a daemon thread (S9) ──
+
+
+def test_locking_sink_drops_writes_after_the_handle_closes(tmp_path: Path) -> None:
+    """A drain thread that outlives the caller's `with` block over the log
+    file (e.g. backend._finish_captures's join deadline expiring) must not
+    raise ValueError("write to closed file") inside that thread, where the
+    traceback would be silently swallowed and the tail of the log lost. The
+    realistic path is already closed off by the capture_failed handling
+    above; this is a direct unit-level guarantee on the sink itself."""
+    log_path = tmp_path / "install.log"
+    handle = log_path.open("wb")
+    sink = provisioning._locking_sink(handle)
+    sink(b"before close\n")
+    handle.close()
+
+    sink(b"after close -- must be dropped, not raised")  # must not raise
+
+    assert log_path.read_bytes() == b"before close\n"

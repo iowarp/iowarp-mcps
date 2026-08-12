@@ -98,8 +98,11 @@ RATCHET_BASELINE: dict[str, int] = {
     "src/clio_kit/__init__.py": 958,
     # clio-kit#370: spack contract spec bumped to v2.2 (search/info tools
     # added to the curated surface) and a new historical-artifact entry
-    # (spack-user-v2.1.json) recorded, 921 -> 930 (ruff-formatted).
-    "src/clio_kit/mcp_contracts.py": 930,
+    # (spack-user-v2.1.json) recorded, 921 -> 930 (ruff-formatted). Fix round
+    # (review kit-spack-review.md, R2): search gained repos_unreadable/
+    # truncated fields, forcing v2.2 -> v2.3; one more historical-artifact
+    # entry (spack-user-v2.2.json) recorded, 930 -> 931.
+    "src/clio_kit/mcp_contracts.py": 931,
     "src/clio_kit/env_cache.py": 843,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,
     "clio-kit-mcp-servers/parquet/src/parquet_mcp/capabilities/parquet_handler.py": 839,

@@ -8,7 +8,7 @@ schema-version = 1
 # change, add it here WITH a real version bump under [servers] in the same
 # PR, then remove it again once published.
 [mcp-registry-release]
-publish = ["web"]
+publish = ["spack", "web"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
@@ -40,6 +40,6 @@ sac = "2.2.3"
 scientific-catalog = "1.1.2"
 seismic = "2.2.3"
 slurm = "3.0.0"
-spack = "2.2.0"
+spack = "2.3.0"
 terrain = "2.2.3"
 web = "1.1.0"

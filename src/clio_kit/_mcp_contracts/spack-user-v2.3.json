@@ -1,0 +1,731 @@
+{
+  "canonicalization": "json-sort-keys-compact-utf8-v1",
+  "contract_id": "clio-kit-spack-user-v2.3",
+  "contract_sha256": "ce5d1827c365b549308130e110cffac66a21e0202d688ac38636cd8ad98b6b85",
+  "profile": "user",
+  "projection": "mcp-agent-tool-schema-v1",
+  "schema_version": "clio-kit.mcp-user-contract.v1",
+  "server_name": "spack",
+  "source": {
+    "method": "tools/list",
+    "protocol_version": "2024-11-05",
+    "transport": "stdio"
+  },
+  "tool_names": [
+    "spack_find",
+    "spack_info",
+    "spack_install",
+    "spack_locate",
+    "spack_search"
+  ],
+  "tools": [
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List installed Spack packages matching an optional constraint. No matches is a successful result with count=0 and packages=[].",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "spack_find",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Machine-readable installed-package query result.",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "operation": {
+            "const": "find",
+            "default": "find",
+            "type": "string"
+          },
+          "packages": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Stable summary of one concrete installed Spack package.",
+              "properties": {
+                "architecture": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "compiler": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "dag_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "type": "object"
+      },
+      "title": "Find Packages"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Describe one recipe: versions, variants, and description. Probes `spack info` first; if that subcommand is unavailable or fails on this deployment, falls back to statically parsing the recipe's package.py and marks the result degraded=true with degraded_reason explaining why -- never silently. A package absent from every registered repo returns the structured recipe_not_found error.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "package": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "package"
+        ],
+        "type": "object"
+      },
+      "name": "spack_info",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Recipe detail: versions, variants, description, and how it was read.",
+        "properties": {
+          "degraded": {
+            "type": "boolean"
+          },
+          "degraded_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "operation": {
+            "const": "info",
+            "default": "info",
+            "type": "string"
+          },
+          "package": {
+            "type": "string"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "spack_info",
+              "package_py"
+            ],
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "versions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "package",
+          "source",
+          "degraded"
+        ],
+        "type": "object"
+      },
+      "title": "Describe Recipe"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Install one Spack spec with explicit reusable or fresh concretization. Runs synchronously (streaming/task augmentation is deferred to the kit tasks-semantics slice, SEP-2663) with a configurable timeout; captures the full build log to disk and returns its path plus a bounded tail, and the install prefix on success. A missing recipe, a failed build, and a timeout are distinct typed errors (recipe_not_found / build_failure / timed_out), each naming the recovery affordance (searched repos / log tail / log path).",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "reuse": {
+            "default": true,
+            "description": "Choose Spack concretization explicitly: true passes --reuse and may reuse compatible installed packages or buildcaches; false passes --fresh and excludes them while concretizing.",
+            "type": "boolean"
+          },
+          "spec": {
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 14400,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "name": "spack_install",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Completed Spack install: full log on disk, tail inline, real prefix.",
+        "properties": {
+          "duration_seconds": {
+            "type": "number"
+          },
+          "load_spec": {
+            "description": "Exact runtime identity for JARVIS. Copy this value unchanged from spack_install.output.load_spec into one element of jarvis_run.input.spack_specs.",
+            "type": "string"
+          },
+          "log_path": {
+            "description": "Full build log on disk, unbounded by the MCP response.",
+            "type": "string"
+          },
+          "log_tail": {
+            "description": "Bounded tail of the build log for inline review.",
+            "type": "string"
+          },
+          "operation": {
+            "const": "install",
+            "default": "install",
+            "type": "string"
+          },
+          "package": {
+            "additionalProperties": false,
+            "description": "Stable summary of one concrete installed Spack package.",
+            "properties": {
+              "architecture": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "compiler": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "dag_hash": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "requested_spec": {
+            "type": "string"
+          },
+          "reuse": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          },
+          "status": {
+            "const": "installed",
+            "default": "installed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested_spec",
+          "reuse",
+          "duration_seconds",
+          "package",
+          "prefix",
+          "load_spec",
+          "log_path",
+          "log_tail"
+        ],
+        "type": "object"
+      },
+      "title": "Install Package"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Resolve one unique installed Spack spec. Copy spack_locate.output.load_spec unchanged into one element of jarvis_run.input.spack_specs; do not derive or pass an executable path from the returned prefix. An absent package returns the structured not_installed error, whose detail now says whether a recipe is available to install (call spack_install) or exists in no registered repo at all.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "spec": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "name": "spack_locate",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Unique installed package and its exact prefix.",
+        "properties": {
+          "load_spec": {
+            "description": "Exact runtime identity for JARVIS. Copy this value unchanged from spack_locate.output.load_spec into one element of jarvis_run.input.spack_specs.",
+            "type": "string"
+          },
+          "operation": {
+            "const": "locate",
+            "default": "locate",
+            "type": "string"
+          },
+          "package": {
+            "additionalProperties": false,
+            "description": "Stable summary of one concrete installed Spack package.",
+            "properties": {
+              "architecture": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "compiler": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "dag_hash": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "requested_spec": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested_spec",
+          "load_spec",
+          "package",
+          "prefix"
+        ],
+        "type": "object"
+      },
+      "title": "Locate Package"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "packages",
+            "spack",
+            "user"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Search recipe AVAILABILITY across every registered Spack repo -- broader than spack_find/spack_locate, which only see what is already installed. Answers 'does a recipe exist', 'in which repo', and 'is it already installed' in one call. No matches is a successful result with count=0.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "spack_search",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Recipe availability across every registered repo, not just installs.",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "installed_state_degraded": {
+            "default": false,
+            "description": "True when `spack find` failed while resolving install state; recipe availability above is still authoritative, but every match's installed/installed_packages defaults to not-installed rather than a confirmed answer.",
+            "type": "boolean"
+          },
+          "installed_state_degraded_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "matches": {
+            "items": {
+              "additionalProperties": false,
+              "description": "One catalog recipe matched by a search query.",
+              "properties": {
+                "installed": {
+                  "type": "boolean"
+                },
+                "installed_packages": {
+                  "items": {
+                    "additionalProperties": false,
+                    "description": "Stable summary of one concrete installed Spack package.",
+                    "properties": {
+                      "architecture": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "compiler": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "dag_hash": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "repos": {
+                  "description": "Registered repo namespaces that declare this recipe.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "repos",
+                "installed"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "operation": {
+            "const": "search",
+            "default": "search",
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "repos_searched": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "repos_unreadable": {
+            "description": "Registered repos whose package directory could not be scanned (missing path, permission denied, ...); recipes may exist there that this search could not see. Never treat an empty result as a confirmed absence when this list is non-empty.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "spack.mcp.result.v1",
+            "default": "spack.mcp.result.v1",
+            "type": "string"
+          },
+          "total_matches": {
+            "description": "Total ranked matches before the response cap; compare with count/truncated to tell '25 of 25' from '25 of 60'.",
+            "type": "integer"
+          },
+          "truncated": {
+            "default": false,
+            "description": "True when total_matches exceeds the 25-result cap.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "repos_searched",
+          "matches",
+          "count",
+          "total_matches"
+        ],
+        "type": "object"
+      },
+      "title": "Search Recipes"
+    }
+  ],
+  "wire_sha256": "6bc1de3515226777f4a4823d921787a87766d6657451cf0f053f56c9740fe3ae"
+}

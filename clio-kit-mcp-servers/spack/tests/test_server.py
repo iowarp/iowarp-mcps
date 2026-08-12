@@ -12,9 +12,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from spack_mcp import server
+from spack_mcp import backend, server
 from spack_mcp.backend import (
     SpackBackendError,
     SpackEnvironmentResult,
@@ -133,6 +134,64 @@ async def test_locate_not_installed_error_is_enriched_with_recipe_availability(
     payload = json.loads(str(error.value))
     assert observed == {"code": "not_installed", "spec": "lammps"}
     assert payload["error"]["detail"] == "recipe available in repo 'builtin' via spack_install"
+
+
+@pytest.mark.asyncio
+async def test_search_tool_degrades_typed_when_a_repo_directory_is_unreadable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """R1/R2 end-to-end, through the real in-memory MCP client: a
+    PermissionError while walking a repo's package directory must never
+    reach the client as a raw, untyped exception string (the pre-fix
+    behavior: 'Error calling tool ...: [Errno 13] Permission denied', no
+    spack.mcp.error.v1 envelope). It must degrade to typed data inside a
+    successful search result -- not merely a typed *error* -- since one bad
+    repo among many must not fail the whole call (R2)."""
+    repo_root = tmp_path / "builtin"
+    (repo_root / "packages" / "zlib").mkdir(parents=True)
+    (repo_root / "packages" / "zlib" / "package.py").write_text(
+        '"""Demo."""\n\nclass Demo:\n    pass\n', encoding="utf-8"
+    )
+
+    def fake_run_spack(
+        args: list[str], *, operation: str, timeout_seconds: int
+    ) -> backend._CommandResult:
+        if args[:2] == ["repo", "list"]:
+            return backend._CommandResult(
+                argv=("spack",),
+                returncode=0,
+                stdout=f"builtin    {repo_root}\n",
+                stderr="",
+                duration_seconds=0.01,
+            )
+        if args[:1] == ["find"]:
+            return backend._CommandResult(
+                argv=("spack",), returncode=0, stdout="[]", stderr="", duration_seconds=0.01
+            )
+        raise SpackBackendError("command_failed", "unstubbed", operation=operation)
+
+    monkeypatch.setattr(backend, "_run_spack", fake_run_spack)
+
+    real_iterdir = Path.iterdir
+
+    def scoped_boom_iterdir(self: Path) -> object:
+        # Scoped to the fixture repo only -- a global patch also breaks
+        # unrelated library internals (e.g. jsonschema's lazy resource
+        # loading during the client's own output-schema validation), which
+        # would fail this test for a reason that has nothing to do with the
+        # behavior under test.
+        try:
+            self.relative_to(repo_root)
+        except ValueError:
+            return real_iterdir(self)
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(Path, "iterdir", scoped_boom_iterdir)
+    async with Client(server.mcp) as client:
+        result = await client.call_tool("spack_search", {"query": "zlib"})
+
+    assert result.data.repos_unreadable != []
+    assert any("builtin" in entry for entry in result.data.repos_unreadable)
 
 
 @pytest.mark.asyncio

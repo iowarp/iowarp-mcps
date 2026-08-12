@@ -14,12 +14,22 @@ its contract.
 
 Typed failure vocabulary (the owner's law: every error names the failure AND
 the recovery affordance):
-  - ``recipe_not_found`` -- no registered repo declares this package; the
-    repos actually searched are in ``detail``.
+  - ``recipe_not_found`` -- no registered repo declares this package, and
+    every repo was actually readable; the repos searched are in ``detail``.
+  - ``availability_unknown`` -- the catalog found no match, but at least one
+    registered repo could not be scanned; refusing the install would risk a
+    false veto of a recipe spack itself could have served, so this names
+    which repos were unreadable instead of guessing (clio-kit#370 fix round,
+    R2).
   - ``build_failure`` -- Spack ran and exited nonzero; ``detail`` carries the
     log path and tail.
   - ``timed_out`` -- exceeded ``timeout_seconds``; ``detail`` carries the log
     path so an operator/agent can inspect progress without re-running.
+  - ``capture_failed`` -- the bounded subprocess capture itself failed after
+    Spack was launched (mirrors ``backend._run_spack``'s handling of the
+    same ``RuntimeError``); ``detail`` carries the log path.
+  - ``log_unwritable`` -- the install log directory or file could not be
+    created/opened; Spack is never invoked in this case.
   - ``install_not_observed`` / ``install_prefix_ambiguous`` -- Spack exited
     0 but the post-install locate composition could not resolve exactly one
     installed package (composes with ``backend.locate_installed``, the same
@@ -90,6 +100,18 @@ def install_spec(
     base_name = discovery.base_package_name(normalized)
     availability = discovery.classify_recipe_availability(base_name)
     if not availability.available:
+        if availability.repos_unreadable:
+            raise SpackBackendError(
+                "availability_unknown",
+                f"could not confirm whether a recipe named {base_name!r} is available",
+                operation="install",
+                detail=(
+                    f"repos unreadable: {', '.join(availability.repos_unreadable)}; "
+                    f"repos successfully searched: {', '.join(availability.repos_searched)}; "
+                    "refusing to guess -- fix the unreadable repo(s) and retry, or confirm "
+                    "availability with spack_search"
+                ),
+            )
         raise SpackBackendError(
             "recipe_not_found",
             f"no recipe named {base_name!r} in any registered repo",
@@ -97,11 +119,29 @@ def install_spec(
             detail=availability.message,
         )
 
-    log_path = _new_log_path(normalized)
+    try:
+        log_path = _new_log_path(normalized)
+    except OSError as exc:
+        raise SpackBackendError(
+            "log_unwritable",
+            "could not create the Spack install log directory",
+            operation="install",
+            detail=str(exc),
+        ) from exc
+
     executable = backend._spack_executable()
     argv = [executable, "install", "--reuse" if reuse else "--fresh", normalized]
     started = time.monotonic()
-    with log_path.open("wb") as log_file:
+    try:
+        log_file = log_path.open("wb")
+    except OSError as exc:
+        raise SpackBackendError(
+            "log_unwritable",
+            "could not open the Spack install log file",
+            operation="install",
+            detail=f"log_path={log_path}; {exc}",
+        ) from exc
+    with log_file:
         sink = _locking_sink(log_file)
         try:
             result = backend._run_bounded_command(
@@ -127,6 +167,13 @@ def install_spec(
                 "could not launch Spack",
                 operation="install",
                 detail=str(exc),
+            ) from exc
+        except RuntimeError as exc:
+            raise SpackBackendError(
+                "capture_failed",
+                f"could not capture Spack install output for {normalized}",
+                operation="install",
+                detail=f"log_path={log_path}; {exc}",
             ) from exc
     duration = round(time.monotonic() - started, 3)
     tail = _read_tail(log_path)
@@ -201,11 +248,24 @@ def _new_log_path(spec: str) -> Path:
 
 
 def _locking_sink(handle: BinaryIO) -> Callable[[bytes], None]:
-    """Serialize concurrent stdout/stderr writers onto one open log file."""
+    """Serialize concurrent stdout/stderr writers onto one open log file.
+
+    Guards against a drain thread outliving the caller's ``with`` block over
+    ``handle`` (clio-kit#370 fix round, S9): once ``handle`` is closed,
+    further chunks are dropped instead of raising ``ValueError`` inside a
+    daemon thread, where the traceback would be swallowed and the tail of
+    the build log lost without a trace. In the normal path this is
+    unreachable -- ``backend._finish_captures`` joins every drain thread (or
+    this module's own ``RuntimeError`` -> ``capture_failed`` handling fires)
+    before ``_run_bounded_command`` returns -- but the guard costs nothing
+    and removes the failure mode entirely rather than merely narrowing it.
+    """
     lock = threading.Lock()
 
     def sink(chunk: bytes) -> None:
         with lock:
+            if handle.closed:
+                return
             handle.write(chunk)
             handle.flush()
 
