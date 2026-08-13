@@ -110,9 +110,17 @@ def execution_root_from_record(record_document: dict[str, Any]) -> Path | None:
     if not isinstance(metadata, dict):
         return None
     snapshot_path = metadata.get("pipeline_snapshot_path")
-    if not isinstance(snapshot_path, str) or not snapshot_path:
-        return None
-    return Path(snapshot_path).parent
+    if isinstance(snapshot_path, str) and snapshot_path:
+        return Path(snapshot_path).parent
+    # Scheduler-mode records: ``pipeline_snapshot_path`` is written by the
+    # launch that runs INSIDE the scheduler job, so the submit-side record
+    # never carries it. ``metadata.script_path`` is written at submit time as
+    # ``execution_root / "submit.slurm"`` (scheduler_submit), so its parent is
+    # the same execution root — still a durable field, never a guess.
+    script_path = metadata.get("script_path")
+    if isinstance(script_path, str) and script_path:
+        return Path(script_path).parent
+    return None
 
 
 def resolve_artifact_path(
