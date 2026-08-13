@@ -218,7 +218,6 @@ async def test_search_searxng_reports_disabled_json(
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_non_searxng_schema_omits_provider_and_native_selectors() -> None:
     """Provider choice is installation-time and irrelevant arguments are absent."""
     ddg_mcp = create_mcp(Settings(search_provider="ddg"))

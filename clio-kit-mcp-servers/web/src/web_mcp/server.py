@@ -539,13 +539,13 @@ async def _search_searxng_tool(
         Field(description="SearXNG recency: day, month, or year."),
     ] = None,
     pageno: Annotated[
-        int | None,
+        int,
         Field(
             description="SearXNG result page, bounded by this deployment to 1 through 3.",
             ge=1,
             le=3,
         ),
-    ] = None,
+    ] = 1,
     safesearch: Annotated[
         int | None,
         Field(description="SearXNG safe-search level, 0 through 2.", ge=0, le=2),
@@ -567,7 +567,7 @@ async def _search_searxng_tool(
         engines=engines,
         language=language,
         time_range=time_range,
-        pageno=pageno or 1,
+        pageno=pageno,
         safesearch=safesearch,
     )
     return {
