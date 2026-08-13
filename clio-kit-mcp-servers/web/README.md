@@ -1,105 +1,94 @@
 # Web MCP Server
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+The Web MCP exposes two stable agent tools—`search` and `fetch`—while fixing the
+search provider when each MCP installation starts. The agent cannot switch providers per
+call, and it never sees parameters that the selected provider cannot use.
 
-**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
+## Installations
 
-The Web MCP server provides two curated, high-level tools for agentic web
-access. It is the seed of CLIO's web tooling and the test instrument for the
-sandbox campaign's egress recording.
+DuckDuckGo remains the keyless default:
 
-## Tools
+```bash
+claude mcp add web -- uvx clio-kit mcp-server web --provider ddg
+```
 
-### `fetch`
+Use a private SearXNG deployment (or the optional `clio-search` image) with:
 
-Retrieve an HTTP(S) URL, convert HTML to Markdown, and return it inline or save
-it to a local file.
+```bash
+claude mcp add web -- uvx clio-kit mcp-server web \
+  -- \
+  --provider searxng \
+  --address http://10.0.0.102:8089
+```
 
-- **Agent story:** "I found a promising URL and need its actual content." The
-  agent calls `fetch` to pull the page, get clean Markdown (links preserved),
-  and read the title. For large or binary resources it passes `to_file=True` so
-  the raw page is written to disk and only a `local_path` comes back — raw pages
-  never bloat the context window. The agent can then pipe that file through its
-  own model for `(url, prompt)`-style extraction.
-- **Behavior:** streamed download with a hard size cap (default 5 MiB, enforced
-  on `Content-Length` and mid-stream) and configurable timeouts;
-  `follow_redirects=True`; HTML → Markdown via trafilatura, falling back to
-  readability-lxml then a plain-text strip; non-HTML text returned as-is; binary
-  content only materialized when `to_file=True`.
-- **Returns:** `{ok, url, content | local_path, size_bytes, content_type,
-  status, title, method: "http"}`. The `url` key always carries the fetched
-  source URL verbatim — CLIO's provenance layer keys the web source off it.
+For `searxng`, `--address` is required. When that address is a `clio-search`
+installation, it also enables DOI resolution and structured-document conversion. A standalone
+SearXNG instance still supports search; document enrichment will fail explicitly if requested.
+For a non-SearXNG search provider, document enrichment can be configured separately with
+`--document-address`.
 
-### `search`
+Brave and Tavily remain optional bring-your-own-key providers. Their keys are read from
+`WEB_BRAVE_API_KEY` and `WEB_TAVILY_API_KEY`; selecting either provider without its key is a
+startup error. No paid provider is required by the default or SearXNG installations.
 
-Query a configurable web-search provider and return ranked results.
+## `search`
 
-- **Agent story:** "I need candidate URLs for a question." The agent calls
-  `search` and gets back a small list of `{title, url, snippet}` rows to triage
-  and then `fetch`.
-- **Providers:** keyless **DuckDuckGo** (`ddg`, default, via the `ddgs`
-  package); self-hosted **SearXNG** (`searxng`); optional BYO-key **Brave** and
-  **Tavily**. Selecting an unconfigured provider raises a typed error naming
-  the missing config — it never silently falls back to `ddg`.
-- **SearXNG selectors:** `category` (`general` / `science` / `it`), exact
-  `engines`, `language`, `time_range`, `pageno`, and `safesearch`. These are
-  rejected for other providers instead of being silently discarded. An exact
-  `engines` list takes precedence over `category`, because SearXNG otherwise
-  treats the two selectors as a broader union.
-- **Returns:** `{ok, provider, query, results: [{title, url, snippet}], count}`.
+Every installation accepts `query` and `count`. A SearXNG installation additionally exposes:
+
+- `category` (`general`, `science`, or `it`)
+- `engines`
+- `language`
+- `time_range`
+- `pageno` (1 through 3)
+- `safesearch`
+
+Those fields are absent from the MCP schema for DDG, Brave, and Tavily. Results always preserve
+`title`, `url`, `snippet`, and provider provenance. SearXNG results also preserve available
+scholarly metadata such as authors, DOI, publication date, journal, publisher, document type,
+PDF/HTML URLs, tags, citation count, engines, and score. `unresponsive_engines` is diagnostic
+secondary-engine information; a successful result set is still a successful search.
+
+## `fetch`
+
+`fetch(target)` accepts an HTTP(S) URL or DOI. HTML is converted to Markdown locally. Text and
+structured text pass through. Supported PDFs, Office documents, XML, and images are detected from
+headers, URL, and content signatures and sent to the optional document service automatically.
+The returned document includes Markdown, normalized structure, metadata, and—where GROBID detects
+a scholarly paper—bibliographic references and in-text citation contexts.
+
+Long conversions return `reason="document_conversion_pending"`, a durable `conversion_id`, and a
+retry interval. Repeating the same fetch is content-deduplicated by `clio-search`. With
+`to_file=True`, converted documents write a Markdown artifact and a JSON metadata companion.
+Without a document service, existing HTML/text behavior remains available and unsupported binary
+content can still be saved raw.
+
+DOI resolution queries Crossref, falls back to DataCite metadata, and optionally uses Unpaywall
+when the private `clio-search` installation has its own contact email configured. It never bypasses
+access controls or fabricates an open copy.
 
 ## Configuration
 
-Configuration is a single `pydantic-settings` `Settings` model. All fields are
-overridable via `WEB_`-prefixed environment variables or a `.env` file, but the
-recommended path is a single source of config with clear defaults.
+CLI arguments define the installed search contract:
 
-| Field | Env var | Default | Meaning |
-| --- | --- | --- | --- |
-| `search_provider` | `WEB_SEARCH_PROVIDER` | `"ddg"` | Active search provider (`ddg` / `searxng` / `brave` / `tavily`). |
-| `searxng_base_url` | `WEB_SEARXNG_BASE_URL` | `None` | Root URL of the self-hosted SearXNG instance (required for `searxng`). |
-| `brave_api_key` | `WEB_BRAVE_API_KEY` | `None` | Brave Search API key (required for `brave`). |
-| `tavily_api_key` | `WEB_TAVILY_API_KEY` | `None` | Tavily API key (required for `tavily`). |
-| `max_bytes` | `WEB_MAX_BYTES` | `5242880` | Fetch size cap in bytes (5 MiB). |
-| `connect_timeout_s` | `WEB_CONNECT_TIMEOUT_S` | `5.0` | HTTP connect timeout. |
-| `read_timeout_s` | `WEB_READ_TIMEOUT_S` | `30.0` | HTTP read timeout. |
-| `artifacts_root` | `WEB_ARTIFACTS_ROOT` | `None` (→ CWD) | Default directory for `to_file` output. |
+| Argument | Meaning |
+| --- | --- |
+| `--provider {ddg,searxng,brave,tavily}` | Fixed provider for this installation. |
+| `--address URL` | Required SearXNG root; also used for document enrichment by default. |
+| `--document-address URL` | Optional separate `clio-search` root. |
 
-## Documented extension points (not yet available in v1)
+Runtime limits use `WEB_` environment variables, including `WEB_MAX_BYTES` (5 MiB HTML/text),
+`WEB_MAX_DOCUMENT_BYTES` (50 MiB), `WEB_CONNECT_TIMEOUT_S`, `WEB_READ_TIMEOUT_S`,
+`WEB_CONVERSION_WAIT_S`, `WEB_ARTIFACTS_ROOT`, and `WEB_ALLOW_PRIVATE_HOSTS`.
 
-These are honest, typed gaps — the follow-on campaign's remainder — not silent
-failures:
-
-- **Headless-browser escalation (Playwright)** for JS-rendered / Anubis-walled
-  pages. When HTML extraction yields nothing, `fetch` returns a typed note
-  `reason="js_render_required_browser_unavailable"` instead of returning junk.
-- **`(url, prompt)` small-model extraction.** An MCP server has no model access,
-  so page-specific extraction stays the agent's job: `fetch` with
-  `to_file=True`, then let the agent pipe the saved file through its own model.
+Discovery is available at `web://capabilities` and describes only this installation's active
+provider and tool parameters; it does not advertise alternative providers to the agent.
 
 ## Development
 
 ```bash
 uv sync
-uv run pytest -q            # network-mocked suite (default)
-uv run ruff check src/ tests/
-uv run mypy src/
+uv run ruff check --fix src tests
+uv run ruff format src tests
+uv run mypy src
+WEB_MCP_LIVE=1 WEB_SEARXNG_BASE_URL=http://10.0.0.102:8089 uv run pytest
 ```
-
-Real-network checks are opt-in and skipped by default:
-
-```bash
-WEB_MCP_LIVE=1 uv run pytest -m integration
-```
-
-To make the self-hosted instance the active backend:
-
-```bash
-WEB_SEARCH_PROVIDER=searxng \
-WEB_SEARXNG_BASE_URL=http://10.0.0.102:8088 \
-uv run web-mcp
-```
-
-No paid-provider credential is needed for SearXNG. The server forwards native
-selectors to the deployment and returns `engines_answered` plus normalized
-`unresponsive_engines` alongside the stable `{title, url, snippet}` rows.

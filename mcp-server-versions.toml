@@ -13,7 +13,7 @@ publish = ["web"]
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
 [documentation]
-updated = "2026-08-11"
+updated = "2026-08-13"
 
 # MCP Registry server versions describe each agent-facing contract. They are
 # intentionally independent of the clio-kit PyPI distribution version, which
@@ -42,4 +42,4 @@ seismic = "2.2.3"
 slurm = "3.0.0"
 spack = "2.1.0"
 terrain = "2.2.3"
-web = "1.1.0"
+web = "2.0.0"

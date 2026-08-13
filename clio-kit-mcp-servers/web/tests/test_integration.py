@@ -13,8 +13,7 @@ import os
 import pytest
 from fastmcp import Client
 
-from web_mcp import server
-from web_mcp.server import Settings, mcp
+from web_mcp.server import Settings, create_mcp, mcp
 
 from .helpers import parse_result
 
@@ -31,7 +30,7 @@ pytestmark = [
 async def test_live_fetch_example_com() -> None:
     """Fetch a real, stable page and confirm content comes back."""
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "https://example.com/"})
+        result = await client.call_tool("fetch", {"target": "https://example.com/"})
     data = parse_result(result)
     assert data["ok"] is True
     assert data["url"] == "https://example.com/"
@@ -53,14 +52,12 @@ async def test_live_search_ddg() -> None:
     reason="set WEB_SEARXNG_BASE_URL to run the live SearXNG integration test",
 )
 @pytest.mark.asyncio
-async def test_live_search_searxng(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_live_search_searxng() -> None:
     """Exercise category and engine selectors against the deployed instance."""
-    monkeypatch.setattr(
-        server,
-        "settings",
+    searxng_mcp = create_mcp(
         Settings(search_provider="searxng", searxng_base_url=_SEARXNG_URL),
     )
-    async with Client(mcp) as client:
+    async with Client(searxng_mcp) as client:
         result = await client.call_tool(
             "search",
             {

@@ -10,7 +10,7 @@ import pytest
 from fastmcp import Client
 from pytest_httpx import HTTPXMock
 
-from web_mcp import server
+from web_mcp import fetch_utils, server
 from web_mcp.server import REASON_BINARY_NOT_INLINED, REASON_BLOCKED_HOST, mcp
 
 from .helpers import parse_result
@@ -38,7 +38,7 @@ async def test_fetch_blocks_private_and_metadata_hosts(url: str) -> None:
     """A literal loopback/private/link-local host (or localhost) is refused before any request."""
     async with Client(mcp) as client:
         with pytest.raises(Exception) as excinfo:
-            await client.call_tool("fetch", {"url": url})
+            await client.call_tool("fetch", {"target": url})
     assert REASON_BLOCKED_HOST in str(excinfo.value)
 
 
@@ -52,7 +52,7 @@ async def test_fetch_blocks_redirect_into_metadata(httpx_mock: HTTPXMock) -> Non
     )
     async with Client(mcp) as client:
         with pytest.raises(Exception) as excinfo:
-            await client.call_tool("fetch", {"url": "https://public.test/go"})
+            await client.call_tool("fetch", {"target": "https://public.test/go"})
     assert REASON_BLOCKED_HOST in str(excinfo.value)
 
 
@@ -68,7 +68,7 @@ async def test_fetch_allow_private_hosts_config_opens_the_guard(
         headers={"content-type": "text/plain"},
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "http://127.0.0.1:9000/health"})
+        result = await client.call_tool("fetch", {"target": "http://127.0.0.1:9000/health"})
     assert parse_result(result)["content"] == "OK"
 
 
@@ -84,7 +84,7 @@ async def test_fetch_follows_redirect_and_reports_final_url(httpx_mock: HTTPXMoc
         url="https://b.test/end", content=b"done", headers={"content-type": "text/plain"}
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "https://a.test/start"})
+        result = await client.call_tool("fetch", {"target": "https://a.test/start"})
     data = parse_result(result)
     assert data["url"] == "https://a.test/start"  # verbatim source
     assert data["final_url"] == "https://b.test/end"  # resolved after redirect
@@ -98,7 +98,7 @@ async def test_fetch_reports_extractor_trafilatura(httpx_mock: HTTPXMock) -> Non
         url="https://x.test/a", content=_HTML.encode(), headers={"content-type": "text/html"}
     )
     async with Client(mcp) as client:
-        data = parse_result(await client.call_tool("fetch", {"url": "https://x.test/a"}))
+        data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/a"}))
     assert data["extractor"] == "trafilatura"
 
 
@@ -107,12 +107,12 @@ async def test_fetch_reports_readability_downgrade(
     httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """When trafilatura yields nothing, readability runs AND is named (no silent downgrade)."""
-    monkeypatch.setattr(server.trafilatura, "extract", lambda *a, **k: None)
+    monkeypatch.setattr(fetch_utils.trafilatura, "extract", lambda *a, **k: None)
     httpx_mock.add_response(
         url="https://x.test/b", content=_HTML.encode(), headers={"content-type": "text/html"}
     )
     async with Client(mcp) as client:
-        data = parse_result(await client.call_tool("fetch", {"url": "https://x.test/b"}))
+        data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/b"}))
     assert data["extractor"] == "readability"
     assert data["content"] and "body content" in data["content"].lower()
 
@@ -122,17 +122,17 @@ async def test_fetch_reports_plaintext_downgrade(
     httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """When both trafilatura and readability fail, the plaintext rung runs and is named."""
-    monkeypatch.setattr(server.trafilatura, "extract", lambda *a, **k: None)
+    monkeypatch.setattr(fetch_utils.trafilatura, "extract", lambda *a, **k: None)
 
     def _boom(*_a: object, **_k: object) -> object:
         raise RuntimeError("readability down")
 
-    monkeypatch.setattr(server, "ReadabilityDocument", _boom)
+    monkeypatch.setattr(fetch_utils, "ReadabilityDocument", _boom)
     httpx_mock.add_response(
         url="https://x.test/c", content=_HTML.encode(), headers={"content-type": "text/html"}
     )
     async with Client(mcp) as client:
-        data = parse_result(await client.call_tool("fetch", {"url": "https://x.test/c"}))
+        data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/c"}))
     assert data["extractor"] == "plaintext"
     assert data["content"] and "body content" in data["content"].lower()
 
@@ -142,7 +142,7 @@ async def test_fetch_no_content_type_text_is_sniffed_and_returned(httpx_mock: HT
     """A text body served with NO content-type is sniffed as text and returned, not withheld."""
     httpx_mock.add_response(url="https://x.test/raw", content=b"plain api response, no header")
     async with Client(mcp) as client:
-        data = parse_result(await client.call_tool("fetch", {"url": "https://x.test/raw"}))
+        data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/raw"}))
     assert data["content"] == "plain api response, no header"
 
 
@@ -151,6 +151,6 @@ async def test_fetch_no_content_type_binary_stays_a_typed_note(httpx_mock: HTTPX
     """A binary body with NO content-type is still withheld with the typed note (never junk)."""
     httpx_mock.add_response(url="https://x.test/bin", content=b"\x00\x01\x02\x03binary\x00blob")
     async with Client(mcp) as client:
-        data = parse_result(await client.call_tool("fetch", {"url": "https://x.test/bin"}))
+        data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/bin"}))
     assert data.get("content") is None
     assert data["reason"] == REASON_BINARY_NOT_INLINED
