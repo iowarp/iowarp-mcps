@@ -1,7 +1,7 @@
 [project]
 name = "web-mcp"
-version = "1.1.0"
-description = "Web MCP server providing curated fetch + search tools for agentic web access"
+version = "2.0.0"
+description = "Provider-fixed web search plus transparent URL, DOI, and document fetching"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "BSD-3-Clause"

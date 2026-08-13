@@ -12,5 +12,7 @@ def parse_result(result: Any) -> dict[str, Any]:
     if isinstance(data, dict):
         return data
     if isinstance(data, str):
-        return json.loads(data)
+        parsed = json.loads(data)
+        if isinstance(parsed, dict):
+            return parsed
     return {"raw": str(data)}

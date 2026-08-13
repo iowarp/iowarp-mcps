@@ -6,14 +6,14 @@ mocking their HTTP endpoints. No real network occurs in this suite.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from fastmcp import Client
 from pytest_httpx import HTTPXMock
 
 from web_mcp import server
-from web_mcp.server import Settings, mcp
+from web_mcp.server import Settings, create_mcp, mcp
 
 from .helpers import parse_result
 
@@ -24,7 +24,7 @@ class _FakeDDGS:
     def __enter__(self) -> _FakeDDGS:
         return self
 
-    def __exit__(self, *args: Any) -> bool:
+    def __exit__(self, *args: Any) -> Literal[False]:
         return False
 
     def text(self, query: str, max_results: int) -> list[dict[str, str]]:
@@ -136,10 +136,8 @@ async def test_search_searxng_maps_results_and_native_selectors(
     monkeypatch: pytest.MonkeyPatch, httpx_mock: HTTPXMock
 ) -> None:
     """SearXNG receives native selectors and exposes engine provenance."""
-    monkeypatch.setattr(
-        server,
-        "settings",
-        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088"),
+    searxng_mcp = create_mcp(
+        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088")
     )
     httpx_mock.add_response(
         url=(
@@ -166,7 +164,7 @@ async def test_search_searxng_maps_results_and_native_selectors(
         },
     )
 
-    async with Client(mcp) as client:
+    async with Client(searxng_mcp) as client:
         result = await client.call_tool(
             "search",
             {
@@ -189,6 +187,7 @@ async def test_search_searxng_maps_results_and_native_selectors(
             "title": "Parallel I/O Paper",
             "url": "https://example.org/paper",
             "snippet": "A scientific result.",
+            "engines": ["arxiv", "crossref"],
         }
     ]
     assert data["engines_answered"] == ["arxiv", "crossref"]
@@ -196,13 +195,10 @@ async def test_search_searxng_maps_results_and_native_selectors(
 
 
 @pytest.mark.asyncio
-async def test_search_searxng_requires_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Selecting SearXNG without its deployment URL fails explicitly."""
-    monkeypatch.setattr(server, "settings", Settings(search_provider="searxng"))
-    async with Client(mcp) as client:
-        with pytest.raises(Exception) as excinfo:
-            await client.call_tool("search", {"query": "anything"})
-    assert "WEB_SEARXNG_BASE_URL" in str(excinfo.value)
+async def test_search_searxng_requires_base_url() -> None:
+    """Selecting SearXNG without its deployment URL fails at startup."""
+    with pytest.raises(ValueError, match="requires --address"):
+        create_mcp(Settings(search_provider="searxng"))
 
 
 @pytest.mark.asyncio
@@ -210,13 +206,11 @@ async def test_search_searxng_reports_disabled_json(
     monkeypatch: pytest.MonkeyPatch, httpx_mock: HTTPXMock
 ) -> None:
     """A 403 identifies the disabled SearXNG JSON API instead of falling back."""
-    monkeypatch.setattr(
-        server,
-        "settings",
-        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088"),
+    searxng_mcp = create_mcp(
+        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088")
     )
     httpx_mock.add_response(status_code=403)
-    async with Client(mcp) as client:
+    async with Client(searxng_mcp) as client:
         with pytest.raises(Exception) as excinfo:
             await client.call_tool("search", {"query": "anything"})
     assert "JSON" in str(excinfo.value)
@@ -224,46 +218,34 @@ async def test_search_searxng_reports_disabled_json(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("provider", ["ddg", "brave", "tavily"])
-@pytest.mark.parametrize(
-    "selector",
-    [
-        {"category": "science"},
-        {"engines": ["arxiv"]},
-        {"language": "en"},
-        {"time_range": "year"},
-        {"pageno": 1},
-        {"safesearch": 0},
-    ],
-)
-async def test_searxng_selectors_rejected_for_other_providers(
-    monkeypatch: pytest.MonkeyPatch, provider: str, selector: dict[str, Any]
-) -> None:
-    """Provider-specific selectors are never silently discarded."""
-    monkeypatch.setattr(server, "settings", Settings(search_provider=provider))
-    async with Client(mcp) as client:
-        with pytest.raises(Exception) as excinfo:
-            await client.call_tool("search", {"query": "x", **selector})
-    assert "only supported by provider 'searxng'" in str(excinfo.value)
+async def test_non_searxng_schema_omits_provider_and_native_selectors() -> None:
+    """Provider choice is installation-time and irrelevant arguments are absent."""
+    ddg_mcp = create_mcp(Settings(search_provider="ddg"))
+    async with Client(ddg_mcp) as client:
+        search_tool = next(tool for tool in await client.list_tools() if tool.name == "search")
+    properties = search_tool.input_schema["properties"]
+    assert set(properties) == {"query", "count"}
 
 
 @pytest.mark.asyncio
-async def test_search_provider_override_beats_config(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An explicit provider argument overrides the configured default."""
-    monkeypatch.setattr(server, "settings", Settings(search_provider="ddg"))
-    async with Client(mcp) as client:
-        with pytest.raises(Exception) as excinfo:
-            await client.call_tool("search", {"query": "x", "provider": "brave"})
-    assert "WEB_BRAVE_API_KEY" in str(excinfo.value)
-
-
-@pytest.mark.asyncio
-async def test_search_unknown_provider_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An unknown provider is rejected with a typed error."""
-    monkeypatch.setattr(server, "settings", Settings(search_provider="bing"))
-    async with Client(mcp) as client:
-        with pytest.raises(Exception) as excinfo:
-            await client.call_tool("search", {"query": "x"})
-    assert "Unknown search provider" in str(excinfo.value)
+async def test_searxng_schema_contains_native_selectors_and_exact_page_description() -> None:
+    """Only the SearXNG installation exposes its native selector schema."""
+    searxng_mcp = create_mcp(
+        Settings(search_provider="searxng", searxng_base_url="http://10.0.0.102:8088")
+    )
+    async with Client(searxng_mcp) as client:
+        search_tool = next(tool for tool in await client.list_tools() if tool.name == "search")
+    properties = search_tool.input_schema["properties"]
+    assert set(properties) == {
+        "query",
+        "count",
+        "category",
+        "engines",
+        "language",
+        "time_range",
+        "pageno",
+        "safesearch",
+    }
+    assert properties["pageno"]["description"] == (
+        "SearXNG result page, bounded by this deployment to 1 through 3."
+    )
