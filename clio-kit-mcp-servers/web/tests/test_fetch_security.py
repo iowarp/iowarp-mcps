@@ -6,6 +6,8 @@ and content-sniff for a missing content-type. All network is mocked via pytest-h
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastmcp import Client
 from pytest_httpx import HTTPXMock
@@ -154,3 +156,76 @@ async def test_fetch_no_content_type_binary_stays_a_typed_note(httpx_mock: HTTPX
         data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/bin"}))
     assert data.get("content") is None
     assert data["reason"] == REASON_BINARY_NOT_INLINED
+
+
+def test_validate_output_path_accepts_inside_and_confines_outside(tmp_path: Path) -> None:
+    """Absolute artifact paths are accepted only when they stay under the configured root."""
+
+    inside = tmp_path / "nested" / "inside.md"
+    assert (
+        fetch_utils.validate_output_path(
+            inside,
+            default_name="default.md",
+            configured_root=str(tmp_path),
+        )
+        == inside.resolve()
+    )
+    outside = tmp_path.parent / "outside.md"
+    assert (
+        fetch_utils.validate_output_path(
+            outside,
+            default_name="default.md",
+            configured_root=str(tmp_path),
+        )
+        == (tmp_path / "outside.md").resolve()
+    )
+
+
+def test_content_helpers_cover_empty_invalid_and_html_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Low-level content helpers keep their edge cases deterministic and typed."""
+
+    assert fetch_utils.derive_filename("https://example.test/", is_html=True, is_binary=False) == (
+        "example.md"
+    )
+    assert fetch_utils.extract_title("<html><body>untitled</body></html>") is None
+    assert fetch_utils.decode(b"plain", "not-a-real-codec") == "plain"
+    assert fetch_utils.looks_like_text(b"") is True
+
+    def _boom(*_args: object, **_kwargs: object) -> str:
+        raise RuntimeError("extractor down")
+
+    monkeypatch.setattr(fetch_utils.trafilatura, "extract", _boom)
+    content, extractor = fetch_utils.html_to_markdown(_HTML)
+    assert content and "body content" in content.lower()
+    assert extractor == "readability"
+
+
+@pytest.mark.asyncio
+async def test_fetch_ignores_invalid_content_length(httpx_mock: HTTPXMock) -> None:
+    """A malformed advisory content-length cannot hide an otherwise bounded response."""
+
+    httpx_mock.add_response(
+        url="https://x.test/length",
+        content=b"bounded",
+        headers={"content-type": "text/plain", "content-length": "unknown"},
+    )
+    async with Client(mcp) as client:
+        data = parse_result(await client.call_tool("fetch", {"target": "https://x.test/length"}))
+    assert data["content"] == "bounded"
+
+
+@pytest.mark.asyncio
+async def test_fetch_rejects_redirect_loop(httpx_mock: HTTPXMock) -> None:
+    """The explicit redirect cap terminates cyclic public redirects."""
+
+    for _ in range(6):
+        httpx_mock.add_response(
+            url="https://x.test/loop",
+            status_code=302,
+            headers={"location": "https://x.test/loop"},
+        )
+    async with Client(mcp) as client:
+        with pytest.raises(Exception, match="exceeded 5 redirects"):
+            await client.call_tool("fetch", {"target": "https://x.test/loop"})
