@@ -14,6 +14,7 @@
     "clio-adios",
     "clio-compression",
     "clio-hdf5",
-    "clio-parquet"
+    "clio-parquet",
+    "clio-scientific-io-skills"
   ]
 }

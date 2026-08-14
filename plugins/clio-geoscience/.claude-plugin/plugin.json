@@ -15,6 +15,7 @@
     "clio-geojson",
     "clio-sac",
     "clio-seismic",
-    "clio-terrain"
+    "clio-terrain",
+    "clio-geoscience-skills"
   ]
 }

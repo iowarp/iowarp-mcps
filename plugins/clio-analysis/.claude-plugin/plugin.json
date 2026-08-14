@@ -13,6 +13,7 @@
   "dependencies": [
     "clio-pandas",
     "clio-paraview",
-    "clio-plot"
+    "clio-plot",
+    "clio-analysis-skills"
   ]
 }

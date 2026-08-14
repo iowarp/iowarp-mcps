@@ -1,6 +1,6 @@
 {
-  "name": "clio-research",
-  "description": "Find papers on a topic and the datasets behind them.",
+  "name": "clio-scientific-io-skills",
+  "description": "Skills for the clio-scientific-io workflow: open a scientific data file, see its structure, and read part of it.",
   "version": "1.0.0",
   "author": {
     "name": "IoWarp Team - Gnosis Research Center",
@@ -9,12 +9,5 @@
   },
   "homepage": "https://github.com/iowarp/clio-kit",
   "repository": "https://github.com/iowarp/clio-kit",
-  "license": "BSD-3-Clause",
-  "dependencies": [
-    "clio-arxiv",
-    "clio-ndp",
-    "clio-scientific-catalog",
-    "clio-web",
-    "clio-research-skills"
-  ]
+  "license": "BSD-3-Clause"
 }

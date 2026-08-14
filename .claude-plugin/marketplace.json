@@ -373,6 +373,21 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-performance-skills",
+      "source": "./skills/clio-performance-skills",
+      "description": "Skills for the clio-performance workflow: work out why a finished job was slower than it should have been.",
+      "version": "1.0.0",
+      "category": "skills",
+      "keywords": [
+        "diagnosing-a-slow-job",
+        "interpreting-io-performance-numbers",
+        "recording-a-session-for-provenance",
+        "searching-large-log-files"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-performance",
       "source": "./plugins/clio-performance",
       "description": "Work out why a finished job was slower than it should have been.",
@@ -389,6 +404,20 @@
         "performance-analysis",
         "sorting",
         "time-series"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-scientific-io-skills",
+      "source": "./skills/clio-scientific-io-skills",
+      "description": "Skills for the clio-scientific-io workflow: open a scientific data file, see its structure, and read part of it.",
+      "version": "1.0.0",
+      "category": "skills",
+      "keywords": [
+        "choosing-a-storage-format",
+        "exploring-an-unfamiliar-dataset",
+        "reading-large-datasets-safely"
       ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
@@ -420,6 +449,21 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-analysis-skills",
+      "source": "./skills/clio-analysis-skills",
+      "description": "Skills for the clio-analysis workflow: turn a dataset into summary statistics and a figure.",
+      "version": "1.0.0",
+      "category": "skills",
+      "keywords": [
+        "choosing-the-right-chart",
+        "cleaning-and-validating-a-dataset",
+        "summarizing-and-plotting-results",
+        "visualizing-3d-simulation-output"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-analysis",
       "source": "./plugins/clio-analysis",
       "description": "Turn a dataset into summary statistics and a figure.",
@@ -443,12 +487,40 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-geoscience-skills",
+      "source": "./skills/clio-geoscience-skills",
+      "description": "Skills for the clio-geoscience workflow: inspect and map geospatial features, terrain models, and waveform archives.",
+      "version": "1.0.0",
+      "category": "skills",
+      "keywords": [
+        "analyzing-seismic-waveforms",
+        "mapping-geospatial-and-terrain-data",
+        "working-with-coordinate-systems"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-geoscience",
       "source": "./plugins/clio-geoscience",
       "description": "Inspect and map geospatial features, terrain models, and waveform archives.",
       "version": "1.0.0",
       "category": "workflow",
       "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-research-skills",
+      "source": "./skills/clio-research-skills",
+      "description": "Skills for the clio-research workflow: find papers on a topic and the datasets behind them.",
+      "version": "1.0.0",
+      "category": "skills",
+      "keywords": [
+        "building-a-bibliography",
+        "finding-and-staging-a-dataset",
+        "surveying-literature-and-datasets"
+      ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
     },
