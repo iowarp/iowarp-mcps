@@ -334,6 +334,20 @@
       "repository": "https://github.com/iowarp/clio-kit"
     },
     {
+      "name": "clio-hpc-skills",
+      "source": "./skills/clio-hpc-skills",
+      "description": "Skills for the clio-hpc workflow: install a code, wrap it in a pipeline, submit it, and follow it on a cluster.",
+      "version": "1.0.0",
+      "category": "skills",
+      "keywords": [
+        "managing-software-environments",
+        "running-a-simulation-on-a-cluster",
+        "writing-slurm-job-scripts"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
       "name": "clio-hpc",
       "source": "./plugins/clio-hpc",
       "description": "Install a code, wrap it in a pipeline, submit it, and follow it on a cluster.",

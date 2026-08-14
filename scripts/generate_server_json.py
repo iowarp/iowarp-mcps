@@ -214,6 +214,8 @@ def write_bundle_plugin(
     on every release for a pin nothing yet needs.
     """
     dependencies = [f"clio-{server}" for server in spec["servers"]]
+    if (repo_root / "skills" / f"{bundle_name}-skills").is_dir():
+        dependencies.append(f"{bundle_name}-skills")
     plugin_json = {
         "name": bundle_name,
         "description": spec["description"],
@@ -237,6 +239,96 @@ def write_bundle_plugin(
         "keywords": sorted(
             {tag for s in spec["servers"] for tag in SERVER_TAGS.get(s, [])}
         ),
+        "license": "BSD-3-Clause",
+        "repository": REPO_URL,
+    }
+
+
+def read_skill_name(skill_dir: Path) -> str:
+    """Read one SKILL.md's declared name, failing on anything unloadable.
+
+    A skill whose declared name does not match its directory is namespaced by
+    the directory but referred to by the name, so the two disagreeing is a
+    reference that resolves nowhere.
+    """
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.is_file():
+        raise ValueError(f"{skill_dir} has no SKILL.md")
+    text = skill_md.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        raise ValueError(f"{skill_md} must open with YAML frontmatter")
+    _, _, rest = text.partition("---\n")
+    frontmatter, sep, _ = rest.partition("\n---\n")
+    if not sep:
+        raise ValueError(f"{skill_md} has unterminated frontmatter")
+    fields: dict[str, str] = {}
+    for line in frontmatter.splitlines():
+        # Only top-level keys; an indented line continues the value above it,
+        # and a description long enough to wrap is the normal case.
+        if not line or line.startswith((" ", "\t")):
+            continue
+        key, separator, value = line.partition(":")
+        if separator:
+            fields[key.strip()] = value.strip()
+    for required in ("name", "description"):
+        if not fields.get(required):
+            raise ValueError(f"{skill_md} frontmatter needs a {required}")
+    if fields["name"] != skill_dir.name:
+        raise ValueError(
+            f"{skill_md} declares name {fields['name']!r} "
+            f"but lives in {skill_dir.name!r}"
+        )
+    return fields["name"]
+
+
+def write_skills_plugin(
+    repo_root: Path,
+    bundle_name: str,
+    spec: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Write one bundle's skill plugin, or None when it has no skills yet.
+
+    Skills are their own plugin rather than a path on the bundle because a
+    plugin's component paths cannot traverse outside its own directory --
+    anything beyond the plugin root is not copied to the cache on install, so
+    a bundle pointing at a shared ``skills/`` folder would resolve to nothing.
+    Making them a plugin means the bundle refers to them exactly as it refers
+    to a server, and someone who wants the guidance without the servers can
+    install the skill plugin on its own.
+    """
+    plugin_name = f"{bundle_name}-skills"
+    plugin_dir = repo_root / "skills" / plugin_name
+    if not plugin_dir.is_dir():
+        return None
+
+    skill_dirs = sorted(
+        path for path in (plugin_dir / "skills").iterdir() if path.is_dir()
+    )
+    if not skill_dirs:
+        raise ValueError(f"{plugin_dir} exists but ships no skills")
+    skill_names = [read_skill_name(skill_dir) for skill_dir in skill_dirs]
+
+    workflow = spec["description"].rstrip(".")
+    description = (
+        f"Skills for the {bundle_name} workflow: {workflow[0].lower()}{workflow[1:]}."
+    )
+    plugin_json = {
+        "name": plugin_name,
+        "description": description,
+        "version": spec["version"],
+        "author": PLUGIN_AUTHOR,
+        "homepage": REPO_URL,
+        "repository": REPO_URL,
+        "license": "BSD-3-Clause",
+    }
+    _write_json(plugin_dir / ".claude-plugin" / "plugin.json", plugin_json)
+    return {
+        "name": plugin_name,
+        "source": f"./skills/{plugin_name}",
+        "description": description,
+        "version": spec["version"],
+        "category": "skills",
+        "keywords": skill_names,
         "license": "BSD-3-Clause",
         "repository": REPO_URL,
     }
@@ -545,11 +637,18 @@ def generate_all(mcps_dir: str) -> None:
 
         generated.append(server_name)
 
-    # Workflow bundles: dependency-only plugins over the servers just generated
+    # Workflow bundles: dependency-only plugins over the servers just
+    # generated, plus each bundle's skill plugin where one exists yet.
     for bundle_name, spec in bundles.items():
+        skills_entry = write_skills_plugin(repo_root, bundle_name, spec)
+        if skills_entry is not None:
+            marketplace_plugins.append(skills_entry)
+            skill_count = len(skills_entry["keywords"])
+            print(f"Wrote skills/{skills_entry['name']} ({skill_count} skills)")
         marketplace_plugins.append(write_bundle_plugin(repo_root, bundle_name, spec))
         member_count = len(spec["servers"])
-        print(f"Wrote plugins/{bundle_name} ({member_count} servers)")
+        suffix = " + skills" if skills_entry is not None else ""
+        print(f"Wrote plugins/{bundle_name} ({member_count} servers{suffix})")
 
     # Claude Code marketplace manifest
     marketplace = build_marketplace_json(

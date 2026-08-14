@@ -102,7 +102,17 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
         for plugin in marketplace["plugins"]
         if plugin["source"].startswith("./plugins/")
     }
+    skill_plugins = {
+        plugin["name"]: plugin
+        for plugin in marketplace["plugins"]
+        if plugin["source"].startswith("./skills/")
+    }
     expected_bundles = GENERATOR.read_bundles(repository_root)
+    expected_skill_plugins = {
+        f"{bundle_name}-skills"
+        for bundle_name in expected_bundles
+        if (repository_root / "skills" / f"{bundle_name}-skills").is_dir()
+    }
     gemini_extension = json.loads(
         (repository_root / "gemini-extension.json").read_text(encoding="utf-8")
     )
@@ -116,9 +126,12 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     assert marketplace["metadata"]["version"] == expected_version
     assert set(marketplace_plugins) == set(expected_server_versions)
     assert set(bundle_plugins) == set(expected_bundles)
-    # Every published entry is one kind or the other. A third source shape
+    assert set(skill_plugins) == expected_skill_plugins
+    # Every published entry is one of the three kinds. A fourth source shape
     # would be an entry nothing in this repository accounts for.
-    assert len(marketplace_plugins) + len(bundle_plugins) == len(marketplace["plugins"])
+    assert len(marketplace_plugins) + len(bundle_plugins) + len(skill_plugins) == len(
+        marketplace["plugins"]
+    )
     assert gemini_extension["version"] == expected_version
     for path in manifests:
         server_name = path.parent.name
@@ -339,3 +352,92 @@ def test_shipped_bundle_catalogue_partitions_the_shipped_servers() -> None:
     }
 
     GENERATOR.assert_bundles_partition_servers(bundles, shipped)
+
+
+def test_skill_name_must_match_its_directory(tmp_path: Path) -> None:
+    """A skill is namespaced by its directory but referred to by its name."""
+    skill_dir = tmp_path / "running-a-simulation-on-a-cluster"
+    skill_dir.mkdir()
+    frontmatter = (
+        "---\nname: {name}\ndescription: Does a thing. Use when asked.\n---\n\nBody.\n"
+    )
+
+    (skill_dir / "SKILL.md").write_text(
+        frontmatter.format(name="running-a-simulation-on-a-cluster"), encoding="utf-8"
+    )
+    assert GENERATOR.read_skill_name(skill_dir) == "running-a-simulation-on-a-cluster"
+
+    # Disagreeing is a reference that resolves nowhere, so it must not ship.
+    (skill_dir / "SKILL.md").write_text(
+        frontmatter.format(name="running-on-a-cluster"), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="but lives in"):
+        GENERATOR.read_skill_name(skill_dir)
+
+    # A description is what decides whether the skill fires at all; without
+    # one the skill costs tokens in every session and never triggers.
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: running-a-simulation-on-a-cluster\n---\n\nBody.\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="needs a description"):
+        GENERATOR.read_skill_name(skill_dir)
+
+
+def test_bundle_depends_on_its_skills_only_once_they_exist(tmp_path: Path) -> None:
+    """Skills join a bundle by dependency, and only when actually written."""
+    spec = {
+        "version": "1.0.0",
+        "description": "Run work on a cluster.",
+        "servers": ["slurm", "spack"],
+    }
+
+    # No skills authored yet: the bundle still ships, servers only.
+    assert GENERATOR.write_skills_plugin(tmp_path, "clio-hpc", spec) is None
+    manifest_path = tmp_path / "plugins" / "clio-hpc" / ".claude-plugin" / "plugin.json"
+    GENERATOR.write_bundle_plugin(tmp_path, "clio-hpc", spec)
+    before = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert before["dependencies"] == ["clio-slurm", "clio-spack"]
+
+    skill_dir = tmp_path / "skills" / "clio-hpc-skills" / "skills" / "sizing-a-request"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: sizing-a-request\ndescription: Sizes a request. Use when asked.\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+
+    entry = GENERATOR.write_skills_plugin(tmp_path, "clio-hpc", spec)
+    GENERATOR.write_bundle_plugin(tmp_path, "clio-hpc", spec)
+    after = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert entry is not None
+    assert entry["source"] == "./skills/clio-hpc-skills"
+    assert after["dependencies"] == ["clio-slurm", "clio-spack", "clio-hpc-skills"]
+    # The skills are a dependency, never a path: a plugin's component paths
+    # cannot leave its own directory, so a bundle pointing at a shared skills
+    # folder would resolve to nothing once installed.
+    assert "skills" not in after
+
+
+def test_shipped_skills_load_and_are_reachable_from_a_bundle() -> None:
+    """Every committed skill parses, and its plugin is depended on."""
+    repo_root = Path(__file__).resolve().parents[1]
+    skills_root = repo_root / "skills"
+    if not skills_root.is_dir():
+        pytest.skip("no skills shipped yet")
+
+    for plugin_dir in sorted(skills_root.iterdir()):
+        if not plugin_dir.is_dir():
+            continue
+        bundle_name = plugin_dir.name.removesuffix("-skills")
+        bundle_manifest = json.loads(
+            (
+                repo_root / "plugins" / bundle_name / ".claude-plugin" / "plugin.json"
+            ).read_text(encoding="utf-8")
+        )
+        assert plugin_dir.name in bundle_manifest["dependencies"]
+        shipped = sorted(
+            path for path in (plugin_dir / "skills").iterdir() if path.is_dir()
+        )
+        assert shipped, f"{plugin_dir} ships no skills"
+        for skill_dir in shipped:
+            assert GENERATOR.read_skill_name(skill_dir) == skill_dir.name

@@ -15,6 +15,7 @@
     "clio-lmod",
     "clio-node-hardware",
     "clio-slurm",
-    "clio-spack"
+    "clio-spack",
+    "clio-hpc-skills"
   ]
 }
