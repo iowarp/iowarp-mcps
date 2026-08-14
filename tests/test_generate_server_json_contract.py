@@ -30,6 +30,7 @@ GENERATOR = _load_generator()
 # Community entries live in the launcher package so the same reader backs both
 # manifest generation and contributor-facing validation.
 from clio_kit.community import read_community_entries  # noqa: E402
+from clio_kit.plugins import PluginProblem, read_skill_frontmatter  # noqa: E402
 
 
 def test_json_writer_requests_platform_independent_newlines(
@@ -369,22 +370,24 @@ def test_skill_name_must_match_its_directory(tmp_path: Path) -> None:
     (skill_dir / "SKILL.md").write_text(
         frontmatter.format(name="running-a-simulation-on-a-cluster"), encoding="utf-8"
     )
-    assert GENERATOR.read_skill_name(skill_dir) == "running-a-simulation-on-a-cluster"
+    assert (
+        read_skill_frontmatter(skill_dir)["name"] == "running-a-simulation-on-a-cluster"
+    )
 
     # Disagreeing is a reference that resolves nowhere, so it must not ship.
     (skill_dir / "SKILL.md").write_text(
         frontmatter.format(name="running-on-a-cluster"), encoding="utf-8"
     )
-    with pytest.raises(ValueError, match="but lives in"):
-        GENERATOR.read_skill_name(skill_dir)
+    with pytest.raises(PluginProblem, match="but lives in"):
+        read_skill_frontmatter(skill_dir)["name"]
 
     # A description is what decides whether the skill fires at all; without
     # one the skill costs tokens in every session and never triggers.
     (skill_dir / "SKILL.md").write_text(
         "---\nname: running-a-simulation-on-a-cluster\n---\n\nBody.\n", encoding="utf-8"
     )
-    with pytest.raises(ValueError, match="needs a description"):
-        GENERATOR.read_skill_name(skill_dir)
+    with pytest.raises(PluginProblem, match="needs a description"):
+        read_skill_frontmatter(skill_dir)
 
 
 def test_bundle_depends_on_its_skills_only_once_they_exist(tmp_path: Path) -> None:
@@ -444,7 +447,7 @@ def test_shipped_skills_load_and_are_reachable_from_a_bundle() -> None:
         )
         assert shipped, f"{plugin_dir} ships no skills"
         for skill_dir in shipped:
-            assert GENERATOR.read_skill_name(skill_dir) == skill_dir.name
+            assert read_skill_frontmatter(skill_dir)["name"] == skill_dir.name
 
 
 def _write_community_entry(repo_root: Path, name: str, body: str) -> Path:

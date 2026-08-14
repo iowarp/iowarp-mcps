@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import dataclasses
 import hashlib
 import importlib.metadata as importlib_metadata
 import json
@@ -12,16 +11,13 @@ import tempfile
 from pathlib import Path
 import click
 
+from clio_kit.cache_cli import CACHE_GROUP, clio_cache_root
 from clio_kit.env_cache import (
-    CacheInUseError,
     EnvironmentInUseMarker,
-    collect_cache_gc,
     default_event_emitter,
-    discover_servers,
-    load_cache_policy,
     maintain_after_build,
-    measure_cache_budget,
 )
+from clio_kit.plugins import PLUGIN_COMMANDS
 from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
@@ -447,7 +443,7 @@ def materialize_locked_server_project(
     expected = identity or locked_server_project_identity(server_path)
     project_sha256 = expected["project_sha256"]
     target = (
-        _clio_cache_root() / "mcp-projects" / server_path.name / project_sha256
+        clio_cache_root() / "mcp-projects" / server_path.name / project_sha256
     ).resolve()
 
     def verify_materialized(path: Path) -> None:
@@ -492,17 +488,6 @@ def materialize_locked_server_project(
             shutil.rmtree(temporary)
 
 
-def _clio_cache_root() -> Path:
-    """Return the operator-configurable cache root used by child runtimes."""
-    configured_cache = os.getenv("CLIO_KIT_CACHE_DIR")
-    if configured_cache:
-        return Path(configured_cache).expanduser().resolve()
-    return (
-        Path(os.getenv("XDG_CACHE_HOME", str(Path.home() / ".cache"))).expanduser()
-        / "clio-kit"
-    ).resolve()
-
-
 def _locked_server_environment_path(
     server_path: Path,
     *,
@@ -510,7 +495,7 @@ def _locked_server_environment_path(
 ) -> Path:
     """Resolve one source-addressed child environment without mutating it."""
     return (
-        _clio_cache_root()
+        clio_cache_root()
         / "mcp-environments"
         / f"{server_path.name}-{project_sha256[:24]}"
     ).resolve()
@@ -616,7 +601,7 @@ def _run_locked_local_server(
         identity=runtime_identity,
     )
     project_sha256 = runtime_identity["project_sha256"]
-    cache_root = _clio_cache_root()
+    cache_root = clio_cache_root()
     environment_path = _locked_server_environment_path(
         server_path,
         project_sha256=project_sha256,
@@ -847,106 +832,11 @@ def search(args):
         sys.exit(1)
 
 
-@main.group("cache")
-def cache_group() -> None:
-    """Inspect and reclaim the private MCP runtime cache."""
-
-
-@cache_group.command("gc")
-@click.option(
-    "--keep",
-    type=int,
-    default=None,
-    help="Environments to keep per server (overrides CLIO_KIT_ENV_KEEP).",
-)
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Report what would be evicted without deleting anything.",
-)
-def cache_gc(keep: int | None, dry_run: bool) -> None:
-    """Collapse every server to its newest N specs and prune the uv cache.
-
-    This is the manual reclaim path for a box already polluted by unbounded
-    environment history. It refuses to run while any environment is held by a
-    live server, because deleting an environment mid-spawn corrupts the cache.
-    """
-    cache_root = _clio_cache_root()
-    policy = load_cache_policy()
-    if keep is not None:
-        if keep < 1:
-            raise click.ClickException("--keep must be >= 1")
-        policy = dataclasses.replace(policy, keep_per_server=keep)
-    try:
-        eviction, prune = collect_cache_gc(
-            cache_root,
-            policy=policy,
-            uv_executable=uv_command(),
-            dry_run=dry_run,
-        )
-    except CacheInUseError as exc:
-        raise click.ClickException(str(exc)) from exc
-    budget = measure_cache_budget(cache_root, policy=policy)
-    click.echo(
-        json.dumps(
-            {
-                "dry_run": dry_run,
-                "keep_per_server": policy.keep_per_server,
-                "evicted": [
-                    {
-                        "server": entry.server,
-                        "hash_prefix": entry.hash_prefix,
-                        "bytes_freed": entry.bytes_freed,
-                    }
-                    for entry in eviction.evicted
-                ],
-                "skipped_in_use": [
-                    {"server": entry.server, "hash_prefix": entry.hash_prefix}
-                    for entry in eviction.skipped_in_use
-                ],
-                "bytes_freed": eviction.bytes_freed,
-                "uv_cache_prune": {
-                    "ran": prune.ran,
-                    "ok": prune.ok,
-                    "reason": prune.reason,
-                },
-                "cache_total_bytes": budget.total_bytes,
-                "over_budget": budget.over_budget,
-            },
-            sort_keys=True,
-        )
-    )
-
-
-@cache_group.command("status")
-def cache_status() -> None:
-    """Print a machine-readable summary of the private runtime cache footprint."""
-    cache_root = _clio_cache_root()
-    policy = load_cache_policy()
-    budget = measure_cache_budget(cache_root, policy=policy)
-    environments_root = cache_root / "mcp-environments"
-    per_server: dict[str, int] = {}
-    if environments_root.is_dir():
-        for server in sorted(discover_servers(cache_root)):
-            token = f"{server}-"
-            per_server[server] = sum(
-                1
-                for child in environments_root.iterdir()
-                if child.is_dir() and child.name.startswith(token)
-            )
-    click.echo(
-        json.dumps(
-            {
-                "cache_root": str(cache_root),
-                "total_bytes": budget.total_bytes,
-                "max_bytes": budget.max_bytes,
-                "over_budget": budget.over_budget,
-                "keep_per_server": policy.keep_per_server,
-                "environments_per_server": per_server,
-            },
-            sort_keys=True,
-        )
-    )
+# Registered rather than defined here: the launcher is held at a fixed size
+# by the ratchet, so command surfaces live in their own modules.
+main.add_command(CACHE_GROUP)
+for _plugin_command in PLUGIN_COMMANDS:
+    main.add_command(_plugin_command)
 
 
 def cli():

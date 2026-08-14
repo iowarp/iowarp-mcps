@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from clio_kit.community import read_community_entries
+from clio_kit.plugins import read_skill_frontmatter
 from clio_kit.mcp_contracts import generate_user_contract_artifacts
 
 try:
@@ -245,43 +246,6 @@ def write_bundle_plugin(
     }
 
 
-def read_skill_name(skill_dir: Path) -> str:
-    """Read one SKILL.md's declared name, failing on anything unloadable.
-
-    A skill whose declared name does not match its directory is namespaced by
-    the directory but referred to by the name, so the two disagreeing is a
-    reference that resolves nowhere.
-    """
-    skill_md = skill_dir / "SKILL.md"
-    if not skill_md.is_file():
-        raise ValueError(f"{skill_dir} has no SKILL.md")
-    text = skill_md.read_text(encoding="utf-8")
-    if not text.startswith("---\n"):
-        raise ValueError(f"{skill_md} must open with YAML frontmatter")
-    _, _, rest = text.partition("---\n")
-    frontmatter, sep, _ = rest.partition("\n---\n")
-    if not sep:
-        raise ValueError(f"{skill_md} has unterminated frontmatter")
-    fields: dict[str, str] = {}
-    for line in frontmatter.splitlines():
-        # Only top-level keys; an indented line continues the value above it,
-        # and a description long enough to wrap is the normal case.
-        if not line or line.startswith((" ", "\t")):
-            continue
-        key, separator, value = line.partition(":")
-        if separator:
-            fields[key.strip()] = value.strip()
-    for required in ("name", "description"):
-        if not fields.get(required):
-            raise ValueError(f"{skill_md} frontmatter needs a {required}")
-    if fields["name"] != skill_dir.name:
-        raise ValueError(
-            f"{skill_md} declares name {fields['name']!r} "
-            f"but lives in {skill_dir.name!r}"
-        )
-    return fields["name"]
-
-
 def write_skills_plugin(
     repo_root: Path,
     bundle_name: str,
@@ -307,7 +271,9 @@ def write_skills_plugin(
     )
     if not skill_dirs:
         raise ValueError(f"{plugin_dir} exists but ships no skills")
-    skill_names = [read_skill_name(skill_dir) for skill_dir in skill_dirs]
+    skill_names = [
+        read_skill_frontmatter(skill_dir)["name"] for skill_dir in skill_dirs
+    ]
 
     workflow = spec["description"].rstrip(".")
     description = (
