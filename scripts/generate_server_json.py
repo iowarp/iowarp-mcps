@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+from clio_kit.community import read_community_entries
 from clio_kit.mcp_contracts import generate_user_contract_artifacts
 
 try:
@@ -649,6 +650,21 @@ def generate_all(mcps_dir: str) -> None:
         member_count = len(spec["servers"])
         suffix = " + skills" if skills_entry is not None else ""
         print(f"Wrote plugins/{bundle_name} ({member_count} servers{suffix})")
+
+    # Outside contributions, indexed rather than vendored. They land in the
+    # same catalogue as ours so both are found the same way.
+    community_entries = read_community_entries(repo_root)
+    generated_names = {entry["name"] for entry in marketplace_plugins}
+    colliding = sorted(
+        entry["name"] for entry in community_entries if entry["name"] in generated_names
+    )
+    if colliding:
+        raise ValueError(
+            f"community entries collide with generated plugins: {colliding}"
+        )
+    marketplace_plugins.extend(community_entries)
+    if community_entries:
+        print(f"Merged {len(community_entries)} community entries")
 
     # Claude Code marketplace manifest
     marketplace = build_marketplace_json(

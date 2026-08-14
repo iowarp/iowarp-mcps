@@ -27,6 +27,10 @@ def _load_generator() -> ModuleType:
 
 GENERATOR = _load_generator()
 
+# Community entries live in the launcher package so the same reader backs both
+# manifest generation and contributor-facing validation.
+from clio_kit.community import read_community_entries  # noqa: E402
+
 
 def test_json_writer_requests_platform_independent_newlines(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -441,3 +445,124 @@ def test_shipped_skills_load_and_are_reachable_from_a_bundle() -> None:
         assert shipped, f"{plugin_dir} ships no skills"
         for skill_dir in shipped:
             assert GENERATOR.read_skill_name(skill_dir) == skill_dir.name
+
+
+def _write_community_entry(repo_root: Path, name: str, body: str) -> Path:
+    entries = repo_root / "community" / "entries"
+    entries.mkdir(parents=True, exist_ok=True)
+    path = entries / f"{name}.toml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_community_entries_index_outside_repositories(tmp_path: Path) -> None:
+    """An outside contribution is a pointer, not a copy of anything."""
+    _write_community_entry(
+        tmp_path,
+        "materials-lab",
+        'name = "materials-lab"\n'
+        'description = "Crystal structure skills."\n'
+        'category = "materials-science"\n'
+        'maintainer = "some-lab"\n'
+        'keywords = ["materials"]\n'
+        "\n[source]\n"
+        'type = "github"\n'
+        'repo = "some-lab/materials-agent-skills"\n'
+        'ref = "v1.2.0"\n',
+    )
+    # npm is what lets a TypeScript or Go plugin be listed without living here.
+    _write_community_entry(
+        tmp_path,
+        "crystal-mcp",
+        'name = "crystal-mcp"\n'
+        'description = "A TypeScript MCP server."\n'
+        "\n[source]\n"
+        'type = "npm"\n'
+        'package = "@acme/crystal-mcp"\n'
+        'version = "^2.0.0"\n',
+    )
+
+    entries = read_community_entries(tmp_path)
+    by_name = {entry["name"]: entry for entry in entries}
+
+    assert by_name["materials-lab"]["source"] == {
+        "source": "github",
+        "repo": "some-lab/materials-agent-skills",
+        "ref": "v1.2.0",
+    }
+    assert by_name["crystal-mcp"]["source"] == {
+        "source": "npm",
+        "package": "@acme/crystal-mcp",
+        "version": "^2.0.0",
+    }
+    # A user should be able to see which entries are maintained here and which
+    # are only pointed at.
+    assert by_name["materials-lab"]["metadata"] == {
+        "maintainer": "some-lab",
+        "indexed": True,
+    }
+
+
+def test_community_entries_reject_shapes_that_would_publish_broken(
+    tmp_path: Path,
+) -> None:
+    """The content is not ours, so the shape is checked hard."""
+    entries_dir = tmp_path / "community" / "entries"
+
+    # A name that disagrees with its filename makes the entry unfindable by
+    # the file someone would edit to fix it.
+    _write_community_entry(
+        tmp_path,
+        "materials-lab",
+        'name = "materials"\ndescription = "x"\n\n[source]\ntype = "github"\nrepo = "a/b"\n',
+    )
+    with pytest.raises(ValueError, match="rename the file to match"):
+        read_community_entries(tmp_path)
+
+    # clio- is generated from this repository's own servers, bundles and
+    # skills; an outside entry claiming it would shadow one of ours.
+    _write_community_entry(
+        tmp_path,
+        "clio-materials",
+        'name = "clio-materials"\ndescription = "x"\n\n[source]\ntype = "github"\nrepo = "a/b"\n',
+    )
+    (entries_dir / "materials-lab.toml").unlink()
+    with pytest.raises(ValueError, match="may not claim the clio- prefix"):
+        read_community_entries(tmp_path)
+    (entries_dir / "clio-materials.toml").unlink()
+
+    # A github source without a repo resolves to nothing at install time.
+    _write_community_entry(
+        tmp_path,
+        "incomplete",
+        'name = "incomplete"\ndescription = "x"\n\n[source]\ntype = "github"\n',
+    )
+    with pytest.raises(ValueError, match=r"needs \['repo'\]"):
+        read_community_entries(tmp_path)
+
+    # A field the source type does not use is a silent typo, not a no-op.
+    _write_community_entry(
+        tmp_path,
+        "incomplete",
+        'name = "incomplete"\ndescription = "x"\n\n[source]\ntype = "npm"\n'
+        'package = "@a/b"\nrepo = "a/b"\n',
+    )
+    with pytest.raises(ValueError, match=r"unexpected fields: \['repo'\]"):
+        read_community_entries(tmp_path)
+
+    # A description is what a user reads before installing something we did
+    # not write.
+    _write_community_entry(
+        tmp_path,
+        "incomplete",
+        'name = "incomplete"\n\n[source]\ntype = "github"\nrepo = "a/b"\n',
+    )
+    with pytest.raises(ValueError, match="needs a description"):
+        read_community_entries(tmp_path)
+
+
+def test_no_community_entries_is_a_valid_state(tmp_path: Path) -> None:
+    """An empty index generates a marketplace of just our own plugins."""
+    assert read_community_entries(tmp_path) == []
+    (tmp_path / "community" / "entries").mkdir(parents=True)
+    assert read_community_entries(tmp_path) == []
