@@ -86,10 +86,23 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
             encoding="utf-8"
         )
     )
+    # The marketplace publishes two kinds of entry against different sources:
+    # per-server plugins under clio-kit-mcp-servers/, and workflow bundles
+    # under plugins/ whose whole content is a dependency list. They are keyed
+    # differently -- a server entry drops the clio- prefix to match its
+    # directory name, a bundle's name IS its identity -- so splitting them on
+    # source keeps each set checkable against its own inventory.
     marketplace_plugins = {
         plugin["name"].removeprefix("clio-"): plugin
         for plugin in marketplace["plugins"]
+        if plugin["source"].startswith("./clio-kit-mcp-servers/")
     }
+    bundle_plugins = {
+        plugin["name"]: plugin
+        for plugin in marketplace["plugins"]
+        if plugin["source"].startswith("./plugins/")
+    }
+    expected_bundles = GENERATOR.read_bundles(repository_root)
     gemini_extension = json.loads(
         (repository_root / "gemini-extension.json").read_text(encoding="utf-8")
     )
@@ -102,6 +115,10 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     assert publish_servers == ("spack", "web")
     assert marketplace["metadata"]["version"] == expected_version
     assert set(marketplace_plugins) == set(expected_server_versions)
+    assert set(bundle_plugins) == set(expected_bundles)
+    # Every published entry is one kind or the other. A third source shape
+    # would be an entry nothing in this repository accounts for.
+    assert len(marketplace_plugins) + len(bundle_plugins) == len(marketplace["plugins"])
     assert gemini_extension["version"] == expected_version
     for path in manifests:
         server_name = path.parent.name
@@ -240,3 +257,85 @@ def test_plugin_versions_distinguish_contracts_from_the_root_wheel(
     assert plugin["version"] == "2.0.0"
     assert marketplace["metadata"]["version"] == "2.3.0"
     assert marketplace["plugins"][0]["version"] == "2.0.0"
+
+
+def test_bundle_membership_must_partition_the_shipped_servers() -> None:
+    """A bundle catalogue that is not a partition is a catalogue with holes."""
+    shipped = {"spack", "slurm", "hdf5"}
+
+    # Exactly one bundle per server: the only accepted shape.
+    GENERATOR.assert_bundles_partition_servers(
+        {
+            "clio-hpc": {"servers": ["slurm", "spack"]},
+            "clio-scientific-io": {"servers": ["hdf5"]},
+        },
+        shipped,
+    )
+
+    # A server named by no bundle would publish outside the catalogue,
+    # reachable only by someone who already knew it existed.
+    with pytest.raises(ValueError, match=r"unplaced=\['hdf5'\]"):
+        GENERATOR.assert_bundles_partition_servers(
+            {"clio-hpc": {"servers": ["slurm", "spack"]}}, shipped
+        )
+
+    # A membership list naming a server that no longer ships is stale, and
+    # would generate a bundle whose install resolves nothing.
+    with pytest.raises(ValueError, match=r"unknown=\['geojson'\]"):
+        GENERATOR.assert_bundles_partition_servers(
+            {
+                "clio-hpc": {"servers": ["slurm", "spack"]},
+                "clio-geoscience": {"servers": ["geojson", "hdf5"]},
+            },
+            shipped,
+        )
+
+    # One server in two bundles makes "which workflow owns this" unanswerable.
+    with pytest.raises(ValueError, match=r"duplicated=\['spack in clio-hpc"):
+        GENERATOR.assert_bundles_partition_servers(
+            {
+                "clio-hpc": {"servers": ["slurm", "spack"]},
+                "clio-scientific-io": {"servers": ["hdf5", "spack"]},
+            },
+            shipped,
+        )
+
+
+def test_bundles_depend_on_members_without_copying_them(tmp_path: Path) -> None:
+    """A bundle carries a dependency list and nothing else executable."""
+    entry = GENERATOR.write_bundle_plugin(
+        tmp_path,
+        "clio-hpc",
+        {
+            "version": "1.0.0",
+            "description": "Run work on a cluster.",
+            "servers": ["slurm", "spack"],
+        },
+    )
+    manifest = json.loads(
+        (
+            tmp_path / "plugins" / "clio-hpc" / ".claude-plugin" / "plugin.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert manifest["dependencies"] == ["clio-slurm", "clio-spack"]
+    # Bare names, not {"name": ..., "version": ...}: a constrained dependency
+    # resolves against a `{plugin-name}--v{version}` git tag, which would mean
+    # tagging every server plugin on every release for a pin nothing needs.
+    assert all(isinstance(dep, str) for dep in manifest["dependencies"])
+    # No components of its own -- the bundle must not restate what it bundles.
+    assert not {"mcpServers", "skills", "commands", "agents", "hooks"} & set(manifest)
+    assert entry["source"] == "./plugins/clio-hpc"
+
+
+def test_shipped_bundle_catalogue_partitions_the_shipped_servers() -> None:
+    """The committed bundle tables must cover this repository, not a fixture."""
+    repo_root = Path(__file__).resolve().parents[1]
+    bundles = GENERATOR.read_bundles(repo_root)
+    shipped = {
+        server_dir.name
+        for server_dir in (repo_root / "clio-kit-mcp-servers").iterdir()
+        if (server_dir / "pyproject.toml").exists()
+    }
+
+    GENERATOR.assert_bundles_partition_servers(bundles, shipped)

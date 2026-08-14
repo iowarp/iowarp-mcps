@@ -332,6 +332,130 @@
       "keywords": [],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-hpc",
+      "source": "./plugins/clio-hpc",
+      "description": "Install a code, wrap it in a pipeline, submit it, and follow it on a cluster.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "keywords": [
+        "cluster-management",
+        "environment-modules",
+        "hardware-monitoring",
+        "hpc",
+        "job-scheduling",
+        "lmod",
+        "package-management",
+        "performance",
+        "pipeline-management",
+        "scientific-computing",
+        "slurm",
+        "system-administration",
+        "system-info",
+        "workflow-automation"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-performance",
+      "source": "./plugins/clio-performance",
+      "description": "Work out why a finished job was slower than it should have been.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "keywords": [
+        "darshan",
+        "distributed-systems",
+        "hpc",
+        "io-profiling",
+        "large-files",
+        "log-processing",
+        "logging",
+        "performance-analysis",
+        "sorting",
+        "time-series"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-scientific-io",
+      "source": "./plugins/clio-scientific-io",
+      "description": "Open a scientific data file, see its structure, and read part of it.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "keywords": [
+        "adios2",
+        "apache-arrow",
+        "bp5",
+        "columnar-data",
+        "compression",
+        "data-analysis",
+        "data-io",
+        "data-management",
+        "file-operations",
+        "gzip",
+        "hdf5",
+        "hierarchical-data",
+        "hpc",
+        "parquet",
+        "scientific-computing"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-analysis",
+      "source": "./plugins/clio-analysis",
+      "description": "Turn a dataset into summary statistics and a figure.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "keywords": [
+        "3d-rendering",
+        "charts",
+        "data-analysis",
+        "data-visualization",
+        "dataframes",
+        "hpc",
+        "matplotlib",
+        "pandas",
+        "paraview",
+        "plotting",
+        "scientific-visualization",
+        "statistics"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-geoscience",
+      "source": "./plugins/clio-geoscience",
+      "description": "Inspect and map geospatial features, terrain models, and waveform archives.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "keywords": [],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "clio-research",
+      "source": "./plugins/clio-research",
+      "description": "Find papers on a topic and the datasets behind them.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "keywords": [
+        "arxiv",
+        "ckan",
+        "data-discovery",
+        "datasets",
+        "literature-search",
+        "national-data-platform",
+        "papers",
+        "research"
+      ],
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/iowarp/clio-kit"
     }
   ]
 }

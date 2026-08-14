@@ -1,0 +1,18 @@
+{
+  "name": "clio-performance",
+  "description": "Work out why a finished job was slower than it should have been.",
+  "version": "1.0.0",
+  "author": {
+    "name": "IoWarp Team - Gnosis Research Center",
+    "email": "grc@illinoistech.edu",
+    "url": "https://github.com/iowarp/clio-kit"
+  },
+  "homepage": "https://github.com/iowarp/clio-kit",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "license": "BSD-3-Clause",
+  "dependencies": [
+    "clio-chronolog",
+    "clio-darshan",
+    "clio-parallel-sort"
+  ]
+}

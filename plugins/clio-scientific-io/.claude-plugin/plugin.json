@@ -1,0 +1,19 @@
+{
+  "name": "clio-scientific-io",
+  "description": "Open a scientific data file, see its structure, and read part of it.",
+  "version": "1.0.0",
+  "author": {
+    "name": "IoWarp Team - Gnosis Research Center",
+    "email": "grc@illinoistech.edu",
+    "url": "https://github.com/iowarp/clio-kit"
+  },
+  "homepage": "https://github.com/iowarp/clio-kit",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "license": "BSD-3-Clause",
+  "dependencies": [
+    "clio-adios",
+    "clio-compression",
+    "clio-hdf5",
+    "clio-parquet"
+  ]
+}

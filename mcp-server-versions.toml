@@ -15,6 +15,51 @@ publish = ["spack", "web"]
 [documentation]
 updated = "2026-08-11"
 
+# Workflow bundles. Each one generates a plugin whose entire content is a
+# dependency list naming its member server plugins -- no server code and no
+# skill text is copied, so a bundle cannot drift from what it bundles. The
+# grouping is by the work someone sits down to do, not by subject area, which
+# is why parallel-sort's log filtering sits with the profilers rather than
+# with the file-format readers.
+#
+# Every name under `servers` must exist under [servers] below, and every
+# server under [servers] must appear in exactly one bundle. Generation fails
+# on an unknown name, a duplicate, or a server left unplaced, so a new server
+# cannot quietly ship outside the catalogue.
+#
+# Bundle versions are their own line, independent of both the PyPI wheel and
+# the per-server contract versions: re-cutting a bundle's membership is a
+# bundle change, not a server change.
+[bundles.clio-hpc]
+version = "1.0.0"
+description = "Install a code, wrap it in a pipeline, submit it, and follow it on a cluster."
+servers = ["jarvis", "lmod", "node-hardware", "slurm", "spack"]
+
+[bundles.clio-performance]
+version = "1.0.0"
+description = "Work out why a finished job was slower than it should have been."
+servers = ["chronolog", "darshan", "parallel-sort"]
+
+[bundles.clio-scientific-io]
+version = "1.0.0"
+description = "Open a scientific data file, see its structure, and read part of it."
+servers = ["adios", "compression", "hdf5", "parquet"]
+
+[bundles.clio-analysis]
+version = "1.0.0"
+description = "Turn a dataset into summary statistics and a figure."
+servers = ["pandas", "paraview", "plot"]
+
+[bundles.clio-geoscience]
+version = "1.0.0"
+description = "Inspect and map geospatial features, terrain models, and waveform archives."
+servers = ["geo", "geojson", "sac", "seismic", "terrain"]
+
+[bundles.clio-research]
+version = "1.0.0"
+description = "Find papers on a topic and the datasets behind them."
+servers = ["arxiv", "ndp", "scientific-catalog", "web"]
+
 # MCP Registry server versions describe each agent-facing contract. They are
 # intentionally independent of the clio-kit PyPI distribution version, which
 # only identifies the wheel containing the server implementations.

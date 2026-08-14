@@ -129,6 +129,119 @@ def read_registry_publish_servers(repo_root: Path) -> tuple[str, ...]:
     return servers
 
 
+def read_bundles(repo_root: Path) -> dict[str, dict[str, Any]]:
+    """Read the workflow bundle definitions, in declaration order.
+
+    Declaration order is preserved so the generated marketplace lists bundles
+    the way the file reads rather than alphabetically, which puts the entry
+    workflow first instead of burying it.
+    """
+    versions_path = repo_root / SERVER_VERSIONS_FILE
+    with open(versions_path, "rb") as f:
+        data = tomllib.load(f)
+    raw_bundles = data.get("bundles")
+    if not isinstance(raw_bundles, dict) or not raw_bundles:
+        raise ValueError(f"{versions_path} must define at least one [bundles.*] table")
+
+    bundles: dict[str, dict[str, Any]] = {}
+    for name, spec in raw_bundles.items():
+        if not isinstance(spec, dict):
+            raise ValueError(f"{versions_path} bundle {name!r} must be a table")
+        servers = spec.get("servers")
+        version = spec.get("version")
+        description = spec.get("description")
+        if not isinstance(servers, list) or not servers:
+            raise ValueError(f"{versions_path} bundle {name!r} needs a servers list")
+        if not all(isinstance(server, str) and server for server in servers):
+            raise ValueError(f"{versions_path} bundle {name!r} has an invalid server")
+        if servers != sorted(servers):
+            raise ValueError(f"{versions_path} bundle {name!r} servers must be sorted")
+        if len(set(servers)) != len(servers):
+            raise ValueError(f"{versions_path} bundle {name!r} has duplicate servers")
+        if not isinstance(version, str) or not version:
+            raise ValueError(f"{versions_path} bundle {name!r} needs a version")
+        if not isinstance(description, str) or not description:
+            raise ValueError(f"{versions_path} bundle {name!r} needs a description")
+        bundles[name] = {
+            "version": version,
+            "description": description,
+            "servers": [cast(str, server) for server in servers],
+        }
+    return bundles
+
+
+def assert_bundles_partition_servers(
+    bundles: dict[str, dict[str, Any]],
+    discovered_servers: set[str],
+) -> None:
+    """Fail unless every shipped server sits in exactly one bundle.
+
+    Both directions matter. A bundle naming a server that does not exist is a
+    stale membership list; a shipped server named by no bundle is one that
+    would publish outside the catalogue, reachable only by someone who already
+    knows it exists.
+    """
+    placements: dict[str, list[str]] = {}
+    for bundle_name, spec in bundles.items():
+        for server in spec["servers"]:
+            placements.setdefault(server, []).append(bundle_name)
+
+    unknown = sorted(set(placements) - discovered_servers)
+    unplaced = sorted(discovered_servers - set(placements))
+    duplicated = sorted(
+        f"{server} in {', '.join(names)}"
+        for server, names in placements.items()
+        if len(names) > 1
+    )
+    if unknown or unplaced or duplicated:
+        raise ValueError(
+            "Bundle membership must partition the shipped servers: "
+            f"unknown={unknown}, unplaced={unplaced}, duplicated={duplicated}"
+        )
+
+
+def write_bundle_plugin(
+    repo_root: Path,
+    bundle_name: str,
+    spec: dict[str, Any],
+) -> dict[str, Any]:
+    """Write one bundle manifest and return its marketplace entry.
+
+    The manifest carries no components of its own -- only the dependency list.
+    Dependencies are bare names rather than version constraints because a
+    constrained dependency resolves against a git tag named
+    ``{plugin-name}--v{version}``, which would mean tagging every server plugin
+    on every release for a pin nothing yet needs.
+    """
+    dependencies = [f"clio-{server}" for server in spec["servers"]]
+    plugin_json = {
+        "name": bundle_name,
+        "description": spec["description"],
+        "version": spec["version"],
+        "author": PLUGIN_AUTHOR,
+        "homepage": REPO_URL,
+        "repository": REPO_URL,
+        "license": "BSD-3-Clause",
+        "dependencies": dependencies,
+    }
+    _write_json(
+        repo_root / "plugins" / bundle_name / ".claude-plugin" / "plugin.json",
+        plugin_json,
+    )
+    return {
+        "name": bundle_name,
+        "source": f"./plugins/{bundle_name}",
+        "description": spec["description"],
+        "version": spec["version"],
+        "category": "workflow",
+        "keywords": sorted(
+            {tag for s in spec["servers"] for tag in SERVER_TAGS.get(s, [])}
+        ),
+        "license": "BSD-3-Clause",
+        "repository": REPO_URL,
+    }
+
+
 def read_pyproject(server_dir: Path) -> dict[str, Any]:
     """Read pyproject.toml and return the [project] table."""
     pyproject_path = server_dir / "pyproject.toml"
@@ -370,6 +483,8 @@ def generate_all(mcps_dir: str) -> None:
             "MCP Registry release inventory contains unknown projects: "
             f"{sorted(unknown_publish_servers)}"
         )
+    bundles = read_bundles(repo_root)
+    assert_bundles_partition_servers(bundles, discovered_servers)
 
     for server_dir in server_dirs:
         if not server_dir.is_dir() or server_dir.name.startswith("."):
@@ -429,6 +544,12 @@ def generate_all(mcps_dir: str) -> None:
         )
 
         generated.append(server_name)
+
+    # Workflow bundles: dependency-only plugins over the servers just generated
+    for bundle_name, spec in bundles.items():
+        marketplace_plugins.append(write_bundle_plugin(repo_root, bundle_name, spec))
+        member_count = len(spec["servers"])
+        print(f"Wrote plugins/{bundle_name} ({member_count} servers)")
 
     # Claude Code marketplace manifest
     marketplace = build_marketplace_json(
