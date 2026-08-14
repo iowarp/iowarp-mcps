@@ -29,6 +29,14 @@ except ImportError:
     import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 REPO_URL = "https://github.com/iowarp/clio-kit"
+# Attribution carried by every generated plugin manifest. Without it
+# `claude plugin validate --strict` warns once per plugin, which is what keeps
+# CI from gating on strict mode.
+PLUGIN_AUTHOR: dict[str, str] = {
+    "name": "IoWarp Team - Gnosis Research Center",
+    "email": "grc@illinoistech.edu",
+    "url": REPO_URL,
+}
 MAX_DESCRIPTION_LENGTH = 100
 SERVER_VERSIONS_FILE = "mcp-server-versions.toml"
 STABLE_VERSION_PATTERN = re.compile(r"[1-9][0-9]*\.[0-9]+\.[0-9]+")
@@ -248,6 +256,10 @@ def write_claude_plugin_files(
         "name": f"clio-{server_name}",
         "description": description,
         "version": server_version,
+        "author": PLUGIN_AUTHOR,
+        "homepage": REPO_URL,
+        "repository": REPO_URL,
+        "license": "BSD-3-Clause",
     }
     _write_json(server_dir / ".claude-plugin" / "plugin.json", plugin_json)
 

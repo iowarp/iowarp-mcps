@@ -1,5 +1,13 @@
 {
   "name": "clio-chronolog",
   "description": "ChronoLog MCP server implementation using Model Context Protocol",
-  "version": "2.0.1"
+  "version": "2.0.1",
+  "author": {
+    "name": "IoWarp Team - Gnosis Research Center",
+    "email": "grc@illinoistech.edu",
+    "url": "https://github.com/iowarp/clio-kit"
+  },
+  "homepage": "https://github.com/iowarp/clio-kit",
+  "repository": "https://github.com/iowarp/clio-kit",
+  "license": "BSD-3-Clause"
 }

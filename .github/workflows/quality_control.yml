@@ -103,6 +103,36 @@ jobs:
     - name: Check per-file size ratchet (campaign #362)
       run: python scripts/check_file_size.py
 
+  plugin-manifests:
+    name: Plugin manifests (strict)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: '22'
+
+    - name: Install the Claude Code CLI
+      run: npm install -g @anthropic-ai/claude-code
+
+    - name: Validate the marketplace and every plugin manifest
+      shell: bash
+      run: |
+        # `claude plugin validate` is a local manifest check -- no credentials
+        # needed, so it runs unauthenticated in CI. --strict turns the warnings
+        # the runtime tolerates (missing author, unrecognised fields) into
+        # failures, which is what keeps generated manifests publishable.
+        claude plugin validate .claude-plugin/marketplace.json --strict
+        status=0
+        while IFS= read -r manifest; do
+          plugin_dir="$(dirname "$(dirname "$manifest")")"
+          echo "::group::$plugin_dir"
+          claude plugin validate "$plugin_dir" --strict || status=1
+          echo "::endgroup::"
+        done < <(git ls-files '*/.claude-plugin/plugin.json')
+        exit "$status"
+
   ratchet-baseline-diff-guard:
     name: Ratchet baseline diff guard (PR)
     runs-on: ubuntu-latest
