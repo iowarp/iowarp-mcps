@@ -12,6 +12,7 @@ from pathlib import Path
 import click
 
 from clio_kit.cache_cli import CACHE_GROUP, clio_cache_root
+from clio_kit.discovery import discover_servers_in, is_servers_root
 from clio_kit.env_cache import (
     EnvironmentInUseMarker,
     default_event_emitter,
@@ -110,7 +111,7 @@ def _distribution_shared_data_roots(shared_name: str) -> list[Path]:
 
 def _is_servers_root(path: Path) -> bool:
     """Return whether a directory contains at least one embedded server project."""
-    return path.is_dir() and any(path.glob("*/pyproject.toml"))
+    return is_servers_root(path)
 
 
 def get_prompts_path():
@@ -188,50 +189,8 @@ def get_search_path():
 
 
 def auto_discover_mcps():
-    """Auto-discover MCP servers from the clio-kit-mcp-servers directory"""
-    servers_path = get_servers_path()
-    if not servers_path.exists():
-        return {}, {}
-
-    server_command_map = {}
-    dir_name_map = {}
-
-    # Scan for directories containing pyproject.toml
-    for item in servers_path.iterdir():
-        if item.is_dir() and not item.name.startswith("."):
-            pyproject_file = item / "pyproject.toml"
-            if pyproject_file.exists():
-                # Read pyproject.toml to extract entry point
-                try:
-                    with open(pyproject_file, "r") as f:
-                        content = f.read()
-
-                    # Simple parsing to find the entry point
-                    # Look for lines like: server-name-mcp = "module:main"
-                    entry_point = None
-                    for line in content.split("\n"):
-                        line = line.strip()
-                        if "-mcp =" in line and "=" in line:
-                            entry_point = line.split("=")[0].strip().strip("\"'")
-                            break
-
-                    if entry_point:
-                        # Create server name by removing -mcp suffix
-                        server_name = entry_point.replace("-mcp", "").lower()
-                        # Handle special cases for naming
-                        if server_name == "node-hardware":
-                            server_name = "node-hardware"
-                        elif server_name == "parallel-sort":
-                            server_name = "parallel-sort"
-
-                        server_command_map[server_name] = entry_point
-                        dir_name_map[server_name] = item.name
-
-                except Exception:
-                    # Skip directories that can't be processed
-                    continue
-
-    return server_command_map, dir_name_map
+    """Auto-discover MCP servers from the clio-kit-mcp-servers directory."""
+    return discover_servers_in(get_servers_path())
 
 
 def auto_discover_prompts():

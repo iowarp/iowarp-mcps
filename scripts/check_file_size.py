@@ -101,7 +101,7 @@ RATCHET_BASELINE: dict[str, int] = {
     # `clio_kit` package (the `clio-kit` launcher CLI itself) entirely --
     # these three were never scanned. Baselined at their measured counts, not
     # split this wave.
-    "src/clio_kit/__init__.py": 848,
+    "src/clio_kit/__init__.py": 807,
     # clio-kit#370: spack contract spec bumped to v2.2 (search/info tools
     # added to the curated surface) and a new historical-artifact entry
     # (spack-user-v2.1.json) recorded, 921 -> 930 (ruff-formatted). Fix round
