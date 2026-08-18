@@ -1,46 +1,39 @@
-# CLIO Web MCP server — tool reference
+# CLIO Web MCP tool reference
 
-Two curated tools for agentic web access. Runs as a confined fleet child under CLIO's sandbox,
-so all egress is recorded through the network chokepoint.
+## `fetch`
 
-## `fetch(url, *, to_file=False, output_dir=None, max_bytes=None, timeout=None)`
+`fetch(target, to_file=False, output_dir=None, max_bytes=None, timeout=None)`
+retrieves an HTTP(S) URL or DOI as a required MCP task. HTML becomes Markdown;
+plain text is returned directly; supported PDFs, Office documents, XML, and
+images are sent to CLIO Web Search for structured conversion.
 
-Retrieve an HTTP(S) URL. HTML is converted to Markdown (trafilatura → readability → plain-text
-strip; the `extractor` field names which ran, so a quality downgrade is never silent). Returns
-inline `content`, or — with `to_file=True` — writes it under the artifacts root and returns
-`local_path` so raw pages never bloat context.
+Task progress contains the backend conversion ID, stage, percentage, and a
+human-readable message. The task stays alive until completion, explicit
+cancellation, or a descriptive terminal failure. Cancellation is propagated to
+`POST /v1/documents/{conversion_id}/cancel`.
 
-- **Size cap** (default 5 MiB, `WEB_MAX_BYTES`): enforced on `Content-Length` *and* mid-stream.
-- **SSRF guard** (default on; `WEB_ALLOW_PRIVATE_HOSTS=true` to disable): refuses loopback /
-  private / link-local literal hosts (incl. the cloud-metadata address `169.254.169.254`) and
-  `localhost` names, on the initial URL **and every redirect hop** (redirects are followed
-  manually so each hop is checked before connecting). `final_url` reports the resolved URL.
-- **Typed gaps (honest, never junk):** an empty extraction returns
-  `reason="js_render_required_browser_unavailable"` (headless-browser escalation is the
-  follow-on); binary without `to_file` returns `reason="binary_content_not_inlined"`.
-- **`(url, prompt)` extraction** is the agent's job (an MCP server has no model access): use
-  `to_file=True` and pipe the saved file through the agent's own model.
+Downloads enforce size limits and validate every redirect against the SSRF
+policy. Empty HTML extraction reports
+`js_render_required_browser_unavailable`; unsupported binary content reports
+`binary_content_not_inlined` unless `to_file=True`.
 
-## `search(query, *, provider=None, count=5, category=None, engines=None, language=None, time_range=None, pageno=None, safesearch=None)`
+## `fetch_events`
 
-Search via a configurable provider. Keyless **DuckDuckGo** (`ddg`) is the default;
-self-hosted **SearXNG** (`searxng`) uses `WEB_SEARXNG_BASE_URL`; optional **Brave**
-and **Tavily** retain their BYO-key configuration. Selecting an unconfigured provider is a
-typed error — never a silent fallback to `ddg`. `count` is capped at 25. Returns
-`{title, url, snippet}` results.
+`fetch_events(conversion_id, after_sequence=0, limit=100)` retrieves a cursor
+page from the persistent backend conversion log. Use it when the latest
+`tasks/get` status message is insufficient. It is a synchronous read-only tool.
 
-SearXNG accepts native `category` (`general`, `science`, or `it`), exact `engines`,
-`language`, `time_range` (`day`, `month`, or `year`), `pageno` (1 through 3), and
-`safesearch` (0 through 2) selectors. Its response also includes `engines_answered` and
-normalized `unresponsive_engines`. An explicit `engines` list takes precedence over
-`category`, avoiding SearXNG's broader union of both selectors. Passing these selectors to
-another provider is an error.
+## `search`
 
-## Configuration (`WEB_`-prefixed env or a `.env`)
+`search(query, count=5)` is deliberately synchronous. DuckDuckGo is the keyless
+default. SearXNG, Brave, and Tavily are selected at MCP startup. SearXNG exposes
+its bounded native selectors; other providers expose only `query` and `count`.
 
-`WEB_SEARCH_PROVIDER`, `WEB_SEARXNG_BASE_URL`, `WEB_BRAVE_API_KEY`, `WEB_TAVILY_API_KEY`,
-`WEB_MAX_BYTES`, `WEB_CONNECT_TIMEOUT_S`, `WEB_READ_TIMEOUT_S`, `WEB_ARTIFACTS_ROOT`,
-`WEB_ALLOW_PRIVATE_HOSTS`.
+## Unified configuration
 
-For the LAN deployment, set `WEB_SEARCH_PROVIDER=searxng` and
-`WEB_SEARXNG_BASE_URL=http://10.0.0.102:8088`. No paid-provider credential is required.
+`WEB_REMOTE_URL` or `--remote-url` points the local MCP at one CLIO Web Search
+deployment. On startup, the MCP calls `/v1/capabilities` and
+`/v1/task-backend/session`, persists a stable local agent ID and task encryption
+key, and configures Docket with the returned per-agent Valkey queue and
+credentials. `WEB_REMOTE_TOKEN` supplies the deployment bearer token when one
+is configured.

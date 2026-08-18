@@ -6,6 +6,7 @@ import json
 
 import pytest
 from fastmcp import Client
+from mcp.types import TextResourceContents
 
 from web_mcp.server import Settings, create_mcp, mcp
 
@@ -25,7 +26,9 @@ async def test_capabilities_resource_reports_only_active_backend() -> None:
     """Discovery describes this installation rather than alternate providers."""
     async with Client(mcp) as client:
         result = await client.read_resource("web://capabilities")
-    payload = json.loads(result[0].text)  # resource contents expose .text (JSON)
+    contents = result[0]
+    assert isinstance(contents, TextResourceContents)
+    payload = json.loads(contents.text)
     assert payload["active_provider"] == "ddg"  # keyless default
     assert payload["search_parameters"] == ["query", "count"]
     assert "available_providers" not in payload
@@ -42,7 +45,9 @@ async def test_capabilities_resource_reports_configured_searxng() -> None:
     )
     async with Client(searxng_mcp) as client:
         result = await client.read_resource("web://capabilities")
-    payload = json.loads(result[0].text)
+    contents = result[0]
+    assert isinstance(contents, TextResourceContents)
+    payload = json.loads(contents.text)
     assert payload["active_provider"] == "searxng"
     assert "pageno" in payload["search_parameters"]
-    assert "10.0.0.102" not in result[0].text
+    assert "10.0.0.102" not in contents.text

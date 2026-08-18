@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -20,13 +21,12 @@ _SERVICE = "http://clio-search.test:8080"
 _PDF = b"%PDF-1.7\nstructured test"
 
 
-def _document_mcp(tmp_path: Path, *, wait_s: float = 0) -> FastMCP:
+def _document_mcp(tmp_path: Path) -> FastMCP:
     return create_mcp(
         Settings(
             search_provider="ddg",
             document_service_url=_SERVICE,
             artifacts_root=str(tmp_path),
-            conversion_wait_s=wait_s,
             conversion_poll_s=0.1,
         )
     )
@@ -173,10 +173,10 @@ async def test_fetch_doi_url_uses_same_resolution_contract(
 
 
 @pytest.mark.asyncio
-async def test_fetch_document_returns_durable_pending_handle(
+async def test_fetch_document_waits_for_terminal_backend_state(
     httpx_mock: HTTPXMock, tmp_path: Path
 ) -> None:
-    """A long conversion returns an honest retry handle rather than hiding work."""
+    """A long conversion remains a live MCP task until the backend completes."""
 
     source = "https://papers.test/work.pdf"
     httpx_mock.add_response(url=source, content=_PDF, headers={"content-type": "application/pdf"})
@@ -186,20 +186,43 @@ async def test_fetch_document_returns_durable_pending_handle(
         status_code=202,
         json={"id": "job-pending", "status": "queued", "retry_after_s": 2},
     )
+    httpx_mock.add_response(
+        method="GET",
+        url=(f"{_SERVICE}/v1/documents/job-pending/events?after_sequence=0&limit=100"),
+        json={
+            "events": [
+                {
+                    "sequence": 1,
+                    "progress": 45,
+                    "stage": "layout",
+                    "level": "info",
+                    "message": "Reading page layout",
+                }
+            ]
+        },
+    )
+    httpx_mock.add_response(
+        method="GET",
+        url=f"{_SERVICE}/v1/documents/job-pending",
+        json={
+            "id": "job-pending",
+            "status": "complete",
+            "result": {"markdown": "# Finished", "document": {"profile": "general"}},
+        },
+    )
 
     async with Client(_document_mcp(tmp_path)) as client:
         result = await client.call_tool("fetch", {"target": source})
     data = parse_result(result)
 
-    assert data["reason"] == "document_conversion_pending"
+    assert data["content"] == "# Finished"
     assert data["conversion_id"] == "job-pending"
-    assert data["retry_after_s"] == 2
 
 
 @pytest.mark.parametrize(
     ("address", "message"),
     [
-        ("not-a-url", "absolute CLIO Search address"),
+        ("not-a-url", "absolute CLIO Web Search address"),
         ("https://search.test/?tenant=x", "query or fragment"),
     ],
 )
@@ -219,7 +242,7 @@ async def test_resolve_doi_rejects_malformed_service_payload(httpx_mock: HTTPXMo
         url=f"{_SERVICE}/v1/doi/resolve",
         json={"doi": "10.1234/example", "candidates": "not-a-list"},
     )
-    with pytest.raises(ToolError, match="malformed DOI-resolution response"):
+    with pytest.raises(ToolError, match="malformed DOI-resolution data"):
         await resolve_doi(
             "10.1234/example",
             service_url=_SERVICE,
@@ -236,7 +259,10 @@ async def test_resolve_doi_wraps_service_failure(httpx_mock: HTTPXMock) -> None:
         method="POST",
         url=f"{_SERVICE}/v1/doi/resolve",
     )
-    with pytest.raises(ToolError, match="Could not resolve DOI through CLIO Search"):
+    with pytest.raises(
+        ToolError,
+        match="Fetch failed during DOI resolution.*Retryable: yes.*Fix:",
+    ):
         await resolve_doi(
             "10.1234/example",
             service_url=_SERVICE,
@@ -256,9 +282,29 @@ async def test_convert_document_polls_and_sends_doi(httpx_mock: HTTPXMock) -> No
     )
     httpx_mock.add_response(
         method="GET",
+        url=f"{_SERVICE}/v1/documents/poll-1/events?after_sequence=0&limit=100",
+        json={
+            "events": [
+                {
+                    "sequence": 1,
+                    "progress": 80,
+                    "stage": "serialize",
+                    "level": "info",
+                    "message": "Writing Markdown",
+                }
+            ]
+        },
+    )
+    httpx_mock.add_response(
+        method="GET",
         url=f"{_SERVICE}/v1/documents/poll-1",
         json={"id": "poll-1", "status": "complete", "result": {"markdown": "done"}},
     )
+    progress: list[dict[str, Any]] = []
+
+    async def report(event: dict[str, Any]) -> None:
+        progress.append(event)
+
     payload = await convert_document(
         _PDF,
         filename="paper.pdf",
@@ -267,13 +313,14 @@ async def test_convert_document_polls_and_sends_doi(httpx_mock: HTTPXMock) -> No
         doi="10.1234/example",
         service_url=_SERVICE,
         timeout=httpx.Timeout(2),
-        wait_s=1,
         poll_s=0,
+        on_progress=report,
     )
 
     assert payload["status"] == "complete"
     request_body = httpx_mock.get_requests()[0].content
     assert b"10.1234/example" in request_body
+    assert [event["stage"] for event in progress] == ["queued", "serialize"]
 
 
 @pytest.mark.asyncio
@@ -285,7 +332,11 @@ async def test_convert_document_rejects_malformed_submission(httpx_mock: HTTPXMo
         url=f"{_SERVICE}/v1/documents",
         json={"status": "queued"},
     )
-    with pytest.raises(ToolError, match="malformed document submission"):
+
+    async def report(_event: dict[str, Any]) -> None:
+        return None
+
+    with pytest.raises(ToolError, match="without returning a conversion ID"):
         await convert_document(
             _PDF,
             filename="paper.pdf",
@@ -294,15 +345,18 @@ async def test_convert_document_rejects_malformed_submission(httpx_mock: HTTPXMo
             doi=None,
             service_url=_SERVICE,
             timeout=httpx.Timeout(2),
-            wait_s=0,
             poll_s=0,
+            on_progress=report,
         )
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("error", "message"),
-    [({"message": "parser unavailable"}, "parser unavailable"), (None, "unknown error")],
+    [
+        ({"message": "parser unavailable."}, "parser unavailable"),
+        (None, "without structured diagnostics"),
+    ],
 )
 async def test_convert_document_surfaces_typed_failure(
     httpx_mock: HTTPXMock, error: object, message: str
@@ -314,7 +368,11 @@ async def test_convert_document_surfaces_typed_failure(
         url=f"{_SERVICE}/v1/documents",
         json={"id": "failed-1", "status": "failed", "error": error},
     )
-    with pytest.raises(ToolError, match=message):
+
+    async def report(_event: dict[str, Any]) -> None:
+        return None
+
+    with pytest.raises(ToolError, match=message) as captured:
         await convert_document(
             _PDF,
             filename="paper.pdf",
@@ -323,6 +381,7 @@ async def test_convert_document_surfaces_typed_failure(
             doi=None,
             service_url=_SERVICE,
             timeout=httpx.Timeout(2),
-            wait_s=0,
             poll_s=0,
+            on_progress=report,
         )
+    assert ".." not in str(captured.value)

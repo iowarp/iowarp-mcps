@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-    "version": "2.9.0",
+    "version": "2.10.0",
     "pluginRoot": "./clio-kit-mcp-servers"
   },
   "plugins": [
@@ -327,7 +327,7 @@
       "name": "clio-web",
       "source": "./clio-kit-mcp-servers/web",
       "description": "Provider-fixed web search plus transparent URL, DOI, and document fetching",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "category": "development",
       "keywords": [],
       "license": "BSD-3-Clause",
