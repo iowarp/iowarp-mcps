@@ -53,6 +53,16 @@ class TestMainFunction:
                     main()
             mock_run.assert_called_once_with(transport="http", host="0.0.0.0", port=8000)
 
+    def test_remote_url_selects_unified_searxng_provider(self) -> None:
+        """One remote URL configures search as well as fetch and tasks."""
+
+        with patch("web_mcp.server.create_mcp") as create:
+            with patch("sys.argv", ["web-mcp", "--remote_url", "http://homelab:8089"]):
+                main()
+        configured = create.call_args.args[0]
+        assert configured.search_provider == "searxng"
+        assert configured.remote_url == "http://homelab:8089"
+
 
 class TestServerInitialization:
     """Test server initialization and module-level setup."""

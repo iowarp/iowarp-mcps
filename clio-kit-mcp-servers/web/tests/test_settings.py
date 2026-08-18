@@ -33,6 +33,14 @@ class TestSettingsDefaults:
         cfg = Settings()
         assert cfg.artifacts_root is None
 
+    def test_unified_remote_selects_searxng_automatically(self) -> None:
+        cfg = Settings(remote_url="http://homelab:8089")
+        assert cfg.search_provider == "searxng"
+
+    def test_unified_remote_preserves_explicit_provider(self) -> None:
+        cfg = Settings(remote_url="http://homelab:8089", search_provider="ddg")
+        assert cfg.search_provider == "ddg"
+
 
 class TestSettingsOverride:
     """Configuration is driven by explicit values, not ambient env."""

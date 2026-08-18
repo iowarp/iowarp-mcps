@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/web-mcp",
   "title": "CLIO Web",
   "description": "Provider-fixed web search plus transparent URL, DOI, and document fetching",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.9.0",
+      "version": "2.10.0",
       "transport": {
         "type": "stdio"
       },
@@ -31,7 +31,11 @@
   "tools": [
     {
       "name": "fetch",
-      "description": "Fetch an HTTP(S) URL or DOI. HTML and text are read locally; supported PDFs and structured documents use the optional CLIO Search document service."
+      "description": "Fetch an HTTP(S) URL or DOI as a durable task. HTML and text are read locally; supported documents use CLIO Web Search conversion when configured."
+    },
+    {
+      "name": "fetch_events",
+      "description": "Query the full ordered backend event log for a document fetch conversion."
     },
     {
       "name": "search",
@@ -42,13 +46,13 @@
     {
       "uri": "web://capabilities",
       "name": "capabilities",
-      "description": "Return only the active installation's search and fetch capabilities."
+      "description": "Return the active installation's search, fetch, and task capabilities."
     }
   ],
   "prompts": [
     {
       "name": "research_web",
-      "description": "Guided search then fetch workflow for researching a topic on the web."
+      "description": "Provide a guided search-then-fetch research workflow."
     }
   ],
   "tags": []
