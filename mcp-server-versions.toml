@@ -8,7 +8,7 @@ schema-version = 1
 # change, add it here WITH a real version bump under [servers] in the same
 # PR, then remove it again once published.
 [mcp-registry-release]
-publish = ["web"]
+publish = []
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.

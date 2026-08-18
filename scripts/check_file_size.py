@@ -91,7 +91,6 @@ RATCHET_BASELINE: dict[str, int] = {
     # split this wave.
     "src/clio_kit/__init__.py": 958,
     "src/clio_kit/mcp_contracts.py": 921,
-    "src/clio_kit/env_cache.py": 843,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,
     "clio-kit-mcp-servers/parquet/src/parquet_mcp/capabilities/parquet_handler.py": 839,
     "clio-kit-mcp-servers/node-hardware/src/node_hardware_mcp/mcp_handlers.py": 819,

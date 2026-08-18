@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clio-kit"
-version = "2.10.0"
+version = "2.10.1"
 description = "CLIO Kit - MCP Servers, Clients, and Tools for AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
