@@ -248,6 +248,55 @@ def test_prune_spawn_failure_is_tolerated(tmp_path: Path) -> None:
     assert "prune_spawn_failed" in report.reason
 
 
+def test_prune_skips_while_another_server_environment_is_live(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A live MCP must not make a second launch wait on uv's cache lock."""
+
+    (tmp_path / "uv-cache").mkdir(parents=True)
+    calls: list[list[str]] = []
+    real_pid = os.getpid()
+
+    def fake_run(cmd: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    with EnvironmentInUseMarker(tmp_path, "adios-" + _HASHES[0][:24]):
+        monkeypatch.setattr(os, "getpid", lambda: real_pid + 1)
+        report = prune_uv_cache(
+            tmp_path,
+            policy=_policy(),
+            uv_executable="uv",
+            emit=lambda _event: None,
+            run=fake_run,
+        )
+
+    assert report.ran is False
+    assert report.reason == "prune_skipped_in_use"
+    assert calls == []
+
+
+def test_prune_timeout_is_tolerated(tmp_path: Path) -> None:
+    """An unmarked uv cache lock cannot delay an MCP launch indefinitely."""
+
+    (tmp_path / "uv-cache").mkdir(parents=True)
+
+    def timing_out_run(cmd: list[str], **kwargs: Any) -> Any:
+        raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+    report = prune_uv_cache(
+        tmp_path,
+        policy=_policy(),
+        uv_executable="uv",
+        emit=lambda _event: None,
+        run=timing_out_run,
+    )
+
+    assert report.ran is True
+    assert report.ok is False
+    assert report.reason == "prune_timeout_10s"
+
+
 def test_gc_refuses_when_any_environment_is_in_use(tmp_path: Path) -> None:
     """Bulk gc must refuse entirely while any environment is held, deleting none."""
     events, emit = _events_collector()
