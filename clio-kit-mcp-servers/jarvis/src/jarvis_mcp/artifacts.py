@@ -13,11 +13,12 @@ import hashlib
 import json
 import math
 import re
+import stat
+import time
 from collections.abc import Mapping
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, cast
 from urllib.parse import urlsplit
-
 
 ARTIFACT_SNAPSHOT_SCHEMA = "jarvis.execution.artifacts.v1"
 ARTIFACT_EVENT_SCHEMA = "jarvis.artifact.v1"
@@ -55,6 +56,7 @@ _ARTIFACT_ROLES = {
     "intermediate",
     "output",
     "log",
+    "frame",
     "checkpoint",
     "provenance",
     "validation",
@@ -87,6 +89,43 @@ _OPTIONAL_EVENT_FIELDS = {
     "checksum",
     "message",
 }
+MAX_EXECUTION_OUTPUT_FILES = 64
+_EXECUTION_OUTPUT_TRUNCATION_SCHEMA = "jarvis.execution-output-truncation.v1"
+_EXECUTION_OUTPUT_CONTROL_FILES = frozenset({"submit.slurm"})
+_EXECUTION_OUTPUT_ROLE_BY_SUFFIX = {
+    ".err": "log",
+    ".log": "log",
+    ".out": "log",
+    ".bp": "frame",
+    ".dcd": "frame",
+    ".dump": "frame",
+    ".h5": "frame",
+    ".hdf5": "frame",
+    ".lammpstrj": "frame",
+    ".nc": "frame",
+    ".npy": "frame",
+    ".npz": "frame",
+    ".pdb": "frame",
+    ".vti": "frame",
+    ".vtk": "frame",
+    ".vtu": "frame",
+    ".xyz": "frame",
+}
+
+
+def execution_root_from_record(record_document: Mapping[str, Any]) -> Path | None:
+    """Resolve the execution directory from the authenticated record metadata."""
+    raw_metadata = record_document.get("metadata")
+    if not isinstance(raw_metadata, Mapping):
+        return None
+    for key in ("pipeline_snapshot_path", "script_path"):
+        raw_path = raw_metadata.get(key)
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            continue
+        candidate = Path(raw_path)
+        if candidate.name:
+            return candidate.parent
+    return None
 
 
 class ArtifactSnapshotError(RuntimeError):
@@ -108,6 +147,118 @@ class ArtifactQueryError(RuntimeError):
         self.code = code
         self.message = message
         self.retryable = retryable
+
+
+def execution_output_artifact_events(
+    execution_root: Path,
+    *,
+    execution_id: str,
+    observed_at_epoch: float | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, object] | None]:
+    """Declare bounded regular files directly under one terminal execution root.
+
+    Discovery is deliberately shallow: the execution root is listed once and
+    nested directories are never traversed. File contents are hashed for
+    identity, but never embedded in the returned manifest.
+    """
+    if not execution_root.is_dir():
+        return [], None
+    observed = time.time() if observed_at_epoch is None else observed_at_epoch
+    candidates: list[Path] = []
+    for path in sorted(execution_root.iterdir(), key=lambda item: item.name):
+        try:
+            path_stat = path.lstat()
+        except OSError:
+            continue
+        if (
+            path.name.startswith(".")
+            or path.name in _EXECUTION_OUTPUT_CONTROL_FILES
+            or stat.S_ISLNK(path_stat.st_mode)
+            or not stat.S_ISREG(path_stat.st_mode)
+        ):
+            continue
+        candidates.append(path)
+
+    events: list[dict[str, Any]] = []
+    for sequence, path in enumerate(candidates[:MAX_EXECUTION_OUTPUT_FILES], start=1):
+        digest, size = _hash_regular_file(path)
+        relative_path = path.relative_to(execution_root).as_posix()
+        role = _EXECUTION_OUTPUT_ROLE_BY_SUFFIX.get(path.suffix.lower(), "output")
+        artifact_id = "art_" + hashlib.sha256(
+            f"{execution_id}:{relative_path}".encode()
+        ).hexdigest()
+        events.append(
+            {
+                "schema_version": ARTIFACT_EVENT_SCHEMA,
+                "package_name": "jarvis.execution",
+                "package_id": "jarvis.execution",
+                "execution_id": execution_id,
+                "artifact_id": artifact_id,
+                "logical_name": relative_path,
+                "kind": "execution-file",
+                "role": role,
+                "structure": "file",
+                "ownership": "execution",
+                "state": "finalized",
+                "location": {"kind": "execution_path", "value": relative_path},
+                "size_bytes": size,
+                "checksum": f"sha256:{digest}",
+                "revision": 1,
+                "sequence": sequence,
+                "observed_at_epoch": observed,
+                "metadata": {"discovery": "execution-root-direct-file"},
+            }
+        )
+
+    truncation = None
+    if len(candidates) > MAX_EXECUTION_OUTPUT_FILES:
+        truncation = {
+            "schema_version": _EXECUTION_OUTPUT_TRUNCATION_SCHEMA,
+            "limit": MAX_EXECUTION_OUTPUT_FILES,
+            "observed_count": len(candidates),
+            "omitted_count": len(candidates) - MAX_EXECUTION_OUTPUT_FILES,
+        }
+        events.append(
+            {
+                "schema_version": ARTIFACT_EVENT_SCHEMA,
+                "package_name": "jarvis.execution",
+                "package_id": "jarvis.execution",
+                "execution_id": execution_id,
+                "artifact_id": "art_"
+                + hashlib.sha256(
+                    f"{execution_id}:execution-output-truncation".encode()
+                ).hexdigest(),
+                "logical_name": "__execution-output-truncation__",
+                "kind": "execution-output-truncation",
+                "role": "validation",
+                "structure": "file",
+                "ownership": "execution",
+                "state": "failed",
+                "revision": 1,
+                "sequence": len(events) + 1,
+                "observed_at_epoch": observed,
+                "message": "execution output file declaration cap exceeded",
+                "metadata": truncation,
+            }
+        )
+    return events, truncation
+
+
+def _hash_regular_file(path: Path) -> tuple[str, int]:
+    """Hash one stable regular file without retaining its content."""
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as stream:
+        before = path.stat()
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+            size += len(chunk)
+        after = path.stat()
+    if not stat.S_ISREG(before.st_mode) or not stat.S_ISREG(after.st_mode):
+        raise RuntimeError("execution output changed from a regular file")
+    if before.st_size != size or after.st_size != size:
+        raise RuntimeError("execution output changed while hashing")
+    return digest.hexdigest(), size
 
 
 def artifact_snapshot_document(

@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import pytest
-
 from jarvis_mcp.artifacts import (
     ArtifactQueryError,
     ArtifactSnapshotError,
     artifact_query_page,
     artifact_snapshot_document,
+    execution_output_artifact_events,
 )
 
 
@@ -76,6 +77,45 @@ def test_artifact_snapshot_accepts_native_document_without_rewriting_it() -> Non
     )
 
     assert observed == expected
+
+
+def test_execution_output_artifacts_declare_direct_files_and_typed_truncation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Terminal output discovery is bounded, typed, and execution-root scoped."""
+    (tmp_path / "stdout.log").write_bytes(b"thermo: 42\n")
+    (tmp_path / "log.lammps").write_bytes(b"LAMMPS log\n")
+    (tmp_path / "dump.dcd").write_bytes(b"frame-bytes")
+    (tmp_path / "z-output.dat").write_bytes(b"application output")
+    nested = tmp_path / "dumps"
+    nested.mkdir()
+    (nested / "frame.0002").write_bytes(b"nested-frame")
+    (tmp_path / "submit.slurm").write_bytes(b"#!/bin/sh\n")
+    monkeypatch.setattr("jarvis_mcp.artifacts.MAX_EXECUTION_OUTPUT_FILES", 3)
+
+    events, truncation = execution_output_artifact_events(
+        tmp_path,
+        execution_id="execution-a",
+        observed_at_epoch=1783900000.0,
+    )
+
+    file_events = [event for event in events if "location" in event]
+    assert [event["location"]["value"] for event in file_events] == [
+        "dump.dcd",
+        "log.lammps",
+        "stdout.log",
+    ]
+    assert [event["role"] for event in file_events] == ["frame", "output", "log"]
+    assert file_events[2]["size_bytes"] == len(b"thermo: 42\n")
+    assert file_events[2]["checksum"].startswith("sha256:")
+    assert truncation == {
+        "schema_version": "jarvis.execution-output-truncation.v1",
+        "limit": 3,
+        "observed_count": 4,
+        "omitted_count": 1,
+    }
+    assert all("dumps" not in str(event) for event in events)
 
 
 @pytest.mark.parametrize(

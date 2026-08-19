@@ -30,13 +30,14 @@ from jarvis_mcp.artifacts import (
     ArtifactSnapshotError,
     artifact_query_page,
     artifact_snapshot_document,
+    execution_output_artifact_events,
+    execution_root_from_record,
 )
 from jarvis_mcp.progress import (
     NativeProgressExecution,
     ProgressReporter,
     progress_snapshot_document,
 )
-
 
 RUNTIME_METADATA_SCHEMA = "jarvis.runtime.v1"
 RUNTIME_ERROR_SCHEMA = "jarvis.error.v1"
@@ -891,6 +892,25 @@ async def get_execution(
                     expected_execution_id=validated_execution,
                     expected_pipeline_id=validated_pipeline,
                 )
+                if artifact_snapshot is not None and record_document["terminal"]:
+                    execution_root = execution_root_from_record(record_document)
+                    if execution_root is not None:
+                        discovered, _truncation = execution_output_artifact_events(
+                            execution_root,
+                            execution_id=validated_execution,
+                        )
+                        if discovered:
+                            artifact_snapshot = artifact_snapshot_document(
+                                {
+                                    **artifact_snapshot,
+                                    "artifacts": [
+                                        *artifact_snapshot["artifacts"],
+                                        *discovered,
+                                    ],
+                                },
+                                expected_execution_id=validated_execution,
+                                expected_pipeline_id=validated_pipeline,
+                            )
                 handle_document = _execution_handle_document(
                     getattr(record, "handle", None),
                     expected_execution_id=validated_execution,

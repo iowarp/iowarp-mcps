@@ -7,28 +7,27 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
-from types import ModuleType, SimpleNamespace
-from pathlib import Path
-from unittest.mock import Mock, patch
 from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
-
 from jarvis_mcp.capabilities.jarvis_handler import (
-    create_pipeline,
-    configure_pipeline,
-    load_pipeline,
     append_pkg,
     build_pipeline_env,
-    update_pipeline,
+    configure_pipeline,
     configure_pkg,
+    create_pipeline,
+    destroy_pipeline,
+    get_execution,
     get_pkg_config,
-    unlink_pkg,
+    load_pipeline,
     remove_pkg,
     run_pipeline,
-    get_execution,
-    destroy_pipeline,
+    unlink_pkg,
+    update_pipeline,
 )
 
 
@@ -980,7 +979,6 @@ class TestPackageOperations:
     def test_current_configure_accepts_only_declared_nullable_defaults(self):
         """Explicit null follows the same default metadata returned by describe."""
         from jarvis_cd.util import PkgArgParse
-
         from jarvis_mcp.capabilities.jarvis_handler import (
             _normalize_package_config_request,
         )
@@ -1498,6 +1496,44 @@ class TestPipelineExecutionOperations:
             "next_cursor": None,
         }
         assert result["service_runtimes"] is None
+
+    @pytest.mark.asyncio
+    async def test_terminal_execution_query_declares_execution_root_output_files(
+        self, tmp_path: Path
+    ) -> None:
+        """Terminal execution queries expose direct output files by reference."""
+        pipeline = ModernPipeline("output-files")
+        execution_id = "output-files-run"
+        execution_root = tmp_path / "execution"
+        execution_root.mkdir()
+        (execution_root / "stdout.log").write_bytes(b"thermo: 42\n")
+        handle = NativeHandle(
+            execution_id=execution_id,
+            pipeline_id=pipeline.name,
+            mode="direct",
+        )
+        pipeline.records[execution_id] = NativeRecord(
+            handle,
+            state="completed",
+            submitted=False,
+            terminal=True,
+            return_code=0,
+            metadata={"script_path": str(execution_root / "submit.sh")},
+        )
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+            return_value=pipeline,
+        ):
+            result = await get_execution(
+                pipeline.name,
+                execution_id,
+                artifacts={},
+            )
+
+        declared = result["artifact_page"]["artifacts"]
+        assert [item["logical_name"] for item in declared] == ["stdout.log"]
+        assert declared[0]["role"] == "log"
+        assert declared[0]["location"] == {"kind": "execution_path", "value": "stdout.log"}
 
     @pytest.mark.asyncio
     async def test_execution_query_can_omit_optional_native_queries(self) -> None:
