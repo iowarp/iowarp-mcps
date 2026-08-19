@@ -806,7 +806,7 @@ requires-dist = [
 
 [[package]]
 name = "jarvis-mcp"
-version = "3.7.0"
+version = "3.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },

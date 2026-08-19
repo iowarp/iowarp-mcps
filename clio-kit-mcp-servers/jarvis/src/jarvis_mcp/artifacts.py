@@ -24,7 +24,10 @@ from urllib.parse import urlsplit
 # in ``artifact_content.py``, not here: this module owns snapshot VALIDATION
 # and paging; that one owns the bounded, ``role="log"``-only file read
 # layered on top of a page's results.
-from jarvis_mcp.artifact_content import ARTIFACT_MAX_CONTENT_BYTES, artifact_with_content
+from jarvis_mcp.artifact_content import (
+    ARTIFACT_MAX_CONTENT_BYTES,
+    artifact_with_content,
+)
 
 ARTIFACT_SNAPSHOT_SCHEMA = "jarvis.execution.artifacts.v1"
 ARTIFACT_EVENT_SCHEMA = "jarvis.artifact.v1"
@@ -119,21 +122,6 @@ _EXECUTION_OUTPUT_ROLE_BY_SUFFIX = {
 }
 
 
-def execution_root_from_record(record_document: Mapping[str, Any]) -> Path | None:
-    """Resolve the execution directory from the authenticated record metadata."""
-    raw_metadata = record_document.get("metadata")
-    if not isinstance(raw_metadata, Mapping):
-        return None
-    for key in ("pipeline_snapshot_path", "script_path"):
-        raw_path = raw_metadata.get(key)
-        if not isinstance(raw_path, str) or not raw_path.strip():
-            continue
-        candidate = Path(raw_path)
-        if candidate.name:
-            return candidate.parent
-    return None
-
-
 class ArtifactSnapshotError(RuntimeError):
     """A JARVIS producer returned an invalid artifact snapshot."""
 
@@ -190,9 +178,10 @@ def execution_output_artifact_events(
         digest, size = _hash_regular_file(path)
         relative_path = path.relative_to(execution_root).as_posix()
         role = _EXECUTION_OUTPUT_ROLE_BY_SUFFIX.get(path.suffix.lower(), "output")
-        artifact_id = "art_" + hashlib.sha256(
-            f"{execution_id}:{relative_path}".encode()
-        ).hexdigest()
+        artifact_id = (
+            "art_"
+            + hashlib.sha256(f"{execution_id}:{relative_path}".encode()).hexdigest()
+        )
         events.append(
             {
                 "schema_version": ARTIFACT_EVENT_SCHEMA,
@@ -855,4 +844,3 @@ def _finite_nonnegative(value: object) -> bool:
         and math.isfinite(float(value))
         and float(value) >= 0
     )
-

@@ -149,10 +149,10 @@ def test_jarvis_current_contract_matches_registry_package_and_capability() -> No
         if contract["server_name"] == "jarvis"
     )
     contract_match = re.fullmatch(
-        r"clio-kit-jarvis-user-v(?P<major>\d+)\.(?P<minor>\d+)",
+        r"clio-kit-jarvis-user-v(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?",
         current_contract["contract_id"],
     )
-    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.7"
+    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.7.1"
     assert contract_match is not None
     contract_major_minor = (
         int(contract_match.group("major")),

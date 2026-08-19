@@ -1533,7 +1533,10 @@ class TestPipelineExecutionOperations:
         declared = result["artifact_page"]["artifacts"]
         assert [item["logical_name"] for item in declared] == ["stdout.log"]
         assert declared[0]["role"] == "log"
-        assert declared[0]["location"] == {"kind": "execution_path", "value": "stdout.log"}
+        assert declared[0]["location"] == {
+            "kind": "execution_path",
+            "value": "stdout.log",
+        }
 
     @pytest.mark.asyncio
     async def test_execution_query_can_omit_optional_native_queries(self) -> None:

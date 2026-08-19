@@ -32,7 +32,6 @@ from jarvis_mcp.artifacts import (
     artifact_query_page,
     artifact_snapshot_document,
     execution_output_artifact_events,
-    execution_root_from_record,
 )
 from jarvis_mcp.progress import (
     NativeProgressExecution,

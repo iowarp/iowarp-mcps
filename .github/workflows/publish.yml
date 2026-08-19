@@ -262,6 +262,8 @@ jobs:
         "$clio_kit" --help >/dev/null
         listed_servers="$("$clio_kit" mcp-servers)"
         listed_contracts="$("$clio_kit" mcp-contracts)"
+        grep -Fq 'clio-kit-jarvis-user-v3.7.1' <<< "$listed_contracts"
+        grep -Fq 'clio-kit-jarvis-user-v3.7' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.6' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.5' <<< "$listed_contracts"
         grep -Fq 'clio-kit-jarvis-user-v3.4' <<< "$listed_contracts"
@@ -275,9 +277,17 @@ jobs:
         grep -Fq 'clio-kit-spack-user-v2.1' <<< "$listed_contracts"
         grep -Fq 'clio-kit-spack-user-v2' <<< "$listed_contracts"
         jarvis_contract="$("$clio_kit" \
-          mcp-contract clio-kit-jarvis-user-v3.6)"
-        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.6"; assert {tool["name"] for tool in value["tools"]} == {"jarvis_create_pipeline", "jarvis_describe", "jarvis_add_step", "jarvis_edit_step", "jarvis_run", "jarvis_get_execution"}' \
+          mcp-contract clio-kit-jarvis-user-v3.7.1)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.7.1"; assert {tool["name"] for tool in value["tools"]} == {"jarvis_create_pipeline", "jarvis_describe", "jarvis_add_step", "jarvis_edit_step", "jarvis_run", "jarvis_get_execution"}' \
           <<< "$jarvis_contract"
+        historical_jarvis_contract_v37="$("$clio_kit" \
+          mcp-contract clio-kit-jarvis-user-v3.7)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.7"' \
+          <<< "$historical_jarvis_contract_v37"
+        historical_jarvis_contract_v36="$("$clio_kit" \
+          mcp-contract clio-kit-jarvis-user-v3.6)"
+        python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.6"' \
+          <<< "$historical_jarvis_contract_v36"
         historical_jarvis_contract_v35="$("$clio_kit" \
           mcp-contract clio-kit-jarvis-user-v3.5)"
         python -c 'import json,sys; value=json.load(sys.stdin); assert value["contract_id"] == "clio-kit-jarvis-user-v3.5"' \

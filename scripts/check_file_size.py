@@ -81,7 +81,12 @@ RATCHET_BASELINE: dict[str, int] = {
     # NEW owner module (artifact_content.py), not here; this file only grew
     # by the trivial call-site wiring inside get_execution() that has to live
     # where get_execution() itself lives, 3521 -> 3529.
-    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/capabilities/jarvis_handler.py": 3529,
+    # release/2.10.2 (#252 + v3.7.1 mint): terminal execution-output
+    # declaration wiring merged in alongside the content-read call site above
+    # -- both land in get_execution()'s call site, 3529 -> 3548 (real count,
+    # not guessed -- verified via `wc -l` against the merged tree, after
+    # de-duplicating the execution_root_from_record collision below).
+    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/capabilities/jarvis_handler.py": 3548,
     # #362: NOT split this wave -- out of wave-1 scope (jarvis-only). Flat
     # FastMCP function surface, no god-class; still needs an owner-module cut.
     "clio-kit-mcp-servers/hdf5/src/hdf5_mcp/server.py": 2415,
@@ -105,12 +110,34 @@ RATCHET_BASELINE: dict[str, int] = {
     # gating fix (2026-08-12): jarvis contract spec bumped v3.6 -> v3.7
     # (jarvis_get_execution's artifacts filter gained content_max_bytes, a
     # deliberate wire-visible additive change); one more historical-artifact
-    # entry (jarvis-user-v3.6.json) recorded, 931 -> 932.
-    # release/2.10.2: v3.7.1 mint (execution-output declarations, #252) adds
-    # one more historical-artifact entry (jarvis-user-v3.7.json) -- count
-    # verified against the real merged tree below, not guessed.
-    "src/clio_kit/mcp_contracts.py": 932,
-    "src/clio_kit/env_cache.py": 843,
+    # entry (jarvis-user-v3.6.json) recorded on the develop line this
+    # cherry-picked from, 931 -> 932.
+    # release/2.10.2: cherry-picked the v3.7 mint onto release/2.10.2 (built
+    # off main, not full develop -- the unrelated spack/scheduler commits
+    # ahead of it on develop were deliberately left out of this release), then
+    # v3.7.1 mint (execution-output declarations, #252) added one more
+    # historical-artifact entry (jarvis-user-v3.7.json). Real count on THIS
+    # tree verified via `wc -l`, not carried over from develop's number: 923.
+    "src/clio_kit/mcp_contracts.py": 923,
+    # Same selective-cherry-pick story as above: f719714's own comment when it
+    # landed on develop recorded 843, but that reflected develop's full commit
+    # chain (spack/scheduler work included). This tree only carries f719714
+    # itself, so the real, verified count is lower: 770.
+    "src/clio_kit/env_cache.py": 770,
+    # release/2.10.2: merging fix/execution-output-artifacts (#252 --
+    # execution_output_artifact_events/_hash_regular_file, terminal
+    # execution-output declarations) alongside the v3.7 content-read mint's
+    # own inline wiring in artifact_query_page/_validate_query_filters (the
+    # substantial content-read LOGIC lives in artifact_content.py, imported
+    # here, not duplicated) push this past the default new-file threshold for
+    # the first time. Both branches had independently defined
+    # execution_root_from_record (artifact_content.py's grounded-in-jarvis-cd
+    # version vs. this file's script_path-fallback version) -- consolidated
+    # to one definition owned by artifact_content.py (extended with the
+    # script_path fallback) so the two call sites in jarvis_handler.py no
+    # longer silently resolve to whichever import happened to shadow the
+    # other. Real count verified via `wc -l`: 846.
+    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/artifacts.py": 846,
     "clio-kit-mcp-servers/darshan/src/darshan_mcp/capabilities/darshan_parser.py": 857,
     "clio-kit-mcp-servers/parquet/src/parquet_mcp/capabilities/parquet_handler.py": 839,
     "clio-kit-mcp-servers/node-hardware/src/node_hardware_mcp/mcp_handlers.py": 819,
