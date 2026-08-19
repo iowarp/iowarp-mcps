@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from typing_extensions import NotRequired, TypedDict
-
 from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import NotRequired, TypedDict
 
 
 class JarvisArtifactLocationDocument(TypedDict):
@@ -30,6 +29,7 @@ class JarvisArtifactDocument(TypedDict):
         "intermediate",
         "output",
         "log",
+        "frame",
         "checkpoint",
         "provenance",
         "validation",
@@ -90,6 +90,7 @@ class ExecutionArtifactQuery(BaseModel):
             "intermediate",
             "output",
             "log",
+            "frame",
             "checkpoint",
             "provenance",
             "validation",
