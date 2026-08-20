@@ -568,6 +568,7 @@ async def append_pkg_tool(
     pkg_type: str,
     pkg_id: Optional[str] = None,
     do_configure: bool = True,
+    target: Optional[str] = None,
     extra_args: Optional[dict] = None,
 ) -> dict:
     """Add a package to a pipeline for execution or analysis."""
@@ -576,6 +577,7 @@ async def append_pkg_tool(
         pkg_type,
         pkg_id=pkg_id,
         do_configure=do_configure,
+        target=target,
         **(extra_args or {}),
     )
 
@@ -842,7 +844,10 @@ async def jarvis_describe_tool(
         "listed there. Explicit null is accepted only when that setting reports "
         "nullable=true; omit a setting to use its declared default. Only settings marked "
         "agent-visible by the package are accepted here. User-level step configuration "
-        "is always validated and cannot be bypassed."
+        "is always validated and cannot be bypassed. An interceptor-class package (a "
+        "preloader such as Darshan) instruments another step rather than running on "
+        "its own; pass its 'target' to bind it, or the append is refused naming the "
+        "missing binding. 'target' is rejected for every non-interceptor package."
     ),
     annotations={
         "readOnlyHint": False,
@@ -870,14 +875,32 @@ async def jarvis_add_step_tool(
             )
         ),
     ] = None,
+    target: Annotated[
+        Optional[str],
+        Field(
+            min_length=1,
+            max_length=256,
+            description=(
+                "Pipeline step id this package instruments. Required only when "
+                "package_name resolves to an interceptor-class package (JARVIS-CD's "
+                "own Interceptor base class, e.g. a preloader like Darshan); rejected "
+                "for every other package. Binds the interceptor onto the named step "
+                "through JARVIS-CD's native interceptors mechanism -- the step's own "
+                "'interceptors' setting -- so a single call both appends the "
+                "interceptor and wires it, instead of requiring a separate "
+                "jarvis_edit_step call in the right order."
+            ),
+        ),
+    ] = None,
 ) -> dict:
-    """Add and configure one package step without a user-level validation bypass."""
+    """Add and configure one package step, binding an interceptor onto its target."""
     return await append_pkg(
         pipeline_id,
         package_name,
         pkg_id=step_id,
         do_configure=True,
         agent_visible_only=True,
+        target=target,
         **(config or {}),
     )
 

@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/jarvis-mcp",
   "title": "CLIO Jarvis",
   "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-  "version": "3.7.1",
+  "version": "3.7.2",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -39,7 +39,7 @@
     },
     {
       "name": "jarvis_add_step",
-      "description": "Add and configure a package-backed step in a JARVIS pipeline. First use jarvis_describe(target='package') for the selected package; config keys must use its canonical setting names exactly, except for aliases explicitly listed there. Explicit null is accepted only when that setting reports nullable=true; omit a setting to use its declared default. Only settings marked agent-visible by the package are accepted here. User-level step configuration is always validated and cannot be bypassed."
+      "description": "Add and configure a package-backed step in a JARVIS pipeline. First use jarvis_describe(target='package') for the selected package; config keys must use its canonical setting names exactly, except for aliases explicitly listed there. Explicit null is accepted only when that setting reports nullable=true; omit a setting to use its declared default. Only settings marked agent-visible by the package are accepted here. User-level step configuration is always validated and cannot be bypassed. An interceptor-class package (a preloader such as Darshan) instruments another step rather than running on its own; pass its 'target' to bind it, or the append is refused naming the missing binding. 'target' is rejected for every non-interceptor package."
     },
     {
       "name": "jarvis_edit_step",

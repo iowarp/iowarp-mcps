@@ -486,6 +486,7 @@ async def append_pkg(
     pkg_id: Optional[str] = None,
     do_configure: bool = True,
     agent_visible_only: bool = False,
+    target: Optional[str] = None,
     **kwargs: Any,
 ) -> dict:
     try:
@@ -496,9 +497,17 @@ async def append_pkg(
         if agent_visible_only:
             _reject_non_agent_visible_package_settings(pkg_type, raw_kwargs)
 
+        is_interceptor = False
+        target_binding: dict[str, Any] | None = None
         with _protocol_stdout_to_stderr():
             pipeline = _load_pipeline(pipeline_id)
             if _is_legacy_pipeline(pipeline):
+                if target is not None:
+                    raise ValueError(
+                        "interceptor target binding requires the current "
+                        "JARVIS-CD pipeline API; the installed legacy pipeline "
+                        "does not support it"
+                    )
                 pipeline.append(
                     pkg_type, pkg_id=pkg_id, do_configure=config_flag, **raw_kwargs
                 ).save()
@@ -526,7 +535,37 @@ async def append_pkg(
                         persisted_config,
                         pipeline=pipeline,
                     )
-                    if config_flag:
+                    is_interceptor = _is_interceptor_step(pipeline, resolved_pkg_id)
+                    if is_interceptor and target is None:
+                        raise ValueError(
+                            f"interceptor package '{pkg_type}' requires 'target': "
+                            "name the pipeline step it instruments (the "
+                            "application or service it wraps) so JARVIS-CD can "
+                            "bind it through its native interceptors mechanism"
+                        )
+                    if not is_interceptor and target is not None:
+                        raise ValueError(
+                            "'target' is only accepted for interceptor-class "
+                            f"packages; '{pkg_type}' is not an interceptor"
+                        )
+                    if is_interceptor and target is not None:
+                        target_binding = _bind_interceptor_target(
+                            pipeline,
+                            interceptor_pkg_id=resolved_pkg_id,
+                            target_pkg_id=target,
+                        )
+                    # An interceptor's configure-time validation is deferred
+                    # rather than driven here: JARVIS-CD never calls
+                    # Pkg.configure()/find_library() during pipeline.start()
+                    # or .run() for an interceptor (only modify_env(), applied
+                    # once the pipeline's runtime environment -- e.g. a Spack
+                    # load_spec resolved by jarvis_run -- is already in place).
+                    # Eagerly calling configure_package() here reproduces the
+                    # clio-kit#376 ordering defect: a preloader's find_library()
+                    # probe runs before any runtime library path exists. See
+                    # jarvis-cd 1.8.0 core/pipeline.py Pipeline.start()/
+                    # _apply_interceptors_to_package().
+                    if config_flag and not is_interceptor:
                         pipeline.configure_package(resolved_pkg_id, config_args)
                         persisted = _load_pipeline(pipeline_id)
                         persisted_config = _package_config(
@@ -552,8 +591,10 @@ async def append_pkg(
             "pipeline_id": pipeline_id,
             "appended": pkg_type,
             "step_id": resolved_pkg_id,
-            "configured": bool(config_flag),
+            "configured": bool(config_flag) and not is_interceptor,
             "config": _jsonable(persisted_config),
+            "target": target_binding["target"] if target_binding is not None else None,
+            "interceptor_configure_deferred": is_interceptor and bool(config_flag),
         }
     except HTTPException:
         raise
@@ -3321,6 +3362,76 @@ def _package_config(pkg: Any) -> Any:
     if isinstance(pkg, dict):
         return pkg.get("config", {})
     return getattr(pkg, "config", {})
+
+
+def _load_package_instance_for(pipeline: Any, pkg_def: Any) -> Any:
+    """Load one package instance via JARVIS-CD's own loader, when available."""
+    if pkg_def is None:
+        return None
+    loader = getattr(pipeline, "_load_package_instance", None)
+    if not callable(loader):
+        return None
+    return loader(pkg_def, getattr(pipeline, "env", {}))
+
+
+def _is_interceptor_step(pipeline: Any, pkg_id: str) -> bool:
+    """Return whether a pipeline step's loaded instance is interceptor-class.
+
+    Real introspection via JARVIS-CD's own ``jarvis_cd.core.pkg.Interceptor``
+    base class -- never by name-guessing or step position -- so any
+    preloader-class package (Darshan and beyond) is recognized identically
+    (clio-kit#376).
+    """
+    instance = _load_package_instance_for(pipeline, _get_package(pipeline, pkg_id))
+    if instance is None:
+        return False
+    try:
+        from jarvis_cd.core.pkg import Interceptor  # type: ignore[import-untyped]
+    except ImportError:
+        return False
+    return isinstance(instance, Interceptor)
+
+
+def _bind_interceptor_target(
+    pipeline: Any,
+    *,
+    interceptor_pkg_id: str,
+    target_pkg_id: str,
+) -> dict[str, Any]:
+    """Bind a newly appended interceptor onto its target's native list.
+
+    JARVIS-CD's own interceptor binding is directional: the *target*
+    application/service names which interceptor package ids wrap it through
+    its own ``interceptors`` setting (the common menu entry every
+    ``jarvis_cd.core.pkg.Pkg`` declares) -- the interceptor never names its
+    own target. This threads a caller-supplied ``target`` through that exact
+    native mechanism instead of requiring the agent to discover and drive a
+    two-call, order-sensitive dance itself.
+    """
+    target_pkg = _get_package(pipeline, target_pkg_id)
+    if target_pkg is None:
+        raise ValueError(f"target step '{target_pkg_id}' not found in pipeline")
+    if _is_interceptor_step(pipeline, target_pkg_id):
+        raise ValueError(
+            f"target step '{target_pkg_id}' is itself an interceptor; "
+            "interceptor packages cannot reference interceptors"
+        )
+    current = list(_package_config(target_pkg).get("interceptors", []) or [])
+    if interceptor_pkg_id not in current:
+        current.append(interceptor_pkg_id)
+        pipeline.configure_package(
+            target_pkg_id, _kwargs_to_config_args({"interceptors": current})
+        )
+        persisted_target = _get_package(pipeline, target_pkg_id)
+        persisted_list = list(
+            _package_config(persisted_target).get("interceptors", []) or []
+        )
+        if interceptor_pkg_id not in persisted_list:
+            raise ValueError(
+                f"target step '{target_pkg_id}' did not persist the "
+                f"interceptor binding for '{interceptor_pkg_id}'"
+            )
+    return {"target": target_pkg_id, "interceptors": current}
 
 
 def _normalize_package_config_request(

@@ -634,6 +634,7 @@ class TestPipelineToolsDirect:
                 pkg_id="lammps_1",
                 do_configure=True,
                 agent_visible_only=True,
+                target=None,
                 nodes=4,
             )
 
@@ -665,6 +666,7 @@ class TestPipelineToolsDirect:
                 pkg_id=None,
                 do_configure=True,
                 agent_visible_only=True,
+                target=None,
                 dataset_descriptor=descriptor,
             )
 

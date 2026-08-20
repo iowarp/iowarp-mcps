@@ -152,7 +152,7 @@ def test_jarvis_current_contract_matches_registry_package_and_capability() -> No
         r"clio-kit-jarvis-user-v(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?",
         current_contract["contract_id"],
     )
-    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.7.1"
+    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.7.2"
     assert contract_match is not None
     contract_major_minor = (
         int(contract_match.group("major")),

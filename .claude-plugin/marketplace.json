@@ -125,7 +125,7 @@
       "name": "clio-jarvis",
       "source": "./clio-kit-mcp-servers/jarvis",
       "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
-      "version": "3.7.1",
+      "version": "3.7.2",
       "category": "development",
       "keywords": [
         "pipeline-management",

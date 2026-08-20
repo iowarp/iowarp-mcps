@@ -70,7 +70,10 @@ RATCHET_BASELINE: dict[str, int] = {
     # entry points, and that compatibility re-export block; ratchets down
     # with a further per-concern tool-registration split if one is ever
     # justified (the re-export block would move with it).
-    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/server.py": 1582,
+    # #376 (v3.7.2 mint): jarvis_add_step_tool and append_pkg_tool both gain
+    # the `target` parameter (interceptor target-binding) plus its Field
+    # description; 1582 -> 1605 (real count via `wc -l`).
+    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/server.py": 1605,
     # #362 wave 1: NOT split this wave (deferred -- see the wave-1 PR
     # description). Still the 6-class monolith measured at campaign kickoff.
     # Next wave: split into owner modules by concern (pipeline lifecycle,
@@ -86,7 +89,18 @@ RATCHET_BASELINE: dict[str, int] = {
     # -- both land in get_execution()'s call site, 3529 -> 3548 (real count,
     # not guessed -- verified via `wc -l` against the merged tree, after
     # de-duplicating the execution_root_from_record collision below).
-    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/capabilities/jarvis_handler.py": 3548,
+    # #376 (v3.7.2 mint): interceptor target-binding -- append_pkg gains the
+    # `target` parameter plus two new helpers (_is_interceptor_step,
+    # _bind_interceptor_target) that thread it to JARVIS-CD's native
+    # interceptors-list mechanism, and defer an interceptor's
+    # configure_package() call (the find_library ordering defect) to when
+    # JARVIS-CD itself needs it -- never, per Pipeline.start(). Kept in this
+    # file rather than a new owner module: the logic is tightly coupled to
+    # (and sits directly beside) _get_package/_package_config/
+    # _kwargs_to_config_args, the same abstraction level as
+    # _normalize_package_config_request just below it. 3548 -> 3659 (real
+    # count via `wc -l`).
+    "clio-kit-mcp-servers/jarvis/src/jarvis_mcp/capabilities/jarvis_handler.py": 3659,
     # #362: NOT split this wave -- out of wave-1 scope (jarvis-only). Flat
     # FastMCP function surface, no god-class; still needs an owner-module cut.
     "clio-kit-mcp-servers/hdf5/src/hdf5_mcp/server.py": 2415,
@@ -118,7 +132,9 @@ RATCHET_BASELINE: dict[str, int] = {
     # v3.7.1 mint (execution-output declarations, #252) added one more
     # historical-artifact entry (jarvis-user-v3.7.json). Real count on THIS
     # tree verified via `wc -l`, not carried over from develop's number: 923.
-    "src/clio_kit/mcp_contracts.py": 923,
+    # #376 (v3.7.2 mint): one more historical-artifact entry
+    # (jarvis-user-v3.7.1.json) as v3.7.1 retires to historical; 923 -> 924.
+    "src/clio_kit/mcp_contracts.py": 924,
     # Same selective-cherry-pick story as above: f719714's own comment when it
     # landed on develop recorded 843, but that reflected develop's full commit
     # chain (spack/scheduler work included). This tree only carries f719714

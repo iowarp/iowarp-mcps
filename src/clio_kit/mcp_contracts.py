@@ -112,8 +112,8 @@ class UserContractSpec:
 
 USER_CONTRACT_SPECS: Final = (
     UserContractSpec(
-        contract_id="clio-kit-jarvis-user-v3.7.1",
-        artifact_name="jarvis-user-v3.7.1.json",
+        contract_id="clio-kit-jarvis-user-v3.7.2",
+        artifact_name="jarvis-user-v3.7.2.json",
         server_name="jarvis",
         distribution_name="jarvis-mcp",
         entry_command="jarvis-mcp",
@@ -179,6 +179,7 @@ HISTORICAL_USER_CONTRACT_ARTIFACTS: Final = (
     "jarvis-user-v3.5.json",
     "jarvis-user-v3.6.json",
     "jarvis-user-v3.7.json",
+    "jarvis-user-v3.7.1.json",
     "scientific-catalog-user-v1.json",
     "spack-user-v2.json",
 )

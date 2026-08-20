@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-mcp"
-version = "3.7.1"
+version = "3.7.2"
 description = "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles"
 readme = "README.md"
 requires-python = ">=3.11"
