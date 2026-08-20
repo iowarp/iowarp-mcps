@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
-    "version": "2.10.2",
+    "version": "2.10.3",
     "pluginRoot": "./clio-kit-mcp-servers"
   },
   "plugins": [
