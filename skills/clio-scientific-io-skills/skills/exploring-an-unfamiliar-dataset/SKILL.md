@@ -1,6 +1,6 @@
 ---
 name: exploring-an-unfamiliar-dataset
-description: Use when handed a data file and asked what is in it, opening an HDF5, ADIOS BP5, Parquet or compressed file for the first time, or deciding how to read something. Triggers on "what is in this file", "open this dataset", ".h5", ".bp", ".parquet". Not for data too large to hold; use reading-large-datasets-safely.
+description: Use when handed a data file and asked what is in it, opening an HDF5, ADIOS BP5, Parquet or compressed file for the first time, or deciding how to read something. Triggers on "what is in this file", "open this dataset", ".h5", ".bp", ".parquet". Not for data too large to hold; use reading-large-datasets-safely. Not for log files; use searching-large-log-files.
 clio-kit:
   bundle: clio-scientific-io
   servers: clio-hdf5, clio-adios, clio-parquet, clio-compression

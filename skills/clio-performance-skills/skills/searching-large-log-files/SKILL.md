@@ -1,6 +1,6 @@
 ---
 name: searching-large-log-files
-description: Use when searching, sorting, filtering or summarizing a log too large to read, finding errors in job output, or narrowing down when something went wrong. Triggers on "find the error", "grep the log", "what happened at". Not for I/O profiling; use diagnosing-a-slow-job.
+description: Use when searching, sorting, filtering or summarizing a log too large to read, finding errors in job output, or narrowing down when something went wrong. Triggers on "find the error", "grep the log", "what happened at". Not for I/O profiling; use diagnosing-a-slow-job. Not for scientific data files; use exploring-an-unfamiliar-dataset.
 clio-kit:
   bundle: clio-performance
   servers: clio-parallel-sort

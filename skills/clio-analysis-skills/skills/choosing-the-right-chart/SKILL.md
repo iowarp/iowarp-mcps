@@ -1,6 +1,6 @@
 ---
 name: choosing-the-right-chart
-description: Use when deciding how to present data, when a figure is unclear or misleading, or when choosing axes, bins, log scales or colour maps. Triggers on "which chart", "log scale", "colour map", "is this figure ok". Calls no tools.
+description: Use when deciding how to present data, when a figure is unclear or misleading, or when choosing axes, bins, log scales or colour maps. Triggers on "which chart", "log scale", "colour map", "is this figure ok". Calls no tools. Not for producing the figure; use summarizing-and-plotting-results.
 clio-kit:
   bundle: clio-analysis
   servers: none

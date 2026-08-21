@@ -1,6 +1,6 @@
 ---
 name: interpreting-io-performance-numbers
-description: Use when a profiler has returned bandwidth, IOPS, request-size or MPI-IO figures and the question is whether they are good or bad, or when explaining why an I/O pattern is slow. Triggers on "is 40 MB/s bad", "collective vs independent", "small writes". Calls no tools.
+description: Use when a profiler has returned bandwidth, IOPS, request-size or MPI-IO figures and the question is whether they are good or bad, or when explaining why an I/O pattern is slow. Triggers on "is 40 MB/s bad", "collective vs independent", "small writes". Calls no tools. Not for choosing a format, chunking or compression; use choosing-a-storage-format.
 clio-kit:
   bundle: clio-performance
   servers: none

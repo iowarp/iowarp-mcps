@@ -1,6 +1,6 @@
 ---
 name: working-with-coordinate-systems
-description: Use when combining spatial datasets, computing distances or areas, interpreting coordinates, or when spatial results look subtly misplaced. Triggers on "lat lon", "projection", "CRS", "UTM", "why is this offset". Calls no tools.
+description: Use when combining spatial datasets, computing distances or areas, interpreting coordinates, or when spatial results look subtly misplaced. Triggers on "lat lon", "projection", "CRS", "UTM", "why is this offset". Calls no tools. Not for producing a map or inspecting a file; use mapping-geospatial-and-terrain-data.
 clio-kit:
   bundle: clio-geoscience
   servers: none
