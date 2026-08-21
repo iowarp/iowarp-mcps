@@ -10,6 +10,11 @@ clio-kit:
 
 # Search a log that is too big to read
 
+Every tool on this server takes the file as `log_file`, not `file_path`.
+The kit is not consistent about this across servers, so carrying the habit
+over from the data-file servers produces a missing-argument error that reads
+as a missing file.
+
 The failure mode here is reading the file into context. A job log can be hundreds
 of megabytes; these tools exist so you never have to hold it.
 

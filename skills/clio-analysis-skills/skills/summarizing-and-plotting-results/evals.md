@@ -39,3 +39,21 @@ Expected:
 - Loading every column to use two.
 - Computing a mean before checking null counts.
 - Sending a raw million-point cloud to a scatter plot.
+- Passing `file_path` to `profile_csv` or `plot_timeseries`, which take
+  `data_path`. The error names a missing required argument, so it reads as a
+  missing file rather than a wrong key.
+
+## Smoke record (2026-08-21)
+
+Ran the S1 chain by hand against live servers with a small CSV: `profile_csv`,
+`load_data`, `data_info`, `line_plot`. Three succeeded; `profile_csv` failed
+with "2 validation errors ... data_path Missing required argument".
+
+Dumped the input schemas of every pandas and plot tool from the live servers.
+Fifteen of sixteen pandas tools and six of seven plot tools take `file_path`;
+`profile_csv` and `plot_timeseries` take `data_path`. That inconsistency is now
+a section in the body and a RED bullet here.
+
+Not yet run: the with-skill versus without-skill arms. This was a manual trace
+of the prescribed chain, which is enough to find a wrong instruction but not
+enough to show the skill changes behaviour.

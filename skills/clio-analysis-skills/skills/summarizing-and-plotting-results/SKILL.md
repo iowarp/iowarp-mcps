@@ -27,6 +27,21 @@ Skipping `clio-pandas:save_data` means the plot is drawn from the original file,
 silently ignoring every filter and aggregation applied. The chart renders. It is
 just answering a different question.
 
+## Two tools spell the file argument differently
+
+Almost every tool on both servers takes `file_path`. Two do not, and they are
+the two you reach for early:
+
+| Tool | Argument |
+|---|---|
+| `clio-pandas:profile_csv` | `data_path` |
+| `clio-plot:plot_timeseries` | `data_path` |
+
+Fifteen pandas tools and six plot tools use `file_path`, so the pattern learned
+from the rest is wrong for exactly these. Passing `file_path` to either returns
+a validation error naming a missing required argument, which reads like the file
+is missing rather than the key being wrong.
+
 ## Steps
 
 **1. Look before loading.**
@@ -91,3 +106,5 @@ simulation field goes to ParaView instead — see
 - Do not compute a mean before checking the null count.
 - Do not plot a million raw points instead of an aggregate.
 - Do not reach for a chart type before deciding what the figure has to show.
+- Do not assume `file_path` on `profile_csv` or `plot_timeseries`; both take
+  `data_path`.

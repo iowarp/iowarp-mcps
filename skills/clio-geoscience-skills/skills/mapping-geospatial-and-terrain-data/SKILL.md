@@ -34,6 +34,14 @@ On a clean file they agree. On a file with malformed geometries they need not,
 because they differ in what they include. Validate first and the question does
 not arise; skip validation and you have a box you cannot account for.
 
+They do not even take the same argument. `feature_bbox` wants `source`;
+`bounding_box` wants `geojson`. That split runs through the whole server: the
+four tools ported in from the old geojson server (`inspect_geojson`,
+`validate_geojson`, `summarize_geojson`, `feature_bbox`) take `source`, while
+geo's own tools take `geojson`, `data_path`, `layers` or `query`. Passing the
+wrong one returns a missing-required-argument error that reads as though the
+file were absent.
+
 `clio-geo:bounding_box` also takes `buffer_km` for padding, which is what you want
 when the box is being used to query a region rather than describe one.
 
@@ -80,6 +88,8 @@ looks like a map either way.
 
 - Do not run a spatial operation before validating the GeoJSON.
 - Do not mix the two bbox tools within one analysis without saying which.
+- Do not assume one argument name across this server; the ported geojson
+  tools take `source` and the rest do not.
 - Do not write coordinates from memory — geocode them.
 - Do not accept the first geocoding match without checking the alternatives.
 - Do not query an ArcGIS layer without a bbox or where clause.
