@@ -218,3 +218,8 @@ image.png
 # =============================================================================
 .claude/
 CLAUDE.md
+
+# The HDF5 server writes its storage index, cache and history beside the
+# working directory it is launched from, so running it at the repository
+# root leaves a data/ tree that is runtime state, not source.
+/data/
