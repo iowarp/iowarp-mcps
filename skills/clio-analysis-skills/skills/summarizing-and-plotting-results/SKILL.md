@@ -76,8 +76,13 @@ figure can actually show.
 
 **5. Write the intermediate file.**
 
-`clio-pandas:save_data` to CSV. This is the step that is easy to forget and that
-makes everything after it wrong.
+`clio-pandas:save_data` takes **`data` and `file_path`**, not a source file. The
+server is stateless per call: every tool reads the file, computes, and returns a
+result, and nothing carries a dataframe between calls. So the transform's
+returned payload is what you pass forward as `data`.
+
+This is the step that is easy to forget and that makes everything after it
+wrong: skip it and the plot is drawn from the original file.
 
 **6. Plot from that file.**
 

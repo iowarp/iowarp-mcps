@@ -10,7 +10,11 @@ clio-kit:
 
 # Search a log that is too big to read
 
-Every tool on this server takes the file as `log_file`, not `file_path`.
+Most tools on this server take the file as `log_file`, not `file_path`. The
+four export tools are the exception: `export_to_csv`, `export_to_json`,
+`export_to_text` and `generate_summary_report` take `data`, the result of a
+filter, because they export findings rather than re-reading the log.
+`filter_by_log_level` also wants `log_levels`, not `levels`.
 The kit is not consistent about this across servers, so carrying the habit
 over from the data-file servers produces a missing-argument error that reads
 as a missing file.

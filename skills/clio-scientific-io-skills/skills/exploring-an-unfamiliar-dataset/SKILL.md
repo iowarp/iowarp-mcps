@@ -43,6 +43,23 @@ The exceptions are the multi-file tools — `hdf5_parallel_scan`, `hdf5_batch_re
 `hdf5_aggregate_stats` — which take their own targets and do not use the open
 file.
 
+### The argument names are not guessable
+
+Nothing on this server takes `file_path`. Getting one wrong is worse than a
+plain failure: `open_file` fails, then every later call answers "No file
+currently open", which reads as an empty file rather than a failed open.
+
+| Call | Argument |
+|---|---|
+| `open_file` | `path` (the FILE) |
+| `list_keys`, `get_shape`, `get_dtype`, `list_attributes` | `path` (a path INSIDE the file) |
+| `read_attribute` | `path` and `name` |
+| `read_partial_dataset` | `path`, plus `start` and `count` as comma-separated strings, not lists |
+| `hdf5_batch_read`, `hdf5_aggregate_stats` | `paths`, a comma-separated string |
+
+Note `path` means the file in `open_file` and a dataset inside it everywhere
+else.
+
 ### Walking an HDF5 file
 
 1. `clio-hdf5:open_file`
@@ -90,3 +107,5 @@ next step is not a read — see `reading-large-datasets-safely`.
 - Do not read an ADIOS variable without naming a step.
 - Do not read every column of a Parquet file when you need two.
 - Do not skip the attributes — an array without its units is not a result.
+- Do not read "No file currently open" as an empty file. It means the open
+  failed, usually on the argument name.

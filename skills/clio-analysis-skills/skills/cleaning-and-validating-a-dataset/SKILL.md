@@ -25,8 +25,14 @@ physically possible**.
 
 ## Missing data: how it is missing decides the fix
 
-`clio-pandas:handle_missing_data` offers mean/median/mode fill, forward/backward
-fill, interpolation, and removal. They are not interchangeable.
+`clio-pandas:handle_missing_data` takes two separate arguments, and conflating
+them is the usual first failure. `strategy` is one of `detect`, `impute`,
+`remove` or `analyze`, and defaults to `detect`, which only reports. `method` is
+the imputation itself: `mean`, `median`, `mode`, `forward_fill`,
+`backward_fill`, `interpolate`. Passing `strategy="median"` fails with "Unknown
+strategy"; the call you want is `strategy="impute", method="median"`.
+
+The methods are not interchangeable.
 
 - **Scattered at random** — imputation is defensible. Median over mean when the
   column is skewed, because a mean is dragged by the outliers you have not
