@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-analysis
   servers: clio-paraview
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: trigger-checked
 ---
 
 # Visualise a simulation field

@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-hpc
   servers: clio-spack, clio-lmod, clio-jarvis, clio-slurm, clio-node-hardware
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: trigger-checked
 ---
 
 # Run a simulation on a cluster

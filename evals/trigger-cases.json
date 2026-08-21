@@ -1,0 +1,94 @@
+[
+  {
+    "prompt": "Plot mean runtime by machine from this CSV.",
+    "expect": "summarizing-and-plotting-results"
+  },
+  {
+    "prompt": "Why is reading this HDF5 file so slow?",
+    "expect": "choosing-a-storage-format"
+  },
+  {
+    "prompt": "My collective MPI-IO shows 12 MB/s with 4KB writes. Good or bad?",
+    "expect": "interpreting-io-performance-numbers"
+  },
+  {
+    "prompt": "This file is huge, what is in it? It is app.log from last night.",
+    "expect": "searching-large-log-files"
+  },
+  {
+    "prompt": "What MPI versions does this machine have?",
+    "expect": "managing-software-environments"
+  },
+  {
+    "prompt": "Why has my sbatch job been pending for an hour?",
+    "expect": "writing-slurm-job-scripts"
+  },
+  {
+    "prompt": "Compute the mean of a 16GB dataset without loading it.",
+    "expect": "reading-large-datasets-safely"
+  },
+  {
+    "prompt": "My points are landing in the ocean off Africa.",
+    "expect": "working-with-coordinate-systems"
+  },
+  {
+    "prompt": "Validate this GeoJSON and render a map of the monitors.",
+    "expect": "mapping-geospatial-and-terrain-data"
+  },
+  {
+    "prompt": "Find recent papers on speculative decoding and the datasets behind them.",
+    "expect": "surveying-literature-and-datasets"
+  },
+  {
+    "prompt": "Give me BibTeX for these three arXiv IDs.",
+    "expect": "building-a-bibliography"
+  },
+  {
+    "prompt": "There are missing values and duplicates in this table.",
+    "expect": "cleaning-and-validating-a-dataset"
+  },
+  {
+    "prompt": "What is the capital of France?",
+    "expect": ""
+  },
+  {
+    "prompt": "Install ior with spack and run it on the cluster, tell me when it finishes.",
+    "expect": "running-a-simulation-on-a-cluster"
+  },
+  {
+    "prompt": "Record this session so I can look back at what we decided.",
+    "expect": "recording-a-session-for-provenance"
+  },
+  {
+    "prompt": "Make an isosurface of the density field in this VTK file and screenshot it.",
+    "expect": "visualizing-3d-simulation-output"
+  },
+  {
+    "prompt": "What is the b-value for this earthquake catalog?",
+    "expect": "analyzing-seismic-waveforms"
+  },
+  {
+    "prompt": "I need to download the air quality dataset before I can analyse it.",
+    "expect": "finding-and-staging-a-dataset"
+  },
+  {
+    "prompt": "Write me a haiku about the sea.",
+    "expect": ""
+  },
+  {
+    "prompt": "Refactor this Python function to be faster.",
+    "expect": ""
+  },
+  {
+    "prompt": "This job took 3 hours when it normally takes 40 minutes. What happened?",
+    "expect": "diagnosing-a-slow-job"
+  },
+  {
+    "prompt": "Someone handed me results.h5 and I have no idea what is in it.",
+    "expect": "exploring-an-unfamiliar-dataset"
+  },
+  {
+    "prompt": "Which chart should I use to compare four filesystems?",
+    "expect": "choosing-the-right-chart"
+  }
+]

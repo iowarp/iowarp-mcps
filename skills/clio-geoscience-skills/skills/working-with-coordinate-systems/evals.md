@@ -43,3 +43,19 @@ Expected:
 - Reporting an area in square degrees.
 - Overlaying datasets without comparing bounding-box units and ranges.
 - Combining elevation sources with no mention of vertical datum.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "My points are landing in the ocean off Africa."
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+

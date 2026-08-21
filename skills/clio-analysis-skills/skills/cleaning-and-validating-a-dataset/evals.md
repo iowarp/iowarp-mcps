@@ -52,3 +52,19 @@ Expected:
 - Deleting flagged outliers unexamined.
 - Deduplicating before establishing what identifies a row.
 - Reporting results from cleaned data with no record of the cleaning.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "There are missing values and duplicates in this table."
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+

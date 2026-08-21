@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-scientific-io
   servers: clio-hdf5, clio-adios, clio-parquet, clio-compression
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: smoke-checked
 ---
 
 # Find out what is in a data file

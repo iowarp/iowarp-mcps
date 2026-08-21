@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-scientific-io
   servers: clio-hdf5, clio-parquet, clio-adios
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: smoke-checked
 ---
 
 # Get answers from data too big to read

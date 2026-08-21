@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-performance
   servers: none
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: trigger-checked
 ---
 
 # Read I/O performance numbers

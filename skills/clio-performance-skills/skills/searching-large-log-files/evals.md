@@ -39,3 +39,19 @@ Expected:
 - Sorting a file that is already ordered.
 - Reporting the first error as the cause without checking for a cluster.
 - Keyword-filtering on "error" where a level filter is meant.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "This file is huge, what is in it? It is app.log from last night."
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+

@@ -46,3 +46,19 @@ Expected:
 - Calling the binary directly instead of through `srun`.
 - Reading any pending job as "working" without checking the reason.
 - Looping `slurm_submit` where an array expresses the same thing.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "Why has my sbatch job been pending for an hour?"
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+

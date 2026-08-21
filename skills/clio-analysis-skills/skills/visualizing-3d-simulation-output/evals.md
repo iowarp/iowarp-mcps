@@ -41,3 +41,19 @@ Expected:
 - Applying a filter without checking what is active.
 - Using a rainbow colour map for continuous scalar data.
 - Screenshotting before resetting the camera.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "Make an isosurface of the density field in this VTK file and screenshot it."
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+

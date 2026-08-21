@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-hpc
   servers: clio-slurm, clio-node-hardware
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: trigger-checked
 ---
 
 # Write a Slurm job script that actually starts

@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-geoscience
   servers: none
   provenance: designed
-  eval-status: scenarios-recorded
+  eval-status: trigger-checked
 ---
 
 # Coordinate systems fail quietly

@@ -44,3 +44,19 @@ Expected:
 - Reading relative amplitude off a normalized trace plot.
 - Interpreting a b-value with no Mc and no uncertainty.
 - Reading the roll-off below Mc as a physical result.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "What is the b-value for this earthquake catalog?"
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+

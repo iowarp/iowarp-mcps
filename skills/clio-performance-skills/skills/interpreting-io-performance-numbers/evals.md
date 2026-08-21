@@ -40,3 +40,19 @@ Expected:
 - Reading IOPS or bandwidth in isolation.
 - Treating strided parallel access as sequential.
 - Recommending collective I/O for a file-per-rank pattern.
+
+## Trigger record (2026-08-21)
+
+Ran through `evals/trigger_eval.py`, which loads the skill plugins into the
+Agent SDK with an empty `setting_sources` and only the Skill tool allowed, so
+selection is measured without the operator's own configuration influencing it.
+
+Prompt: "My collective MPI-IO shows 12 MB/s with 4KB writes. Good or bad?"
+
+This skill fired, and no sibling fired alongside it. Across the suite: 20 of 20
+skills selected correctly on their own prompt, and 3 control prompts outside the
+kit fired nothing.
+
+Selection is checked. Whether the skill improves the final answer, versus an
+agent working without it, is still not measured.
+
