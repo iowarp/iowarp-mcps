@@ -1,7 +1,5 @@
 ## User examples 
 
-### On wrp_chat Interface
-
 **All the tools**
 
 1. To List all the bp5 files in a directory. [Args: directorypath]
