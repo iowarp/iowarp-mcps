@@ -639,3 +639,42 @@ def test_published_marketplace_categories_carry_real_scope() -> None:
 
     assert categories == {"scientific", "general"}
     assert all(plugin["keywords"] for plugin in server_entries)
+
+
+def test_readme_bundle_table_matches_the_generated_manifests() -> None:
+    """Documented bundle membership must be the membership that ships.
+
+    This table has drifted twice already, both times because it was written
+    from the design rather than from the manifests, and once because a server
+    merge changed membership underneath it. A reader has no way to tell a stale
+    row from a current one, so it is checked rather than trusted.
+    """
+    repo_root = Path(__file__).resolve().parents[1]
+    readme = (repo_root / "README.md").read_text(encoding="utf-8").splitlines()
+
+    for bundle_dir in sorted((repo_root / "plugins").iterdir()):
+        manifest = json.loads(
+            (bundle_dir / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+        )
+        name = manifest["name"]
+        shipped = sorted(
+            dependency.removeprefix("clio-")
+            for dependency in manifest["dependencies"]
+            if not dependency.endswith("-skills")
+        )
+        rows = [line for line in readme if line.startswith(f"| `{name}`")]
+        assert rows, f"README has no row for {name}"
+        documented = sorted(cell.strip() for cell in rows[0].split("|")[2].split(","))
+        assert documented == shipped, (
+            f"{name}: README says {documented}, ships {shipped}"
+        )
+
+
+def test_readme_server_count_matches_the_shipped_inventory() -> None:
+    """A count in prose is the first thing to go stale after a server merge."""
+    repo_root = Path(__file__).resolve().parents[1]
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    shipped = len(list((repo_root / "clio-kit-mcp-servers").glob("*/pyproject.toml")))
+
+    for claim in re.findall(r"(\d+) (?:available )?MCP servers", readme):
+        assert int(claim) == shipped, f"README claims {claim} servers, {shipped} ship"

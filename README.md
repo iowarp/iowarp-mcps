@@ -104,7 +104,7 @@ uv tool install 'clio-kit==2.4.3'
 # If uv reports that its executable directory is not on PATH:
 uv tool update-shell
 
-# List all 23 available MCP servers
+# List all 22 available MCP servers
 clio-kit mcp-servers
 
 # Run any installed server
@@ -157,7 +157,7 @@ that workflow, so you do not have to know which servers go together.
 | `clio-performance` | darshan, chronolog, parallel-sort | Working out why a finished job was slow |
 | `clio-scientific-io` | hdf5, adios, parquet, compression | Opening scientific data files and reading them safely |
 | `clio-analysis` | pandas, plot, paraview | Turning results into statistics and figures |
-| `clio-geoscience` | geo, geojson, sac, seismic, terrain | Geospatial, terrain and waveform data |
+| `clio-geoscience` | geo, seismology, terrain | Geospatial, terrain and waveform data |
 | `clio-research` | arxiv, ndp, scientific-catalog, web | Finding papers and the datasets behind them |
 
 Each bundle is a manifest naming its members, not a copy of them, so a bundle
