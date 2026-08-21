@@ -2,6 +2,21 @@
 
 All notable user-facing changes to CLIO Kit are documented here, newest first.
 
+## 2.10.4
+
+### Python 3.13: pandas and plot servers install again
+
+The pandas and plot MCP servers declared stale numpy-2.0-transition
+ceilings (`numpy<2`) that are unsatisfiable on Python 3.13-only hosts --
+numpy 1.x ships no 3.13 wheels, so those servers could never install there
+(found live on a university cluster). The ceilings are gone and every
+related floor is re-anchored to the first numpy-2-compatible releases
+(pandas >= 2.2.2, matplotlib >= 3.8.4, scipy >= 1.13, PyTables >= 3.10.1),
+and -- the part that actually reaches your machine -- the BUNDLED lockfiles
+both servers install from were regenerated, so `uv run --frozen` now
+resolves real wheels on Python 3.10 through 3.13. Python 3.13 joined the CI
+matrix so this class cannot ship again. The pandas server also no longer
+drags pytest in as a runtime dependency.
 ## 2.10.3
 
 ### Interceptors: instrument an application with Darshan through JARVIS
