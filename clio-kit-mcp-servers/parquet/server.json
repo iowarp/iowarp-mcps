@@ -64,5 +64,6 @@
     "apache-arrow",
     "columnar-data",
     "data-analysis"
-  ]
+  ],
+  "scope": "scientific"
 }

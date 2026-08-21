@@ -100,5 +100,6 @@
     "arxiv",
     "papers",
     "literature-search"
-  ]
+  ],
+  "scope": "scientific"
 }

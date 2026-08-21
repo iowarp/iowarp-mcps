@@ -62,6 +62,11 @@ SERVER_TAGS: dict[str, list[str]] = {
     "plot": ["data-visualization", "matplotlib", "plotting", "charts"],
     "slurm": ["hpc", "slurm", "job-scheduling", "cluster-management"],
     "spack": ["package-management", "hpc", "scientific-computing"],
+    "geo": ["geospatial", "mapping", "geojson", "visualization"],
+    "scientific-catalog": ["dataset-catalog", "scientific-computing", "discovery"],
+    "seismology": ["seismology", "earthquake", "waveform", "sac", "catalog"],
+    "terrain": ["terrain", "dem", "point-cloud", "geospatial"],
+    "web": ["web", "fetch", "search", "agentic-web"],
 }
 
 
@@ -129,6 +134,46 @@ def read_registry_publish_servers(repo_root: Path) -> tuple[str, ...]:
     if servers != tuple(sorted(servers)):
         raise ValueError(f"{versions_path} publish inventory must be sorted")
     return servers
+
+
+def read_server_classification(
+    repo_root: Path,
+    server_versions: dict[str, str],
+) -> dict[str, str]:
+    """Resolve every server's published scope from the version map.
+
+    Servers are scientific unless [classification] lists them as general, so the
+    table records only the exceptions. Every listed name must exist under
+    [servers]: a rename or removal then fails generation loudly instead of
+    leaving a server silently misclassified in the published manifests.
+    """
+    versions_path = repo_root / SERVER_VERSIONS_FILE
+    with open(versions_path, "rb") as f:
+        data = tomllib.load(f)
+    classification = data.get("classification")
+    raw_general = (
+        classification.get("general") if isinstance(classification, dict) else None
+    )
+    if not isinstance(raw_general, list):
+        raise ValueError(
+            f"{versions_path} must define classification.general as a list"
+        )
+    if not all(isinstance(server, str) and server for server in raw_general):
+        raise ValueError(f"{versions_path} has an invalid general server")
+    general = tuple(cast(str, server) for server in raw_general)
+    if len(set(general)) != len(general):
+        raise ValueError(f"{versions_path} has duplicate general servers")
+    if general != tuple(sorted(general)):
+        raise ValueError(f"{versions_path} general inventory must be sorted")
+    unknown = sorted(set(general) - set(server_versions))
+    if unknown:
+        raise ValueError(
+            f"{versions_path} classifies unknown servers: {', '.join(unknown)}"
+        )
+    return {
+        name: ("general" if name in set(general) else "scientific")
+        for name in server_versions
+    }
 
 
 def read_bundles(repo_root: Path) -> dict[str, dict[str, Any]]:
@@ -358,6 +403,7 @@ def build_server_json(
     *,
     server_version: str,
     pypi_version: str,
+    scope: str,
 ) -> dict[str, Any]:
     """Build a registry manifest with independent server and wheel versions."""
     description = project.get("description", "")
@@ -417,6 +463,9 @@ def build_server_json(
         server_json["prompts"] = prompts
 
     server_json["tags"] = SERVER_TAGS.get(server_name, [])
+    # Shipped beside each server so the launcher can group its listing without
+    # the version map, which the wheel's shared-data does not carry.
+    server_json["scope"] = scope
     return server_json
 
 
@@ -546,6 +595,7 @@ def generate_all(mcps_dir: str) -> None:
     pypi_version = read_root_version(repo_root)
     server_versions = read_server_versions(repo_root)
     registry_publish_servers = read_registry_publish_servers(repo_root)
+    server_scopes = read_server_classification(repo_root, server_versions)
     print(f"Root PyPI version: {pypi_version}")
     generated: list[str] = []
     failed: list[str] = []
@@ -598,6 +648,7 @@ def generate_all(mcps_dir: str) -> None:
                 metadata,
                 server_version=server_versions[server_name],
                 pypi_version=pypi_version,
+                scope=server_scopes[server_name],
             )
             _write_json(server_dir / "server.json", server_json)
             tool_count = len(server_json.get("tools", []))
@@ -626,7 +677,7 @@ def generate_all(mcps_dir: str) -> None:
                 "source": f"./clio-kit-mcp-servers/{server_name}",
                 "description": description,
                 "version": server_versions[server_name],
-                "category": "development",
+                "category": server_scopes[server_name],
                 "keywords": SERVER_TAGS.get(server_name, []),
                 "license": "BSD-3-Clause",
                 "repository": REPO_URL,

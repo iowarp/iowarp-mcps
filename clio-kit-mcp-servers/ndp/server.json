@@ -64,5 +64,6 @@
     "ckan",
     "national-data-platform",
     "data-discovery"
-  ]
+  ],
+  "scope": "scientific"
 }

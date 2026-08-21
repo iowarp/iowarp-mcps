@@ -2,9 +2,44 @@
 Tests for ArXiv paper details and analysis capabilities.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
 from arxiv_mcp.capabilities.paper_details import get_paper_details, find_similar_papers
+
+ATTENTION_ENTRY = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>http://arxiv.org/abs/1706.03762v7</id>
+    <title>Attention Is All You Need</title>
+    <summary>The dominant sequence transduction models...</summary>
+    <published>2017-06-12T17:57:34Z</published>
+    <updated>2023-08-02T00:41:18Z</updated>
+    <author><name>Ashish Vaswani</name></author>
+    <author><name>Noam Shazeer</name></author>
+    <category term="cs.CL"/>
+    <category term="cs.LG"/>
+    <link href="http://arxiv.org/abs/1706.03762v7" type="text/html"/>
+  </entry>
+</feed>
+"""
+
+
+def _mock_arxiv_client(payload: str):
+    """Patch the httpx client this module builds, returning canned Atom XML."""
+    response = Mock()
+    response.content = payload.encode("utf-8")
+    response.raise_for_status = Mock()
+    client = AsyncMock()
+    client.get = AsyncMock(return_value=response)
+    context = AsyncMock()
+    context.__aenter__ = AsyncMock(return_value=client)
+    context.__aexit__ = AsyncMock(return_value=False)
+    return patch(
+        "arxiv_mcp.capabilities.paper_details.httpx.AsyncClient",
+        return_value=context,
+    )
 
 
 class TestPaperDetails:
@@ -12,11 +47,16 @@ class TestPaperDetails:
 
     @pytest.mark.asyncio
     async def test_get_paper_details_valid_id(self):
-        """Test getting details for a valid paper ID"""
+        """Test getting details for a valid paper ID.
+
+        The upstream query is mocked: reaching export.arxiv.org made this
+        assert how fast a third party answered rather than how this code
+        shapes a result, and it failed CI on latency alone.
+        """
         # Use a well-known ArXiv paper ID
         paper_id = "1706.03762"  # Attention Is All You Need
-
-        result = await get_paper_details(paper_id)
+        with _mock_arxiv_client(ATTENTION_ENTRY):
+            result = await get_paper_details(paper_id)
 
         assert result["success"] is True
         assert result["arxiv_id"] == paper_id

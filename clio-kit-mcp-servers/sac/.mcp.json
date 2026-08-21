@@ -1,9 +1,0 @@
-{
-  "clio-sac": {
-    "command": "clio-kit",
-    "args": [
-      "mcp-server",
-      "sac"
-    ]
-  }
-}

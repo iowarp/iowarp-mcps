@@ -42,13 +42,6 @@
         "geo"
       ]
     },
-    "clio-geojson": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "geojson"
-      ]
-    },
     "clio-hdf5": {
       "command": "clio-kit",
       "args": [
@@ -119,13 +112,6 @@
         "plot"
       ]
     },
-    "clio-sac": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "sac"
-      ]
-    },
     "clio-scientific-catalog": {
       "command": "clio-kit",
       "args": [
@@ -133,11 +119,11 @@
         "scientific-catalog"
       ]
     },
-    "clio-seismic": {
+    "clio-seismology": {
       "command": "clio-kit",
       "args": [
         "mcp-server",
-        "seismic"
+        "seismology"
       ]
     },
     "clio-slurm": {

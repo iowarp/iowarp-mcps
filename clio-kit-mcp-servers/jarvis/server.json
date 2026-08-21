@@ -71,5 +71,6 @@
     "pipeline-management",
     "hpc",
     "workflow-automation"
-  ]
+  ],
+  "scope": "scientific"
 }

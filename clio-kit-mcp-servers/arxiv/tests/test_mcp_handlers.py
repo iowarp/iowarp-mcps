@@ -725,17 +725,26 @@ class TestMCPHandlers:
 
     @pytest.mark.asyncio
     async def test_handler_performance_characteristics(self):
-        """Test performance characteristics of handlers."""
+        """The handler adds negligible overhead on top of the search itself.
+
+        The search is mocked, as everywhere else in this file. Timing an
+        unmocked call measured how fast export.arxiv.org happened to be, which
+        is why this failed CI at 45s against a 30s bound while asserting
+        nothing about our own code.
+        """
 
         import time
 
-        # Test response time for basic operations
-        start_time = time.time()
-        result = await mcp_handlers.search_arxiv_handler("cs.AI", 1)
-        end_time = time.time()
+        with patch(
+            "arxiv_mcp.mcp_handlers.search_arxiv", new_callable=AsyncMock
+        ) as mock_search:
+            mock_search.return_value = {"success": True, "papers": [{"id": "test"}]}
 
-        # Should complete reasonably quickly (allowing for network mocking)
-        assert (end_time - start_time) < 30  # 30 second timeout
+            start_time = time.time()
+            result = await mcp_handlers.search_arxiv_handler("cs.AI", 1)
+            end_time = time.time()
+
+        assert (end_time - start_time) < 5
         assert result is not None
 
     @pytest.mark.asyncio

@@ -51,5 +51,10 @@
       "description": "Guide an agent through catalog search and exact descriptor handoff."
     }
   ],
-  "tags": []
+  "tags": [
+    "dataset-catalog",
+    "scientific-computing",
+    "discovery"
+  ],
+  "scope": "scientific"
 }

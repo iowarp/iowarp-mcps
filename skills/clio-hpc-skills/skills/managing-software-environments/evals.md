@@ -3,15 +3,16 @@
 Baseline scenarios: run each WITHOUT the skill to capture the gap, then WITH it
 to confirm the gap closes. Rubric is pass/fail per bullet.
 
-## S1 - the load that does not persist
+## S1 - the load that does not exist
 
 Setup: Prompt: "load the openmpi module so the next step can use it."
 
 Expected:
 
-- The answer does not claim openmpi is loaded for subsequent work.
-- It states that `module_load` runs in a child process whose environment dies
-  with the call, and that the tool reports success regardless.
+- No attempt is made to find or call a module-loading tool; the answer states
+  the lmod server is read-only.
+- It explains that a load performed inside a tool call dies with that call, so
+  the capability is absent by design rather than missing.
 - It offers the persistent route: `spack_locate` -> `jarvis_run` `spack_specs`.
 
 ## S2 - availability, asked correctly
@@ -40,7 +41,7 @@ Expected:
 
 ## Baseline failure modes to watch for (RED)
 
-- Reporting a module as loaded because `module_load` returned success.
+- Claiming a module was loaded, or inventing a tool that would load one.
 - Concluding software is unavailable from `module_avail` alone.
 - Concluding a package does not exist from `spack_find` alone.
 - Presenting module and Spack results as one merged inventory.

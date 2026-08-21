@@ -18,15 +18,20 @@ from typing_extensions import NotRequired, TypedDict
 
 from .implementation import (
     ArcGISQueryError,
+    GeoJSONError,
     GeocodeError,
     MapRenderError,
     ProximityError,
     bounding_box,
+    feature_bbox,
     filter_points_by_radius,
     geocode,
+    inspect_geojson,
     points_in_polygons,
     query_arcgis_features,
     render_map,
+    summarize_geojson,
+    validate_geojson,
 )
 
 # --- Structured result shapes (drive real MCP outputSchema declarations) ----
@@ -196,7 +201,12 @@ mcp: FastMCP = FastMCP(
         "ArcGIS FeatureServer layer into a native GeoJSON file, points_in_polygons "
         "for spatial overlap, bounding_box to derive an analysis region from "
         "GeoJSON features, and filter_points_by_radius to rank/filter any CSV or "
-        "GeoJSON table of points by great-circle distance to a center location."
+        "GeoJSON table of points by great-circle distance to a center location. "
+        "For reading a GeoJSON document rather than operating on it, use "
+        "inspect_geojson, validate_geojson, summarize_geojson and feature_bbox: "
+        "these use the standard library only and report a file exactly as "
+        "written, including features whose geometry the rendering and overlap "
+        "tools would skip. Validate a document before rendering it."
     ),
 )
 
@@ -293,9 +303,13 @@ async def points_in_polygons_tool(
     name="bounding_box",
     title="Bounding Box",
     description=(
-        "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of GeoJSON "
-        "features (inline or file path), optionally padded by buffer_km. A "
-        "deterministic geometry op for deriving an analysis region from a fire perimeter."
+        "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of the "
+        "VALID geometry in GeoJSON features (inline or file path), optionally "
+        "padded by pad_km and rounded to 4 decimal places. Features whose "
+        "geometry cannot be parsed are skipped, so feature_count reports valid "
+        "geometries only. Use this to derive an analysis region for mapping or "
+        "a spatial query; use feature_bbox instead to measure a document's raw "
+        "coordinate extent including malformed features."
     ),
     annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
     tags={"geospatial", "bbox", "region", "geojson"},
@@ -508,6 +522,125 @@ async def filter_points_by_radius_tool(
         raise ToolError(f"Distance filtering failed: {exc}") from exc
 
 
+_GeoJSONSource = Annotated[
+    str,
+    Field(
+        description=(
+            "Path to a .geojson/JSON file, or inline GeoJSON as a JSON string "
+            "(FeatureCollection / Feature / geometry)."
+        )
+    ),
+]
+
+
+@mcp.tool(
+    name="inspect_geojson",
+    title="Inspect GeoJSON",
+    description=(
+        "Inspect a GeoJSON document and report its geometry types and counts, "
+        "feature count, property keys (schema), bounding box "
+        "[min_lon, min_lat, max_lon, max_lat], CRS if present, and total vertex "
+        "count. Reads the document as written, without a geometry engine, so it "
+        "reports what the file actually contains. Accepts a file path or inline "
+        "GeoJSON."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geojson", "inspection", "metadata", "schema"},
+)
+async def inspect_geojson_tool(
+    source: _GeoJSONSource,
+    max_sample_features: Annotated[
+        int,
+        Field(description="Number of representative feature property samples to include (0-50)."),
+    ] = 5,
+) -> dict[str, Any]:
+    """Return a structural report for a GeoJSON document."""
+    try:
+        return inspect_geojson(source, max_sample_features=max_sample_features)
+    except GeoJSONError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface as tool error
+        logger.exception("inspect_geojson failed")
+        raise ToolError(f"GeoJSON inspection failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="validate_geojson",
+    title="Validate GeoJSON",
+    description=(
+        "Validate the structural well-formedness of a GeoJSON document: that "
+        "the top-level type is recognized and every geometry's type and "
+        "coordinates are well-formed (correct nesting depth, finite numeric "
+        "positions). Returns {valid, errors}. Run this before a rendering or "
+        "overlap tool, which silently skip geometry they cannot parse."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geojson", "validation", "linting"},
+)
+async def validate_geojson_tool(source: _GeoJSONSource) -> dict[str, Any]:
+    """Return ``{"valid": bool, "errors": list[str]}`` for a GeoJSON document."""
+    try:
+        return validate_geojson(source)
+    except GeoJSONError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface as tool error
+        logger.exception("validate_geojson failed")
+        raise ToolError(f"GeoJSON validation failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="summarize_geojson",
+    title="Summarize GeoJSON",
+    description=(
+        "Produce a compact human-readable summary of a GeoJSON document: counts "
+        "per geometry type, bounding box, property keys, and a few sample "
+        "feature property sets. Accepts a file path or inline GeoJSON."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geojson", "summary", "inspection"},
+)
+async def summarize_geojson_tool(
+    source: _GeoJSONSource,
+    max_sample_features: Annotated[
+        int,
+        Field(description="Number of sample feature property sets to include (0-50)."),
+    ] = 3,
+) -> dict[str, Any]:
+    """Return a compact summary of a GeoJSON document."""
+    try:
+        return summarize_geojson(source, max_sample_features=max_sample_features)
+    except GeoJSONError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface as tool error
+        logger.exception("summarize_geojson failed")
+        raise ToolError(f"GeoJSON summary failed: {exc}") from exc
+
+
+@mcp.tool(
+    name="feature_bbox",
+    title="Document Bounding Box",
+    description=(
+        "Compute the bounding box [min_lon, min_lat, max_lon, max_lat] of EVERY "
+        "coordinate in a GeoJSON document, without validating geometry and "
+        "without rounding. feature_count counts all features in the document, "
+        "including malformed ones. Use this to inspect a file's raw extent; use "
+        "bounding_box instead for the extent of valid geometry, padded and "
+        "rounded, when feeding a map render or spatial query."
+    ),
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
+    tags={"geojson", "bbox", "inspection"},
+)
+async def feature_bbox_tool(source: _GeoJSONSource) -> dict[str, Any]:
+    """Return ``{"bbox": [...] | None, "feature_count": int}`` for a document."""
+    try:
+        return feature_bbox(source)
+    except GeoJSONError as exc:
+        raise ToolError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surface as tool error
+        logger.exception("feature_bbox failed")
+        raise ToolError(f"GeoJSON bounding box failed: {exc}") from exc
+
+
 @mcp.resource("geo://capabilities")
 def capabilities() -> dict[str, Any]:
     """Describe what the geo MCP server can do."""
@@ -519,7 +652,18 @@ def capabilities() -> dict[str, Any]:
             "query_arcgis_features",
             "geocode",
             "filter_points_by_radius",
+            "inspect_geojson",
+            "validate_geojson",
+            "summarize_geojson",
+            "feature_bbox",
         ],
+        "document_inspection": (
+            "inspect_geojson, validate_geojson, summarize_geojson and "
+            "feature_bbox read a document as written, using the standard "
+            "library only, and report malformed features rather than skipping "
+            "them. The geometry tools (render_feature_map, points_in_polygons, "
+            "bounding_box) use shapely/geopandas and operate on valid geometry."
+        ),
         "accepts": (
             "GeoJSON (FeatureCollection/Feature/geometry/list/JSON-string/path); "
             "CSV or GeoJSON point tables for distance filtering"

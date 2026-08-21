@@ -3,7 +3,7 @@ name: mapping-geospatial-and-terrain-data
 description: Use when working with GeoJSON, place names, bounding boxes, elevation grids or point clouds, or when asked to produce a map. Triggers on "geojson", "render a map", "coordinates for", "DEM". Not for projections; use working-with-coordinate-systems. Not for waveforms or earthquake catalogs; use analyzing-seismic-waveforms.
 clio-kit:
   bundle: clio-geoscience
-  servers: clio-geo, clio-geojson, clio-terrain
+  servers: clio-geo, clio-terrain
   provenance: designed
   eval-status: scenarios-recorded
 ---
@@ -16,18 +16,18 @@ renders perfectly and is wrong.
 
 ## Validate before anything spatial
 
-`clio-geojson:validate_geojson` checks that the top-level type is recognised and
+`clio-geo:validate_geojson` checks that the top-level type is recognised and
 every geometry's type and coordinates are well formed. Run it first, always. Every
 tool downstream assumes what it verifies.
 
-Then `clio-geojson:inspect_geojson` for geometry types and counts, feature count,
+Then `clio-geo:inspect_geojson` for geometry types and counts, feature count,
 property keys and bounding box in one call — the fastest way to find out what a
-file actually holds. `clio-geojson:summarize_geojson` gives the readable version
+file actually holds. `clio-geo:summarize_geojson` gives the readable version
 with sample properties.
 
 ## Two bounding-box tools, and they can disagree
 
-`clio-geojson:feature_bbox` and `clio-geo:bounding_box` both return
+`clio-geo:feature_bbox` and `clio-geo:bounding_box` both return
 `[min_lon, min_lat, max_lon, max_lat]`.
 
 On a clean file they agree. On a file with malformed geometries they need not,

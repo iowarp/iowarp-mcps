@@ -14,26 +14,26 @@ Two servers answer overlapping questions about available software, and they
 answer different ones. Reaching for the wrong one gives a confidently wrong
 answer rather than an error.
 
-## The trap: loading a module does not persist
+## There is no module_load, on purpose
 
-`clio-lmod:module_load`, `clio-lmod:module_unload` and `clio-lmod:module_swap`
-each run `module <verb>` in a **child process** with a copied environment. The
-child exits and the change goes with it.
+The lmod server is read-only. It reports what a machine has; it cannot change
+what is loaded.
 
-They report success. `module_load` returns
-`{"success": true, "message": "Successfully loaded openmpi"}` while nothing is
-loaded for anything that follows — not the next tool call, not a job, not a
-pipeline. This is a silently wrong result, not an error you will see.
+That is deliberate rather than missing. A `module load` performed inside a tool
+call runs in a child process with a copied environment, and the change dies when
+that child exits. A tool doing it would report success while nothing was loaded
+for anything that followed, which is a silently wrong answer rather than an
+error anyone would see. The tools that used to do this were removed for exactly
+that reason.
 
-So: never use them to prepare an environment for work. To get software into a
-run, resolve it with `clio-spack:spack_locate` and pass `output.load_spec` to
-`clio-jarvis:jarvis_run` in `input.spack_specs`, which does persist for the
-execution. See `running-a-simulation-on-a-cluster`.
+To get software into a run, resolve it with `clio-spack:spack_locate` and pass
+`output.load_spec` to `clio-jarvis:jarvis_run` in `input.spack_specs`, which does
+persist for the execution. See `running-a-simulation-on-a-cluster`.
 
 ## Which tool answers which question
 
-**"What is loaded right now?"** — `clio-lmod:module_list`. Reflects the server's
-own environment, which is only meaningful if something loaded it there.
+**"What is loaded right now?"** — `clio-lmod:module_list`. Reflects the
+server's own environment, which is only meaningful if something loaded it there.
 
 **"Does this machine offer X?"** — `clio-lmod:module_avail` with a name pattern.
 It searches what is currently visible in `MODULEPATH`.
@@ -62,13 +62,13 @@ statically-parsed answer as less authoritative.
 ## Saved collections
 
 `clio-lmod:module_save`, `module_restore` and `module_savelist` manage named
-collections on disk. Saving writes a real file and does persist. Restoring has
-the same limitation as loading: it applies to a child process that then exits.
-A collection is a record of an intended environment, not a way to establish one.
+collections on disk. Saving writes a real file and does persist. Restoring runs
+in a child process like any other module verb, so a collection is a record of an
+intended environment rather than a way to establish one.
 
 ## What not to do
 
-- Do not report a module as loaded because `module_load` returned success.
+- Do not look for a tool that loads a module. There isn't one, on purpose.
 - Do not conclude software is unavailable from `module_avail` alone — try
   `module_spider` before saying no.
 - Do not conclude it is unavailable from `spack_find` alone — that only covers

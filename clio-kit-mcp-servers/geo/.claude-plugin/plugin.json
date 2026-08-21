@@ -1,7 +1,7 @@
 {
   "name": "clio-geo",
   "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "author": {
     "name": "IoWarp Team - Gnosis Research Center",
     "email": "grc@illinoistech.edu",

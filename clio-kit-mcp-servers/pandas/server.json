@@ -112,5 +112,6 @@
     "pandas",
     "dataframes",
     "statistics"
-  ]
+  ],
+  "scope": "scientific"
 }

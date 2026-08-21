@@ -41,7 +41,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -72,7 +72,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -94,7 +94,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.0.1",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -114,7 +114,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -142,7 +142,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -162,11 +162,15 @@ export const mcpData = {
       "bounding_box",
       "query_arcgis_features",
       "geocode",
-      "filter_points_by_radius"
+      "filter_points_by_radius",
+      "inspect_geojson",
+      "validate_geojson",
+      "summarize_geojson",
+      "feature_bbox"
     ],
     "stats": {
-      "version": "2.2.3",
-      "updated": "2026-07-18"
+      "version": "2.3.0",
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -174,28 +178,6 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "geo"
-  },
-  "geojson": {
-    "name": "Geojson",
-    "category": "Utilities",
-    "description": "MCP server for inspecting, validating, and summarizing GeoJSON documents (stdlib only)",
-    "icon": "\ud83d\udd27",
-    "actions": [
-      "inspect_geojson",
-      "validate_geojson",
-      "summarize_geojson",
-      "feature_bbox"
-    ],
-    "stats": {
-      "version": "2.2.3",
-      "updated": "2026-07-18"
-    },
-    "platforms": [
-      "claude",
-      "cursor",
-      "vscode"
-    ],
-    "slug": "geojson"
   },
   "hdf5": {
     "name": "Hdf5",
@@ -233,7 +215,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -257,7 +239,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "3.6.2",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -275,17 +257,14 @@ export const mcpData = {
       "module_list",
       "module_avail",
       "module_show",
-      "module_load",
-      "module_unload",
-      "module_swap",
       "module_spider",
       "module_save",
       "module_restore",
       "module_savelist"
     ],
     "stats": {
-      "version": "2.2.3",
-      "updated": "2026-07-18"
+      "version": "3.0.0",
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -307,7 +286,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -336,7 +315,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -370,7 +349,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -401,7 +380,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -445,7 +424,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -467,7 +446,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -492,7 +471,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -500,27 +479,6 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "plot"
-  },
-  "sac": {
-    "name": "Sac",
-    "category": "Analysis & Visualization",
-    "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
-    "icon": "\ud83d\udd27",
-    "actions": [
-      "inspect_archive",
-      "compute_trace_statistics",
-      "plot_traces"
-    ],
-    "stats": {
-      "version": "2.2.3",
-      "updated": "2026-07-18"
-    },
-    "platforms": [
-      "claude",
-      "cursor",
-      "vscode"
-    ],
-    "slug": "sac"
   },
   "scientific_catalog": {
     "name": "Scientific-Catalog",
@@ -533,7 +491,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "1.1.2",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -542,25 +500,28 @@ export const mcpData = {
     ],
     "slug": "scientific_catalog"
   },
-  "seismic": {
-    "name": "Seismic",
+  "seismology": {
+    "name": "Seismology",
     "category": "Analysis & Visualization",
-    "description": "MCP server for earthquake-sequence analysis on saved catalogs: completeness magnitude, Gutenberg-Richter b-value, Bath gap, Omori decay, and a three-panel figure",
+    "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
     "icon": "\ud83d\udd27",
     "actions": [
+      "inspect_archive",
+      "compute_trace_statistics",
+      "plot_traces",
       "analyze_sequence",
       "plot_sequence"
     ],
     "stats": {
-      "version": "2.2.3",
-      "updated": "2026-07-18"
+      "version": "2.3.0",
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
       "cursor",
       "vscode"
     ],
-    "slug": "seismic"
+    "slug": "seismology"
   },
   "slurm": {
     "name": "Slurm",
@@ -576,7 +537,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "3.0.0",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -593,12 +554,10 @@ export const mcpData = {
     "actions": [
       "spack_find",
       "spack_locate",
-      "spack_search",
-      "spack_info",
       "spack_install"
     ],
     "stats": {
-      "version": "2.2.0",
+      "version": "2.1.0",
       "updated": "2026-08-11"
     },
     "platforms": [
@@ -619,7 +578,7 @@ export const mcpData = {
     ],
     "stats": {
       "version": "2.2.3",
-      "updated": "2026-07-18"
+      "updated": "2026-08-11"
     },
     "platforms": [
       "claude",
@@ -627,18 +586,38 @@ export const mcpData = {
       "vscode"
     ],
     "slug": "terrain"
+  },
+  "web": {
+    "name": "Web",
+    "category": "Utilities",
+    "description": "Web MCP server providing curated fetch + search tools for agentic web access",
+    "icon": "\ud83d\udd27",
+    "actions": [
+      "fetch",
+      "search"
+    ],
+    "stats": {
+      "version": "1.1.0",
+      "updated": "2026-08-11"
+    },
+    "platforms": [
+      "claude",
+      "cursor",
+      "vscode"
+    ],
+    "slug": "web"
   }
 };
 
 // Categories with counts and colors
 export const categories = {
   "All": {
-    "count": 24,
+    "count": 23,
     "color": "#6b7280",
     "icon": "\ud83d\udd0d"
   },
   "Analysis & Visualization": {
-    "count": 6,
+    "count": 5,
     "color": "#10b981",
     "icon": "\ud83d\udcc8"
   },

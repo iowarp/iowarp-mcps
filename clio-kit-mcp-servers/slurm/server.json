@@ -68,5 +68,6 @@
     "slurm",
     "job-scheduling",
     "cluster-management"
-  ]
+  ],
+  "scope": "scientific"
 }

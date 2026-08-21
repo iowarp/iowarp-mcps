@@ -3,7 +3,7 @@
   "name": "io.github.iowarp/lmod-mcp",
   "title": "CLIO Lmod",
   "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
-  "version": "2.2.3",
+  "version": "3.0.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -42,18 +42,6 @@
       "description": "Display detailed information about a specific module."
     },
     {
-      "name": "module_load",
-      "description": "Load one or more environment modules into the current session."
-    },
-    {
-      "name": "module_unload",
-      "description": "Unload one or more currently loaded modules from the environment."
-    },
-    {
-      "name": "module_swap",
-      "description": "Swap one module for another atomically."
-    },
-    {
       "name": "module_spider",
       "description": "Search the entire module tree comprehensively for matching modules."
     },
@@ -75,6 +63,11 @@
       "uri": "lmod://status",
       "name": "module_system_status",
       "description": "Current Lmod module system status."
+    },
+    {
+      "uri": "lmod://capabilities",
+      "name": "module_capabilities",
+      "description": "Describe the stateless Lmod contract exposed by this server."
     }
   ],
   "prompts": [
@@ -88,5 +81,6 @@
     "hpc",
     "lmod",
     "system-administration"
-  ]
+  ],
+  "scope": "scientific"
 }

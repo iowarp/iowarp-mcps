@@ -8,7 +8,7 @@ schema-version = 1
 # change, add it here WITH a real version bump under [servers] in the same
 # PR, then remove it again once published.
 [mcp-registry-release]
-publish = ["spack", "web"]
+publish = ["geo", "lmod", "seismology", "spack", "web"]
 
 # Generated website metadata must not depend on the wall clock. Advance this
 # date intentionally whenever current contract metadata is regenerated.
@@ -53,12 +53,20 @@ servers = ["pandas", "paraview", "plot"]
 [bundles.clio-geoscience]
 version = "1.0.0"
 description = "Inspect and map geospatial features, terrain models, and waveform archives."
-servers = ["geo", "geojson", "sac", "seismic", "terrain"]
+servers = ["geo", "seismology", "terrain"]
 
 [bundles.clio-research]
 version = "1.0.0"
 description = "Find papers on a topic and the datasets behind them."
 servers = ["arxiv", "ndp", "scientific-catalog", "web"]
+
+# Agent-facing scope of each server. Servers are "scientific" unless listed
+# here, so this table records only the general-purpose exceptions. It is the
+# single source for the published marketplace category and for the launcher's
+# `clio-kit mcp-servers` grouping; every name must exist under [servers] below,
+# so a rename or removal fails generation instead of silently misclassifying.
+[classification]
+general = ["compression", "web"]
 
 # MCP Registry server versions describe each agent-facing contract. They are
 # intentionally independent of the clio-kit PyPI distribution version, which
@@ -69,11 +77,10 @@ arxiv = "2.2.3"
 chronolog = "2.0.1"
 compression = "2.2.3"
 darshan = "2.2.3"
-geo = "2.2.3"
-geojson = "2.2.3"
+geo = "2.3.0"
 hdf5 = "2.2.3"
 jarvis = "3.7.0"
-lmod = "2.2.3"
+lmod = "3.0.0"
 ndp = "2.2.3"
 node-hardware = "2.2.3"
 pandas = "2.2.3"
@@ -81,9 +88,8 @@ parallel-sort = "2.2.3"
 paraview = "2.2.3"
 parquet = "2.2.3"
 plot = "2.2.3"
-sac = "2.2.3"
 scientific-catalog = "1.1.2"
-seismic = "2.2.3"
+seismology = "2.3.0"
 slurm = "3.0.0"
 spack = "2.3.0"
 terrain = "2.2.3"

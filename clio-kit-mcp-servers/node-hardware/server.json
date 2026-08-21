@@ -91,5 +91,6 @@
     "hardware-monitoring",
     "system-info",
     "performance"
-  ]
+  ],
+  "scope": "scientific"
 }

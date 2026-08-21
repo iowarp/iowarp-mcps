@@ -34,6 +34,8 @@ from clio_kit.env_cache import (
     maintain_after_build,
 )
 from clio_kit.plugins import PLUGIN_COMMANDS
+from clio_kit.retired_servers import unknown_server_lines
+from clio_kit.server_scope import SERVER_SCOPE_ORDER, format_server_listing
 from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
@@ -452,8 +454,7 @@ def mcp_server(server, branch, args):
     server_lower = server.lower()
 
     if server_lower not in server_command_map:
-        click.echo(f"Error: Unknown server '{server}'")
-        click.echo(f"Available servers: {', '.join(sorted(server_command_map.keys()))}")
+        click.echo("\n".join(unknown_server_lines(server, server_command_map)))
         sys.exit(1)
 
     # Get the entry point command and directory name
@@ -624,15 +625,12 @@ def _run_child_command(
 
 
 @main.command("mcp-servers")
-def list_mcp_servers():
-    """List all available MCP servers"""
-    servers = list_available_servers()
-    if servers:
-        click.echo("Available MCP servers:")
-        for s in servers:
-            click.echo(f"  - {s}")
-    else:
-        click.echo("No MCP servers found.")
+@click.option("--scope", type=click.Choice(SERVER_SCOPE_ORDER), default=None)
+def list_mcp_servers(scope):
+    """List available MCP servers, grouped by published scope."""
+    _, dir_name_map = auto_discover_mcps()
+    for line in format_server_listing(get_servers_path(), dir_name_map, scope):
+        click.echo(line)
 
 
 @main.command("mcp-contracts")

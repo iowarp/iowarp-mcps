@@ -34,8 +34,8 @@ Setup: Prompt: "load openmpi and then run my pipeline."
 
 Expected:
 
-- `module_load` is NOT used to prepare the run environment.
-- The answer states that a module load does not persist past the tool call, and
+- No module-loading tool is sought or called; lmod is read-only.
+- The answer states that a load inside a tool call would not persist, and
   routes the software through `spack_locate` -> `jarvis_run` instead.
 
 ## Baseline failure modes to watch for (RED)

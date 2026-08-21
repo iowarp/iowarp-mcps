@@ -104,5 +104,6 @@ Poll it. The run is finished when the lifecycle record says so, not when
 - Do not skip `clio-jarvis:jarvis_describe` and guess configuration keys.
 - Do not report the workload as finished because `clio-jarvis:jarvis_run`
   succeeded — it returns a handle, not a result.
-- Do not use `clio-lmod:module_load` to prepare the environment for a run. It
-  does not persist. See `managing-software-environments`.
+- Do not look for a tool that loads a module to prepare the run. The lmod
+  server is read-only, for the same reason spack refuses to load: a load inside
+  a tool call dies with the call. See `managing-software-environments`.

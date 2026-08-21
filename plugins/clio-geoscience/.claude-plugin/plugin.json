@@ -12,9 +12,7 @@
   "license": "BSD-3-Clause",
   "dependencies": [
     "clio-geo",
-    "clio-geojson",
-    "clio-sac",
-    "clio-seismic",
+    "clio-seismology",
     "clio-terrain",
     "clio-geoscience-skills"
   ]

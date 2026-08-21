@@ -6,7 +6,6 @@
 <!-- mcp-name: io.github.iowarp/compression-mcp -->
 <!-- mcp-name: io.github.iowarp/darshan-mcp -->
 <!-- mcp-name: io.github.iowarp/geo-mcp -->
-<!-- mcp-name: io.github.iowarp/geojson-mcp -->
 <!-- mcp-name: io.github.iowarp/hdf5-mcp -->
 <!-- mcp-name: io.github.iowarp/jarvis-mcp -->
 <!-- mcp-name: io.github.iowarp/lmod-mcp -->
@@ -17,9 +16,8 @@
 <!-- mcp-name: io.github.iowarp/paraview-mcp -->
 <!-- mcp-name: io.github.iowarp/parquet-mcp -->
 <!-- mcp-name: io.github.iowarp/plot-mcp -->
-<!-- mcp-name: io.github.iowarp/sac-mcp -->
+<!-- mcp-name: io.github.iowarp/seismology-mcp -->
 <!-- mcp-name: io.github.iowarp/scientific-catalog-mcp -->
-<!-- mcp-name: io.github.iowarp/seismic-mcp -->
 <!-- mcp-name: io.github.iowarp/slurm-mcp -->
 <!-- mcp-name: io.github.iowarp/spack-mcp -->
 <!-- mcp-name: io.github.iowarp/terrain-mcp -->
@@ -311,11 +309,10 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`chronolog`** | 2.0.1 | Logging | Log and retrieve data from ChronoLog | `clio-kit mcp-server chronolog` |
 | **`compression`** | 2.2.3 | Utilities | File compression with gzip | `clio-kit mcp-server compression` |
 | **`darshan`** | 2.2.3 | Performance | I/O performance trace analysis | `clio-kit mcp-server darshan` |
-| **`geo`** | 2.2.3 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
-| **`geojson`** | 2.2.3 | Geospatial | Inspect, validate, and summarize GeoJSON | `clio-kit mcp-server geojson` |
+| **`geo`** | 2.3.0 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
 | **`hdf5`** | 2.2.3 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `clio-kit mcp-server hdf5` |
 | **`jarvis`** | 3.7.0 | Workflow | Durable pipeline, bounded package discovery, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
-| **`lmod`** | 2.2.3 | Environment | Environment module management | `clio-kit mcp-server lmod` |
+| **`lmod`** | 3.0.0 | Environment | Environment module management | `clio-kit mcp-server lmod` |
 | **`ndp`** | 2.2.3 | Data Protocol | Search and discover datasets across CKAN instances | `clio-kit mcp-server ndp` |
 | **`node-hardware`** | 2.2.3 | System | System hardware information | `clio-kit mcp-server node-hardware` |
 | **`pandas`** | 2.2.3 | Data Analysis | CSV data loading and filtering | `clio-kit mcp-server pandas` |
@@ -323,8 +320,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`paraview`** | 2.2.3 | Visualization | Scientific 3D visualization and analysis | `clio-kit mcp-server paraview` |
 | **`parquet`** | 2.2.3 | Data I/O | Read Parquet file columns | `clio-kit mcp-server parquet` |
 | **`plot`** | 2.2.3 | Visualization | Generate plots from CSV data | `clio-kit mcp-server plot` |
-| **`sac`** | 2.2.3 | Seismology | Analyze SAC waveforms and archives | `clio-kit mcp-server sac` |
-| **`seismic`** | 2.2.3 | Seismology | Analyze earthquake catalogs and sequences | `clio-kit mcp-server seismic` |
+| **`seismology`** | 2.3.0 | Seismology | Analyze SAC waveforms and archives | `clio-kit mcp-server seismology` |
 | **`scientific-catalog`** | 1.1.2 | Discovery | Operator-owned scientific dataset discovery | `clio-kit mcp-server scientific-catalog` |
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
 | **`spack`** | 2.3.0 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
