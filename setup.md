@@ -3,6 +3,10 @@
 Instructions for an AI agent. Follow them in order. Each step says how to check
 it worked before moving on.
 
+If you are reading this from a clone, the marketplace can also be added from
+that clone directly: `claude plugin marketplace add .` from the repository root,
+which is useful before this lands on the default branch.
+
 CLIO Kit publishes MCP servers for scientific computing, grouped into workflow
 bundles. Installing a bundle brings in its servers plus written procedures for
 using them together.

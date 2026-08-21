@@ -77,10 +77,10 @@ CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI
 
 ## 🚀 Quick Installation
 
-**AI agent (recommended)** - open your agent and paste:
+**AI agent (recommended)** - clone the repo, then tell your agent:
 
 ```
-Read https://raw.githubusercontent.com/iowarp/clio-kit/main/setup.md and set up CLIO Kit for me.
+Read setup.md and set up CLIO Kit for me.
 ```
 
 The agent will check prerequisites, add the marketplace, ask what you work on,
