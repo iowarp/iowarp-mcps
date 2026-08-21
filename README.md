@@ -108,6 +108,58 @@ clio-kit prompt code-coverage-prompt # Use a prompt
 Use `uvx --from 'clio-kit==2.4.3' clio-kit ...` only for a temporary, one-shot
 invocation.
 
+### Install a Workflow Instead of a Server
+
+Servers are also published as a plugin marketplace, grouped into workflow
+bundles. Installing a bundle pulls in every server it needs plus the skills
+written for that workflow, so you do not have to know which servers go together.
+
+```bash
+/plugin marketplace add iowarp/clio-kit
+
+/plugin install clio-hpc@clio-kit            # a whole workflow
+/plugin install clio-hdf5@clio-kit           # or one server
+/plugin install clio-hpc-skills@clio-kit     # or just the skills
+```
+
+| Bundle | Servers | For |
+|---|---|---|
+| `clio-hpc` | spack, lmod, jarvis, slurm, node-hardware | Building software and running work on a cluster |
+| `clio-performance` | darshan, chronolog, parallel-sort | Working out why a finished job was slow |
+| `clio-scientific-io` | hdf5, adios, parquet, compression | Opening scientific data files and reading them safely |
+| `clio-analysis` | pandas, plot, paraview | Turning results into statistics and figures |
+| `clio-geoscience` | geo, geojson, sac, seismic, terrain | Geospatial, terrain and waveform data |
+| `clio-research` | arxiv, ndp, scientific-catalog, web | Finding papers and the datasets behind them |
+
+Each bundle is a manifest naming its members, not a copy of them, so a bundle
+cannot drift from the servers it bundles.
+
+### Skills
+
+Bundles ship skills: written procedures for tool sequences that are easy to get
+wrong. They cover things the tool descriptions cannot say on their own, such as
+which of two similar tools to reach for, what order calls have to happen in, and
+how to read a number a server hands back.
+
+Skills load automatically once their bundle is installed. `clio-<bundle>-skills`
+installs them without the servers, which is useful when the servers are already
+present.
+
+### Contributing Your Own Servers or Skills
+
+The marketplace indexes work from outside this repository. Your code stays in
+your repository, on your release schedule, and your updates reach users without a
+release here.
+
+```bash
+clio-kit plugin init my-plugin      # scaffold a valid plugin
+clio-kit plugin validate my-plugin  # check it before opening anything
+clio-kit plugin submit my-plugin --repo owner/name
+```
+
+See [`community/README.md`](community/README.md) for the accepted source types
+and what we check.
+
 Released `clio-kit` wheels execute each embedded MCP server from that server's
 shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
 under the user cache, installs only production dependencies, and refuses to

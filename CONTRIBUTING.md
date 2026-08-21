@@ -6,6 +6,8 @@ Thank you for your interest in contributing to CLIO Kit! This guide will help yo
 
 - [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
+- [Contributing a Skill](#contributing-a-skill)
+- [Contributing an MCP Server or Plugin You Maintain](#contributing-an-mcp-server-or-plugin-you-maintain)
 - [Running Tests](#running-tests)
 - [Code Quality Standards](#code-quality-standards)
 - [Submitting Pull Requests](#submitting-pull-requests)
@@ -48,23 +50,78 @@ CLIO Kit uses a **monorepo architecture** with a unified launcher:
 
 ```
 clio-kit/
-├── src/clio_kit/           # Unified launcher CLI
-├── clio-kit-mcp-servers/         # 15 independent MCP servers
+├── src/clio_kit/              # Unified launcher CLI
+├── clio-kit-mcp-servers/      # Independent MCP servers
 │   ├── hdf5/                  # Each server has:
 │   │   ├── src/               # - Source code
 │   │   ├── tests/             # - Test suite
 │   │   ├── pyproject.toml     # - Dependencies & entry points
+│   │   ├── uv.lock            # - Pinned runtime
+│   │   ├── clio-server.toml   # - Runtime descriptor (generated)
 │   │   └── README.md          # - Documentation
 │   └── ...
-├── .github/workflows/          # CI/CD automation
+├── skills/                    # Workflow skills, grouped per bundle
+│   └── clio-hpc-skills/
+│       └── skills/<name>/     # SKILL.md + evals.md
+├── plugins/                   # Workflow bundles (manifests only)
+├── community/                 # Entries pointing at outside repositories
+├── .claude-plugin/            # Generated marketplace index
+├── .github/workflows/         # CI/CD automation
 └── pyproject.toml             # Root configuration
 ```
 
 **Key Principles:**
 - Each MCP server is **independently developed and tested**
-- Servers are **launched through a single unified command**: `clio-kit <server-name>`
+- Servers are **launched through a single unified command**: `clio-kit mcp-server <name>`
 - **Dependency isolation** via individual `pyproject.toml` files
-- **Auto-discovery** pattern for new servers
+- **Auto-discovery** from each server's `clio-server.toml` descriptor
+- **Bundles reference, never copy** the servers and skills they group
+
+## Contributing a Skill
+
+A skill is a written procedure for a tool sequence that is easy to get wrong. It
+belongs here only when it spans more than one server, when call order matters
+with a real penalty, or when two tools look interchangeable and are not. Anything
+a single server can explain on its own belongs in that server's tool
+descriptions, where it ships with the server and cannot fall out of sync.
+
+Add a folder under the bundle it serves:
+
+```
+skills/clio-<bundle>-skills/skills/<your-skill>/
+├── SKILL.md
+└── evals.md
+```
+
+`SKILL.md` frontmatter needs a `name` matching the folder and a `description`.
+Write the description as triggers only, in the words a user actually types, and
+add a `Not for X; use Y` clause wherever another skill could plausibly claim the
+same request. The description is carried in every conversation whether the skill
+fires or not, so anything in it that the body already says costs tokens forever
+and buys nothing.
+
+`evals.md` is required. Generation fails without it. Record the scenarios that
+separate the skill's behaviour from the baseline: the exact prompt, checkable
+expectations, and the failure modes the agent shows without the skill.
+
+## Contributing an MCP Server or Plugin You Maintain
+
+Servers and plugins you maintain yourself are indexed rather than copied here.
+Your code stays in your repository on your own release schedule.
+
+```bash
+clio-kit plugin init my-plugin
+clio-kit plugin validate my-plugin
+clio-kit plugin submit my-plugin --repo owner/name
+```
+
+`validate` catches problems that a manifest check cannot, most importantly a
+component path that leaves the plugin directory: it works in your checkout and
+resolves to nothing once installed, because nothing outside the plugin root is
+copied to the cache.
+
+See [`community/README.md`](community/README.md) for accepted source types and
+what we review.
 
 ## Running Tests
 
