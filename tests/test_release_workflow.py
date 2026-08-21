@@ -476,8 +476,10 @@ def test_quality_matrix_is_required_and_lock_sensitive() -> None:
     assert "uv\\.lock$" in infrastructure_check
     assert "mcp-server-versions\\.toml$" in infrastructure_check
     assert "clio-agentic-search/uv\\.lock$" in infrastructure_check
-    assert 'python-version: ["3.10", "3.11", "3.12"]' in QUALITY_WORKFLOW
-    assert 'python-version: ["3.11", "3.12"]' in QUALITY_WORKFLOW
+    # 3.13 added to both matrices to guard the numpy<2-ceiling defect class
+    # (clio-kit-mcp-servers/pandas, /plot) on any Python-3.13-only host.
+    assert 'python-version: ["3.10", "3.11", "3.12", "3.13"]' in QUALITY_WORKFLOW
+    assert 'python-version: ["3.11", "3.12", "3.13"]' in QUALITY_WORKFLOW
     assert "uv lock --check" in QUALITY_WORKFLOW
     assert QUALITY_WORKFLOW.count("uv sync --locked --dev") == 3
 

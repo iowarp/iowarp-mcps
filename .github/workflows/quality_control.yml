@@ -200,7 +200,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
         mcp: ${{ fromJson(needs.discover-mcps.outputs.mcps) }}
         exclude:
           - mcp: jarvis
@@ -259,13 +259,14 @@ jobs:
         if-no-files-found: ignore
 
   windows-containment:
-    name: Windows containment - ${{ matrix.mcp }}
+    name: Windows containment - ${{ matrix.mcp }} (py${{ matrix.python-version }})
     runs-on: windows-latest
     needs: discover-mcps
     if: needs.discover-mcps.outputs.containment_changed == 'true'
     strategy:
       fail-fast: false
       matrix:
+        python-version: ["3.12", "3.13"]
         mcp: [jarvis, spack]
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -274,7 +275,7 @@ jobs:
 
     - uses: ./.github/actions/setup-mcp
       with:
-        python-version: '3.12'
+        python-version: ${{ matrix.python-version }}
         mcp: ${{ matrix.mcp }}
         dev-packages: "pytest pytest-cov"
 
@@ -295,7 +296,7 @@ jobs:
       with:
         file: clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml
         flags: ${{ matrix.mcp }}
-        name: codecov-${{ matrix.mcp }}-windows
+        name: codecov-${{ matrix.mcp }}-windows-py${{ matrix.python-version }}
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -303,7 +304,7 @@ jobs:
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: windows-containment-${{ matrix.mcp }}-evidence
+        name: windows-containment-${{ matrix.mcp }}-py${{ matrix.python-version }}-evidence
         path: |
           clio-kit-mcp-servers/${{ matrix.mcp }}/coverage.xml
           clio-kit-mcp-servers/${{ matrix.mcp }}/htmlcov/
@@ -466,7 +467,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
     - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
