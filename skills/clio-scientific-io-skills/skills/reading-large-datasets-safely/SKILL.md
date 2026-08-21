@@ -1,6 +1,11 @@
 ---
 name: reading-large-datasets-safely
-description: Gets numbers out of a dataset too large to hold, by computing statistics on the server or reading bounded slices instead of loading everything. Use when a dataset is large, when asked for a mean, max, or other summary of array data, or when a read has failed or would exhaust available context.
+description: Use when a dataset is too large to read, when asked for a mean, max or other summary of array data, or when a read has failed or would exhaust context. Triggers on "the file is huge", "average of", "out of memory". Not for a first look at structure; use exploring-an-unfamiliar-dataset.
+clio-kit:
+  bundle: clio-scientific-io
+  servers: clio-hdf5, clio-parquet, clio-adios
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Get answers from data too big to read

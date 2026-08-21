@@ -1,6 +1,11 @@
 ---
 name: analyzing-seismic-waveforms
-description: Inspects SAC waveform archives and analyses earthquake catalogs, keeping the two apart since one holds ground-motion traces and the other holds event lists. Use when working with SAC files or archives, seismic traces, station data, earthquake catalogs, b-values, or magnitude completeness.
+description: Use when working with SAC files or archives, seismic traces, station data, earthquake catalogs, b-values or magnitude completeness. Triggers on "SAC", "waveform", "b-value", "Mc", "aftershock". Not for mapping features; use mapping-geospatial-and-terrain-data.
+clio-kit:
+  bundle: clio-geoscience
+  servers: clio-sac, clio-seismic
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Waveforms and catalogs are different data

@@ -1,6 +1,11 @@
 ---
 name: mapping-geospatial-and-terrain-data
-description: Validates and inspects GeoJSON, resolves place names to real coordinates, computes spatial relationships, and renders a map, checking structure before any spatial operation. Use when working with GeoJSON, coordinates, bounding boxes, place names, elevation grids, or point clouds, or when asked to produce a map.
+description: Use when working with GeoJSON, place names, bounding boxes, elevation grids or point clouds, or when asked to produce a map. Triggers on "geojson", "render a map", "coordinates for", "DEM". Not for projections; use working-with-coordinate-systems. Not for waveforms or earthquake catalogs; use analyzing-seismic-waveforms.
+clio-kit:
+  bundle: clio-geoscience
+  servers: clio-geo, clio-geojson, clio-terrain
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Work with geospatial data without silently getting it wrong

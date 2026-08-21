@@ -1,6 +1,11 @@
 ---
 name: building-a-bibliography
-description: Collects papers into a citation list and exports them as BibTeX, verifying each record before it is cited rather than composing entries from memory. Use when asked for citations, references, a BibTeX file, or a reading list, or when assembling related work for a paper.
+description: Use when asked for citations, references, a BibTeX file or a reading list, or when assembling related work for a paper. Triggers on "bibtex", "cite these", "reference list". Not for exploring a topic; use surveying-literature-and-datasets.
+clio-kit:
+  bundle: clio-research
+  servers: clio-arxiv, clio-ndp
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Build a bibliography from records, not from memory

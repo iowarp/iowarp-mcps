@@ -1,6 +1,11 @@
 ---
 name: interpreting-io-performance-numbers
-description: Explains what I/O bandwidth, IOPS, request size, and collective versus independent MPI-IO numbers actually mean, and which values indicate a real problem. Use when a profiler has returned performance figures and the question is whether they are good or bad, or when explaining why an I/O pattern is slow.
+description: Use when a profiler has returned bandwidth, IOPS, request-size or MPI-IO figures and the question is whether they are good or bad, or when explaining why an I/O pattern is slow. Triggers on "is 40 MB/s bad", "collective vs independent", "small writes". Calls no tools.
+clio-kit:
+  bundle: clio-performance
+  servers: none
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Read I/O performance numbers

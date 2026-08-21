@@ -1,6 +1,11 @@
 ---
 name: cleaning-and-validating-a-dataset
-description: Finds and fixes missing values, duplicates, outliers and type problems in a tabular dataset, checking what the data actually contains before deciding how to repair it. Use when data quality is in question, when results look wrong, before statistics are computed, or when asked to clean or validate a table.
+description: Use when data quality is in question, results look wrong, values are missing or duplicated, or before statistics are computed. Triggers on "clean this data", "missing values", "outliers", "validate". Not for producing a figure; use summarizing-and-plotting-results.
+clio-kit:
+  bundle: clio-analysis
+  servers: clio-pandas
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Clean a table without inventing data

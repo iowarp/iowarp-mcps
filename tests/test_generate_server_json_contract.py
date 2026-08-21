@@ -412,6 +412,13 @@ def test_bundle_depends_on_its_skills_only_once_they_exist(tmp_path: Path) -> No
         encoding="utf-8",
     )
 
+    # A skill with no recorded scenarios is untested by definition, so it must
+    # not ship: it would cost tokens in every session with nothing showing it
+    # earns them.
+    with pytest.raises(ValueError, match="ships no evals.md"):
+        GENERATOR.write_skills_plugin(tmp_path, "clio-hpc", spec)
+    (skill_dir / "evals.md").write_text("# Evals\n\n## S1\n", encoding="utf-8")
+
     entry = GENERATOR.write_skills_plugin(tmp_path, "clio-hpc", spec)
     GENERATOR.write_bundle_plugin(tmp_path, "clio-hpc", spec)
     after = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -448,6 +455,9 @@ def test_shipped_skills_load_and_are_reachable_from_a_bundle() -> None:
         assert shipped, f"{plugin_dir} ships no skills"
         for skill_dir in shipped:
             assert read_skill_frontmatter(skill_dir)["name"] == skill_dir.name
+            assert (skill_dir / "evals.md").is_file(), (
+                f"{skill_dir} ships without recorded scenarios"
+            )
 
 
 def _write_community_entry(repo_root: Path, name: str, body: str) -> Path:

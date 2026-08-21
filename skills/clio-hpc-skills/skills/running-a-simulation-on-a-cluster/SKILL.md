@@ -1,6 +1,11 @@
 ---
 name: running-a-simulation-on-a-cluster
-description: Resolves Spack-provided software and runs it as a JARVIS pipeline, carrying the exact load spec across both servers and following the execution to completion. Use when a workload needs software that Spack provides, when a package must be run rather than merely located, or when the user mentions spack specs, module loading for a run, JARVIS pipelines, or submitting work to a cluster.
+description: Use when running a simulation or code on a cluster, installing software with Spack before a run, building a JARVIS pipeline, or submitting work to a scheduler. Triggers on "run this on the cluster", "spack install", "jarvis pipeline", "submit a job". Not for writing a batch script by hand; use writing-slurm-job-scripts.
+clio-kit:
+  bundle: clio-hpc
+  servers: clio-spack, clio-lmod, clio-jarvis, clio-slurm, clio-node-hardware
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Run a simulation on a cluster

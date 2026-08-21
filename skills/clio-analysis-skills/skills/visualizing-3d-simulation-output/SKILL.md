@@ -1,6 +1,11 @@
 ---
 name: visualizing-3d-simulation-output
-description: Renders mesh and volume data in ParaView by loading it, finding its arrays, applying the right filter, and capturing a screenshot, tracking which pipeline object is active throughout. Use when visualizing simulation output, making an isosurface, slice, or streamlines, or producing an image from VTK, EXODUS, or BP5 data.
+description: Use when visualizing simulation output, making an isosurface, slice or streamlines, or producing an image from VTK, EXODUS or BP5 data. Triggers on "paraview", "isosurface", "render the field", "screenshot". Not for tabular data; use summarizing-and-plotting-results.
+clio-kit:
+  bundle: clio-analysis
+  servers: clio-paraview
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Visualise a simulation field

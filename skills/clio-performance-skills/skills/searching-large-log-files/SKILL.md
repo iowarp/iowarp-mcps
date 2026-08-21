@@ -1,6 +1,11 @@
 ---
 name: searching-large-log-files
-description: Finds errors, anomalies and time windows in log files too large to read directly, using chunked sorting, filters and pattern detection instead of loading the file into context. Use when asked to search, sort, filter or summarize a log, find errors in output, or narrow down when something went wrong.
+description: Use when searching, sorting, filtering or summarizing a log too large to read, finding errors in job output, or narrowing down when something went wrong. Triggers on "find the error", "grep the log", "what happened at". Not for I/O profiling; use diagnosing-a-slow-job.
+clio-kit:
+  bundle: clio-performance
+  servers: clio-parallel-sort
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Search a log that is too big to read

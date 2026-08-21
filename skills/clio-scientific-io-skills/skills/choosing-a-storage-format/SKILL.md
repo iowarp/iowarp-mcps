@@ -1,6 +1,11 @@
 ---
 name: choosing-a-storage-format
-description: Explains when to store scientific data as HDF5, ADIOS BP5, or Parquet, and how chunking and compression choices affect later read speed. Use when deciding how to write out results, converting between formats, or explaining why reading an existing file is slow.
+description: Use when deciding how to write results out, converting between HDF5, BP5, Parquet or CSV, choosing chunking or compression, or explaining why reading an existing file is slow. Triggers on "which format", "chunk size", "should I compress". Calls no tools.
+clio-kit:
+  bundle: clio-scientific-io
+  servers: none
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Choose a format, and chunk it for how it will be read

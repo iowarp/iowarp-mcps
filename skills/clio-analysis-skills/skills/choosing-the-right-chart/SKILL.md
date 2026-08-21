@@ -1,6 +1,11 @@
 ---
 name: choosing-the-right-chart
-description: Explains which chart type answers which question, when a log scale is needed, and which presentation choices mislead a reader. Use when deciding how to present data, when a figure is unclear or unreadable, or when choosing axes, bins, or colour maps.
+description: Use when deciding how to present data, when a figure is unclear or misleading, or when choosing axes, bins, log scales or colour maps. Triggers on "which chart", "log scale", "colour map", "is this figure ok". Calls no tools.
+clio-kit:
+  bundle: clio-analysis
+  servers: none
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Pick the chart the question asks for

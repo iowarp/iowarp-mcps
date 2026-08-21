@@ -1,6 +1,11 @@
 ---
 name: recording-a-session-for-provenance
-description: Records the messages of a working session into a durable ChronoLog chronicle and reads them back later. Use when asked to log or record a session, keep a provenance trail of what was decided, or retrieve what happened in an earlier session.
+description: Use when asked to log or record a session, keep a provenance trail of what was decided, or retrieve what happened in an earlier session. Triggers on "record this", "chronolog", "what did we decide last time". Not for job performance; ChronoLog records conversation, not execution.
+clio-kit:
+  bundle: clio-performance
+  servers: clio-chronolog
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Record a session so it can be read back later

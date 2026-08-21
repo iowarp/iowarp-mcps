@@ -1,6 +1,11 @@
 ---
 name: working-with-coordinate-systems
-description: Explains latitude/longitude ordering, projected versus geographic coordinates, and why a bounding box or distance in the wrong reference system is silently wrong rather than obviously wrong. Use when combining spatial datasets, computing distances or areas, interpreting coordinates, or when spatial results look subtly misplaced.
+description: Use when combining spatial datasets, computing distances or areas, interpreting coordinates, or when spatial results look subtly misplaced. Triggers on "lat lon", "projection", "CRS", "UTM", "why is this offset". Calls no tools.
+clio-kit:
+  bundle: clio-geoscience
+  servers: none
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Coordinate systems fail quietly

@@ -1,6 +1,11 @@
 ---
 name: managing-software-environments
-description: Finds what software a cluster provides via environment modules and Spack, and gets it into a run without relying on module loads that do not persist. Use when asked what is available on a machine, which version of a compiler or library exists, how to switch versions, or when a run fails because software was not found.
+description: Use when asked what software a machine has, which compiler or library version is available, how to switch versions, or when a run fails because software was not found. Triggers on "module avail", "is X installed", "what MPI do we have". Not for getting software into a run; use running-a-simulation-on-a-cluster.
+clio-kit:
+  bundle: clio-hpc
+  servers: clio-lmod, clio-spack
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Find out what software a machine has

@@ -1,6 +1,11 @@
 ---
 name: diagnosing-a-slow-job
-description: Works out why a finished HPC job was slower than expected by reading its Darshan I/O profile and correlating it with the job's own logs. Use when a run took longer than expected, when asked about I/O bottlenecks, bandwidth, or access patterns, or when comparing the performance of two runs.
+description: Use when a finished run took longer than expected, when asked about I/O bottlenecks, bandwidth or access patterns, or when comparing two runs. Triggers on "why was this slow", "darshan log", "I/O bottleneck". Not for judging whether a number is bad; use interpreting-io-performance-numbers.
+clio-kit:
+  bundle: clio-performance
+  servers: clio-darshan, clio-parallel-sort
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Work out why a job was slow

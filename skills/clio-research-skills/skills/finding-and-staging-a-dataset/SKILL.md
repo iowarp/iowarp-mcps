@@ -1,6 +1,11 @@
 ---
 name: finding-and-staging-a-dataset
-description: Finds a dataset across the National Data Platform and the operator catalog, then stages it to a local path that the analysis servers can read. Use when looking for data on a subject, when a dataset needs downloading before analysis, or when a file path is needed for data that only exists as a search result.
+description: Use when looking for data on a subject, when a dataset must be downloaded before analysis, or when a file path is needed for data that only exists as a search result. Triggers on "find a dataset", "download the data", "stage this". Not for the papers behind the data; use surveying-literature-and-datasets.
+clio-kit:
+  bundle: clio-research
+  servers: clio-ndp, clio-scientific-catalog, clio-web
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Find data, then get it onto disk

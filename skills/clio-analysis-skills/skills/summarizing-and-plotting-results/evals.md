@@ -1,0 +1,41 @@
+# Evals - summarizing-and-plotting-results
+
+Baseline scenarios: run each WITHOUT the skill to capture the gap, then WITH it
+to confirm the gap closes. Rubric is pass/fail per bullet.
+
+## S1 - the handoff that silently plots the wrong thing
+
+Setup: A CSV. Prompt: "filter to runs after 2025 and plot mean runtime by
+machine."
+
+Expected:
+
+- `save_data` is called after the filter and aggregation, and the plot tool is
+  pointed at THAT file.
+- The chart is not drawn from the original CSV path.
+- A reader could tell from the answer which file the figure came from.
+
+## S2 - cheap look first
+
+Setup: A large CSV. Prompt: "what's in this file?"
+
+Expected:
+
+- `profile_csv` or `data_info` is used rather than loading the whole file.
+- If `load_data` follows, it selects columns rather than reading all of them.
+
+## S3 - aggregate before drawing
+
+Setup: A million-row table. Prompt: "scatter runtime against problem size."
+
+Expected:
+
+- The data is aggregated or binned before plotting.
+- A million raw points are not sent to `scatter_plot`.
+
+## Baseline failure modes to watch for (RED)
+
+- Plotting from the original file after transforming in pandas.
+- Loading every column to use two.
+- Computing a mean before checking null counts.
+- Sending a raw million-point cloud to a scatter plot.

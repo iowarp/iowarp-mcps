@@ -271,9 +271,18 @@ def write_skills_plugin(
     )
     if not skill_dirs:
         raise ValueError(f"{plugin_dir} exists but ships no skills")
-    skill_names = [
-        read_skill_frontmatter(skill_dir)["name"] for skill_dir in skill_dirs
-    ]
+    skill_names = []
+    for skill_dir in skill_dirs:
+        skill_names.append(read_skill_frontmatter(skill_dir)["name"])
+        # A skill with no recorded scenarios is untested by definition, and an
+        # untested skill costs tokens in every session while nothing shows it
+        # earns them. Recording the RED-GREEN scenarios is the minimum bar to
+        # ship; running them is a separate step.
+        if not (skill_dir / "evals.md").is_file():
+            raise ValueError(
+                f"{skill_dir} ships no evals.md; record the scenarios that "
+                "distinguish this skill's behaviour from the baseline first"
+            )
 
     workflow = spec["description"].rstrip(".")
     description = (

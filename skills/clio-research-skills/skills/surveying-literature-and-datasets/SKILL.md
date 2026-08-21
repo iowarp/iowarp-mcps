@@ -1,6 +1,11 @@
 ---
 name: surveying-literature-and-datasets
-description: Searches ArXiv for papers on a topic using the search tool that matches the question, then finds and stages the datasets behind them. Use when surveying literature, finding papers on a subject, looking for prior work, or locating the data underlying published results.
+description: Use when surveying literature, finding papers on a subject, looking for prior work, or locating the data behind published results. Triggers on "find papers on", "what is the literature", "prior work". Not for assembling citations; use building-a-bibliography. Not for staging a known dataset; use finding-and-staging-a-dataset.
+clio-kit:
+  bundle: clio-research
+  servers: clio-arxiv, clio-ndp, clio-web
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Survey a topic, then find the data behind it

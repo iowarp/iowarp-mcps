@@ -59,9 +59,7 @@ def test_locked_server_command_uses_immutable_frozen_project(
     (server_path / "uv.lock").write_text("version = 1\n", encoding="utf-8")
     # Toolchain resolution lives in the runtime table now, so that every
     # runtime resolves its own executable the same way.
-    monkeypatch.setattr(
-        "clio_kit.runtime_executable", lambda runtime: "/opt/uv/bin/uv"
-    )
+    monkeypatch.setattr("clio_kit.runtime_executable", lambda runtime: "/opt/uv/bin/uv")
 
     command = locked_server_command(server_path, "jarvis-mcp")
 

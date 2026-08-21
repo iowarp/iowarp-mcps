@@ -78,6 +78,47 @@ url  = "https://gitlab.example.com/team/plugin.git"
 ref  = "main"                                # optional
 ```
 
+## Trying something before you index it
+
+An entry here publishes to every user on their next marketplace update, so try
+a contribution locally first. Nothing below touches this repository or your own
+Claude Code config.
+
+**A bare skill folder is not installable.** A `SKILL.md` on its own — the shape
+most skill catalogues publish — has no `plugin.json`, so nothing can install it.
+Wrap it first:
+
+```bash
+clio-kit plugin init /tmp/trial            # scaffold a plugin
+rm -rf /tmp/trial/skills/example-workflow  # drop the placeholder
+cp -r <their-skill-folder> /tmp/trial/skills/
+clio-kit plugin validate /tmp/trial
+claude plugin validate /tmp/trial --strict
+```
+
+**Then install it into a throwaway config**, so your real one is untouched:
+
+```bash
+export HOME=/tmp/trial-home && mkdir -p "$HOME"
+claude plugin marketplace add /tmp/trial-marketplace
+claude plugin install <name>@<marketplace> --scope user
+claude plugin details <name>@<marketplace>   # skills found, and what they cost
+```
+
+`plugin details` is the number that decides whether something earns its place:
+it reports the always-on cost a skill adds to *every* session, whether or not it
+fires.
+
+**What to look at before indexing:**
+
+- Does every skill carry recorded scenarios (`evals.md`)? A skill with none is
+  untested by definition. Ours are required to have them.
+- Is the description triggers-only? A description restating what the body says
+  is context paid forever for nothing.
+- Does it declare boundaries against skills we already ship? Twenty skills with
+  overlapping domains will hijack each other without "Not for X; use Y".
+- What is the always-on total once it is added to what we already publish?
+
 ## Rules the generator enforces
 
 Generation fails, rather than publishing something broken, when:

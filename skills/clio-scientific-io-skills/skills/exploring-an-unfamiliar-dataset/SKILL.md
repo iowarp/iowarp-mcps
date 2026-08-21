@@ -1,6 +1,11 @@
 ---
 name: exploring-an-unfamiliar-dataset
-description: Works out what is inside an unfamiliar scientific data file — HDF5, ADIOS BP5, Parquet, or a compressed archive — by reading its structure before any of its data. Use when handed a data file and asked what it contains, when exploring a dataset for the first time, or when deciding how to read something.
+description: Use when handed a data file and asked what is in it, opening an HDF5, ADIOS BP5, Parquet or compressed file for the first time, or deciding how to read something. Triggers on "what is in this file", "open this dataset", ".h5", ".bp", ".parquet". Not for data too large to hold; use reading-large-datasets-safely.
+clio-kit:
+  bundle: clio-scientific-io
+  servers: clio-hdf5, clio-adios, clio-parquet, clio-compression
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # Find out what is in a data file

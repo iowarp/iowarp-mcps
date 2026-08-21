@@ -1,6 +1,11 @@
 ---
 name: summarizing-and-plotting-results
-description: Turns a tabular dataset into summary statistics and a chart, aggregating before plotting and writing the intermediate file the plotting tools read. Use when asked to summarize data, compute statistics, produce a figure from a table, or analyse a CSV or Excel file.
+description: Use when asked to summarize a table, compute statistics, or produce a figure from a CSV or Excel file. Triggers on "plot this", "summarize the data", "make a chart". Not for mesh or volume data; use visualizing-3d-simulation-output. Not for choosing a chart type; use choosing-the-right-chart.
+clio-kit:
+  bundle: clio-analysis
+  servers: clio-pandas, clio-plot
+  provenance: designed
+  eval-status: scenarios-recorded
 ---
 
 # From a table to numbers and a figure
