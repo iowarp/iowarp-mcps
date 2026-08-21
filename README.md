@@ -79,6 +79,25 @@ CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI
 
 ## 🚀 Quick Installation
 
+**AI agent (recommended)** - open your agent and paste:
+
+```
+Read https://raw.githubusercontent.com/iowarp/clio-kit/main/setup.md and set up CLIO Kit for me.
+```
+
+The agent will check prerequisites, add the marketplace, ask what you work on,
+install the matching workflow, and verify the tools respond.
+
+**Claude Code users** - two lines, no config file:
+
+```bash
+claude plugin marketplace add iowarp/clio-kit
+claude plugin install clio-hpc@clio-kit      # see the table below for other workflows
+```
+
+<details>
+<summary>or install servers individually</summary>
+
 ### One Command for Any Server
 
 ```bash
@@ -108,19 +127,31 @@ clio-kit prompt code-coverage-prompt # Use a prompt
 Use `uvx --from 'clio-kit==2.4.3' clio-kit ...` only for a temporary, one-shot
 invocation.
 
-### Install a Workflow Instead of a Server
+Released `clio-kit` wheels execute each embedded MCP server from that server's
+shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
+under the user cache, installs only production dependencies, and refuses to
+resolve an embedded server whose lock is missing. The `--branch` launcher
+option is an explicit development path and is not an immutable
+release-artifact path.
 
-Servers are also published as a plugin marketplace, grouped into workflow
-bundles. Installing a bundle pulls in every server it needs plus the skills
-written for that workflow, so you do not have to know which servers go together.
+The root wheel also ships machine-readable user contracts for the locked
+JARVIS, SLURM, Spack, and Scientific Catalog servers. These artifacts are generated from real stdio
+`tools/list` exchanges and include canonical SHA-256 digests for downstream
+federation gates:
 
 ```bash
-/plugin marketplace add iowarp/clio-kit
-
-/plugin install clio-hpc@clio-kit            # a whole workflow
-/plugin install clio-hdf5@clio-kit           # or one server
-/plugin install clio-hpc-skills@clio-kit     # or just the skills
+clio-kit mcp-contracts
+clio-kit mcp-contract clio-kit-jarvis-user-v3.5
+clio-kit mcp-contract clio-kit-slurm-user-v3
+clio-kit mcp-contract clio-kit-spack-user-v2.3
+clio-kit mcp-contract clio-kit-scientific-catalog-user-v1.1
 ```
+</details>
+
+### Workflow Bundles
+
+Installing a bundle pulls in every server it needs plus the skills written for
+that workflow, so you do not have to know which servers go together.
 
 | Bundle | Servers | For |
 |---|---|---|
@@ -160,25 +191,6 @@ clio-kit plugin submit my-plugin --repo owner/name
 See [`community/README.md`](community/README.md) for the accepted source types
 and what we check.
 
-Released `clio-kit` wheels execute each embedded MCP server from that server's
-shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
-under the user cache, installs only production dependencies, and refuses to
-resolve an embedded server whose lock is missing. The `--branch` launcher
-option is an explicit development path and is not an immutable
-release-artifact path.
-
-The root wheel also ships machine-readable user contracts for the locked
-JARVIS, SLURM, Spack, and Scientific Catalog servers. These artifacts are generated from real stdio
-`tools/list` exchanges and include canonical SHA-256 digests for downstream
-federation gates:
-
-```bash
-clio-kit mcp-contracts
-clio-kit mcp-contract clio-kit-jarvis-user-v3.5
-clio-kit mcp-contract clio-kit-slurm-user-v3
-clio-kit mcp-contract clio-kit-spack-user-v2.3
-clio-kit mcp-contract clio-kit-scientific-catalog-user-v1.1
-```
 
 <details>
 <summary><b>Install in Cursor</b></summary>
