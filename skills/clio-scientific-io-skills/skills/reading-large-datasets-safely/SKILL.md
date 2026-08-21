@@ -48,6 +48,10 @@ skill exists to prevent.
 
 - `clio-hdf5:hdf5_batch_read` — several datasets in parallel, one call rather
   than a serial loop.
+
+> `hdf5_batch_read` and `hdf5_aggregate_stats` both take `paths` as a
+> **comma-separated string**, not a list, despite the plural name. Passing a
+> JSON array fails with "Input should be a valid string".
 - `clio-hdf5:hdf5_stream_data` — large data with memory management, when it has
   to be processed rather than summarised.
 - `clio-hdf5:read_full_dataset` — chunked internally, and the right call when the

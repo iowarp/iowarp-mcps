@@ -808,9 +808,9 @@ async def generate_io_summary_report(
         file_patterns = await analyze_file_access_patterns(log_file_path)
         performance = await get_io_performance_metrics(log_file_path)
         bottlenecks = await identify_io_bottlenecks(log_file_path)
-
+        parts = (job_summary, file_patterns, performance, bottlenecks)
         report: Dict[str, Any] = {
-            "success": True,
+            "success": any(section.get("success") for section in parts),
             "log_file": log_file_path,
             "generated_at": datetime.now().isoformat(),
             "executive_summary": {},

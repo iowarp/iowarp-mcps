@@ -39,4 +39,16 @@ Expected:
 - Calling `read_full_dataset` to compute one number.
 - Reading without checking the size first.
 - Looping single reads where `hdf5_batch_read` takes them together.
+- Passing a list to `paths` on `hdf5_batch_read` or `hdf5_aggregate_stats`;
+  both want a comma-separated string.
 - Reading every Parquet column to aggregate one.
+
+## Smoke record (2026-08-21)
+
+Audited all 27 hdf5 tools against a real 50x40x30 chunked fixture. 25 of 27
+succeeded. The two failures were `hdf5_batch_read` and `hdf5_aggregate_stats`,
+both rejecting a JSON array for `paths` with "Input should be a valid string".
+Their schema says comma-separated string; the plural name says otherwise. Now
+called out in the body.
+
+Not yet run: the with-skill versus without-skill arms.

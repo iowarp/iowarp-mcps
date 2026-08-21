@@ -137,13 +137,22 @@ async def test_compare_darshan_logs_file_not_found():
 
 @pytest.mark.asyncio
 async def test_generate_io_summary_report_graceful_handling():
-    """Test generate_io_summary_report handles errors from sub-functions gracefully."""
+    """A report over a file nothing could read must not report success.
+
+    This previously asserted success=True with the errors buried in
+    detailed_analysis. That is what a caller reads as a finished analysis of a
+    job with no problems: the executive summary, key findings and
+    recommendations are all empty either way, so the top-level flag is the only
+    thing distinguishing "nothing was wrong" from "nothing was analysed".
+    """
     result = await darshan_parser.generate_io_summary_report(
         "/nonexistent/file.darshan", include_visualizations=False
     )
-    # Should still return success=True but with error details in sub-results
-    assert result["success"] is True
+    assert result["success"] is False
     assert "detailed_analysis" in result
+    assert all(
+        section["success"] is False for section in result["detailed_analysis"].values()
+    )
 
 
 @pytest.mark.asyncio

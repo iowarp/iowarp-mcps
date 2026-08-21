@@ -63,7 +63,11 @@ filesystem; it does not say what the application thought it was doing. Use
 `clio-parallel-sort:filter_by_log_level` for errors in that window. See
 `searching-large-log-files`.
 
-**9. Report.** `clio-darshan:generate_io_summary_report` for the written summary.
+**9. Report.** `clio-darshan:generate_io_summary_report` for the written
+summary. Check its `detailed_analysis`: each section reports its own success
+separately, and a report can be produced from a partial set. Empty
+`key_findings` and `recommendations` mean the sections that feed them did not
+run, not that the job was healthy.
 
 ## Comparing two runs
 
