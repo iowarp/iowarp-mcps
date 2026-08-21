@@ -2,7 +2,7 @@
 
 All notable user-facing changes to CLIO Kit are documented here, newest first.
 
-## 2.10.4
+## 2.10.5
 
 ### Python 3.13: pandas and plot servers install again
 
