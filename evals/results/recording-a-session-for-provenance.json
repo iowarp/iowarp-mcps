@@ -1,0 +1,28 @@
+{
+  "skill": "recording-a-session-for-provenance",
+  "prompt": "Record this working session so I can read back what we decided later.",
+  "servers_attached": [
+    "clio-chronolog"
+  ],
+  "skill_fired": [],
+  "expected_skill": "recording-a-session-for-provenance",
+  "tool_calls": [
+    {
+      "tool": "mcp__clio-chronolog__start_chronolog",
+      "input": {
+        "chronicle_name": "working_session",
+        "story_name": "decisions"
+      },
+      "output": "ChronoLog native client is unavailable; install py_chronolog_client from the site ChronoLog deployment before calling connection tools",
+      "failed": true
+    }
+  ],
+  "tools_total": 1,
+  "tools_ok": 0,
+  "tools_failed": 1,
+  "answer": "I'll help you set up a recording session for provenance tracking using ChronoLog. Let me start a chronicle to log our conversation. It looks like the ChronoLog native client isn't available in this environment. However, I can still help you track decisions from this session. Here are your options:\n\n**Option 1: Manual Notes File**\nI can create a markdown file (e.g., `session_notes.md`) where I'll log key decisions, actions taken, and rationale as we work. You can review it anytime.\n\n**Option 2: Summary at End**\nAt the end of our session, I can provide a structured summary of everything we discussed and decided.\n\n**Option 3: Both**\nKeep a running log file AND provide a final summary.\n\n---\n\nFor",
+  "seconds": 14.4,
+  "turns": 2,
+  "cost_usd": 0.0300005,
+  "is_error": false
+}

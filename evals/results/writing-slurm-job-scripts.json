@@ -1,0 +1,29 @@
+{
+  "skill": "writing-slurm-job-scripts",
+  "prompt": "Write me an sbatch script for a 16-rank MPI run of ./solver that needs about 90 minutes, sized against this machine.",
+  "servers_attached": [
+    "clio-slurm",
+    "clio-node-hardware"
+  ],
+  "skill_fired": [],
+  "expected_skill": "writing-slurm-job-scripts",
+  "tool_calls": [
+    {
+      "tool": "mcp__clio-slurm__slurm_cluster",
+      "input": {
+        "include_nodes": true,
+        "node_limit": 10
+      },
+      "output": "{\"schema_version\":\"clio-kit.slurm-cluster.v1\",\"scheduler\":\"slurm\",\"cluster_name\":\"slurm-cluster\",\"version\":\"slurm-wlm 23.11.4\",\"partition_filter\":null,\"partitions\":[{\"name\":\"debug\",\"availability\":\"0/1\",\"time_limit\":\"infinite\",\"nodes\":\"1\",\"state\":\"idle\",\"node_list\":\"sislam6\"},{\"name\":\"normal\",\"availability\":\"0/1\",\"time_limit\":\"infinite\",\"nodes\":\"1\",\"state\":\"idle\",\"node_list\":\"sislam6\"},{\"name\":\"com",
+      "failed": false
+    }
+  ],
+  "tools_total": 1,
+  "tools_ok": 1,
+  "tools_failed": 0,
+  "answer": "I'll help you write an sbatch script for your MPI run. Let me first check the cluster configuration to properly size your job. I can see your cluster has a single node with **24 CPU cores** and **~29 GB memory**. Since you need 16 MPI ranks and the node has 24 cores, this will fit on one node. Here's your sbatch script:\n\n```bash\n#!/bin/bash\n#SBATCH --job-name=solver\n#SBATCH --partition=compute\n#SBATCH --nodes=1\n#SBATCH --ntasks=16\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=24G\n#SBATCH --time=01:35:00\n#SBATCH --output=solver_%j.out\n#SBATCH --error=solver_%j.err\n\n# Load MPI environment (adjust if needed)\n# module load mpi\n\necho \"Job started on $(hostname) at $(date)\"\necho \"Running 16-rank MPI job",
+  "seconds": 16.5,
+  "turns": 2,
+  "cost_usd": 0.051075749999999996,
+  "is_error": false
+}

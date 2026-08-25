@@ -1,0 +1,22 @@
+[
+ {"skill":"exploring-an-unfamiliar-dataset","prompt":"Someone handed me sim.h5. Tell me what is in it, including units, and show me a few values from the temperature data. Do not read the whole array."},
+ {"skill":"reading-large-datasets-safely","prompt":"What is the mean of the temperature dataset in sim.h5? It is large, so do not pull the whole thing into context."},
+ {"skill":"choosing-a-storage-format","prompt":"I have a 4-D simulation field and a table of run parameters. How should I store each, and how should I chunk the field if it is mostly read one timestep at a time?"},
+ {"skill":"summarizing-and-plotting-results","prompt":"From runs.csv, give me mean runtime by machine and produce a line plot of runtime against size."},
+ {"skill":"cleaning-and-validating-a-dataset","prompt":"runs.csv has missing values and at least one duplicate row. Profile it, fix the problems appropriately, and tell me exactly what you changed."},
+ {"skill":"choosing-the-right-chart","prompt":"I want to compare throughput across four filesystems, and separately show runtime against problem size where sizes span 1e3 to 1e9. Which charts, which scales, which colour map?"},
+ {"skill":"visualizing-3d-simulation-output","prompt":"Make an isosurface of the density field in a VTK volume and capture a screenshot of it."},
+ {"skill":"mapping-geospatial-and-terrain-data","prompt":"Check pts.geojson is valid, tell me its bounding box, work out which points fall inside poly.geojson, and analyse the terrain in dem.csv."},
+ {"skill":"analyzing-seismic-waveforms","prompt":"I have an earthquake catalog and I want the b-value and completeness magnitude, plus a figure of the sequence."},
+ {"skill":"working-with-coordinate-systems","prompt":"I wrote a GeoJSON point as [41.88, -87.63] for Chicago and my map puts it in the ocean. Also, how far apart are two points 0.5 degrees apart?"},
+ {"skill":"diagnosing-a-slow-job","prompt":"A run took three hours instead of forty minutes. Work out why using the darshan log, and check the job log app.log around whatever you find."},
+ {"skill":"searching-large-log-files","prompt":"Find what went wrong in app.log. It is too big to read directly. I want the error cluster, not just the first error."},
+ {"skill":"interpreting-io-performance-numbers","prompt":"A profiler reports 12 MB/s aggregate, high IOPS, mean request size 4KB, 1024 ranks doing independent MPI-IO to one shared file. Is that bad, and what would you change?"},
+ {"skill":"recording-a-session-for-provenance","prompt":"Record this working session so I can read back what we decided later."},
+ {"skill":"running-a-simulation-on-a-cluster","prompt":"Install ior with spack if it is not already there, run it through a JARVIS pipeline on the cluster, and tell me when it finishes."},
+ {"skill":"managing-software-environments","prompt":"What MPI implementations does this machine have available, and how do I get one into a run?"},
+ {"skill":"writing-slurm-job-scripts","prompt":"Write me an sbatch script for a 16-rank MPI run of ./solver that needs about 90 minutes, sized against this machine."},
+ {"skill":"surveying-literature-and-datasets","prompt":"Find recent arXiv work on speculative decoding for LLM inference and tell me which are worth reading."},
+ {"skill":"building-a-bibliography","prompt":"Give me BibTeX for the two most relevant arXiv papers on speculative decoding."},
+ {"skill":"finding-and-staging-a-dataset","prompt":"Find an air quality dataset on the National Data Platform and get it onto disk so I can analyse it."}
+]

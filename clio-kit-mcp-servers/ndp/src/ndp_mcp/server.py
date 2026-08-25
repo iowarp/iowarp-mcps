@@ -458,6 +458,16 @@ async def list_organizations(
         raise ToolError(str(e)) from e
 
 
+def _search_hit(d: Dataset) -> dict[str, Any]:
+    """Compact a dataset to what a search result needs, not the whole record."""
+    hit = d.model_dump(exclude={"resources", "extras"})
+    hit["notes"] = (d.notes or "")[:500]
+    hit["resource_count"] = len(d.resources)
+    fmts = {str(r["format"]) for r in d.resources if r.get("format")}
+    hit["resource_formats"] = sorted(fmts)
+    return hit
+
+
 @mcp.tool(
     name="search_datasets",
     title="Search Datasets",
@@ -544,8 +554,10 @@ async def search_datasets(
         if len(datasets) > effective_limit:
             datasets = datasets[:effective_limit]
 
-        # Convert datasets to dict format
-        dataset_dicts = [dataset.model_dump() for dataset in datasets]
+        # A search hit is a pointer, not the record. Returning every resource dict
+        # and extras blob made a 20-row result exceed the client token cap; the
+        # full record is what get_dataset_details is for.
+        dataset_dicts = [_search_hit(dataset) for dataset in datasets]
 
         return cast(
             SearchDatasetsResult,

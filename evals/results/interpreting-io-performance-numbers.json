@@ -1,0 +1,18 @@
+{
+  "skill": "interpreting-io-performance-numbers",
+  "prompt": "A profiler reports 12 MB/s aggregate, high IOPS, mean request size 4KB, 1024 ranks doing independent MPI-IO to one shared file. Is that bad, and what would you change?",
+  "servers_attached": [],
+  "skill_fired": [
+    "interpreting-io-performance-numbers"
+  ],
+  "expected_skill": "interpreting-io-performance-numbers",
+  "tool_calls": [],
+  "tools_total": 0,
+  "tools_ok": 0,
+  "tools_failed": 0,
+  "answer": "I'll invoke the skill for interpreting I/O performance numbers to analyze this profiling data. ## Yes, 12 MB/s aggregate across 1024 ranks is bad \u2014 and the profile tells you exactly why.\n\n### The diagnosis\n\n| Metric | Your value | What it means |\n|--------|-----------|---------------|\n| **Aggregate bandwidth** | 12 MB/s | ~12 KB/s per rank \u2014 far below what hardware can deliver |\n| **Request size** | 4 KB | Well under the ~64 KB threshold where overhead dominates |\n| **IOPS** | High | Confirms many small operations, not large transfers |\n| **Access pattern** | Independent MPI-IO, shared file | 1024 ranks issuing uncoordinated small writes to one file |\n\nThis is the **classic fixable case**: h",
+  "seconds": 18.4,
+  "turns": 3,
+  "cost_usd": 0.040128250000000004,
+  "is_error": false
+}

@@ -802,7 +802,7 @@ async def hypothesis_testing_tool(
 async def handle_missing_data_tool(
     file_path: Annotated[str, Field(description="Absolute path to the data file")],
     strategy: Annotated[
-        str, Field(description="Strategy: detect, impute, remove, or analyze")
+        str, Field(description="Strategy: detect, impute, or remove")
     ] = "detect",
     method: Annotated[
         Optional[str],

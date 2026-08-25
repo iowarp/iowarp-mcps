@@ -1,0 +1,91 @@
+{
+  "skill": "building-a-bibliography",
+  "prompt": "Give me BibTeX for the two most relevant arXiv papers on speculative decoding.",
+  "servers_attached": [
+    "clio-arxiv",
+    "clio-ndp"
+  ],
+  "skill_fired": [],
+  "expected_skill": "building-a-bibliography",
+  "tool_calls": [
+    {
+      "tool": "mcp__clio-arxiv__search_by_abstract",
+      "input": {
+        "abstract_keywords": "speculative decoding",
+        "max_results": 5
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2606.23706v2\",\"title\":\"Zero-Shot Neural Priors for Generalizable Cross-Subject and Cross-Task EEG Decoding\",\"summary\":\"The development of generalizable electroencephalography (EEG) decoding models is essential for robust brain-computer interfaces (BCI) and objective neural biomarkers in mental health. Conventional approaches have been hindered ",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_by_title",
+      "input": {
+        "title_keywords": "speculative decoding",
+        "max_results": 5
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2606.23706v2\",\"title\":\"Zero-Shot Neural Priors for Generalizable Cross-Subject and Cross-Task EEG Decoding\",\"summary\":\"The development of generalizable electroencephalography (EEG) decoding models is essential for robust brain-computer interfaces (BCI) and objective neural biomarkers in mental health. Conventional approaches have been hindered ",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_arxiv",
+      "input": {
+        "query": "speculative decoding LLM inference acceleration",
+        "max_results": 10
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2608.23565v1\",\"title\":\"ReWorld: An Interactive World Model with Long-Horizon Memory\",\"summary\":\"An interactive world model must follow the user's actions, remember the places it has shown, and stream in real time. The tension is structural: control wants a short horizon, memory wants an unbounded one. ReWorld separates the two during training a",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_arxiv",
+      "input": {
+        "query": "speculative sampling language model draft",
+        "max_results": 10
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2608.23566v1\",\"title\":\"How to Train a Critic Stably and Efficiently\",\"summary\":\"Group-based reinforcement learning methods such as GRPO for large language models avoid training a critic by sampling multiple responses for each prompt. A reliable critic could instead estimate token-level advantages from one response, but standard critic-based tra",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_by_author",
+      "input": {
+        "author": "Leviathan",
+        "max_results": "10"
+      },
+      "output": "<tool_use_error>Error: No such tool available: mcp__clio-arxiv__search_by_author</tool_use_error>",
+      "failed": true
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_by_title",
+      "input": {
+        "title_keywords": "Fast Inference from Transformers via Speculative Decoding",
+        "max_results": 5
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2605.01106v1\",\"title\":\"Component-Aware Self-Speculative Decoding in Hybrid Language Models\",\"summary\":\"Speculative decoding accelerates autoregressive inference by drafting candidate tokens with a fast model and verifying them in parallel with the target. Self-speculative methods avoid the need for an external drafter but have been studied excl",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_by_title",
+      "input": {
+        "title_keywords": "Accelerating Large Language Model Decoding with Speculative Sampling",
+        "max_results": 5
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2605.01106v1\",\"title\":\"Component-Aware Self-Speculative Decoding in Hybrid Language Models\",\"summary\":\"Speculative decoding accelerates autoregressive inference by drafting candidate tokens with a fast model and verifying them in parallel with the target. Self-speculative methods avoid the need for an external drafter but have been studied excl",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__export_to_bibtex",
+      "input": {
+        "papers_json": "[{\"id\":\"http://arxiv.org/abs/2203.16487v6\",\"title\":\"Speculative Decoding: Exploiting Speculative Execution for Accelerating Seq2seq Generation\",\"published\":\"2022-03-30T17:27:09Z\",\"authors\":[\"Heming Xia\",\"Tao Ge\",\"Peiyi Wang\",\"Si-Qing Chen\",\"Furu Wei\",\"Zhifang Sui\"],\"categories\":[\"cs.CL\",\"cs.LG\"]},{\"id\":\"http://arxiv.org/abs/2302.01318v1\",\"title\":\"Accelerating Large Language Model Decoding with Speculative Sampling\",\"published\":\"2023-02-02T18:44:11Z\",\"authors\":[\"Charlie Chen\",\"Sebastian Borgeaud\",\"Geoffrey Irving\",\"Jean-Baptiste Lespiau\",\"Laurent Sifre\",\"John Jumper\"],\"categories\":[\"cs.CL\"]}]"
+      },
+      "output": "{\"success\":true,\"bibtex\":\"@article{2203.16487v6,\\n title = {Speculative Decoding: Exploiting Speculative Execution for Accelerating Seq2seq Generation},\\n author = {Heming Xia and Tao Ge and Peiyi Wang and Si-Qing Chen and Furu Wei and Zhifang Sui},\\n year = {2022},\\n eprint = {2203.16487v6},\\n archivePrefix = {arXiv},\\n primaryClass = {cs.CL},\\n url = {http://arxiv.org/abs/2203.16487v6}\\n}\\n\\n@ar",
+      "failed": false
+    }
+  ],
+  "tools_total": 8,
+  "tools_ok": 7,
+  "tools_failed": 1,
+  "answer": "The search returned papers about \"decoding\" in general, but not specifically about **speculative decoding** (the LLM inference acceleration technique). Let me search more specifically by title: The results still don't show the specific speculative decoding papers for LLM inference. Let me try a broader search for \"speculative\" in the context of LLMs: Still no direct results for speculative decoding. Let me try searching specifically for the foundational papers by their known authors or more precise terms: Let me try searching by the specific paper titles that are well-known in this field: I found the two most relevant foundational papers on speculative decoding:\n\n1. **\"Speculative Decoding: ",
+  "seconds": 38.7,
+  "turns": 9,
+  "cost_usd": 0.268843,
+  "is_error": false
+}

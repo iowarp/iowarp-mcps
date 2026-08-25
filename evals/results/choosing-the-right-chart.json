@@ -1,0 +1,18 @@
+{
+  "skill": "choosing-the-right-chart",
+  "prompt": "I want to compare throughput across four filesystems, and separately show runtime against problem size where sizes span 1e3 to 1e9. Which charts, which scales, which colour map?",
+  "servers_attached": [],
+  "skill_fired": [
+    "choosing-the-right-chart"
+  ],
+  "expected_skill": "choosing-the-right-chart",
+  "tool_calls": [],
+  "tools_total": 0,
+  "tools_ok": 0,
+  "tools_failed": 0,
+  "answer": "## Chart Recommendations\n\nYou have two distinct questions, so two figures:\n\n---\n\n### 1. Throughput across four filesystems\n\n**Chart: Bar chart**\n\n- You're comparing a few categories (four filesystems), not showing a continuous relationship.\n- Bars imply magnitude from zero, which is exactly right for throughput.\n- **Do not** use a line chart\u2014lines imply continuity between points, and \"between\" two filesystems is meaningless.\n\n**Scale:** Linear y-axis (unless throughput spans multiple orders of magnitude, in which case log is acceptable\u2014but bars on log axes can be visually misleading, so consider a dot plot instead if you go log).\n\n---\n\n### 2. Runtime against problem size (1e3 to 1e9)\n\n**Char",
+  "seconds": 23.4,
+  "turns": 3,
+  "cost_usd": 0.043044250000000006,
+  "is_error": false
+}

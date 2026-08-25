@@ -1,0 +1,18 @@
+{
+  "skill": "working-with-coordinate-systems",
+  "prompt": "I wrote a GeoJSON point as [41.88, -87.63] for Chicago and my map puts it in the ocean. Also, how far apart are two points 0.5 degrees apart?",
+  "servers_attached": [],
+  "skill_fired": [
+    "working-with-coordinate-systems"
+  ],
+  "expected_skill": "working-with-coordinate-systems",
+  "tool_calls": [],
+  "tools_total": 0,
+  "tools_ok": 0,
+  "tools_failed": 0,
+  "answer": "I'll help you with both questions. Let me invoke the coordinate systems skill for guidance on these issues. ## Problem 1: Your Point is in the Ocean\n\n**The issue:** You wrote `[41.88, -87.63]` but **GeoJSON uses `[longitude, latitude]` order**, not latitude-longitude.\n\nYour coordinates are being interpreted as:\n- Longitude: 41.88\u00b0 E\n- Latitude: -87.63\u00b0 S (near Antarctica!)\n\n**The fix:** Swap them to `[-87.63, 41.88]`:\n```json\n{\n  \"type\": \"Point\",\n  \"coordinates\": [-87.63, 41.88]\n}\n```\n\nThis is one of the most common GeoJSON bugs. Humans naturally say \"lat, lon\" (41.88\u00b0N, 87.63\u00b0W for Chicago), but GeoJSON requires **longitude first**.\n\n**Quick sanity check:** Longitude is in [-180, 180], lati",
+  "seconds": 17.7,
+  "turns": 3,
+  "cost_usd": 0.036858749999999996,
+  "is_error": false
+}

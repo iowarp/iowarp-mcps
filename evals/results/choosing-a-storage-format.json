@@ -1,0 +1,18 @@
+{
+  "skill": "choosing-a-storage-format",
+  "prompt": "I have a 4-D simulation field and a table of run parameters. How should I store each, and how should I chunk the field if it is mostly read one timestep at a time?",
+  "servers_attached": [],
+  "skill_fired": [
+    "choosing-a-storage-format"
+  ],
+  "expected_skill": "choosing-a-storage-format",
+  "tool_calls": [],
+  "tools_total": 0,
+  "tools_ok": 0,
+  "tools_failed": 0,
+  "answer": "I'll invoke the skill for choosing storage formats, which covers exactly this scenario. ## Recommendations for Your Data\n\n### Storage Formats\n\n| Data | Format | Why |\n|------|--------|-----|\n| **4-D simulation field** | **HDF5** (or **BP5** if produced by a parallel running job) | Preserves the multidimensional structure, supports slicing, attributes for units/metadata, and chunked storage. BP5 is better if you're writing from many MPI ranks during the simulation. |\n| **Table of run parameters** | **Parquet** | It's tabular data with named columns. Parquet is columnar, compresses well, and lets you read just the columns you need. |\n\n---\n\n### Chunking the 4-D Field\n\nIf your field has shape `(",
+  "seconds": 19.7,
+  "turns": 3,
+  "cost_usd": 0.08960399999999999,
+  "is_error": false
+}

@@ -227,3 +227,10 @@ CLAUDE.md
 # working directory it is launched from, so running it at the repository
 # root leaves a data/ tree that is runtime state, not source.
 /data/
+
+# Files eval runs write into the fixture directory
+evals/fixtures/data/
+evals/fixtures/*_cleaned.csv
+evals/fixtures/*_imputed*.csv
+evals/fixtures/*_grouped.csv
+evals/fixtures/*.png
