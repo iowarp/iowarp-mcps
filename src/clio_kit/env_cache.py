@@ -139,6 +139,7 @@ class BudgetReport:
     total_bytes: int
     max_bytes: int | None
     over_budget: bool
+    measured: bool = True
 
 
 @dataclass
@@ -390,7 +391,10 @@ def measure_cache_budget(
             }
         )
     return BudgetReport(
-        total_bytes=total, max_bytes=policy.max_cache_bytes, over_budget=over
+        total_bytes=total,
+        max_bytes=policy.max_cache_bytes,
+        over_budget=over,
+        measured=True,
     )
 
 
@@ -423,7 +427,23 @@ def maintain_after_build(
         uv_executable=uv_executable,
         emit=emit,
     )
-    budget = measure_cache_budget(cache_root, policy=resolved_policy, emit=emit)
+    if resolved_policy.max_cache_bytes is None:
+        budget = BudgetReport(
+            total_bytes=0,
+            max_bytes=None,
+            over_budget=False,
+            measured=False,
+        )
+        emit(
+            {
+                "event": "cache_budget_measurement",
+                "ran": False,
+                "reason": "budget_unconfigured",
+                "cache_root": str(cache_root.resolve()),
+            }
+        )
+    else:
+        budget = measure_cache_budget(cache_root, policy=resolved_policy, emit=emit)
     return eviction, prune, budget
 
 
