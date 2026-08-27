@@ -65,6 +65,7 @@ CACHE_MAX_BYTES_ENV: Final = "CLIO_KIT_CACHE_MAX_BYTES"
 _DEFAULT_KEEP_PER_SERVER: Final = 1
 _UV_PRUNE_TIMEOUT_SECONDS: Final = 10.0
 
+
 def default_event_emitter(event: Mapping[str, object]) -> None:
     """Emit one structured cache event to stderr as a sorted JSON line.
 
