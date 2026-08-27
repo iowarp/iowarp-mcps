@@ -34,6 +34,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
+from clio_kit._env_cache_config import (
+    bool_config as _bool_config,
+    optional_positive_int_config as _optional_positive_int_config,
+    positive_int_config as _positive_int_config,
+)
 from clio_kit.environment_locks import (
     ENVIRONMENTS_DIRNAME,
     LOCKS_DIRNAME,
@@ -136,7 +141,7 @@ class PruneReport:
 class BudgetReport:
     """Measured cache footprint against the optional configured budget."""
 
-    total_bytes: int
+    total_bytes: int | None
     max_bytes: int | None
     over_budget: bool
     measured: bool = True
@@ -429,7 +434,7 @@ def maintain_after_build(
     )
     if resolved_policy.max_cache_bytes is None:
         budget = BudgetReport(
-            total_bytes=0,
+            total_bytes=None,
             max_bytes=None,
             over_budget=False,
             measured=False,
@@ -706,85 +711,3 @@ def _decode_stream_tail(data: bytes | None, *, limit: int = 2_000) -> str:
     if not data:
         return ""
     return data[-limit:].decode("utf-8", errors="replace").strip()
-
-
-def _positive_int_config(
-    raw: str | None,
-    *,
-    default: int,
-    name: str,
-    emit: EmitEvent,
-) -> int:
-    if raw is None or raw.strip() == "":
-        return default
-    try:
-        value = int(raw)
-    except ValueError:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "not_an_integer",
-                "using_default": default,
-            }
-        )
-        return default
-    if value < 1:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "below_minimum",
-                "using_default": default,
-            }
-        )
-        return default
-    return value
-
-
-def _optional_positive_int_config(
-    raw: str | None,
-    *,
-    name: str,
-    emit: EmitEvent,
-) -> int | None:
-    if raw is None or raw.strip() == "":
-        return None
-    try:
-        value = int(raw)
-    except ValueError:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "not_an_integer",
-                "using_default": None,
-            }
-        )
-        return None
-    if value < 1:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "below_minimum",
-                "using_default": None,
-            }
-        )
-        return None
-    return value
-
-
-def _bool_config(raw: str | None, *, default: bool) -> bool:
-    if raw is None or raw.strip() == "":
-        return default
-    normalized = raw.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    return default

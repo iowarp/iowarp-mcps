@@ -135,11 +135,6 @@ RATCHET_BASELINE: dict[str, int] = {
     # #376 (v3.7.2 mint): one more historical-artifact entry
     # (jarvis-user-v3.7.1.json) as v3.7.1 retires to historical; 923 -> 924.
     "src/clio_kit/mcp_contracts.py": 924,
-    # Same selective-cherry-pick story as above: f719714's own comment when it
-    # landed on develop recorded 843, but that reflected develop's full commit
-    # chain (spack/scheduler work included). This tree only carries f719714
-    # itself, so the real, verified count is lower: 770.
-    "src/clio_kit/env_cache.py": 770,
     # release/2.10.2: merging fix/execution-output-artifacts (#252 --
     # execution_output_artifact_events/_hash_regular_file, terminal
     # execution-output declarations) alongside the v3.7 content-read mint's
