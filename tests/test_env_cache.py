@@ -11,6 +11,7 @@ import pytest
 
 import clio_kit
 from clio_kit.env_cache import (
+    BudgetReport,
     CacheInUseError,
     CachePolicy,
     EnvironmentInUseMarker,
@@ -406,6 +407,7 @@ def test_measure_cache_budget_flags_over_budget(tmp_path: Path) -> None:
     )
 
     assert report.over_budget
+    assert report.measured is True
     assert report.total_bytes >= 8192
     assert any(event["event"] == "cache_over_budget" for event in events)
 
@@ -438,7 +440,108 @@ def test_maintain_after_build_evicts_and_prunes(
     assert eviction.bytes_freed > 0
     assert prune.ran and prune.ok
     assert prune_calls and prune_calls[0][1:3] == ["cache", "prune"]
+    assert budget.measured is False
     assert budget.over_budget is False
+
+
+def test_maintain_after_build_skips_unconfigured_budget_walk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Server launch must not scan the whole cache when no budget is configured."""
+    events, emit = _events_collector()
+    current = _HASHES[0]
+    _seed_spec(tmp_path, "geo", current, mtime=1_000.0)
+
+    def fail_measure(*_args: Any, **_kwargs: Any) -> BudgetReport:
+        raise AssertionError("unconfigured launch must not measure the cache")
+
+    monkeypatch.setattr("clio_kit.env_cache.measure_cache_budget", fail_measure)
+
+    _eviction, _prune, budget = maintain_after_build(
+        tmp_path,
+        "geo",
+        project_sha256=current,
+        uv_executable="uv",
+        policy=_policy(eviction_enabled=False, prune_enabled=False),
+        emit=emit,
+    )
+
+    assert budget == BudgetReport(
+        total_bytes=None,
+        max_bytes=None,
+        over_budget=False,
+        measured=False,
+    )
+    assert any(
+        event.get("event") == "cache_budget_measurement"
+        and event.get("reason") == "budget_unconfigured"
+        for event in events
+    )
+
+
+def test_maintain_after_build_measures_configured_budget(tmp_path: Path) -> None:
+    """A configured launch budget must measure and report the cache footprint."""
+    events, emit = _events_collector()
+    current = _HASHES[0]
+    _seed_spec(tmp_path, "geo", current, mtime=1_000.0, env_bytes=8192)
+
+    _eviction, _prune, budget = maintain_after_build(
+        tmp_path,
+        "geo",
+        project_sha256=current,
+        uv_executable="uv",
+        policy=_policy(
+            eviction_enabled=False,
+            prune_enabled=False,
+            max_cache_bytes=1,
+        ),
+        emit=emit,
+    )
+
+    assert budget.measured is True
+    assert budget.total_bytes is not None
+    assert budget.total_bytes >= 8192
+    assert budget.max_bytes == 1
+    assert budget.over_budget is True
+    assert any(event.get("event") == "cache_over_budget" for event in events)
+
+
+def test_maintain_after_build_rejects_invalid_budget_and_skips_measurement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An invalid budget must emit both rejection and explicit skip events."""
+    events, emit = _events_collector()
+    current = _HASHES[0]
+    _seed_spec(tmp_path, "geo", current, mtime=1_000.0)
+    monkeypatch.setenv("CLIO_KIT_ENV_EVICTION", "0")
+    monkeypatch.setenv("CLIO_KIT_UV_CACHE_PRUNE", "0")
+    monkeypatch.setenv("CLIO_KIT_CACHE_MAX_BYTES", "huge")
+
+    _eviction, _prune, budget = maintain_after_build(
+        tmp_path,
+        "geo",
+        project_sha256=current,
+        uv_executable="uv",
+        emit=emit,
+    )
+
+    assert budget == BudgetReport(
+        total_bytes=None,
+        max_bytes=None,
+        over_budget=False,
+        measured=False,
+    )
+    assert any(
+        event.get("event") == "cache_config_rejected"
+        and event.get("name") == "CLIO_KIT_CACHE_MAX_BYTES"
+        and event.get("reason") == "not_an_integer"
+        for event in events
+    )
+    assert any(
+        event.get("event") == "cache_budget_measurement"
+        and event.get("reason") == "budget_unconfigured"
+        for event in events
+    )
 
 
 def test_launcher_local_server_evicts_stale_sibling(
