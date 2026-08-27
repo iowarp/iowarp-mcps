@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Final
 
 from clio_kit._env_cache_config import (
+    EmitEvent,
     bool_config as _bool_config,
     optional_positive_int_config as _optional_positive_int_config,
     positive_int_config as _positive_int_config,
@@ -63,9 +64,6 @@ PRUNE_ENABLED_ENV: Final = "CLIO_KIT_UV_CACHE_PRUNE"
 CACHE_MAX_BYTES_ENV: Final = "CLIO_KIT_CACHE_MAX_BYTES"
 _DEFAULT_KEEP_PER_SERVER: Final = 1
 _UV_PRUNE_TIMEOUT_SECONDS: Final = 10.0
-
-EmitEvent = Callable[[Mapping[str, object]], None]
-
 
 def default_event_emitter(event: Mapping[str, object]) -> None:
     """Emit one structured cache event to stderr as a sorted JSON line.
