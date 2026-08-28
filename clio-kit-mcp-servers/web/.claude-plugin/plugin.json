@@ -1,5 +1,5 @@
 {
   "name": "clio-web",
-  "description": "Web MCP server providing curated fetch + search tools for agentic web access",
-  "version": "1.1.0"
+  "description": "Provider-fixed web search plus transparent URL, DOI, and document fetching",
+  "version": "2.1.0"
 }

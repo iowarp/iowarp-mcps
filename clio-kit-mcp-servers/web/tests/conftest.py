@@ -24,6 +24,7 @@ def clean_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     """
     for key in [k for k in os.environ if k.startswith("WEB_")]:
         monkeypatch.delenv(key, raising=False)
-    cfg = Settings(_env_file=None, artifacts_root=str(tmp_path / "artifacts"))
+    # ``_env_file`` is a pydantic-settings constructor option generated at runtime.
+    cfg = Settings(_env_file=None, artifacts_root=str(tmp_path / "artifacts"))  # type: ignore[call-arg]
     monkeypatch.setattr(server, "settings", cfg)
     return cfg

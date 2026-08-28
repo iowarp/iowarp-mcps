@@ -6,49 +6,48 @@ import json
 
 import pytest
 from fastmcp import Client
+from mcp.types import TextResourceContents
 
-from web_mcp import server
-from web_mcp.server import Settings, mcp
+from web_mcp.server import Settings, create_mcp, mcp
 
 
 @pytest.mark.asyncio
 async def test_resource_and_prompt_are_registered() -> None:
-    """web://providers resource and the research_web prompt are exposed."""
+    """web://capabilities resource and the research_web prompt are exposed."""
     async with Client(mcp) as client:
         resources = await client.list_resources()
         prompts = await client.list_prompts()
-    assert any(str(r.uri) == "web://providers" for r in resources)
+    assert any(str(r.uri) == "web://capabilities" for r in resources)
     assert any(p.name == "research_web" for p in prompts)
 
 
 @pytest.mark.asyncio
-async def test_providers_resource_reports_active_backend() -> None:
-    """Reading web://providers returns the active + available search providers."""
+async def test_capabilities_resource_reports_only_active_backend() -> None:
+    """Discovery describes this installation rather than alternate providers."""
     async with Client(mcp) as client:
-        result = await client.read_resource("web://providers")
-    payload = json.loads(result[0].text)  # resource contents expose .text (JSON)
+        result = await client.read_resource("web://capabilities")
+    contents = result[0]
+    assert isinstance(contents, TextResourceContents)
+    payload = json.loads(contents.text)
     assert payload["active_provider"] == "ddg"  # keyless default
-    assert "brave" in payload["available_providers"] and "tavily" in payload["available_providers"]
-    assert "searxng" in payload["available_providers"]
-    assert payload["searxng_configured"] is False
+    assert payload["search_parameters"] == ["query", "count"]
+    assert "available_providers" not in payload
 
 
 @pytest.mark.asyncio
-async def test_providers_resource_reports_configured_searxng(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Discovery reports SearXNG readiness without exposing its deployment URL."""
-    monkeypatch.setattr(
-        server,
-        "settings",
+async def test_capabilities_resource_reports_configured_searxng() -> None:
+    """Discovery reports SearXNG selectors without exposing its deployment URL."""
+    searxng_mcp = create_mcp(
         Settings(
             search_provider="searxng",
             searxng_base_url="http://10.0.0.102:8088",
         ),
     )
-    async with Client(mcp) as client:
-        result = await client.read_resource("web://providers")
-    payload = json.loads(result[0].text)
+    async with Client(searxng_mcp) as client:
+        result = await client.read_resource("web://capabilities")
+    contents = result[0]
+    assert isinstance(contents, TextResourceContents)
+    payload = json.loads(contents.text)
     assert payload["active_provider"] == "searxng"
-    assert payload["searxng_configured"] is True
-    assert "10.0.0.102" not in result[0].text
+    assert "pageno" in payload["search_parameters"]
+    assert "10.0.0.102" not in contents.text

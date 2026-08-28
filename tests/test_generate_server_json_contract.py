@@ -99,7 +99,7 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     assert manifests == [project / "server.json" for project in projects]
     assert list(expected_server_versions) == sorted(expected_server_versions)
     assert set(expected_server_versions) == {project.name for project in projects}
-    assert publish_servers == ("spack", "web")
+    assert publish_servers == ()
     assert marketplace["metadata"]["version"] == expected_version
     assert set(marketplace_plugins) == set(expected_server_versions)
     assert gemini_extension["version"] == expected_version
@@ -149,10 +149,10 @@ def test_jarvis_current_contract_matches_registry_package_and_capability() -> No
         if contract["server_name"] == "jarvis"
     )
     contract_match = re.fullmatch(
-        r"clio-kit-jarvis-user-v(?P<major>\d+)\.(?P<minor>\d+)",
+        r"clio-kit-jarvis-user-v(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?",
         current_contract["contract_id"],
     )
-    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.7"
+    assert current_contract["contract_id"] == "clio-kit-jarvis-user-v3.7.2"
     assert contract_match is not None
     contract_major_minor = (
         int(contract_match.group("major")),

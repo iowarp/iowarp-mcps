@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from typing_extensions import NotRequired, TypedDict
-
 from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import NotRequired, TypedDict
 
 
 class JarvisArtifactLocationDocument(TypedDict):
@@ -30,6 +29,7 @@ class JarvisArtifactDocument(TypedDict):
         "intermediate",
         "output",
         "log",
+        "frame",
         "checkpoint",
         "provenance",
         "validation",
@@ -98,6 +98,7 @@ class ExecutionArtifactQuery(BaseModel):
             "intermediate",
             "output",
             "log",
+            "frame",
             "checkpoint",
             "provenance",
             "validation",
@@ -134,7 +135,7 @@ class ExecutionArtifactQuery(BaseModel):
         default=None,
         description=(
             "When set, return a bounded tail read (this many bytes, from the "
-            "end of the file) of every role=\"log\" artifact in this page. "
+            'end of the file) of every role="log" artifact in this page. '
             "Every other artifact -- and any log artifact whose content could "
             "not be read -- carries a typed content_error instead. Omit to "
             "keep the manifest content-free."

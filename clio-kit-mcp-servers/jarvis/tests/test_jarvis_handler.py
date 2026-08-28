@@ -7,28 +7,27 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
-from types import ModuleType, SimpleNamespace
-from pathlib import Path
-from unittest.mock import Mock, patch
 from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
-
 from jarvis_mcp.capabilities.jarvis_handler import (
-    create_pipeline,
-    configure_pipeline,
-    load_pipeline,
     append_pkg,
     build_pipeline_env,
-    update_pipeline,
+    configure_pipeline,
     configure_pkg,
+    create_pipeline,
+    destroy_pipeline,
+    get_execution,
     get_pkg_config,
-    unlink_pkg,
+    load_pipeline,
     remove_pkg,
     run_pipeline,
-    get_execution,
-    destroy_pipeline,
+    unlink_pkg,
+    update_pipeline,
 )
 
 
@@ -980,7 +979,6 @@ class TestPackageOperations:
     def test_current_configure_accepts_only_declared_nullable_defaults(self):
         """Explicit null follows the same default metadata returned by describe."""
         from jarvis_cd.util import PkgArgParse
-
         from jarvis_mcp.capabilities.jarvis_handler import (
             _normalize_package_config_request,
         )
@@ -1147,6 +1145,273 @@ class TestPackageOperations:
         assert "package configure failed" in str(exc_info.value.detail)
         assert CurrentPipeline.stored_config is None
         assert CurrentPipeline.rollback_count == 1
+
+
+class TestInterceptorTargetBinding:
+    """clio-kit#376: interceptor target-binding through JARVIS-CD's native list.
+
+    JARVIS-CD's own binding is directional -- the *target* application/service
+    names which interceptor package ids wrap it through its own
+    ``interceptors`` setting (``jarvis_cd.core.pkg.Pkg.configure_menu``'s
+    common menu); the interceptor never names its own target. These tests
+    exercise ``append_pkg``'s recognition of an interceptor-class package via
+    real ``isinstance(..., Interceptor)`` introspection (never name-guessing),
+    its typed refusal when a required binding is missing, and the deferred
+    configure that fixes the find_library configure-time ordering defect: real
+    JARVIS-CD (jarvis-cd 1.8.0 core/pipeline.py) never calls an interceptor's
+    ``configure()`` during ``Pipeline.start()``/``.run()`` -- only
+    ``modify_env()``, once a runtime environment already exists -- so
+    ``append_pkg`` must not call it either.
+    """
+
+    @staticmethod
+    def _fake_interceptor_class(*, raise_on_configure: bool):
+        """Build a real ``Interceptor`` subclass whose configure() simulates
+        the find_library ordering defect by raising if ever invoked."""
+        from jarvis_cd.core.pkg import Interceptor
+        from jarvis_cd.util import PkgArgParse
+
+        class FakeInterceptor(Interceptor):
+            def __init__(self) -> None:
+                # Deliberately skip Pkg.__init__: it requires a live
+                # Jarvis singleton this unit test must not depend on.
+                self.config: dict[str, object] = {}
+
+            @staticmethod
+            def configure_menu():
+                return [{"name": "log_path", "type": str, "default": ""}]
+
+            def get_argparse(self):
+                return PkgArgParse("darshan", self.configure_menu())
+
+            def configure(self, **kwargs):
+                if raise_on_configure:
+                    raise RuntimeError(
+                        "find_library ordering defect: darshan's configure-time "
+                        "library probe ran before any runtime library path "
+                        "existed (clio-kit#376)"
+                    )
+                self.config.update(kwargs)
+
+        return FakeInterceptor
+
+    @staticmethod
+    def _fake_app_class():
+        from jarvis_cd.util import PkgArgParse
+
+        class FakeApp:
+            def __init__(self) -> None:
+                self.config: dict[str, object] = {}
+
+            @staticmethod
+            def configure_menu():
+                return [
+                    {"name": "nprocs", "type": int, "default": 1},
+                    {"name": "interceptors", "type": list, "default": []},
+                ]
+
+            def get_argparse(self):
+                return PkgArgParse("app", self.configure_menu())
+
+            def configure(self, **kwargs):
+                self.config.update(kwargs)
+
+        return FakeApp
+
+    def _pipeline_class(self, *, raise_on_interceptor_configure: bool):
+        fake_interceptor_cls = self._fake_interceptor_class(
+            raise_on_configure=raise_on_interceptor_configure
+        )
+        fake_app_cls = self._fake_app_class()
+
+        class InterceptorPipeline(ModernPipeline):
+            instances: list["InterceptorPipeline"] = []
+            removed_ids: list[str] = []
+            # A shared, mutable, class-level list simulates the durable
+            # pipeline.yaml JARVIS-CD itself persists across reloads: every
+            # append_pkg() call does its own _load_pipeline() -> a fresh
+            # InterceptorPipeline() -- so state must survive __init__, exactly
+            # like the CurrentPipeline.stored_config pattern above.
+            stored_packages: list[dict] = [
+                {"pkg_id": "app", "pkg_type": "builtin.app", "config": {}}
+            ]
+
+            def __init__(self, name: str | None = None):
+                super().__init__(name)
+                self.packages = InterceptorPipeline.stored_packages
+                InterceptorPipeline.instances.append(self)
+
+            @staticmethod
+            def _load_package_instance(pkg_def, env):
+                if pkg_def["pkg_type"].startswith("interceptor."):
+                    return fake_interceptor_cls()
+                return fake_app_cls()
+
+            def append(self, pkg_type, package_alias=None, config_args=None):
+                pkg_id = package_alias or pkg_type.rsplit(".", 1)[-1]
+                entry = {"pkg_id": pkg_id, "pkg_type": pkg_type, "config": {}}
+                instance = self._load_package_instance(entry, self.env)
+                if config_args:
+                    argparse = instance.get_argparse()
+                    argparse.parse(["configure", *config_args])
+                    entry["config"] = dict(argparse.kwargs)
+                self.packages.append(entry)
+
+            def configure_package(self, pkg_id, config_args):
+                pkg_def = next(p for p in self.packages if p["pkg_id"] == pkg_id)
+                instance = self._load_package_instance(pkg_def, self.env)
+                argparse = instance.get_argparse()
+                argparse.parse(["configure", *config_args])
+                instance.configure(**argparse.kwargs)
+                pkg_def["config"].update(argparse.kwargs)
+
+            def rm(self, pkg_id):
+                InterceptorPipeline.removed_ids.append(pkg_id)
+                InterceptorPipeline.stored_packages[:] = [
+                    p
+                    for p in InterceptorPipeline.stored_packages
+                    if p["pkg_id"] != pkg_id
+                ]
+
+        return InterceptorPipeline
+
+    @pytest.mark.asyncio
+    async def test_interceptor_without_target_is_refused_and_rolled_back(self):
+        """A typed, actionable refusal names the missing binding; no orphan step remains."""
+        pipeline_cls = self._pipeline_class(raise_on_interceptor_configure=True)
+        with (
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", pipeline_cls),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await append_pkg("pipe", "interceptor.darshan", pkg_id="darshan")
+
+        assert exc_info.value.status_code == 422
+        assert "requires 'target'" in str(exc_info.value.detail)
+        assert pipeline_cls.removed_ids == ["darshan"]
+
+    @pytest.mark.asyncio
+    async def test_non_interceptor_rejects_target(self):
+        """'target' is only meaningful for an interceptor-class package."""
+        pipeline_cls = self._pipeline_class(raise_on_interceptor_configure=True)
+        with (
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", pipeline_cls),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await append_pkg("pipe", "builtin.other_app", pkg_id="other", target="app")
+
+        assert exc_info.value.status_code == 422
+        assert "not an interceptor" in str(exc_info.value.detail)
+        assert pipeline_cls.removed_ids == ["other"]
+
+    @pytest.mark.asyncio
+    async def test_interceptor_target_not_found_is_refused_and_rolled_back(self):
+        pipeline_cls = self._pipeline_class(raise_on_interceptor_configure=True)
+        with (
+            patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", pipeline_cls),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await append_pkg(
+                "pipe", "interceptor.darshan", pkg_id="darshan", target="missing"
+            )
+
+        assert exc_info.value.status_code == 422
+        assert "target step 'missing' not found" in str(exc_info.value.detail)
+        assert pipeline_cls.removed_ids == ["darshan"]
+
+    @pytest.mark.asyncio
+    async def test_interceptor_binds_target_and_defers_configure(self):
+        """The find_library ordering defect: configure() must never run at append time."""
+        pipeline_cls = self._pipeline_class(raise_on_interceptor_configure=True)
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", pipeline_cls):
+            result = await append_pkg(
+                "pipe", "interceptor.darshan", pkg_id="darshan", target="app"
+            )
+
+        assert result["target"] == "app"
+        assert result["configured"] is False
+        assert result["interceptor_configure_deferred"] is True
+        instance = pipeline_cls.instances[-1]
+        target_pkg = next(p for p in instance.packages if p["pkg_id"] == "app")
+        assert target_pkg["config"]["interceptors"] == ["darshan"]
+        interceptor_pkg = next(p for p in instance.packages if p["pkg_id"] == "darshan")
+        # FakeInterceptor.configure() raises when called -- it never ran.
+        assert interceptor_pkg["config"] == {}
+        assert pipeline_cls.removed_ids == []
+
+    @pytest.mark.asyncio
+    async def test_interceptor_binding_is_additive_across_multiple_appends(self):
+        """A second interceptor bound to the same target extends, not replaces."""
+        pipeline_cls = self._pipeline_class(raise_on_interceptor_configure=True)
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", pipeline_cls):
+            await append_pkg(
+                "pipe", "interceptor.strace", pkg_id="strace", target="app"
+            )
+            await append_pkg(
+                "pipe", "interceptor.darshan", pkg_id="darshan", target="app"
+            )
+
+        instance = pipeline_cls.instances[-1]
+        target_pkg = next(p for p in instance.packages if p["pkg_id"] == "app")
+        assert target_pkg["config"]["interceptors"] == ["strace", "darshan"]
+
+    @pytest.mark.asyncio
+    async def test_interceptor_cannot_target_another_interceptor(self):
+        pipeline_cls = self._pipeline_class(raise_on_interceptor_configure=True)
+        with patch("jarvis_mcp.capabilities.jarvis_handler.Pipeline", pipeline_cls):
+            await append_pkg(
+                "pipe", "interceptor.strace", pkg_id="strace", target="app"
+            )
+            with pytest.raises(HTTPException) as exc_info:
+                await append_pkg(
+                    "pipe",
+                    "interceptor.darshan",
+                    pkg_id="darshan",
+                    target="strace",
+                )
+
+        assert exc_info.value.status_code == 422
+        assert "cannot reference interceptors" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_legacy_pipeline_rejects_target(self, mock_pipeline):
+        """Absence keeps today's semantics: legacy pipelines have no binding path."""
+        with pytest.raises(HTTPException) as exc_info:
+            await append_pkg(
+                "test_pipeline", "interceptor.darshan", pkg_id="darshan", target="app"
+            )
+
+        assert exc_info.value.status_code == 422
+        assert "does not support it" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_jarvis_add_step_tool_threads_target(self):
+        """The user-facing tool forwards 'target' to append_pkg unchanged."""
+        with patch("jarvis_mcp.server.append_pkg") as mock_append_pkg:
+            mock_append_pkg.return_value = {
+                "pipeline_id": "pipe",
+                "appended": "interceptor.darshan",
+                "step_id": "darshan",
+                "configured": False,
+                "config": {},
+                "target": "app",
+                "interceptor_configure_deferred": True,
+            }
+
+            from jarvis_mcp.server import jarvis_add_step_tool
+
+            result = await jarvis_add_step_tool(
+                "pipe", "interceptor.darshan", step_id="darshan", target="app"
+            )
+
+        assert result["target"] == "app"
+        mock_append_pkg.assert_called_once_with(
+            "pipe",
+            "interceptor.darshan",
+            pkg_id="darshan",
+            do_configure=True,
+            agent_visible_only=True,
+            target="app",
+        )
 
     @pytest.mark.asyncio
     async def test_get_pkg_config_success(self, mock_pipeline):
@@ -1498,6 +1763,47 @@ class TestPipelineExecutionOperations:
             "next_cursor": None,
         }
         assert result["service_runtimes"] is None
+
+    @pytest.mark.asyncio
+    async def test_terminal_execution_query_declares_execution_root_output_files(
+        self, tmp_path: Path
+    ) -> None:
+        """Terminal execution queries expose direct output files by reference."""
+        pipeline = ModernPipeline("output-files")
+        execution_id = "output-files-run"
+        execution_root = tmp_path / "execution"
+        execution_root.mkdir()
+        (execution_root / "stdout.log").write_bytes(b"thermo: 42\n")
+        handle = NativeHandle(
+            execution_id=execution_id,
+            pipeline_id=pipeline.name,
+            mode="direct",
+        )
+        pipeline.records[execution_id] = NativeRecord(
+            handle,
+            state="completed",
+            submitted=False,
+            terminal=True,
+            return_code=0,
+            metadata={"script_path": str(execution_root / "submit.sh")},
+        )
+        with patch(
+            "jarvis_mcp.capabilities.jarvis_handler._load_pipeline",
+            return_value=pipeline,
+        ):
+            result = await get_execution(
+                pipeline.name,
+                execution_id,
+                artifacts={},
+            )
+
+        declared = result["artifact_page"]["artifacts"]
+        assert [item["logical_name"] for item in declared] == ["stdout.log"]
+        assert declared[0]["role"] == "log"
+        assert declared[0]["location"] == {
+            "kind": "execution_path",
+            "value": "stdout.log",
+        }
 
     @pytest.mark.asyncio
     async def test_execution_query_can_omit_optional_native_queries(self) -> None:

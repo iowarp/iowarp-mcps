@@ -34,11 +34,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
+from clio_kit._env_cache_config import (
+    EmitEvent,
+    bool_config as _bool_config,
+    optional_positive_int_config as _optional_positive_int_config,
+    positive_int_config as _positive_int_config,
+)
+from clio_kit.environment_locks import (
+    ENVIRONMENTS_DIRNAME,
+    LOCKS_DIRNAME,
+    EnvironmentInUseMarker as EnvironmentInUseMarker,
+    environment_in_use as _env_dir_in_use,
+    locks_dir as _locks_dir,
+    other_environment_in_use as _other_environment_in_use,
+)
+
 CACHE_EVENT_SCHEMA: Final = "clio-kit.cache-event.v1"
-ENVIRONMENTS_DIRNAME: Final = "mcp-environments"
 PROJECTS_DIRNAME: Final = "mcp-projects"
 UV_CACHE_DIRNAME: Final = "uv-cache"
-LOCKS_DIRNAME: Final = ".locks"
 _ENV_HASH_PREFIX_LENGTH: Final = 24
 _HEX_DIGITS: Final = frozenset("0123456789abcdef")
 
@@ -50,8 +63,7 @@ EVICTION_ENABLED_ENV: Final = "CLIO_KIT_ENV_EVICTION"
 PRUNE_ENABLED_ENV: Final = "CLIO_KIT_UV_CACHE_PRUNE"
 CACHE_MAX_BYTES_ENV: Final = "CLIO_KIT_CACHE_MAX_BYTES"
 _DEFAULT_KEEP_PER_SERVER: Final = 1
-
-EmitEvent = Callable[[Mapping[str, object]], None]
+_UV_PRUNE_TIMEOUT_SECONDS: Final = 10.0
 
 
 def default_event_emitter(event: Mapping[str, object]) -> None:
@@ -128,9 +140,10 @@ class PruneReport:
 class BudgetReport:
     """Measured cache footprint against the optional configured budget."""
 
-    total_bytes: int
+    total_bytes: int | None
     max_bytes: int | None
     over_budget: bool
+    measured: bool = True
 
 
 @dataclass
@@ -268,12 +281,47 @@ def prune_uv_cache(
             }
         )
         return report
+    if _other_environment_in_use(cache_root):
+        report = PruneReport(
+            ran=False,
+            ok=True,
+            reason="prune_skipped_in_use",
+            cache_dir=str(cache_dir),
+        )
+        emit(
+            {
+                "event": "uv_cache_prune",
+                "ran": False,
+                "ok": True,
+                "reason": report.reason,
+                "cache_dir": report.cache_dir,
+            }
+        )
+        return report
     try:
         completed = run_command(
             [uv_executable, "cache", "prune", "--cache-dir", str(cache_dir)],
             capture_output=True,
             check=False,
+            timeout=_UV_PRUNE_TIMEOUT_SECONDS,
         )
+    except subprocess.TimeoutExpired:
+        report = PruneReport(
+            ran=True,
+            ok=False,
+            reason=f"prune_timeout_{_UV_PRUNE_TIMEOUT_SECONDS:g}s",
+            cache_dir=str(cache_dir),
+        )
+        emit(
+            {
+                "event": "uv_cache_prune",
+                "ran": True,
+                "ok": False,
+                "reason": report.reason,
+                "cache_dir": report.cache_dir,
+            }
+        )
+        return report
     except OSError as exc:
         report = PruneReport(
             ran=True,
@@ -347,7 +395,10 @@ def measure_cache_budget(
             }
         )
     return BudgetReport(
-        total_bytes=total, max_bytes=policy.max_cache_bytes, over_budget=over
+        total_bytes=total,
+        max_bytes=policy.max_cache_bytes,
+        over_budget=over,
+        measured=True,
     )
 
 
@@ -380,7 +431,23 @@ def maintain_after_build(
         uv_executable=uv_executable,
         emit=emit,
     )
-    budget = measure_cache_budget(cache_root, policy=resolved_policy, emit=emit)
+    if resolved_policy.max_cache_bytes is None:
+        budget = BudgetReport(
+            total_bytes=None,
+            max_bytes=None,
+            over_budget=False,
+            measured=False,
+        )
+        emit(
+            {
+                "event": "cache_budget_measurement",
+                "ran": False,
+                "reason": "budget_unconfigured",
+                "cache_root": str(cache_root.resolve()),
+            }
+        )
+    else:
+        budget = measure_cache_budget(cache_root, policy=resolved_policy, emit=emit)
     return eviction, prune, budget
 
 
@@ -470,44 +537,6 @@ def discover_servers(cache_root: Path) -> set[str]:
     return servers
 
 
-# --- in-use marker -------------------------------------------------------
-
-
-class EnvironmentInUseMarker:
-    """A per-process lock proving a live launcher holds one environment.
-
-    The marker is a lock file named for the holding process id under a locks
-    registry sibling to the environment tree.  Concurrent launches of the same
-    spec never contend, because each locks only its own pid file; a checker
-    detecting *any* pid file it cannot lock knows a live holder exists, while a
-    crashed holder's file is lockable and reclaimed.  The registry lives outside
-    the environment directory so acquiring it never perturbs environment mtimes
-    or the environment contents uv manages.
-    """
-
-    def __init__(self, cache_root: Path, env_dir_name: str) -> None:
-        self._lock_dir = _locks_dir(cache_root, env_dir_name)
-        self._handle: _FileLock | None = None
-
-    def __enter__(self) -> "EnvironmentInUseMarker":
-        try:
-            self._lock_dir.mkdir(parents=True, exist_ok=True)
-            lock_path = self._lock_dir / f"{os.getpid()}.lock"
-            handle = _FileLock(lock_path)
-            handle.acquire()
-            self._handle = handle
-        except OSError:
-            # Best-effort: an unwritable registry must not block a launch. The
-            # current environment is never a deletion candidate regardless.
-            self._handle = None
-        return self
-
-    def __exit__(self, *_exc: object) -> None:
-        if self._handle is not None:
-            self._handle.release()
-            self._handle = None
-
-
 def _identity_in_use(cache_root: Path, identity: _EnvIdentity) -> bool:
     env_dir_name = (
         identity.env_dir.name
@@ -515,84 +544,6 @@ def _identity_in_use(cache_root: Path, identity: _EnvIdentity) -> bool:
         else f"{identity.server}-{identity.hash_prefix}"
     )
     return _env_dir_in_use(cache_root, env_dir_name)
-
-
-def _env_dir_in_use(cache_root: Path, env_dir_name: str) -> bool:
-    """Return whether any live launcher currently holds this environment."""
-    lock_dir = _locks_dir(cache_root, env_dir_name)
-    if not lock_dir.is_dir():
-        return False
-    in_use = False
-    for lock_path in lock_dir.glob("*.lock"):
-        probe = _FileLock(lock_path)
-        if probe.try_acquire():
-            # No live holder: reclaim the stale marker.
-            probe.release()
-            try:
-                lock_path.unlink()
-            except OSError:
-                pass
-        else:
-            in_use = True
-    return in_use
-
-
-def _locks_dir(cache_root: Path, env_dir_name: str) -> Path:
-    return cache_root / ENVIRONMENTS_DIRNAME / LOCKS_DIRNAME / env_dir_name
-
-
-class _FileLock:
-    """A cross-platform advisory lock on a single sentinel file."""
-
-    def __init__(self, path: Path) -> None:
-        self._path = path
-        self._fd: int | None = None
-
-    def acquire(self) -> None:
-        if not self.try_acquire():
-            raise OSError(f"could not acquire lock: {self._path}")
-
-    def try_acquire(self) -> bool:
-        fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
-        try:
-            os.write(fd, b"\0")
-            os.lseek(fd, 0, os.SEEK_SET)
-            _lock_region(fd)
-        except OSError:
-            os.close(fd)
-            return False
-        self._fd = fd
-        return True
-
-    def release(self) -> None:
-        if self._fd is None:
-            return
-        try:
-            _unlock_region(self._fd)
-        except OSError:
-            pass
-        finally:
-            os.close(self._fd)
-            self._fd = None
-
-
-if sys.platform == "win32":
-    import msvcrt
-
-    def _lock_region(fd: int) -> None:
-        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-
-    def _unlock_region(fd: int) -> None:
-        os.lseek(fd, 0, os.SEEK_SET)
-        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-else:
-    import fcntl
-
-    def _lock_region(fd: int) -> None:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-    def _unlock_region(fd: int) -> None:
-        fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 # --- internals -----------------------------------------------------------
@@ -759,85 +710,3 @@ def _decode_stream_tail(data: bytes | None, *, limit: int = 2_000) -> str:
     if not data:
         return ""
     return data[-limit:].decode("utf-8", errors="replace").strip()
-
-
-def _positive_int_config(
-    raw: str | None,
-    *,
-    default: int,
-    name: str,
-    emit: EmitEvent,
-) -> int:
-    if raw is None or raw.strip() == "":
-        return default
-    try:
-        value = int(raw)
-    except ValueError:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "not_an_integer",
-                "using_default": default,
-            }
-        )
-        return default
-    if value < 1:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "below_minimum",
-                "using_default": default,
-            }
-        )
-        return default
-    return value
-
-
-def _optional_positive_int_config(
-    raw: str | None,
-    *,
-    name: str,
-    emit: EmitEvent,
-) -> int | None:
-    if raw is None or raw.strip() == "":
-        return None
-    try:
-        value = int(raw)
-    except ValueError:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "not_an_integer",
-                "using_default": None,
-            }
-        )
-        return None
-    if value < 1:
-        emit(
-            {
-                "event": "cache_config_rejected",
-                "name": name,
-                "value": raw,
-                "reason": "below_minimum",
-                "using_default": None,
-            }
-        )
-        return None
-    return value
-
-
-def _bool_config(raw: str | None, *, default: bool) -> bool:
-    if raw is None or raw.strip() == "":
-        return default
-    normalized = raw.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    return default

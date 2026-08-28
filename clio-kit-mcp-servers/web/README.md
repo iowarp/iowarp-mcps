@@ -1,105 +1,58 @@
 # Web MCP Server
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+The Web MCP exposes synchronous `search`, durable task-enabled `fetch`, and
+`fetch_events` for the complete backend conversion log. The selected search
+provider is fixed when the MCP starts; no tool call can silently switch it.
 
-**Part of [CLIO Kit](https://docs.iowarp.ai/) - Gnosis Research Center**
+## Install
 
-The Web MCP server provides two curated, high-level tools for agentic web
-access. It is the seed of CLIO's web tooling and the test instrument for the
-sandbox campaign's egress recording.
+Connect a local stdio MCP to one unified CLIO Web Search deployment:
 
-## Tools
+```bash
+claude mcp add web -- uvx clio-kit mcp-server web --remote-url http://homelab:8089
+```
 
-### `fetch`
+`--remote_url` is accepted as an alias for clients or scripts that prefer
+underscores. The remote URL provides SearXNG search, DOI resolution, document
+conversion, task-backend discovery, and per-agent Valkey credentials. If the
+deployment requires authentication, set `WEB_REMOTE_TOKEN` in the MCP process.
 
-Retrieve an HTTP(S) URL, convert HTML to Markdown, and return it inline or save
-it to a local file.
+For standalone keyless search without remote document conversion:
 
-- **Agent story:** "I found a promising URL and need its actual content." The
-  agent calls `fetch` to pull the page, get clean Markdown (links preserved),
-  and read the title. For large or binary resources it passes `to_file=True` so
-  the raw page is written to disk and only a `local_path` comes back — raw pages
-  never bloat the context window. The agent can then pipe that file through its
-  own model for `(url, prompt)`-style extraction.
-- **Behavior:** streamed download with a hard size cap (default 5 MiB, enforced
-  on `Content-Length` and mid-stream) and configurable timeouts;
-  `follow_redirects=True`; HTML → Markdown via trafilatura, falling back to
-  readability-lxml then a plain-text strip; non-HTML text returned as-is; binary
-  content only materialized when `to_file=True`.
-- **Returns:** `{ok, url, content | local_path, size_bytes, content_type,
-  status, title, method: "http"}`. The `url` key always carries the fetched
-  source URL verbatim — CLIO's provenance layer keys the web source off it.
+```bash
+claude mcp add web -- uvx clio-kit mcp-server web --provider ddg
+```
 
-### `search`
+Legacy `--address` and `--document-address` options remain compatible, but only
+`--remote-url` enables automatic durable Valkey discovery.
 
-Query a configurable web-search provider and return ranked results.
+## Task contract
 
-- **Agent story:** "I need candidate URLs for a question." The agent calls
-  `search` and gets back a small list of `{title, url, snippet}` rows to triage
-  and then `fetch`.
-- **Providers:** keyless **DuckDuckGo** (`ddg`, default, via the `ddgs`
-  package); self-hosted **SearXNG** (`searxng`); optional BYO-key **Brave** and
-  **Tavily**. Selecting an unconfigured provider raises a typed error naming
-  the missing config — it never silently falls back to `ddg`.
-- **SearXNG selectors:** `category` (`general` / `science` / `it`), exact
-  `engines`, `language`, `time_range`, `pageno`, and `safesearch`. These are
-  rejected for other providers instead of being silently discarded. An exact
-  `engines` list takes precedence over `category`, because SearXNG otherwise
-  treats the two selectors as a broader union.
-- **Returns:** `{ok, provider, query, results: [{title, url, snippet}], count}`.
+`fetch(target)` is declared with required MCP task support. It returns a task
+handle immediately at the protocol level. `tasks/get` reports the latest
+download or conversion message, terminal results are returned through the task,
+and `tasks/cancel` cancels any active backend document conversion. There is no
+fixed overall conversion timeout; only individual network requests have bounded
+timeouts.
 
-## Configuration
+`fetch_events(conversion_id, after_sequence=0, limit=100)` returns the ordered,
+persistent backend log when the latest task message is not enough to diagnose a
+conversion. Failures describe the stage, cause, retryability, conversion ID, and
+an actionable remediation without exposing raw third-party exception text.
 
-Configuration is a single `pydantic-settings` `Settings` model. All fields are
-overridable via `WEB_`-prefixed environment variables or a `.env` file, but the
-recommended path is a single source of config with clear defaults.
-
-| Field | Env var | Default | Meaning |
-| --- | --- | --- | --- |
-| `search_provider` | `WEB_SEARCH_PROVIDER` | `"ddg"` | Active search provider (`ddg` / `searxng` / `brave` / `tavily`). |
-| `searxng_base_url` | `WEB_SEARXNG_BASE_URL` | `None` | Root URL of the self-hosted SearXNG instance (required for `searxng`). |
-| `brave_api_key` | `WEB_BRAVE_API_KEY` | `None` | Brave Search API key (required for `brave`). |
-| `tavily_api_key` | `WEB_TAVILY_API_KEY` | `None` | Tavily API key (required for `tavily`). |
-| `max_bytes` | `WEB_MAX_BYTES` | `5242880` | Fetch size cap in bytes (5 MiB). |
-| `connect_timeout_s` | `WEB_CONNECT_TIMEOUT_S` | `5.0` | HTTP connect timeout. |
-| `read_timeout_s` | `WEB_READ_TIMEOUT_S` | `30.0` | HTTP read timeout. |
-| `artifacts_root` | `WEB_ARTIFACTS_ROOT` | `None` (→ CWD) | Default directory for `to_file` output. |
-
-## Documented extension points (not yet available in v1)
-
-These are honest, typed gaps — the follow-on campaign's remainder — not silent
-failures:
-
-- **Headless-browser escalation (Playwright)** for JS-rendered / Anubis-walled
-  pages. When HTML extraction yields nothing, `fetch` returns a typed note
-  `reason="js_render_required_browser_unavailable"` instead of returning junk.
-- **`(url, prompt)` small-model extraction.** An MCP server has no model access,
-  so page-specific extraction stays the agent's job: `fetch` with
-  `to_file=True`, then let the agent pipe the saved file through its own model.
+`search(query, count=5)` remains synchronous because ordinary web search is a
+bounded request-response operation. SearXNG installations additionally expose
+`category`, `engines`, `language`, `time_range`, `pageno`, and `safesearch`.
+There is intentionally no `deep_search` tool: multi-step research is agent
+semantics, not a backend tool semantic.
 
 ## Development
 
 ```bash
-uv sync
-uv run pytest -q            # network-mocked suite (default)
-uv run ruff check src/ tests/
-uv run mypy src/
+uv sync --prerelease allow
+uv run ruff check --fix .
+uv run ruff format .
+uv run pyright src tests
+uv run pytest -m "not integration"
+WEB_MCP_LIVE=1 WEB_REMOTE_URL=http://homelab:8089 uv run pytest -m integration
 ```
-
-Real-network checks are opt-in and skipped by default:
-
-```bash
-WEB_MCP_LIVE=1 uv run pytest -m integration
-```
-
-To make the self-hosted instance the active backend:
-
-```bash
-WEB_SEARCH_PROVIDER=searxng \
-WEB_SEARXNG_BASE_URL=http://10.0.0.102:8088 \
-uv run web-mcp
-```
-
-No paid-provider credential is needed for SearXNG. The server forwards native
-selectors to the deployment and returns `engines_answered` plus normalized
-`unresponsive_engines` alongside the stable `{title, url, snippet}` rows.

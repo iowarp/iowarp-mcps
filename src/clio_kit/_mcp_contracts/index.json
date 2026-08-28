@@ -1,13 +1,13 @@
 {
   "contracts": [
     {
-      "artifact": "jarvis-user-v3.7.json",
-      "artifact_sha256": "26933aa23cd68db4f158af208b09426317af992f78aab7dea065e8611ec1c1de",
-      "contract_id": "clio-kit-jarvis-user-v3.7",
-      "contract_sha256": "d34761523f39e75b144a0567eb368c3cb51c199ea40da0010aaf572afdd2cec4",
+      "artifact": "jarvis-user-v3.7.2.json",
+      "artifact_sha256": "915cbc6efdbc3e252022025e96acee38b3b5b9b6cb832a781d6253c8eca51896",
+      "contract_id": "clio-kit-jarvis-user-v3.7.2",
+      "contract_sha256": "52238d942a15e48e4d92984b5c1ca939ac224dcc067452c6828c63247e1dd2e5",
       "profile": "user",
       "server_name": "jarvis",
-      "wire_sha256": "870198b3ea80a79887c40b532d07d61191c270387e125bdd8ad12cedd2d76ace"
+      "wire_sha256": "ee3f0d5edd92f635646e9f8463ed79bfea0fda963fafed85845d0303cb59ac24"
     },
     {
       "artifact": "slurm-user-v3.json",
@@ -98,6 +98,24 @@
       "profile": "user",
       "server_name": "jarvis",
       "wire_sha256": "0f912b4dfa7135448834f915984ca413f77b73ef53b0f758594006cd7551cd35"
+    },
+    {
+      "artifact": "jarvis-user-v3.7.json",
+      "artifact_sha256": "26933aa23cd68db4f158af208b09426317af992f78aab7dea065e8611ec1c1de",
+      "contract_id": "clio-kit-jarvis-user-v3.7",
+      "contract_sha256": "d34761523f39e75b144a0567eb368c3cb51c199ea40da0010aaf572afdd2cec4",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "870198b3ea80a79887c40b532d07d61191c270387e125bdd8ad12cedd2d76ace"
+    },
+    {
+      "artifact": "jarvis-user-v3.7.1.json",
+      "artifact_sha256": "3c22d89d1bbc4acda49dc6e324566224de38e01a1c80c3879c66305678adfdbe",
+      "contract_id": "clio-kit-jarvis-user-v3.7.1",
+      "contract_sha256": "ede2e48f7201d3e072bd24713ea15f5e4a714a8d52974d884d956fc400174849",
+      "profile": "user",
+      "server_name": "jarvis",
+      "wire_sha256": "b17ab5c0f19afbac934e464641668d250beac176b6cfde06c1ce9b50f50d0b6c"
     },
     {
       "artifact": "scientific-catalog-user-v1.json",

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 from fastmcp.exceptions import ToolError
@@ -16,7 +18,7 @@ from web_mcp.searxng import (
 
 async def _search(
     *, category: str | None = None
-) -> tuple[list[dict[str, str]], list[str], list[dict[str, str]]]:
+) -> tuple[list[dict[str, Any]], list[str], list[dict[str, str]]]:
     """Call the adapter with deterministic defaults."""
     return await search_searxng(
         "query",
@@ -82,6 +84,7 @@ async def test_search_category_maps_single_engine_and_skips_invalid_rows(
             "title": "Repository",
             "url": "https://github.com/iowarp/clio-agent",
             "snippet": "Fallback snippet.",
+            "engines": ["github"],
         }
     ]
     assert engines == ["github"]

@@ -38,7 +38,7 @@ async def test_fetch_html_to_markdown(httpx_mock: HTTPXMock) -> None:
         headers={"content-type": "text/html; charset=utf-8"},
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "https://example.test/report"})
+        result = await client.call_tool("fetch", {"target": "https://example.test/report"})
     data = parse_result(result)
 
     assert data["ok"] is True
@@ -59,7 +59,7 @@ async def test_fetch_url_round_trips_verbatim(httpx_mock: HTTPXMock) -> None:
         headers={"content-type": "text/plain"},
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": url})
+        result = await client.call_tool("fetch", {"target": url})
     data = parse_result(result)
     assert data["url"] == url
 
@@ -73,7 +73,7 @@ async def test_fetch_text_passthrough(httpx_mock: HTTPXMock) -> None:
         headers={"content-type": "text/plain"},
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "https://example.test/data.txt"})
+        result = await client.call_tool("fetch", {"target": "https://example.test/data.txt"})
     data = parse_result(result)
     assert data["content"] == "plain body text"
     assert data["content_type"] == "text/plain"
@@ -85,7 +85,7 @@ async def test_fetch_rejects_non_http_scheme() -> None:
     """A non-http(s) URL raises a ToolError before any network call."""
     async with Client(mcp) as client:
         with pytest.raises(Exception) as excinfo:
-            await client.call_tool("fetch", {"url": "ftp://example.test/x"})
+            await client.call_tool("fetch", {"target": "ftp://example.test/x"})
     assert "http(s)" in str(excinfo.value)
 
 
@@ -100,7 +100,7 @@ async def test_fetch_size_cap_content_length(httpx_mock: HTTPXMock) -> None:
     async with Client(mcp) as client:
         with pytest.raises(Exception) as excinfo:
             await client.call_tool(
-                "fetch", {"url": "https://example.test/big.bin", "max_bytes": 10}
+                "fetch", {"target": "https://example.test/big.bin", "max_bytes": 10}
             )
     assert "exceeds the fetch size limit" in str(excinfo.value)
 
@@ -115,7 +115,9 @@ async def test_fetch_size_cap_mid_stream(httpx_mock: HTTPXMock) -> None:
     )
     async with Client(mcp) as client:
         with pytest.raises(Exception) as excinfo:
-            await client.call_tool("fetch", {"url": "https://example.test/stream", "max_bytes": 10})
+            await client.call_tool(
+                "fetch", {"target": "https://example.test/stream", "max_bytes": 10}
+            )
     assert "while downloading" in str(excinfo.value)
 
 
@@ -132,7 +134,7 @@ async def test_fetch_to_file_writes_and_returns_path(httpx_mock: HTTPXMock, tmp_
         result = await client.call_tool(
             "fetch",
             {
-                "url": "https://example.test/notes.txt",
+                "target": "https://example.test/notes.txt",
                 "to_file": True,
                 "output_dir": str(out),
             },
@@ -154,7 +156,7 @@ async def test_fetch_binary_without_to_file_is_typed_note(httpx_mock: HTTPXMock)
         headers={"content-type": "image/png"},
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "https://example.test/image.png"})
+        result = await client.call_tool("fetch", {"target": "https://example.test/image.png"})
     data = parse_result(result)
     assert data["content"] is None
     assert data["reason"] == REASON_BINARY_NOT_INLINED
@@ -173,7 +175,11 @@ async def test_fetch_binary_to_file_writes_raw_bytes(httpx_mock: HTTPXMock, tmp_
     async with Client(mcp) as client:
         result = await client.call_tool(
             "fetch",
-            {"url": "https://example.test/image.png", "to_file": True, "output_dir": str(out)},
+            {
+                "target": "https://example.test/image.png",
+                "to_file": True,
+                "output_dir": str(out),
+            },
         )
     data = parse_result(result)
     local_path = Path(data["local_path"])
@@ -194,7 +200,7 @@ async def test_fetch_empty_html_signals_js_render(httpx_mock: HTTPXMock) -> None
         headers={"content-type": "text/html"},
     )
     async with Client(mcp) as client:
-        result = await client.call_tool("fetch", {"url": "https://example.test/spa"})
+        result = await client.call_tool("fetch", {"target": "https://example.test/spa"})
     data = parse_result(result)
     assert data["content"] is None
     assert data["reason"] == REASON_JS_RENDER_REQUIRED
@@ -213,5 +219,5 @@ async def test_fetch_max_bytes_default_from_settings(
     )
     async with Client(mcp) as client:
         with pytest.raises(Exception) as excinfo:
-            await client.call_tool("fetch", {"url": "https://example.test/toobig"})
+            await client.call_tool("fetch", {"target": "https://example.test/toobig"})
     assert "exceeds the fetch size limit" in str(excinfo.value)

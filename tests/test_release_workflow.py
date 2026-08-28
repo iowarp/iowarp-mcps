@@ -375,6 +375,8 @@ def test_wheel_smoke_binds_jarvis_artifacts_to_exact_release_wheel() -> None:
     start = WORKFLOW.index("    - name: Smoke installed root wheel")
     end = WORKFLOW.index("    - name: Attest release distributions", start)
     smoke_block = WORKFLOW[start:end]
+    assert "mcp-contract clio-kit-jarvis-user-v3.7.2" in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3.7.1" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.6" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.5" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.4" in smoke_block
@@ -440,6 +442,9 @@ def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     )
     smoke_block = WORKFLOW[smoke_start:smoke_end]
     assert '"$clio_kit" mcp-contracts' in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3.7.2" in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3.7.1" in smoke_block
+    assert "mcp-contract clio-kit-jarvis-user-v3.7" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.6" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.5" in smoke_block
     assert "mcp-contract clio-kit-jarvis-user-v3.4" in smoke_block
@@ -453,6 +458,9 @@ def test_release_regenerates_and_smokes_shipped_user_contracts() -> None:
     assert "mcp-contract clio-kit-spack-user-v2.2" in smoke_block
     assert "mcp-contract clio-kit-spack-user-v2.1" in smoke_block
     assert "mcp-contract clio-kit-spack-user-v2" in smoke_block
+    assert "clio-kit-jarvis-user-v3.7.2" in smoke_block
+    assert "clio-kit-jarvis-user-v3.7.1" in smoke_block
+    assert "clio-kit-jarvis-user-v3.7" in smoke_block
     assert "clio-kit-jarvis-user-v3.6" in smoke_block
     assert "clio-kit-jarvis-user-v3.5" in smoke_block
     assert "clio-kit-jarvis-user-v3.4" in smoke_block
@@ -469,8 +477,10 @@ def test_quality_matrix_is_required_and_lock_sensitive() -> None:
     assert "uv\\.lock$" in infrastructure_check
     assert "mcp-server-versions\\.toml$" in infrastructure_check
     assert "clio-agentic-search/uv\\.lock$" in infrastructure_check
-    assert 'python-version: ["3.10", "3.11", "3.12"]' in QUALITY_WORKFLOW
-    assert 'python-version: ["3.11", "3.12"]' in QUALITY_WORKFLOW
+    # 3.13 added to both matrices to guard the numpy<2-ceiling defect class
+    # (clio-kit-mcp-servers/pandas, /plot) on any Python-3.13-only host.
+    assert 'python-version: ["3.10", "3.11", "3.12", "3.13"]' in QUALITY_WORKFLOW
+    assert 'python-version: ["3.11", "3.12", "3.13"]' in QUALITY_WORKFLOW
     assert "uv lock --check" in QUALITY_WORKFLOW
     assert QUALITY_WORKFLOW.count("uv sync --locked --dev") == 3
 

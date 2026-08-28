@@ -93,7 +93,7 @@ def artifact_with_content(
     return enriched
 
 
-def execution_root_from_record(record_document: dict[str, Any]) -> Path | None:
+def execution_root_from_record(record_document: Mapping[str, Any]) -> Path | None:
     """Resolve one execution's own root directory from its durable metadata.
 
     Grounded, not guessed: ``pipeline_snapshot_path`` is written by JARVIS-CD
@@ -101,25 +101,24 @@ def execution_root_from_record(record_document: dict[str, Any]) -> Path | None:
     ``jarvis_cd.core.pipeline.Pipeline._launch``, which also places
     ``stdout.log``/``stderr.log`` directly under that same ``execution_root``
     -- this is the one durable field already present on every record that
-    names it, so no path is invented here. Returns ``None`` (never a guess)
-    when the field is absent or malformed; callers must treat that as
-    "execution-scoped log content is not resolvable for this record", not
-    retry with a fabricated path.
+    names it, so no path is invented here. Falls back to ``script_path``
+    (present instead of ``pipeline_snapshot_path`` for scheduler-submitted
+    executions -- see the terminal execution-output declaration path) when
+    the primary field is absent or malformed. Returns ``None`` (never a
+    guess) when neither field resolves; callers must treat that as
+    "execution-scoped content is not resolvable for this record", not retry
+    with a fabricated path.
     """
     metadata = record_document.get("metadata")
-    if not isinstance(metadata, dict):
+    if not isinstance(metadata, Mapping):
         return None
-    snapshot_path = metadata.get("pipeline_snapshot_path")
-    if isinstance(snapshot_path, str) and snapshot_path:
-        return Path(snapshot_path).parent
-    # Scheduler-mode records: ``pipeline_snapshot_path`` is written by the
-    # launch that runs INSIDE the scheduler job, so the submit-side record
-    # never carries it. ``metadata.script_path`` is written at submit time as
-    # ``execution_root / "submit.slurm"`` (scheduler_submit), so its parent is
-    # the same execution root — still a durable field, never a guess.
-    script_path = metadata.get("script_path")
-    if isinstance(script_path, str) and script_path:
-        return Path(script_path).parent
+    for key in ("pipeline_snapshot_path", "script_path"):
+        raw_path = metadata.get(key)
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            continue
+        candidate = Path(raw_path)
+        if candidate.name:
+            return candidate.parent
     return None
 
 

@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iowarp/web-mcp",
   "title": "CLIO Web",
-  "description": "Web MCP server providing curated fetch + search tools for agentic web access",
-  "version": "1.1.0",
+  "description": "Provider-fixed web search plus transparent URL, DOI, and document fetching",
+  "version": "2.1.0",
   "repository": {
     "url": "https://github.com/iowarp/clio-kit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "clio-kit",
-      "version": "2.8.0",
+      "version": "2.10.5",
       "transport": {
         "type": "stdio"
       },
@@ -31,24 +31,28 @@
   "tools": [
     {
       "name": "fetch",
-      "description": "Fetch an HTTP(S) URL with a streamed size cap and timeout, convert HTML to Markdown, and return the content inline or (to_file=True) write it to a local file and return its path."
+      "description": "Fetch an HTTP(S) URL or DOI as a durable task. HTML and text are read locally; supported documents use CLIO Web Search conversion when configured."
+    },
+    {
+      "name": "fetch_events",
+      "description": "Query the full ordered backend event log for a document fetch conversion."
     },
     {
       "name": "search",
-      "description": "Search the web via a configurable provider (keyless DuckDuckGo by default; self-hosted SearXNG; optional BYO-key Brave or Tavily) and return ranked results. SearXNG supports category, engine, language, time-range, page, and safe-search selectors."
+      "description": "Search the web using this installation's fixed ddg provider."
     }
   ],
   "resources": [
     {
-      "uri": "web://providers",
-      "name": "search_providers",
-      "description": "The active + available web-search providers and current fetch limits."
+      "uri": "web://capabilities",
+      "name": "capabilities",
+      "description": "Return the active installation's search, fetch, and task capabilities."
     }
   ],
   "prompts": [
     {
       "name": "research_web",
-      "description": "Guided search then fetch workflow for researching a topic on the web."
+      "description": "Provide a guided search-then-fetch research workflow."
     }
   ],
   "tags": []

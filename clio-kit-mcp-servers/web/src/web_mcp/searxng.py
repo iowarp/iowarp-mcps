@@ -2,11 +2,73 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 from fastmcp.exceptions import ToolError
+
+_CITATION_COUNT_RE = re.compile(r"^(\d+)\s+citations?$", re.IGNORECASE)
+
+
+def _string_list(value: Any) -> list[str]:
+    """Normalize a SearXNG scalar/list metadata field to non-empty strings."""
+
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _citation_count(item: dict[str, Any]) -> int | None:
+    """Parse only explicit SearXNG citation-count labels."""
+
+    direct = item.get("citation_count")
+    if isinstance(direct, int) and not isinstance(direct, bool) and direct >= 0:
+        return direct
+    for candidate in _string_list(item.get("comments")):
+        match = _CITATION_COUNT_RE.fullmatch(candidate)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def _normalize_result(item: dict[str, Any]) -> dict[str, Any]:
+    """Preserve useful standard and scholarly fields from one SearXNG result."""
+
+    engines = _string_list(item.get("engines"))
+    if not engines and item.get("engine"):
+        engines = [str(item["engine"])]
+    result: dict[str, Any] = {
+        "title": str(item.get("title") or ""),
+        "url": str(item.get("url") or ""),
+        "snippet": str(item.get("content") or item.get("snippet") or ""),
+        "engines": engines,
+    }
+    aliases: dict[str, tuple[str, ...]] = {
+        "authors": ("authors", "author"),
+        "doi": ("doi",),
+        "published_at": ("published_at", "publishedDate", "published_date"),
+        "journal": ("journal",),
+        "publisher": ("publisher",),
+        "document_type": ("document_type", "type"),
+        "pdf_url": ("pdf_url",),
+        "html_url": ("html_url",),
+        "tags": ("tags",),
+        "score": ("score",),
+    }
+    for output_name, source_names in aliases.items():
+        value = next((item[name] for name in source_names if item.get(name) is not None), None)
+        if value not in (None, "", []):
+            result[output_name] = (
+                _string_list(value) if output_name in {"authors", "tags"} else value
+            )
+    citation_count = _citation_count(item)
+    if citation_count is not None:
+        result["citation_count"] = citation_count
+    return result
 
 
 def _search_endpoint(base_url: str | None) -> str:
@@ -56,7 +118,7 @@ async def search_searxng(
     time_range: str | None,
     pageno: int,
     safesearch: int | None,
-) -> tuple[list[dict[str, str]], list[str], list[dict[str, str]]]:
+) -> tuple[list[dict[str, Any]], list[str], list[dict[str, str]]]:
     """Search a configured self-hosted SearXNG instance via its JSON API."""
     endpoint = _search_endpoint(base_url)
     params: dict[str, str | int] = {"q": query, "format": "json"}
@@ -101,7 +163,7 @@ async def search_searxng(
     if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
         raise ToolError("SearXNG returned malformed JSON: expected a results list.")
 
-    results: list[dict[str, str]] = []
+    results: list[dict[str, Any]] = []
     engines_answered: set[str] = set()
     for item in payload["results"]:
         if not isinstance(item, dict):
@@ -111,13 +173,7 @@ async def search_searxng(
             engines_answered.update(str(name) for name in item_engines if name)
         elif item.get("engine"):
             engines_answered.add(str(item["engine"]))
-        results.append(
-            {
-                "title": str(item.get("title") or ""),
-                "url": str(item.get("url") or ""),
-                "snippet": str(item.get("content") or item.get("snippet") or ""),
-            }
-        )
+        results.append(_normalize_result(item))
         if len(results) >= count:
             break
 

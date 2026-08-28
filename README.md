@@ -250,7 +250,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`geo`** | 2.2.3 | Geospatial | Render GeoJSON vector layers with basemaps | `clio-kit mcp-server geo` |
 | **`geojson`** | 2.2.3 | Geospatial | Inspect, validate, and summarize GeoJSON | `clio-kit mcp-server geojson` |
 | **`hdf5`** | 2.2.3 | Data I/O | HPC-optimized scientific data with 27 tools, AI insights, caching, streaming | `clio-kit mcp-server hdf5` |
-| **`jarvis`** | 3.7.0 | Workflow | Durable pipeline, bounded package discovery, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
+| **`jarvis`** | 3.7.2 | Workflow | Durable pipeline, bounded package discovery, progress, artifact, and service-runtime management | `clio-kit mcp-server jarvis` |
 | **`lmod`** | 2.2.3 | Environment | Environment module management | `clio-kit mcp-server lmod` |
 | **`ndp`** | 2.2.3 | Data Protocol | Search and discover datasets across CKAN instances | `clio-kit mcp-server ndp` |
 | **`node-hardware`** | 2.2.3 | System | System hardware information | `clio-kit mcp-server node-hardware` |
@@ -265,7 +265,7 @@ distinct `not_installed` semantic, while real Spack failures remain errors.
 | **`slurm`** | 3.0.0 | HPC | Job submission and management | `clio-kit mcp-server slurm` |
 | **`spack`** | 2.3.0 | Package Management | Structured package discovery, installation, and location | `clio-kit mcp-server spack` |
 | **`terrain`** | 2.2.3 | Geospatial | Analyze DEMs and terrain point clouds | `clio-kit mcp-server terrain` |
-| **`web`** | 1.1.0 | Web | Fetch a URL to Markdown and search the web | `clio-kit mcp-server web` |
+| **`web`** | 2.1.0 | Web | Synchronous search plus durable, queryable, cancellable URL, DOI, and document fetch tasks | `clio-kit mcp-server web` |
 
 </div>
 
