@@ -598,7 +598,7 @@ export const mcpData = {
       "spack_install"
     ],
     "stats": {
-      "version": "2.2.0",
+      "version": "2.3.0",
       "updated": "2026-08-11"
     },
     "platforms": [
