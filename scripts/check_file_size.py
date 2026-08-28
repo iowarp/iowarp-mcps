@@ -109,7 +109,7 @@ RATCHET_BASELINE: dict[str, int] = {
     "clio-kit-mcp-servers/paraview/src/paraview_mcp/implementation/paraview_capabilities.py": 2202,
     "clio-kit-mcp-servers/pandas/src/pandas_mcp/server.py": 1274,
     "clio-kit-mcp-servers/paraview/src/paraview_mcp/server.py": 1091,
-    "clio-kit-mcp-servers/spack/src/spack_mcp/backend.py": 925,
+    "clio-kit-mcp-servers/spack/src/spack_mcp/backend.py": 890,
     # #362 (PR #364 review finding 5): discovery previously excluded the root
     # `clio_kit` package (the `clio-kit` launcher CLI itself) entirely --
     # these three were never scanned. Baselined at their measured counts, not

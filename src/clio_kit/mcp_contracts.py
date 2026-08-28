@@ -1,9 +1,5 @@
-"""Generate and load canonical locked-server MCP user contracts.
-
-The committed artifacts in :mod:`clio_kit._mcp_contracts` are captured from a
-real MCP ``tools/list`` exchange over stdio.  They bind the agent-facing tool
-schemas independently of the abbreviated MCP Registry metadata in
-``server.json``.
+"""Generate locked-server MCP contracts from real ``tools/list`` exchanges,
+binding agent-facing schemas independently of abbreviated Registry metadata.
 """
 
 from __future__ import annotations
@@ -154,13 +150,7 @@ USER_CONTRACT_SPECS: Final = (
         entry_command="spack-mcp",
         profile_environment="SPACK_MCP_PROFILE",
         expected_tools=frozenset(
-            {
-                "spack_find",
-                "spack_install",
-                "spack_locate",
-                "spack_search",
-                "spack_info",
-            }
+            "spack_find spack_install spack_locate spack_search spack_info".split()
         ),
     ),
     UserContractSpec(
