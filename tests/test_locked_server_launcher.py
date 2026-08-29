@@ -1,6 +1,7 @@
 """Tests for reproducible embedded MCP server launches."""
 
 import hashlib
+import tempfile
 from pathlib import Path
 
 import click
@@ -195,6 +196,41 @@ def test_embedded_project_is_atomically_materialized_outside_archive_cache(
     )
     with pytest.raises(click.ClickException, match="identity verification"):
         materialize_locked_server_project(server_path, identity=identity)
+
+
+def test_materialization_does_not_repeat_content_hash_in_temporary_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Transient paths stay short while the verified destination keeps its full hash."""
+    server_path = tmp_path / "source" / "geo"
+    source_path = server_path / "src" / "geo_mcp"
+    source_path.mkdir(parents=True)
+    (server_path / "pyproject.toml").write_text(
+        "[project]\nname = 'geo-mcp'\nversion = '1.0.0'\n",
+        encoding="utf-8",
+    )
+    (server_path / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    (source_path / "server.py").write_text("VALUE = 1\n", encoding="utf-8")
+    cache_root = tmp_path / "clio-cache"
+    monkeypatch.setenv("CLIO_KIT_CACHE_DIR", str(cache_root))
+    created_paths: list[Path] = []
+    original_mkdtemp = tempfile.mkdtemp
+
+    def record_mkdtemp(*args: object, **kwargs: object) -> str:
+        created = Path(original_mkdtemp(*args, **kwargs))
+        created_paths.append(created)
+        return str(created)
+
+    monkeypatch.setattr(tempfile, "mkdtemp", record_mkdtemp)
+
+    identity = locked_server_project_identity(server_path)
+    materialized = materialize_locked_server_project(server_path, identity=identity)
+
+    assert materialized.name == identity["project_sha256"]
+    assert len(created_paths) == 1
+    assert created_paths[0].name.startswith(".tmp-")
+    assert identity["project_sha256"] not in created_paths[0].name
 
 
 def _legacy_v3_project_digest(project: Path) -> str:

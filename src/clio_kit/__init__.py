@@ -469,7 +469,10 @@ def materialize_locked_server_project(
     temporary = Path(
         tempfile.mkdtemp(
             dir=target.parent,
-            prefix=f".{project_sha256}.",
+            # The verified destination already carries the full content hash.
+            # Repeating it in the transient directory can push otherwise-valid
+            # Windows cache paths over MAX_PATH before the atomic replace.
+            prefix=".tmp-",
             suffix=".tmp",
         )
     )
