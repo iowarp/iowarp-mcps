@@ -26,7 +26,7 @@
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyPI version](https://img.shields.io/pypi/v/clio-kit.svg)](https://pypi.org/project/clio-kit/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![FastMCP](https://img.shields.io/badge/FastMCP-3.0%2B-purple)](https://github.com/jlowin/fastmcp)
+[![FastMCP](https://img.shields.io/badge/FastMCP-4.0-purple)](https://github.com/jlowin/fastmcp)
 [![CI](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml/badge.svg)](https://github.com/iowarp/clio-kit/actions/workflows/quality_control.yml)
 [![Coverage](https://codecov.io/gh/iowarp/clio-kit/branch/main/graph/badge.svg)](https://codecov.io/gh/iowarp/clio-kit)
 
@@ -86,12 +86,27 @@ Read setup.md and set up CLIO Kit for me.
 The agent will check prerequisites, add the marketplace, ask what you work on,
 install the matching workflow, and verify the tools respond.
 
-**Claude Code users** - two lines, no config file:
+**Claude Code users** - three lines, no config file:
 
 ```bash
+uv tool install clio-kit                     # the launcher every plugin invokes
 claude plugin marketplace add iowarp/clio-kit
 claude plugin install clio-hpc@clio-kit      # see the table below for other workflows
 ```
+
+The first line is not optional. A plugin is a manifest that runs `clio-kit`; it
+does not contain the server. Install plugins without the launcher and every one
+of them reports `enabled` while every server fails with `ENOENT: Executable not
+found in $PATH: "clio-kit"`.
+
+Restart Claude Code, then confirm the servers actually connected:
+
+```bash
+claude mcp list      # every plugin:clio-* line must say ✔ Connected
+```
+
+Use `claude mcp list`, not `claude plugin list` — the latter reports `enabled`
+for plugins whose servers are completely broken.
 
 <details>
 <summary>or install servers individually</summary>
@@ -100,7 +115,7 @@ claude plugin install clio-hpc@clio-kit      # see the table below for other wor
 
 ```bash
 # Install the released CLI into its own persistent tool environment
-uv tool install 'clio-kit==2.4.3'
+uv tool install clio-kit
 # If uv reports that its executable directory is not on PATH:
 uv tool update-shell
 
@@ -116,14 +131,12 @@ clio-kit mcp-server slurm
 clio-kit search serve               # Start search API server
 clio-kit search query --namespace local_fs --q "pressure > 200 kPa"
 
-# AI prompts also available
-clio-kit prompts                    # List all prompts
-clio-kit prompt code-coverage-prompt # Use a prompt
 ```
 
 `uv tool install` keeps CLIO Kit in a persistent, isolated tool environment.
-Use `uvx --from 'clio-kit==2.4.3' clio-kit ...` only for a temporary, one-shot
-invocation.
+Use `uvx --from clio-kit clio-kit ...` only for a temporary, one-shot
+invocation. Pin a version (`clio-kit==2.8.0`) only when you need one; unpinned
+installs track the current release.
 
 Released `clio-kit` wheels execute each embedded MCP server from that server's
 shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
@@ -170,9 +183,20 @@ wrong. They cover things the tool descriptions cannot say on their own, such as
 which of two similar tools to reach for, what order calls have to happen in, and
 how to read a number a server hands back.
 
-Skills load automatically once their bundle is installed. `clio-<bundle>-skills`
-installs them without the servers, which is useful when the servers are already
-present.
+Skills load automatically once their bundle is installed. To take the written
+procedures without the servers — useful when the servers are already present:
+
+```bash
+claude plugin install clio-hpc-skills@clio-kit
+```
+
+Skills are the one component with an unconditional cost: they are carried in
+every session whether or not they fire. Check what you are paying before and
+after:
+
+```bash
+claude plugin details clio-hpc-skills@clio-kit    # reports always-on tokens
+```
 
 ### Contributing Your Own Servers or Skills
 
@@ -183,11 +207,33 @@ release here.
 ```bash
 clio-kit plugin init my-plugin      # scaffold a valid plugin
 clio-kit plugin validate my-plugin  # check it before opening anything
+claude plugin validate my-plugin --strict   # and the client's own rules
 clio-kit plugin submit my-plugin --repo owner/name
 ```
 
-See [`community/README.md`](community/README.md) for the accepted source types
-and what we check.
+`submit` prints the entry to add as `community/entries/<name>.toml` in a pull
+request. Four source types are accepted — `github`, `git-subdir`, `npm` and
+`url` — so a plugin published as an npm package, or living in a subdirectory of
+a monorepo, is listable without moving into this repository.
+
+**A server in another language is indexed, not hosted.** Publish a TypeScript or
+Go MCP server to npm and add an `npm` entry: it installs through this
+marketplace while its code, dependencies and releases stay yours. Our own
+servers are Python because they are vendored into the `clio-kit` wheel and
+install with no network, which matters on a cluster login node.
+
+Once merged, an indexed contribution installs exactly like ours:
+
+```bash
+claude plugin install materials-lab@clio-kit
+```
+
+Indexed entries carry `metadata.indexed`, so the catalogue distinguishes what we
+maintain from what we point at.
+
+See [`community/README.md`](community/README.md) for the accepted source types,
+what the generator enforces, and how to trial a contribution against a throwaway
+config before indexing it.
 
 
 <details>
@@ -452,8 +498,14 @@ pip install uv
 Then install CLIO Kit persistently and expose uv's tool directory:
 
 ```bash
-uv tool install 'clio-kit==2.4.3'
+uv tool install clio-kit
 uv tool update-shell
+```
+
+Open a new shell after `update-shell`, then check it resolved:
+
+```bash
+clio-kit mcp-servers
 ```
 
 </details>
