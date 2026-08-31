@@ -104,6 +104,78 @@ and buys nothing.
 separate the skill's behaviour from the baseline: the exact prompt, checkable
 expectations, and the failure modes the agent shows without the skill.
 
+`clio-kit plugin validate` enforces the rules above rather than trusting a
+reviewer to notice. It refuses a skill whose frontmatter does not parse, whose
+`name` disagrees with its folder, that records no scenarios, whose description
+does not open with `Use when`, or that carries no `Triggers on` clause. A
+missing `Not for X; use Y` boundary and an over-long description are reported
+as advisories, because a first skill with nothing to collide against is
+legitimately unbounded. The command also prints the always-on cost of what you
+are adding.
+
+## Contributing a Server in Another Language
+
+**Index it; we do not host non-Python servers.** Publish your TypeScript or Go
+server to npm and add one entry under [`community/`](community/README.md) with
+`type = "npm"`. Your code stays in your repository on your own release
+schedule, and it installs through our marketplace exactly like ours do.
+
+```toml
+name        = "crystal-ts"
+description = "Crystallography tools for materials workflows."
+maintainer  = "some-lab"
+
+[source]
+type    = "npm"
+package = "@some-lab/crystal-mcp"
+version = "^1.0.0"
+```
+
+This is a deliberate boundary, not a missing feature. Hosting a second language
+here would mean a second CI matrix, a second toolchain every user must have on
+PATH, and the loss of offline install — our servers are vendored into the
+`clio-kit` wheel and need no network, while a node server fetches its
+dependencies on first build and a go server compiles on first build. On a login
+node with no outbound network that difference decides whether anything works at
+all.
+
+### If we ever do host one
+
+The launcher itself is ready and proven: it builds and starts node and go from
+their own locks, the same way it does Python, declared in `clio-server.toml`:
+
+```toml
+name    = "crystal"
+runtime = "node"              # python | node | go
+version = "1.0.0"
+lock    = "package-lock.json"
+entry   = "dist/server.js"
+```
+
+**A TypeScript server must commit its compiled JavaScript.** The build runs
+`npm ci --omit=dev`, so `typescript` is a devDependency that is never installed
+and no compile happens at launch. The compiled output is hashed into the
+environment identity for node servers precisely because it is the artifact that
+runs — unlike Python, where build output is throwaway and excluded.
+
+**Name that output directory `bundle/`, not `dist/`, `lib/` or `build/`.** All
+three of those are ignored repo-wide by `.gitignore`, and the wheel is built
+from what git tracks, so compiled output placed in any of them is silently
+dropped and the server ships unable to start. `bundle/` is matched by nothing
+and rides into the wheel correctly. (`node_modules` is already ignored, so it
+never ships — which is what you want, since `npm ci` recreates it from the
+lock.)
+
+What is *not* ready, and would have to land first:
+
+- CI discovers servers with `test -f {}/pyproject.toml`, so a node server gets
+  no lint, no type check and no lock verification. This is the blocking one:
+  without it a hosted server ships entirely unverified.
+- the manifest generator reads `pyproject.toml` for version and description and
+  **silently skips** a server without one — so a node server would never reach
+  the marketplace and nothing would say why. It needs to read the descriptor
+  instead, and fail loudly on a server it cannot describe.
+
 ## Contributing an MCP Server or Plugin You Maintain
 
 Servers and plugins you maintain yourself are indexed rather than copied here.

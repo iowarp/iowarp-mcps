@@ -7,9 +7,9 @@ one-file entry -- which means a malformed plugin is not caught by our CI at all.
 ``clio-kit plugin validate`` is where it gets caught instead, before a pull
 request exists.
 
-The skill frontmatter reader lives here because both this validator and the
-manifest generator need the same answer to "is this SKILL.md loadable", and a
-second implementation would drift from the first.
+The skill rules themselves live in :mod:`clio_kit.skills`, so this validator,
+the manifest generator and a contributor checking their own directory all get
+the same answer. A second implementation would drift from the first.
 """
 
 from __future__ import annotations
@@ -19,6 +19,14 @@ from pathlib import Path
 from typing import Any
 
 import click
+
+from clio_kit.community import read_shipped_marketplaces
+from clio_kit.skills import (
+    SkillProblem,
+    always_on_cost,
+    check_skill_collection,
+)
+from clio_kit.skills import read_skill_frontmatter as _read_skill_frontmatter
 
 # A plugin name is used to namespace its components (``plugin-name:skill-name``)
 # and appears in install commands, so it has to survive being typed.
@@ -33,41 +41,16 @@ class PluginProblem(Exception):
     """One reason a plugin directory would not publish correctly."""
 
 
+# Skill knowledge lives in skills.py so one set of rules backs manifest
+# generation, `plugin validate` and a contributor checking their own directory.
+# Re-exported here because the generator and the tests have always reached for
+# it through this module.
 def read_skill_frontmatter(skill_dir: Path) -> dict[str, str]:
-    """Return one SKILL.md's frontmatter fields, or raise if it is unloadable.
-
-    Only top-level keys are collected: an indented line continues the value
-    above it, and a description long enough to wrap is the normal case rather
-    than the exception.
-    """
-    skill_md = skill_dir / "SKILL.md"
-    if not skill_md.is_file():
-        raise PluginProblem(f"{skill_dir} has no SKILL.md")
-    text = skill_md.read_text(encoding="utf-8")
-    if not text.startswith("---\n"):
-        raise PluginProblem(f"{skill_md} must open with YAML frontmatter")
-    _, _, rest = text.partition("---\n")
-    frontmatter, separator, _ = rest.partition("\n---\n")
-    if not separator:
-        raise PluginProblem(f"{skill_md} has unterminated frontmatter")
-
-    fields: dict[str, str] = {}
-    for line in frontmatter.splitlines():
-        if not line or line.startswith((" ", "\t")):
-            continue
-        key, colon, value = line.partition(":")
-        if colon:
-            fields[key.strip()] = value.strip()
-
-    for required in ("name", "description"):
-        if not fields.get(required):
-            raise PluginProblem(f"{skill_md} frontmatter needs a {required}")
-    if fields["name"] != skill_dir.name:
-        raise PluginProblem(
-            f"{skill_md} declares name {fields['name']!r} "
-            f"but lives in {skill_dir.name!r}"
-        )
-    return fields
+    """Return one SKILL.md's frontmatter fields, or raise if it is unloadable."""
+    try:
+        return _read_skill_frontmatter(skill_dir)
+    except SkillProblem as exc:
+        raise PluginProblem(str(exc)) from exc
 
 
 def _check_name(name: Any, problems: list[str]) -> None:
@@ -167,15 +150,13 @@ def validate_plugin(plugin_dir: Path) -> tuple[dict[str, Any], list[str]]:
     _check_component_paths(manifest, problems)
     _check_mcp_servers(plugin_dir, problems)
 
+    # Every skill is checked against the published rules, not merely parsed:
+    # a skill's description is carried in every session whether or not it
+    # fires, so a vague one is a permanent cost this is the only chance to
+    # catch. Advisories are surfaced by the CLI rather than blocking here.
     skills_root = plugin_dir / "skills"
-    if skills_root.is_dir():
-        for skill_dir in sorted(
-            path for path in skills_root.iterdir() if path.is_dir()
-        ):
-            try:
-                read_skill_frontmatter(skill_dir)
-            except PluginProblem as exc:
-                problems.append(str(exc))
+    for report in check_skill_collection(skills_root):
+        problems.extend(report.problems)
 
     has_components = (
         any(
@@ -256,17 +237,37 @@ def plugin_init(directory: Path, name: str | None) -> None:
         + "\n",
         encoding="utf-8",
     )
+    # The scaffold satisfies the skill rules the moment it is written. A
+    # starting point that fails validation teaches a contributor that the
+    # checks are noise to be silenced rather than the bar to be met, so the
+    # placeholder demonstrates the required shape instead of describing it.
     (skill_dir / "SKILL.md").write_text(
         "---\n"
         "name: example-workflow\n"
-        "description: One sentence on what this does, then when to use it. "
-        "The description is the whole trigger -- it is read in every session, "
-        "and the body is only loaded when it fires.\n"
+        "description: Use when the agent must run this plugin's tools in a "
+        "particular order, or would otherwise reach for the wrong one. "
+        'Triggers on "example workflow", "replace this phrase". '
+        "Not for work another skill already covers; use that skill.\n"
         "---\n"
         "\n"
         "# Example workflow\n"
         "\n"
         "Replace this with the sequence an agent gets wrong without it.\n",
+        encoding="utf-8",
+    )
+    (skill_dir / "evals.md").write_text(
+        "# Evals - example-workflow\n"
+        "\n"
+        "Run each scenario WITHOUT the skill to capture the gap, then WITH it to\n"
+        "confirm the gap closes. Rubric is pass/fail per bullet.\n"
+        "\n"
+        "## S1 - the case this skill exists for\n"
+        "\n"
+        'Setup: Prompt: "replace this with what a user would actually type."\n'
+        "\n"
+        "Expected:\n"
+        "\n"
+        "- Replace this with the behaviour that is wrong without the skill.\n",
         encoding="utf-8",
     )
     click.echo(f"Scaffolded {plugin_name} in {directory}")
@@ -281,11 +282,28 @@ def plugin_validate(directory: Path) -> None:
         manifest, problems = validate_plugin(directory)
     except PluginProblem as exc:
         raise click.ClickException(str(exc)) from exc
+
+    # Reported whether or not the plugin passes: a contributor fixing a hard
+    # failure should see the judgement calls in the same run rather than
+    # discovering them after a second submission.
+    reports = check_skill_collection(directory / "skills")
+    advisories = [advisory for report in reports for advisory in report.advisories]
+
     if problems:
         for problem in problems:
             click.echo(f"  - {problem}")
+        for advisory in advisories:
+            click.echo(f"  ? {advisory}")
         raise click.ClickException(f"{len(problems)} problem(s) in {directory}")
+
     click.echo(f"OK: {manifest['name']} would publish correctly")
+    if reports:
+        click.echo(
+            f"{len(reports)} skill(s), ~{always_on_cost(reports)} characters carried "
+            "in every session whether or not they fire."
+        )
+    for advisory in advisories:
+        click.echo(f"  ? {advisory}")
     click.echo(
         "Note: this checks the shape the marketplace requires. Run "
         "`claude plugin validate --strict` as well for the client's own rules."
@@ -328,4 +346,24 @@ def plugin_submit(directory: Path, repo: str, output: Path | None) -> None:
     )
 
 
-PLUGIN_COMMANDS = (plugin_group,)
+@click.command("marketplaces")
+def marketplaces_command() -> None:
+    """List federated marketplaces and the command that adds each one.
+
+    Claude Code has no nested-marketplace concept: catalogues are added one at
+    a time. So a contributor's whole marketplace is carried here as a referral
+    rather than merged into ours -- their collection stays under their control,
+    and the user runs one command to reach it.
+    """
+    federated = read_shipped_marketplaces()
+    if not federated:
+        click.echo("No federated marketplaces are indexed.")
+        return
+    for entry in federated:
+        maintainer = (entry.get("metadata") or {}).get("maintainer", "unknown")
+        click.echo(f"{entry['name']} -- {entry['description']}")
+        click.echo(f"  maintained by {maintainer}, indexed here but not reviewed here")
+        click.echo(f"  {entry['add_command']}")
+
+
+PLUGIN_COMMANDS = (plugin_group, marketplaces_command)
