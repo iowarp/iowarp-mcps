@@ -21,7 +21,11 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-from clio_kit.community import read_community_entries
+from clio_kit.community import (
+    read_community_entries,
+    read_federated_marketplaces,
+    write_shipped_marketplaces,
+)
 from clio_kit.plugins import read_skill_frontmatter
 from clio_kit.mcp_contracts import generate_user_contract_artifacts
 
@@ -478,6 +482,7 @@ def write_claude_plugin_files(
     project: dict[str, Any],
     *,
     server_version: str,
+    repo_root: Path,
 ) -> None:
     """Write one contract-versioned plugin and its persistent MCP config."""
     description = project.get("description", "")
@@ -491,7 +496,19 @@ def write_claude_plugin_files(
         "repository": REPO_URL,
         "license": "BSD-3-Clause",
     }
-    _write_json(server_dir / ".claude-plugin" / "plugin.json", plugin_json)
+    # The plugin is written to its own directory under plugins/, NOT into the
+    # server directory. A plugin's `source` is copied wholesale by the client
+    # on install, and the server directory holds src/, tests/ and (in a working
+    # clone) a built .venv -- none of which the plugin executes, because
+    # .mcp.json invokes the separately installed `clio-kit` launcher. Pointing
+    # `source` at the server directory copied ~180 MB per server and about a
+    # gigabyte for a six-server bundle, all of it code that never runs.
+    #
+    # Users install by name (`clio-adios@clio-kit`), never by path, so moving
+    # the manifest changes no user-facing coordinate. The registry coordinate
+    # in server.json and the launcher's own discovery path are untouched.
+    plugin_dir = repo_root / "plugins" / f"clio-{server_name}"
+    _write_json(plugin_dir / ".claude-plugin" / "plugin.json", plugin_json)
 
     mcp_json = {
         f"clio-{server_name}": {
@@ -499,7 +516,7 @@ def write_claude_plugin_files(
             "args": ["mcp-server", server_name],
         }
     }
-    _write_json(server_dir / ".mcp.json", mcp_json)
+    _write_json(plugin_dir / ".mcp.json", mcp_json)
 
     # Runtime descriptor: states outright what discovery used to infer by
     # string-matching pyproject.toml, and is the seam a non-Python server
@@ -539,7 +556,7 @@ def build_marketplace_json(
         "metadata": {
             "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
             "version": pypi_version,
-            "pluginRoot": "./clio-kit-mcp-servers",
+            "pluginRoot": "./plugins",
         },
         "plugins": server_entries,
     }
@@ -666,15 +683,16 @@ def generate_all(mcps_dir: str) -> None:
             server_name,
             project,
             server_version=server_versions[server_name],
+            repo_root=repo_root,
         )
-        print("  Wrote .claude-plugin/plugin.json + .mcp.json")
+        print(f"  Wrote plugins/clio-{server_name} (manifest only, no source)")
 
         # Collect marketplace entry
         description = project.get("description", "")
         marketplace_plugins.append(
             {
                 "name": f"clio-{server_name}",
-                "source": f"./clio-kit-mcp-servers/{server_name}",
+                "source": f"./plugins/clio-{server_name}",
                 "description": description,
                 "version": server_versions[server_name],
                 "category": server_scopes[server_name],
@@ -713,6 +731,14 @@ def generate_all(mcps_dir: str) -> None:
     marketplace_plugins.extend(community_entries)
     if community_entries:
         print(f"Merged {len(community_entries)} community entries")
+
+    # Federated marketplaces cannot ride in `plugins`: Claude Code has no
+    # nested-marketplace concept and reports an unrecognised entry as an
+    # unknown field it ignores. They are baked into the package instead, where
+    # `clio-kit marketplaces` can print the one command that adds each.
+    federated = read_federated_marketplaces(repo_root)
+    write_shipped_marketplaces(repo_root / "src" / "clio_kit", federated)
+    print(f"Wrote {len(federated)} federated marketplace referral(s)")
 
     # Claude Code marketplace manifest
     marketplace = build_marketplace_json(

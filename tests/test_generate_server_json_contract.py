@@ -92,28 +92,34 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
             encoding="utf-8"
         )
     )
-    # The marketplace publishes two kinds of entry against different sources:
-    # per-server plugins under clio-kit-mcp-servers/, and workflow bundles
-    # under plugins/ whose whole content is a dependency list. They are keyed
-    # differently -- a server entry drops the clio- prefix to match its
-    # directory name, a bundle's name IS its identity -- so splitting them on
-    # source keeps each set checkable against its own inventory.
+    # Every plugin manifest lives under plugins/, servers and bundles alike,
+    # because a plugin's source is copied wholesale on install and neither kind
+    # ships code. That means source no longer separates them: a bundle is one
+    # declared in [bundles.*], and everything else under plugins/ is a
+    # per-server manifest. They stay keyed differently -- a server entry drops
+    # the clio- prefix to match its directory name, a bundle's name IS its
+    # identity -- so each set is checkable against its own inventory.
+    expected_bundles = GENERATOR.read_bundles(repository_root)
+    plugin_sourced = [
+        plugin
+        for plugin in marketplace["plugins"]
+        if plugin["source"].startswith("./plugins/")
+    ]
     marketplace_plugins = {
         plugin["name"].removeprefix("clio-"): plugin
-        for plugin in marketplace["plugins"]
-        if plugin["source"].startswith("./clio-kit-mcp-servers/")
+        for plugin in plugin_sourced
+        if plugin["name"] not in expected_bundles
     }
     bundle_plugins = {
         plugin["name"]: plugin
-        for plugin in marketplace["plugins"]
-        if plugin["source"].startswith("./plugins/")
+        for plugin in plugin_sourced
+        if plugin["name"] in expected_bundles
     }
     skill_plugins = {
         plugin["name"]: plugin
         for plugin in marketplace["plugins"]
         if plugin["source"].startswith("./skills/")
     }
-    expected_bundles = GENERATOR.read_bundles(repository_root)
     expected_skill_plugins = {
         f"{bundle_name}-skills"
         for bundle_name in expected_bundles
@@ -142,8 +148,17 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     for path in manifests:
         server_name = path.parent.name
         manifest = json.loads(path.read_text(encoding="utf-8"))
+        # The plugin manifest no longer sits beside the server it launches:
+        # it lives under plugins/ so installing it copies a manifest rather
+        # than the server's whole source tree.
         plugin = json.loads(
-            (path.parent / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+            (
+                path.parent.parent.parent
+                / "plugins"
+                / f"clio-{server_name}"
+                / ".claude-plugin"
+                / "plugin.json"
+            ).read_text(encoding="utf-8")
         )
         assert manifest["version"] == expected_server_versions[server_name]
         assert plugin["version"] == expected_server_versions[server_name]
@@ -263,10 +278,13 @@ def test_plugin_versions_distinguish_contracts_from_the_root_wheel(
         tmp_path,
         "spack",
         {"description": "Spack MCP", "version": "9.9.9"},
+        repo_root=tmp_path,
         server_version="2.0.0",
     )
     plugin = json.loads(
-        (tmp_path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+        (
+            tmp_path / "plugins" / "clio-spack" / ".claude-plugin" / "plugin.json"
+        ).read_text(encoding="utf-8")
     )
     marketplace = GENERATOR.build_marketplace_json(
         [{"name": "clio-spack", "version": "2.0.0"}],
@@ -630,10 +648,11 @@ def test_published_marketplace_categories_carry_real_scope() -> None:
     # a scope classifies a SERVER. Split on source so this still checks what it
     # was written to check: that a server's category is its real scope rather
     # than one fixed literal for everything.
+    bundles = GENERATOR.read_bundles(Path(__file__).resolve().parents[1])
     server_entries = [
         plugin
         for plugin in marketplace["plugins"]
-        if plugin["source"].startswith("./clio-kit-mcp-servers/")
+        if plugin["source"].startswith("./plugins/") and plugin["name"] not in bundles
     ]
     categories = {plugin["category"] for plugin in server_entries}
 
@@ -652,7 +671,12 @@ def test_readme_bundle_table_matches_the_generated_manifests() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     readme = (repo_root / "README.md").read_text(encoding="utf-8").splitlines()
 
+    # plugins/ holds a manifest per server as well as per bundle; only the
+    # bundles carry a dependency list and appear in the README table.
+    bundle_names = GENERATOR.read_bundles(repo_root)
     for bundle_dir in sorted((repo_root / "plugins").iterdir()):
+        if bundle_dir.name not in bundle_names:
+            continue
         manifest = json.loads(
             (bundle_dir / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
         )

@@ -7,12 +7,12 @@
   "metadata": {
     "description": "CLIO Kit - MCP Servers for Scientific Computing and HPC",
     "version": "2.8.0",
-    "pluginRoot": "./clio-kit-mcp-servers"
+    "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "clio-adios",
-      "source": "./clio-kit-mcp-servers/adios",
+      "source": "./plugins/clio-adios",
       "description": "Fetch and analyze BP5 data files using ADIOS2. Access scientific data, metadata, and attributes for research and analysis purposes.",
       "version": "2.2.3",
       "category": "scientific",
@@ -28,7 +28,7 @@
     },
     {
       "name": "clio-arxiv",
-      "source": "./clio-kit-mcp-servers/arxiv",
+      "source": "./plugins/clio-arxiv",
       "description": "ArXiv MCP server implementation using Model Context Protocol",
       "version": "2.2.3",
       "category": "scientific",
@@ -43,7 +43,7 @@
     },
     {
       "name": "clio-chronolog",
-      "source": "./clio-kit-mcp-servers/chronolog",
+      "source": "./plugins/clio-chronolog",
       "description": "ChronoLog MCP server implementation using Model Context Protocol",
       "version": "2.0.1",
       "category": "scientific",
@@ -58,7 +58,7 @@
     },
     {
       "name": "clio-compression",
-      "source": "./clio-kit-mcp-servers/compression",
+      "source": "./plugins/clio-compression",
       "description": "Compression MCP server implementation using Model Context Protocol",
       "version": "2.2.3",
       "category": "general",
@@ -73,7 +73,7 @@
     },
     {
       "name": "clio-darshan",
-      "source": "./clio-kit-mcp-servers/darshan",
+      "source": "./plugins/clio-darshan",
       "description": "Darshan I/O profiler MCP server for analyzing I/O trace files",
       "version": "2.2.3",
       "category": "scientific",
@@ -88,7 +88,7 @@
     },
     {
       "name": "clio-geo",
-      "source": "./clio-kit-mcp-servers/geo",
+      "source": "./plugins/clio-geo",
       "description": "MCP server for rendering GeoJSON vector layers into map images with basemaps",
       "version": "2.3.0",
       "category": "scientific",
@@ -103,7 +103,7 @@
     },
     {
       "name": "clio-hdf5",
-      "source": "./clio-kit-mcp-servers/hdf5",
+      "source": "./plugins/clio-hdf5",
       "description": "HDF5 FastMCP - Scientific Data Access for AI Agents | CLIO Kit MCP Server",
       "version": "2.2.3",
       "category": "scientific",
@@ -118,7 +118,7 @@
     },
     {
       "name": "clio-jarvis",
-      "source": "./clio-kit-mcp-servers/jarvis",
+      "source": "./plugins/clio-jarvis",
       "description": "JARVIS-CD MCP with a compact user pipeline contract and explicit admin compatibility profiles",
       "version": "3.7.0",
       "category": "scientific",
@@ -132,7 +132,7 @@
     },
     {
       "name": "clio-lmod",
-      "source": "./clio-kit-mcp-servers/lmod",
+      "source": "./plugins/clio-lmod",
       "description": "Lmod MCP - Environment Module Management for LLMs with comprehensive module operations",
       "version": "3.0.0",
       "category": "scientific",
@@ -147,7 +147,7 @@
     },
     {
       "name": "clio-ndp",
-      "source": "./clio-kit-mcp-servers/ndp",
+      "source": "./plugins/clio-ndp",
       "description": "National Data Platform (NDP) MCP server for searching and discovering datasets across multiple CKAN instances",
       "version": "2.2.3",
       "category": "scientific",
@@ -162,7 +162,7 @@
     },
     {
       "name": "clio-node-hardware",
-      "source": "./clio-kit-mcp-servers/node-hardware",
+      "source": "./plugins/clio-node-hardware",
       "description": "Node Hardware MCP - Comprehensive Hardware Monitoring and System Analysis for LLMs with real-time performance metrics",
       "version": "2.2.3",
       "category": "scientific",
@@ -176,7 +176,7 @@
     },
     {
       "name": "clio-pandas",
-      "source": "./clio-kit-mcp-servers/pandas",
+      "source": "./plugins/clio-pandas",
       "description": "Pandas MCP - Advanced Data Analysis for LLMs with comprehensive pandas operations",
       "version": "2.2.3",
       "category": "scientific",
@@ -191,7 +191,7 @@
     },
     {
       "name": "clio-parallel-sort",
-      "source": "./clio-kit-mcp-servers/parallel-sort",
+      "source": "./plugins/clio-parallel-sort",
       "description": "Parallel Sort MCP - High-Performance Log File Processing for LLMs with advanced sorting and analysis",
       "version": "2.2.3",
       "category": "scientific",
@@ -206,7 +206,7 @@
     },
     {
       "name": "clio-paraview",
-      "source": "./clio-kit-mcp-servers/paraview",
+      "source": "./plugins/clio-paraview",
       "description": "MCP server for ParaView scientific visualization",
       "version": "2.2.3",
       "category": "scientific",
@@ -221,7 +221,7 @@
     },
     {
       "name": "clio-parquet",
-      "source": "./clio-kit-mcp-servers/parquet",
+      "source": "./plugins/clio-parquet",
       "description": "MCP server for Apache Parquet files",
       "version": "2.2.3",
       "category": "scientific",
@@ -236,7 +236,7 @@
     },
     {
       "name": "clio-plot",
-      "source": "./clio-kit-mcp-servers/plot",
+      "source": "./plugins/clio-plot",
       "description": "MCP server for advanced data visualization and plotting operations",
       "version": "2.2.3",
       "category": "scientific",
@@ -251,7 +251,7 @@
     },
     {
       "name": "clio-scientific-catalog",
-      "source": "./clio-kit-mcp-servers/scientific-catalog",
+      "source": "./plugins/clio-scientific-catalog",
       "description": "Operator-owned scientific dataset discovery for remote agents",
       "version": "1.1.2",
       "category": "scientific",
@@ -265,7 +265,7 @@
     },
     {
       "name": "clio-seismology",
-      "source": "./clio-kit-mcp-servers/seismology",
+      "source": "./plugins/clio-seismology",
       "description": "MCP server for analyzing SAC seismic-waveform files and TAR archives: inspect members, compute per-trace statistics, and plot traces",
       "version": "2.3.0",
       "category": "scientific",
@@ -281,7 +281,7 @@
     },
     {
       "name": "clio-slurm",
-      "source": "./clio-kit-mcp-servers/slurm",
+      "source": "./plugins/clio-slurm",
       "description": "MCP server for Slurm workload management and HPC job scheduling",
       "version": "3.0.0",
       "category": "scientific",
@@ -296,7 +296,7 @@
     },
     {
       "name": "clio-spack",
-      "source": "./clio-kit-mcp-servers/spack",
+      "source": "./plugins/clio-spack",
       "description": "Structured Spack discovery and installation tools for scientific agents",
       "version": "2.3.0",
       "category": "scientific",
@@ -310,7 +310,7 @@
     },
     {
       "name": "clio-terrain",
-      "source": "./clio-kit-mcp-servers/terrain",
+      "source": "./plugins/clio-terrain",
       "description": "MCP server for terrain analysis: DEM slope/aspect/suitability and point-cloud reading/gridding",
       "version": "2.2.3",
       "category": "scientific",
@@ -325,7 +325,7 @@
     },
     {
       "name": "clio-web",
-      "source": "./clio-kit-mcp-servers/web",
+      "source": "./plugins/clio-web",
       "description": "Web MCP server providing curated fetch + search tools for agentic web access",
       "version": "1.1.0",
       "category": "general",
