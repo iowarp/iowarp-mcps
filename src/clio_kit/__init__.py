@@ -59,7 +59,9 @@ _RUNTIME_PROJECT_EXCLUDED_NAMES = frozenset(
         ".venv",
         ".virtualenv-app-data",
         "__pycache__",
-        "dist",
+        # `dist` is deliberately absent: it is Python build output but a node
+        # server's executed artifact. It is excluded per-runtime instead, via
+        # RUNTIME_GENERATED_DIRECTORIES.
         "coverage.xml",
         "htmlcov",
         "junit.xml",

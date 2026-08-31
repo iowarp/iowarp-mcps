@@ -37,8 +37,15 @@ RUNTIME_PROJECT_FILES: dict[str, tuple[str, str]] = {
     "go": ("go.mod", "go.sum"),
 }
 
+# What each runtime *generates* and must therefore not hash or copy. This is
+# per-runtime precisely because the same directory name means opposite things:
+# `dist/` is throwaway build output for Python (wheels and sdists) but is the
+# shipped, executed artifact for a TypeScript server, whose entry point is
+# `dist/server.js`. Excluding it globally made every node server unlaunchable
+# with MODULE_NOT_FOUND, because the one file the launcher was about to run was
+# the one file it declined to copy.
 RUNTIME_GENERATED_DIRECTORIES: dict[str, frozenset[str]] = {
-    "python": frozenset(),
+    "python": frozenset({"dist"}),
     "node": frozenset({"node_modules"}),
     "go": frozenset({"bin"}),
 }

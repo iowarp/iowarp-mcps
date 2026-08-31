@@ -17,6 +17,7 @@ import pytest
 
 from clio_kit import (
     _build_locked_environment,
+    _runtime_project_files,
     locked_server_command,
     locked_server_project_identity,
     materialize_locked_server_project,
@@ -90,7 +91,10 @@ def test_build_output_is_never_part_of_the_identity() -> None:
     """
     assert "node_modules" in generated_directories("node")
     assert "bin" in generated_directories("go")
-    assert generated_directories("python") == frozenset()
+    # Python's build output is `dist` (wheels and sdists). It is owned here
+    # rather than in a shared exclusion list because the same name is a node
+    # server's *shipped* artifact -- see the dist regression tests below.
+    assert generated_directories("python") == frozenset({"dist"})
 
 
 def test_every_build_command_refuses_to_resolve() -> None:
@@ -178,3 +182,66 @@ def test_a_node_server_builds_from_its_lock_and_speaks_mcp(
     reply = json.loads(completed.stdout.strip().splitlines()[0])
 
     assert reply["result"]["serverInfo"]["name"] == "crystal"
+
+
+# --- `dist/` means opposite things per runtime -----------------------------
+#
+# Regression cover for a bug found by taking a real TypeScript MCP server
+# through the launcher: `dist` was excluded from every runtime's project files
+# because it is Python build output. For a node server it is the *shipped*
+# artifact -- the entry point is `dist/server.js` -- so the launcher copied
+# everything except the one file it was about to run and died with
+# MODULE_NOT_FOUND.
+
+
+def test_python_still_treats_dist_as_throwaway_build_output() -> None:
+    assert "dist" in generated_directories("python")
+
+
+def test_node_keeps_dist_because_it_is_the_shipped_artifact() -> None:
+    assert "dist" not in generated_directories("node")
+    assert "node_modules" in generated_directories("node")
+
+
+def test_a_node_projects_compiled_entry_point_is_carried_into_the_copy(
+    tmp_path: Path,
+) -> None:
+    """The file named by `entry` must survive materialisation."""
+    server = tmp_path / "echo-ts"
+    (server / "dist").mkdir(parents=True)
+    (server / "src").mkdir()
+    (server / "node_modules" / "left-pad").mkdir(parents=True)
+    (server / "package.json").write_text('{"name":"echo-ts-mcp"}\n', encoding="utf-8")
+    (server / "package-lock.json").write_text(
+        '{"lockfileVersion":3}\n', encoding="utf-8"
+    )
+    (server / "dist" / "server.js").write_text("// compiled\n", encoding="utf-8")
+    (server / "src" / "server.ts").write_text("// source\n", encoding="utf-8")
+    (server / "node_modules" / "left-pad" / "index.js").write_text(
+        "x\n", encoding="utf-8"
+    )
+
+    carried = {
+        path.relative_to(server).as_posix()
+        for path in _runtime_project_files(server, "node")
+    }
+    assert "dist/server.js" in carried, "the entry point must be copied"
+    assert "package-lock.json" in carried
+    assert not any(name.startswith("node_modules/") for name in carried)
+
+
+def test_a_python_projects_dist_directory_is_still_left_behind(
+    tmp_path: Path,
+) -> None:
+    """Python identity must not change: dist stays excluded there."""
+    server = tmp_path / "demo"
+    (server / "dist").mkdir(parents=True)
+    (server / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    (server / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    (server / "dist" / "demo-1.0.whl").write_text("junk\n", encoding="utf-8")
+
+    carried = {
+        path.relative_to(server).as_posix()
+        for path in _runtime_project_files(server, "python")
+    }
+    assert carried == {"pyproject.toml", "uv.lock"}
