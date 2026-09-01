@@ -1,0 +1,10 @@
+name        = "iowarp-contributing"
+description = "Uniform contributing guidelines for the IOWarp/Clio ecosystem: git etiquette, code style, project architecture awareness, and development workflow standards."
+category    = "workflow"
+maintainer  = "Gnosis Research Center"
+keywords    = ["iowarp", "clio", "contributing", "git-workflow", "code-standards"]
+
+[source]
+type = "git-subdir"
+url  = "https://github.com/iowarp/clio-core.git"
+path = ".claude-plugin/plugins/iowarp-contributing"

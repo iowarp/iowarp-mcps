@@ -1,0 +1,10 @@
+name        = "iowarp-clio"
+kind        = "marketplace"
+description = "Official IOWarp marketplace for the Clio ecosystem: dev environment setup, contributing guidelines, and team workflow consistency."
+category    = "development"
+maintainer  = "Gnosis Research Center"
+keywords    = ["iowarp", "clio-core", "devcontainer", "workflow"]
+
+[source]
+type = "github"
+repo = "iowarp/clio-core"

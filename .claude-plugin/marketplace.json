@@ -567,6 +567,27 @@
       ],
       "license": "BSD-3-Clause",
       "repository": "https://github.com/iowarp/clio-kit"
+    },
+    {
+      "name": "iowarp-contributing",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/iowarp/clio-core.git",
+        "path": ".claude-plugin/plugins/iowarp-contributing"
+      },
+      "description": "Uniform contributing guidelines for the IOWarp/Clio ecosystem: git etiquette, code style, project architecture awareness, and development workflow standards.",
+      "category": "workflow",
+      "keywords": [
+        "iowarp",
+        "clio",
+        "contributing",
+        "git-workflow",
+        "code-standards"
+      ],
+      "metadata": {
+        "maintainer": "Gnosis Research Center",
+        "indexed": true
+      }
     }
   ]
 }
