@@ -8,6 +8,7 @@ blocks publication, and what is merely reported so a reviewer can judge it.
 
 from __future__ import annotations
 
+import json
 import textwrap
 from pathlib import Path
 
@@ -17,7 +18,9 @@ from clio_kit.community import (
     marketplace_add_command,
     read_community_entries,
     read_federated_marketplaces,
+    read_live_marketplaces,
     read_shipped_marketplaces,
+    write_live_marketplaces,
     write_shipped_marketplaces,
 )
 from clio_kit.skills import (
@@ -287,3 +290,67 @@ def test_the_shipped_catalogue_round_trips(tmp_path: Path) -> None:
 def test_reading_a_shipped_catalogue_that_is_absent_is_not_an_error() -> None:
     """An installation with no federated entries must still answer."""
     assert isinstance(read_shipped_marketplaces(), list)
+
+
+# --- live vs baked federated catalogue --------------------------------------
+#
+# A referral baked into the wheel only reaches users on a clio-kit release,
+# which defeats the point of indexing: a contributor's catalogue should arrive
+# on the next `marketplace update`. So the live copy inside the marketplace
+# wins, and the baked snapshot is only a fallback.
+
+
+def write_known_marketplaces(config_dir: Path, install_location: Path) -> None:
+    plugins = config_dir / "plugins"
+    plugins.mkdir(parents=True, exist_ok=True)
+    (plugins / "known_marketplaces.json").write_text(
+        json.dumps(
+            {"clio-kit": {"installLocation": str(install_location)}},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_a_referral_reaches_users_without_a_clio_kit_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The copy inside the marketplace is what an updated client reads."""
+    marketplace = tmp_path / "marketplace"
+    write_live_marketplaces(marketplace, [{"name": "materials-lab"}])
+    config = tmp_path / "config"
+    write_known_marketplaces(config, marketplace)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
+
+    assert [entry["name"] for entry in read_live_marketplaces()] == ["materials-lab"]
+
+
+def test_an_unreadable_client_record_falls_back_rather_than_failing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """known_marketplaces.json is client-internal, so every read is best-effort."""
+    config = tmp_path / "config"
+    (config / "plugins").mkdir(parents=True)
+    (config / "plugins" / "known_marketplaces.json").write_text(
+        "not json", encoding="utf-8"
+    )
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
+
+    assert read_live_marketplaces() == []
+
+
+def test_a_missing_client_directory_is_not_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "absent"))
+    assert read_live_marketplaces() == []
+
+
+def test_a_marketplace_without_a_referral_file_is_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An added marketplace that publishes no catalogue must not shadow one."""
+    config = tmp_path / "config"
+    write_known_marketplaces(config, tmp_path / "empty-marketplace")
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
+    assert read_live_marketplaces() == []

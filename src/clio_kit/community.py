@@ -15,14 +15,30 @@ that will check a submission before it becomes a pull request.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, cast
 
-# Federated marketplaces are baked into the package at generation time, the
-# same way verified contracts are. `community/` is not shipped in the wheel,
-# so a launcher installed from PyPI would otherwise have no way to tell a user
-# which catalogues exist.
+# Where the federated catalogue is published, in preference order.
+#
+# LIVE: a file shipped inside the marketplace itself. It travels with the
+# marketplace, so `claude plugin marketplace update` refreshes it and a new
+# referral reaches users without a clio-kit release -- which is the whole point
+# of indexing rather than vendoring. It sits beside marketplace.json rather
+# than inside it because a custom key under the manifest's own `metadata`
+# fails `claude plugin validate --strict` with "Unknown field".
+#
+# BAKED: a snapshot inside the wheel, written at generation time. This is the
+# fallback for an installation that has never added the marketplace, or a
+# client whose layout we cannot read.
+LIVE_FEDERATED_FILE = "federated-marketplaces.json"
 FEDERATED_DATA_FILE = "_federated_marketplaces.json"
+
+# Claude Code records every added marketplace here, including where it put the
+# checkout. This is a client-internal file, so every read of it is best-effort:
+# a missing file, an unexpected shape or an unreadable path falls back to the
+# baked snapshot rather than failing.
+KNOWN_MARKETPLACES = ("plugins", "known_marketplaces.json")
 
 try:
     import tomllib
@@ -119,12 +135,69 @@ def write_shipped_marketplaces(
 
 def read_shipped_marketplaces() -> list[dict[str, Any]]:
     """Return the federated catalogue baked into this installation."""
-    path = Path(__file__).resolve().parent / FEDERATED_DATA_FILE
-    if not path.is_file():
+    return _read_federated_file(Path(__file__).resolve().parent / FEDERATED_DATA_FILE)
+
+
+def _read_federated_file(path: Path) -> list[dict[str, Any]]:
+    """Read one federated catalogue file, or nothing if it is unusable."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
         return []
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    marketplaces = payload.get("marketplaces", [])
+    marketplaces = payload.get("marketplaces") if isinstance(payload, dict) else None
+    if not isinstance(marketplaces, list):
+        return []
     return cast(list[dict[str, Any]], marketplaces)
+
+
+def _claude_config_dir() -> Path:
+    """Return the client's configuration directory."""
+    configured = os.getenv("CLAUDE_CONFIG_DIR")
+    if configured:
+        return Path(configured).expanduser()
+    return Path.home() / ".claude"
+
+
+def read_live_marketplaces() -> list[dict[str, Any]]:
+    """Return the federated catalogue from an added marketplace, if there is one.
+
+    Reads the client's own record of where each marketplace was checked out, so
+    the answer reflects the last ``marketplace update`` rather than the version
+    of clio-kit that happens to be installed. Every step is best-effort: this
+    reads a client-internal file, and an unreadable or unexpected one means the
+    caller falls back to the baked snapshot.
+    """
+    known = _claude_config_dir().joinpath(*KNOWN_MARKETPLACES)
+    try:
+        entries = json.loads(known.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(entries, dict):
+        return []
+
+    for record in entries.values():
+        if not isinstance(record, dict):
+            continue
+        location = record.get("installLocation")
+        if not isinstance(location, str) or not location:
+            continue
+        found = _read_federated_file(
+            Path(location) / ".claude-plugin" / LIVE_FEDERATED_FILE
+        )
+        if found:
+            return found
+    return []
+
+
+def write_live_marketplaces(repo_root: Path, federated: list[dict[str, Any]]) -> None:
+    """Publish the federated catalogue inside the marketplace itself."""
+    payload = {
+        "schema": "clio-kit.federated-marketplaces.v1",
+        "marketplaces": federated,
+    }
+    path = repo_root / ".claude-plugin" / LIVE_FEDERATED_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
 def _read_entries(repo_root: Path) -> list[tuple[str, dict[str, Any]]]:

@@ -24,6 +24,7 @@ from typing import Any, cast
 from clio_kit.community import (
     read_community_entries,
     read_federated_marketplaces,
+    write_live_marketplaces,
     write_shipped_marketplaces,
 )
 from clio_kit.plugins import read_skill_frontmatter
@@ -734,11 +735,18 @@ def generate_all(mcps_dir: str) -> None:
 
     # Federated marketplaces cannot ride in `plugins`: Claude Code has no
     # nested-marketplace concept and reports an unrecognised entry as an
-    # unknown field it ignores. They are baked into the package instead, where
-    # `clio-kit marketplaces` can print the one command that adds each.
+    # unknown field it ignores. Nor can they ride under the manifest's own
+    # `metadata`, which fails strict validation the same way.
+    #
+    # So they are published twice. The copy beside marketplace.json travels
+    # with the marketplace and refreshes on `marketplace update`, so indexing a
+    # new catalogue does not require a clio-kit release. The copy inside the
+    # package is the fallback for an installation that never added the
+    # marketplace.
     federated = read_federated_marketplaces(repo_root)
+    write_live_marketplaces(repo_root, federated)
     write_shipped_marketplaces(repo_root / "src" / "clio_kit", federated)
-    print(f"Wrote {len(federated)} federated marketplace referral(s)")
+    print(f"Wrote {len(federated)} federated marketplace referral(s), live + baked")
 
     # Claude Code marketplace manifest
     marketplace = build_marketplace_json(

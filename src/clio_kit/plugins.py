@@ -14,13 +14,14 @@ the same answer. A second implementation would drift from the first.
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 from pathlib import Path
 from typing import Any
 
 import click
 
-from clio_kit.community import read_shipped_marketplaces
+from clio_kit.community import read_live_marketplaces, read_shipped_marketplaces
 from clio_kit.skills import (
     SkillProblem,
     always_on_cost,
@@ -355,7 +356,17 @@ def marketplaces_command() -> None:
     rather than merged into ours -- their collection stays under their control,
     and the user runs one command to reach it.
     """
-    federated = read_shipped_marketplaces()
+    # Prefer the copy inside the added marketplace: it refreshes on
+    # `claude plugin marketplace update`, so a newly indexed catalogue reaches
+    # a user without waiting for a clio-kit release. The baked snapshot is what
+    # an installation that has never added the marketplace has to work from,
+    # and it is only as current as the installed version.
+    federated = read_live_marketplaces()
+    source = "the marketplace, as of its last update"
+    if not federated:
+        federated = read_shipped_marketplaces()
+        source = f"clio-kit {_installed_version()}, which may be behind the marketplace"
+
     if not federated:
         click.echo("No federated marketplaces are indexed.")
         return
@@ -364,6 +375,15 @@ def marketplaces_command() -> None:
         click.echo(f"{entry['name']} -- {entry['description']}")
         click.echo(f"  maintained by {maintainer}, indexed here but not reviewed here")
         click.echo(f"  {entry['add_command']}")
+    click.echo(f"\nRead from {source}.")
+
+
+def _installed_version() -> str:
+    """Return this installation's version, for saying how stale a fallback is."""
+    try:
+        return importlib.metadata.version("clio-kit")
+    except importlib.metadata.PackageNotFoundError:  # pragma: no cover - dev tree
+        return "unknown"
 
 
 PLUGIN_COMMANDS = (plugin_group, marketplaces_command)
