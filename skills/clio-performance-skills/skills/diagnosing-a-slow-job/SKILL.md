@@ -1,6 +1,6 @@
 ---
 name: diagnosing-a-slow-job
-description: Use when a finished run took longer than expected, when asked about I/O bottlenecks, bandwidth or access patterns, or when comparing two runs. Triggers on "why was this slow", "darshan log", "I/O bottleneck". Not for judging whether a number is bad; use interpreting-io-performance-numbers.
+description: Use when a slow run would be explained by guessing instead of reading its profile, which blames the wrong layer and optimises code that was never the bottleneck. Covers darshan logs, bandwidth and access patterns. Triggers on "why was this slow", "darshan log", "I/O bottleneck". Not for judging whether a number is bad; use interpreting-io-performance-numbers.
 clio-kit:
   bundle: clio-performance
   servers: clio-darshan, clio-parallel-sort

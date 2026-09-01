@@ -1,6 +1,6 @@
 ---
 name: surveying-literature-and-datasets
-description: Use when surveying literature, finding papers on a subject, looking for prior work, or locating the data behind published results. Triggers on "find papers on", "what is the literature", "prior work". Not for assembling citations; use building-a-bibliography. Not for staging a known dataset; use finding-and-staging-a-dataset.
+description: Use when a literature answer would be given from memory, which confidently cites papers that do not exist and misses everything published recently. Covers finding prior work and the data behind published results. Triggers on "find papers on", "what is the literature", "prior work". Not for assembling citations; use building-a-bibliography. Not for staging a known dataset; use finding-and-staging-a-dataset.
 clio-kit:
   bundle: clio-research
   servers: clio-arxiv, clio-ndp, clio-web

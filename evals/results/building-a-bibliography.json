@@ -5,87 +5,87 @@
     "clio-arxiv",
     "clio-ndp"
   ],
-  "skill_fired": [],
+  "skill_fired": [
+    "building-a-bibliography"
+  ],
   "expected_skill": "building-a-bibliography",
   "tool_calls": [
     {
-      "tool": "mcp__clio-arxiv__search_by_abstract",
+      "tool": "ToolSearch",
       "input": {
-        "abstract_keywords": "speculative decoding",
+        "query": "select:mcp__clio-arxiv__search_arxiv,mcp__clio-arxiv__get_paper_details,mcp__clio-arxiv__export_to_bibtex",
         "max_results": 5
       },
-      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2606.23706v2\",\"title\":\"Zero-Shot Neural Priors for Generalizable Cross-Subject and Cross-Task EEG Decoding\",\"summary\":\"The development of generalizable electroencephalography (EEG) decoding models is essential for robust brain-computer interfaces (BCI) and objective neural biomarkers in mental health. Conventional approaches have been hindered ",
+      "output": "",
+      "failed": false
+    },
+    {
+      "tool": "mcp__clio-arxiv__search_arxiv",
+      "input": {
+        "query": "speculative decoding large language models",
+        "max_results": 8
+      },
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2608.31171v1\",\"title\":\"Finite-energy spacetimes with torus symmetry. Cauchy stability of Einstein-Euler and Einstein-Navier-Stokes areal flows\",\"summary\":\"We establish finite-energy Cauchy stability for vacuum and matter spacetimes with $T^2$ symmetry on $T^3$, under general constitutive equations satisfying hyperbolicity and mild asymptotic co",
+      "failed": false
+    },
+    {
+      "tool": "ToolSearch",
+      "input": {
+        "query": "select:mcp__clio-arxiv__search_by_title,mcp__clio-arxiv__search_by_abstract",
+        "max_results": 5
+      },
+      "output": "",
       "failed": false
     },
     {
       "tool": "mcp__clio-arxiv__search_by_title",
       "input": {
         "title_keywords": "speculative decoding",
-        "max_results": 5
+        "max_results": 10
       },
       "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2606.23706v2\",\"title\":\"Zero-Shot Neural Priors for Generalizable Cross-Subject and Cross-Task EEG Decoding\",\"summary\":\"The development of generalizable electroencephalography (EEG) decoding models is essential for robust brain-computer interfaces (BCI) and objective neural biomarkers in mental health. Conventional approaches have been hindered ",
       "failed": false
     },
     {
-      "tool": "mcp__clio-arxiv__search_arxiv",
+      "tool": "mcp__clio-arxiv__search_by_abstract",
       "input": {
-        "query": "speculative decoding LLM inference acceleration",
+        "abstract_keywords": "speculative decoding draft model verification language model inference",
         "max_results": 10
       },
-      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2608.23565v1\",\"title\":\"ReWorld: An Interactive World Model with Long-Horizon Memory\",\"summary\":\"An interactive world model must follow the user's actions, remember the places it has shown, and stream in real time. The tension is structural: control wants a short horizon, memory wants an unbounded one. ReWorld separates the two during training a",
+      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2603.15969v2\",\"title\":\"Robust Language Identification for Romansh Varieties\",\"summary\":\"The Romansh language has several regional varieties, called idioms, which sometimes have limited mutual intelligibility. Despite this linguistic diversity, there has been a lack of documented efforts to build a language identification (LID) system that can d",
       "failed": false
     },
     {
-      "tool": "mcp__clio-arxiv__search_arxiv",
+      "tool": "mcp__clio-arxiv__get_paper_details",
       "input": {
-        "query": "speculative sampling language model draft",
-        "max_results": 10
+        "arxiv_id": "2211.17192"
       },
-      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2608.23566v1\",\"title\":\"How to Train a Critic Stably and Efficiently\",\"summary\":\"Group-based reinforcement learning methods such as GRPO for large language models avoid training a critic by sampling multiple responses for each prompt. A reliable critic could instead estimate token-level advantages from one response, but standard critic-based tra",
+      "output": "{\"success\":true,\"paper\":{\"id\":\"http://arxiv.org/abs/2211.17192v2\",\"title\":\"Fast Inference from Transformers via Speculative Decoding\",\"summary\":\"Inference from large autoregressive models like Transformers is slow - decoding K tokens takes K serial runs of the model. In this work we introduce speculative decoding - an algorithm to sample from autoregressive models faster without any changes to the",
       "failed": false
     },
     {
-      "tool": "mcp__clio-arxiv__search_by_author",
+      "tool": "mcp__clio-arxiv__get_paper_details",
       "input": {
-        "author": "Leviathan",
-        "max_results": "10"
+        "arxiv_id": "2302.01318"
       },
-      "output": "<tool_use_error>Error: No such tool available: mcp__clio-arxiv__search_by_author</tool_use_error>",
-      "failed": true
-    },
-    {
-      "tool": "mcp__clio-arxiv__search_by_title",
-      "input": {
-        "title_keywords": "Fast Inference from Transformers via Speculative Decoding",
-        "max_results": 5
-      },
-      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2605.01106v1\",\"title\":\"Component-Aware Self-Speculative Decoding in Hybrid Language Models\",\"summary\":\"Speculative decoding accelerates autoregressive inference by drafting candidate tokens with a fast model and verifying them in parallel with the target. Self-speculative methods avoid the need for an external drafter but have been studied excl",
-      "failed": false
-    },
-    {
-      "tool": "mcp__clio-arxiv__search_by_title",
-      "input": {
-        "title_keywords": "Accelerating Large Language Model Decoding with Speculative Sampling",
-        "max_results": 5
-      },
-      "output": "{\"success\":true,\"papers\":[{\"id\":\"http://arxiv.org/abs/2605.01106v1\",\"title\":\"Component-Aware Self-Speculative Decoding in Hybrid Language Models\",\"summary\":\"Speculative decoding accelerates autoregressive inference by drafting candidate tokens with a fast model and verifying them in parallel with the target. Self-speculative methods avoid the need for an external drafter but have been studied excl",
+      "output": "{\"success\":true,\"paper\":{\"id\":\"http://arxiv.org/abs/2302.01318v1\",\"title\":\"Accelerating Large Language Model Decoding with Speculative Sampling\",\"summary\":\"We present speculative sampling, an algorithm for accelerating transformer decoding by enabling the generation of multiple tokens from each transformer call. Our algorithm relies on the observation that the latency of parallel scoring of short ",
       "failed": false
     },
     {
       "tool": "mcp__clio-arxiv__export_to_bibtex",
       "input": {
-        "papers_json": "[{\"id\":\"http://arxiv.org/abs/2203.16487v6\",\"title\":\"Speculative Decoding: Exploiting Speculative Execution for Accelerating Seq2seq Generation\",\"published\":\"2022-03-30T17:27:09Z\",\"authors\":[\"Heming Xia\",\"Tao Ge\",\"Peiyi Wang\",\"Si-Qing Chen\",\"Furu Wei\",\"Zhifang Sui\"],\"categories\":[\"cs.CL\",\"cs.LG\"]},{\"id\":\"http://arxiv.org/abs/2302.01318v1\",\"title\":\"Accelerating Large Language Model Decoding with Speculative Sampling\",\"published\":\"2023-02-02T18:44:11Z\",\"authors\":[\"Charlie Chen\",\"Sebastian Borgeaud\",\"Geoffrey Irving\",\"Jean-Baptiste Lespiau\",\"Laurent Sifre\",\"John Jumper\"],\"categories\":[\"cs.CL\"]}]"
+        "papers_json": "[{\"id\":\"http://arxiv.org/abs/2211.17192v2\",\"title\":\"Fast Inference from Transformers via Speculative Decoding\",\"authors\":[\"Yaniv Leviathan\",\"Matan Kalman\",\"Yossi Matias\"],\"published\":\"2022-11-30T17:33:28Z\",\"updated\":\"2023-05-18T20:28:20Z\",\"categories\":[\"cs.LG\",\"cs.CL\"],\"comment\":\"ICML 2023 Oral\"},{\"id\":\"http://arxiv.org/abs/2302.01318v1\",\"title\":\"Accelerating Large Language Model Decoding with Speculative Sampling\",\"authors\":[\"Charlie Chen\",\"Sebastian Borgeaud\",\"Geoffrey Irving\",\"Jean-Baptiste Lespiau\",\"Laurent Sifre\",\"John Jumper\"],\"published\":\"2023-02-02T18:44:11Z\",\"updated\":\"2023-02-02T18:44:11Z\",\"categories\":[\"cs.CL\"]}]"
       },
-      "output": "{\"success\":true,\"bibtex\":\"@article{2203.16487v6,\\n title = {Speculative Decoding: Exploiting Speculative Execution for Accelerating Seq2seq Generation},\\n author = {Heming Xia and Tao Ge and Peiyi Wang and Si-Qing Chen and Furu Wei and Zhifang Sui},\\n year = {2022},\\n eprint = {2203.16487v6},\\n archivePrefix = {arXiv},\\n primaryClass = {cs.CL},\\n url = {http://arxiv.org/abs/2203.16487v6}\\n}\\n\\n@ar",
+      "output": "{\"success\":true,\"bibtex\":\"@article{2211.17192v2,\\n title = {Fast Inference from Transformers via Speculative Decoding},\\n author = {Yaniv Leviathan and Matan Kalman and Yossi Matias},\\n year = {2022},\\n eprint = {2211.17192v2},\\n archivePrefix = {arXiv},\\n primaryClass = {cs.LG},\\n url = {http://arxiv.org/abs/2211.17192v2}\\n}\\n\\n@article{2302.01318v1,\\n title = {Accelerating Large Language Model D",
       "failed": false
     }
   ],
   "tools_total": 8,
-  "tools_ok": 7,
-  "tools_failed": 1,
-  "answer": "The search returned papers about \"decoding\" in general, but not specifically about **speculative decoding** (the LLM inference acceleration technique). Let me search more specifically by title: The results still don't show the specific speculative decoding papers for LLM inference. Let me try a broader search for \"speculative\" in the context of LLMs: Still no direct results for speculative decoding. Let me try searching specifically for the foundational papers by their known authors or more precise terms: Let me try searching by the specific paper titles that are well-known in this field: I found the two most relevant foundational papers on speculative decoding:\n\n1. **\"Speculative Decoding: ",
-  "seconds": 38.7,
-  "turns": 9,
-  "cost_usd": 0.268843,
+  "tools_ok": 8,
+  "tools_failed": 0,
+  "answer": "I'll load the arXiv tools I need. The general search ignored my query and just returned today's newest arXiv postings across all fields. Let me try the title/abstract-specific search tools. Search returned noisy results and missed the canonical papers. Let me check two well-known IDs directly \u2014 `get_paper_details` will confirm or refute them. Both confirmed. Exporting via the tool rather than writing entries myself. Both entries below came from `export_to_bibtex` on verified records \u2014 I haven't hand-edited them.\n\n```bibtex\n@article{2211.17192v2,\n    title = {Fast Inference from Transformers via Speculative Decoding},\n    author = {Yaniv Leviathan and Matan Kalman and Yossi Matias},\n    year ",
+  "seconds": 48.0,
+  "turns": 11,
+  "cost_usd": 0.436647,
   "is_error": false
 }

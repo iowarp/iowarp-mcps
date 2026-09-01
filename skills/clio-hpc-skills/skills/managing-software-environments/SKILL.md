@@ -1,6 +1,6 @@
 ---
 name: managing-software-environments
-description: Use when asked what software a machine has, which compiler or library version is available, how to switch versions, or when a run fails because software was not found. Triggers on "module avail", "is X installed", "what MPI do we have". Not for getting software into a run; use running-a-simulation-on-a-cluster. Not for sizing a scheduler request; use writing-slurm-job-scripts.
+description: Use when a compiler, library or MPI would be assumed present rather than checked, so the run fails at load time or silently picks a different version than intended. Triggers on "module avail", "is X installed", "what MPI do we have". Not for getting software into a run; use running-a-simulation-on-a-cluster. Not for sizing a scheduler request; use writing-slurm-job-scripts.
 clio-kit:
   bundle: clio-hpc
   servers: clio-lmod, clio-spack

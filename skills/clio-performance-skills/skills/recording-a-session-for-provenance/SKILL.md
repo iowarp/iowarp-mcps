@@ -1,6 +1,6 @@
 ---
 name: recording-a-session-for-provenance
-description: Use when asked to log or record a session, keep a provenance trail of what was decided, or retrieve what happened in an earlier session. Triggers on "record this", "chronolog", "what did we decide last time". Not for job performance; ChronoLog records conversation, not execution.
+description: Use when a decision trail would be kept only in the conversation, which is lost the moment the session ends and cannot be retrieved later. Covers recording and reading back a working session. Triggers on "record this", "chronolog", "what did we decide last time". Not for job performance; ChronoLog records conversation, not execution.
 clio-kit:
   bundle: clio-performance
   servers: clio-chronolog

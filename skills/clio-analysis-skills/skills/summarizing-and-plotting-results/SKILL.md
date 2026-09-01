@@ -1,6 +1,6 @@
 ---
 name: summarizing-and-plotting-results
-description: Use when asked to summarize a table, compute statistics, or produce a figure from a CSV or Excel file. Triggers on "plot this", "summarize the data", "make a chart". Not for mesh or volume data; use visualizing-3d-simulation-output. Not for choosing a chart type; use choosing-the-right-chart.
+description: Use when a table would be summarised or plotted by reading it into context and eyeballing it, which misstates aggregates and silently drops rows on larger files. Covers CSV and Excel statistics and figures. Triggers on "plot this", "summarize the data", "make a chart". Not for mesh or volume data; use visualizing-3d-simulation-output. Not for choosing a chart type; use choosing-the-right-chart.
 clio-kit:
   bundle: clio-analysis
   servers: clio-pandas, clio-plot

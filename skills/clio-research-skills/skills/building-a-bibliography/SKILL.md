@@ -1,6 +1,6 @@
 ---
 name: building-a-bibliography
-description: Use when asked for citations, references, a BibTeX file or a reading list, or when assembling related work for a paper. Triggers on "bibtex", "cite these", "reference list". Not for exploring a topic; use surveying-literature-and-datasets.
+description: Use when citations would be assembled by hand or from memory, which invents plausible arXiv ids and author lists that do not exist. Covers BibTeX export, reading lists and related-work sections. Triggers on "bibtex", "cite these", "reference list". Not for exploring a topic; use surveying-literature-and-datasets.
 clio-kit:
   bundle: clio-research
   servers: clio-arxiv, clio-ndp

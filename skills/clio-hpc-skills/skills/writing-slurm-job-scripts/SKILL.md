@@ -1,6 +1,6 @@
 ---
 name: writing-slurm-job-scripts
-description: Use when writing or fixing an sbatch script, choosing a partition or resource request, setting up job arrays or dependencies, or explaining why a submitted job has not started. Triggers on "sbatch", "why is my job pending", "job array", "--mem". Not for running a Spack package through JARVIS; use running-a-simulation-on-a-cluster.
+description: Use when an sbatch script would be written without first checking the machine's real limits, which is what leaves a job pending forever or killed at the wall clock. Covers partitions, --mem, job arrays and dependencies. Triggers on "sbatch", "why is my job pending", "job array", "--mem". Not for running a Spack package through JARVIS; use running-a-simulation-on-a-cluster.
 clio-kit:
   bundle: clio-hpc
   servers: clio-slurm, clio-node-hardware

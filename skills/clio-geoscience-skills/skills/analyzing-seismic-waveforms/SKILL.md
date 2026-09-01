@@ -1,6 +1,6 @@
 ---
 name: analyzing-seismic-waveforms
-description: Use when working with SAC files or archives, seismic traces, station data, earthquake catalogs, b-values or magnitude completeness. Triggers on "SAC", "waveform", "b-value", "Mc", "aftershock". Not for mapping features; use mapping-geospatial-and-terrain-data.
+description: Use when a b-value, magnitude completeness or trace statistic would be computed without first inspecting the archive, which silently fits an incomplete catalog and returns a confident wrong number. Covers SAC files, seismic traces, station data and earthquake catalogs. Triggers on "SAC", "waveform", "b-value", "Mc", "aftershock". Not for mapping features; use mapping-geospatial-and-terrain-data.
 clio-kit:
   bundle: clio-geoscience
   servers: clio-seismology

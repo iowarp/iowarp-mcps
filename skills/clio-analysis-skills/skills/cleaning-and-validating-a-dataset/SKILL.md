@@ -1,6 +1,6 @@
 ---
 name: cleaning-and-validating-a-dataset
-description: Use when data quality is in question, results look wrong, values are missing or duplicated, or before statistics are computed. Triggers on "clean this data", "missing values", "outliers", "validate". Not for producing a figure; use summarizing-and-plotting-results.
+description: Use when statistics would be computed before the data is profiled, so missing values and duplicate rows are silently averaged into the result and nobody learns what changed. Triggers on "clean this data", "missing values", "outliers", "validate". Not for producing a figure; use summarizing-and-plotting-results.
 clio-kit:
   bundle: clio-analysis
   servers: clio-pandas

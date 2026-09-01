@@ -1,6 +1,6 @@
 ---
 name: mapping-geospatial-and-terrain-data
-description: Use when working with GeoJSON, place names, bounding boxes, elevation grids or point clouds, or when asked to produce a map. Triggers on "geojson", "render a map", "coordinates for", "DEM". Not for projections; use working-with-coordinate-systems. Not for waveforms or earthquake catalogs; use analyzing-seismic-waveforms.
+description: Use when GeoJSON, a bounding box, an elevation grid or a point cloud would be trusted without validating it first, which produces a map that renders cleanly and is geometrically wrong. Triggers on "geojson", "render a map", "coordinates for", "DEM". Not for projections; use working-with-coordinate-systems. Not for waveforms or earthquake catalogs; use analyzing-seismic-waveforms.
 clio-kit:
   bundle: clio-geoscience
   servers: clio-geo, clio-terrain

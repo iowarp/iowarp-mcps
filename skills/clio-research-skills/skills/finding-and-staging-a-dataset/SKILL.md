@@ -1,6 +1,6 @@
 ---
 name: finding-and-staging-a-dataset
-description: Use when looking for data on a subject, when a dataset must be downloaded before analysis, or when a file path is needed for data that only exists as a search result. Triggers on "find a dataset", "download the data", "stage this". Not for the papers behind the data; use surveying-literature-and-datasets.
+description: Use when analysis would be attempted on a dataset that exists only as a search result and has no path on disk yet, so every later read fails on a file that was never staged. Triggers on "find a dataset", "download the data", "stage this". Not for the papers behind the data; use surveying-literature-and-datasets.
 clio-kit:
   bundle: clio-research
   servers: clio-ndp, clio-scientific-catalog, clio-web
