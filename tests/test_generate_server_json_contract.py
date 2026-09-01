@@ -92,6 +92,7 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
             encoding="utf-8"
         )
     )
+
     # Every plugin manifest lives under plugins/, servers and bundles alike,
     # because a plugin's source is copied wholesale on install and neither kind
     # ships code. That means source no longer separates them: a bundle is one
@@ -99,11 +100,19 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     # per-server manifest. They stay keyed differently -- a server entry drops
     # the clio- prefix to match its directory name, a bundle's name IS its
     # identity -- so each set is checkable against its own inventory.
+    # An indexed outside contribution carries a *table* as its source (a repo,
+    # a subdirectory, an npm package), not a repository-relative path string.
+    # Only our own generated entries are path-sourced, so every source test has
+    # to narrow to strings before it can match a prefix.
+    def local_source(plugin: dict, prefix: str) -> bool:
+        source = plugin["source"]
+        return isinstance(source, str) and source.startswith(prefix)
+
     expected_bundles = GENERATOR.read_bundles(repository_root)
     plugin_sourced = [
         plugin
         for plugin in marketplace["plugins"]
-        if plugin["source"].startswith("./plugins/")
+        if local_source(plugin, "./plugins/")
     ]
     marketplace_plugins = {
         plugin["name"].removeprefix("clio-"): plugin
@@ -118,7 +127,7 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     skill_plugins = {
         plugin["name"]: plugin
         for plugin in marketplace["plugins"]
-        if plugin["source"].startswith("./skills/")
+        if local_source(plugin, "./skills/")
     }
     expected_skill_plugins = {
         f"{bundle_name}-skills"
@@ -139,11 +148,29 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     assert set(marketplace_plugins) == set(expected_server_versions)
     assert set(bundle_plugins) == set(expected_bundles)
     assert set(skill_plugins) == expected_skill_plugins
-    # Every published entry is one of the three kinds. A fourth source shape
-    # would be an entry nothing in this repository accounts for.
-    assert len(marketplace_plugins) + len(bundle_plugins) + len(skill_plugins) == len(
-        marketplace["plugins"]
+    # Outside contributions are the fourth kind: indexed rather than generated,
+    # so their source names a repository we do not own instead of a path we do.
+    # They must still reconcile against community/entries/, or an entry could
+    # reach the catalogue without a file in this repository accounting for it.
+    community_plugins = {
+        plugin["name"]: plugin
+        for plugin in marketplace["plugins"]
+        if not isinstance(plugin["source"], str)
+    }
+    assert set(community_plugins) == {
+        entry["name"] for entry in read_community_entries(repository_root)
+    }
+    assert all(
+        plugin["metadata"]["indexed"] is True
+        for plugin in community_plugins.values()
+        if "metadata" in plugin
     )
+
+    # Every published entry is one of the four kinds. A fifth source shape would
+    # be an entry nothing in this repository accounts for.
+    assert len(marketplace_plugins) + len(bundle_plugins) + len(skill_plugins) + len(
+        community_plugins
+    ) == len(marketplace["plugins"])
     assert gemini_extension["version"] == expected_version
     for path in manifests:
         server_name = path.parent.name
@@ -652,7 +679,9 @@ def test_published_marketplace_categories_carry_real_scope() -> None:
     server_entries = [
         plugin
         for plugin in marketplace["plugins"]
-        if plugin["source"].startswith("./plugins/") and plugin["name"] not in bundles
+        if isinstance(plugin["source"], str)
+        and plugin["source"].startswith("./plugins/")
+        and plugin["name"] not in bundles
     ]
     categories = {plugin["category"] for plugin in server_entries}
 
