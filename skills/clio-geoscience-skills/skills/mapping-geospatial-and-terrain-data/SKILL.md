@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-geoscience
   servers: clio-geo, clio-terrain
   provenance: designed
-  eval-status: smoke-checked
+  eval-status: eval-run
 ---
 
 # Work with geospatial data without silently getting it wrong

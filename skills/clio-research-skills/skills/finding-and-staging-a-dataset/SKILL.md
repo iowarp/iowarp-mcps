@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-research
   servers: clio-ndp, clio-scientific-catalog, clio-web
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Find data, then get it onto disk

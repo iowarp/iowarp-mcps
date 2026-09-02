@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-geoscience
   servers: none
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Coordinate systems fail quietly

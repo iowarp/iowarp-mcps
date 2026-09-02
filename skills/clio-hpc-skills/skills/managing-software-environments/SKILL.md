@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-hpc
   servers: clio-lmod, clio-spack
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Find out what software a machine has

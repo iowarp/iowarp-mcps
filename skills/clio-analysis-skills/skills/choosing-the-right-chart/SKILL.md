@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-analysis
   servers: none
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Pick the chart the question asks for

@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-geoscience
   servers: clio-seismology
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Waveforms and catalogs are different data

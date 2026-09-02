@@ -33,7 +33,16 @@ def find_server_module() -> str:
     with open(pyproject_path, "rb") as f:
         data = tomllib.load(f)
 
-    scripts = data.get("project", {}).get("scripts", {})
+    project = data.get("project", {})
+    # Run from the repo root and the first entry point is the launcher, which
+    # is not an MCP server. Reporting it as non-compliant sends contributors
+    # hunting for a bug that is not there.
+    if not any(d.startswith("fastmcp") for d in project.get("dependencies", [])):
+        print(f"SKIP: {project.get('name', 'this project')} is not an MCP server")
+        print("Run this from a directory under clio-kit-mcp-servers/.")
+        sys.exit(0)
+
+    scripts = project.get("scripts", {})
     if not scripts:
         print("ERROR: No [project.scripts] entry found in pyproject.toml")
         sys.exit(1)

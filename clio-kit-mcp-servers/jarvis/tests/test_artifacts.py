@@ -9,7 +9,11 @@ from typing import Any
 
 import pytest
 
-from jarvis_mcp.artifact_content import ArtifactContentError, read_artifact_tail, resolve_artifact_path
+from jarvis_mcp.artifact_content import (
+    ArtifactContentError,
+    read_artifact_tail,
+    resolve_artifact_path,
+)
 from jarvis_mcp.artifacts import (
     ArtifactQueryError,
     ArtifactSnapshotError,
@@ -394,9 +398,7 @@ def _log_snapshot(
     location: dict[str, str],
     state: str = "finalized",
 ) -> dict[str, Any]:
-    artifact = _artifact(
-        "L", package_id="lammps-cu-elastic", role="log", state=state
-    )
+    artifact = _artifact("L", package_id="lammps-cu-elastic", role="log", state=state)
     artifact["execution_id"] = execution_id
     artifact["location"] = location
     return {
@@ -424,7 +426,9 @@ class TestArtifactContentMaxBytes:
     by design. ``content_max_bytes`` adds a narrow, bounded tail read scoped
     to ``role="log"`` artifacts only."""
 
-    def test_reads_the_tail_of_an_execution_scoped_log_file(self, tmp_path: Path) -> None:
+    def test_reads_the_tail_of_an_execution_scoped_log_file(
+        self, tmp_path: Path
+    ) -> None:
         execution_root = tmp_path / "jarvis_c658476089200e8ee78951f11054b737"
         execution_root.mkdir()
         (execution_root / "stdout.log").write_bytes(
@@ -446,7 +450,9 @@ class TestArtifactContentMaxBytes:
         assert artifact["content_bytes_read"] == len(artifact["content"])
         assert artifact["content_error"] is None
 
-    def test_reads_only_the_tail_when_the_file_exceeds_the_bound(self, tmp_path: Path) -> None:
+    def test_reads_only_the_tail_when_the_file_exceeds_the_bound(
+        self, tmp_path: Path
+    ) -> None:
         execution_root = tmp_path / "exec"
         execution_root.mkdir()
         body = "".join(f"step {i}\n" for i in range(1000))
@@ -491,12 +497,16 @@ class TestArtifactContentMaxBytes:
         assert bytes_read == len(b"LAMMPS (2 Aug2026)\n")
 
     def test_execution_path_location_requires_an_execution_root(self) -> None:
-        with pytest.raises(ArtifactContentError, match="root directory could not be resolved"):
+        with pytest.raises(
+            ArtifactContentError, match="root directory could not be resolved"
+        ):
             resolve_artifact_path(
                 {"kind": "execution_path", "value": "stdout.log"}, execution_root=None
             )
 
-    def test_types_a_reason_for_non_log_roles_instead_of_silently_omitting(self) -> None:
+    def test_types_a_reason_for_non_log_roles_instead_of_silently_omitting(
+        self,
+    ) -> None:
         snapshot = artifact_snapshot_document(
             _snapshot(),  # default artifact role="output"
             expected_execution_id="execution-a",
@@ -566,7 +576,9 @@ class TestArtifactContentMaxBytes:
         snapshot = _validated_log_snapshot(
             location={"kind": "execution_path", "value": "stdout.log"}
         )
-        with pytest.raises(ArtifactQueryError, match="content_max_bytes must be between"):
+        with pytest.raises(
+            ArtifactQueryError, match="content_max_bytes must be between"
+        ):
             artifact_query_page(
                 snapshot,
                 role="log",

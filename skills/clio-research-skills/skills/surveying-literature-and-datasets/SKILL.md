@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-research
   servers: clio-arxiv, clio-ndp, clio-web
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Survey a topic, then find the data behind it

@@ -54,6 +54,17 @@ BOUNDARY_MARKER = "Not for"
 EVAL_FILENAMES = ("evals.md", "EVALS.md")
 EVAL_DIRNAME = "evals"
 
+# How far a skill has actually been checked, weakest first. The field is what a
+# reader trusts when deciding whether to rely on a skill, so an unrecognised
+# value has to be refused rather than read as "some kind of tested".
+EVAL_LADDER = (
+    "untested",
+    "scenarios-recorded",
+    "trigger-checked",
+    "smoke-checked",
+    "eval-run",
+)
+
 
 class SkillProblem(Exception):
     """A skill directory could not be read well enough to check."""
@@ -93,11 +104,20 @@ def read_skill_frontmatter(skill_dir: Path) -> dict[str, str]:
         raise SkillProblem(f"{skill_md} has unterminated frontmatter")
 
     fields: dict[str, str] = {}
+    in_clio_block = False
     for line in frontmatter.splitlines():
-        if not line or line.startswith((" ", "\t")):
+        if not line:
             continue
+        indented = line.startswith((" ", "\t"))
+        # The kit's own metadata (bundle, servers, eval-status) is nested under
+        # a clio-kit: key. Skipping every indented line hid it entirely, so
+        # nothing could check it.
+        if indented and not in_clio_block:
+            continue
+        if not indented:
+            in_clio_block = line.startswith("clio-kit:")
         key, colon, value = line.partition(":")
-        if colon:
+        if colon and value.strip():
             fields[key.strip()] = value.strip()
 
     for required in ("name", "description"):
@@ -129,6 +149,13 @@ def check_skill(skill_dir: Path) -> SkillReport:
     fields = read_skill_frontmatter(skill_dir)
     description = fields["description"]
     report = SkillReport(name=fields["name"], description_chars=len(description))
+
+    status = fields.get("eval-status")
+    if status is not None and status not in EVAL_LADDER:
+        report.problems.append(
+            f"{skill_dir.name} has eval-status {status!r}, which is not on the "
+            f"ladder: {', '.join(EVAL_LADDER)}."
+        )
 
     if not has_recorded_scenarios(skill_dir):
         report.problems.append(

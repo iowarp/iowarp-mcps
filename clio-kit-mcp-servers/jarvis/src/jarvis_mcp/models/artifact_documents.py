@@ -134,7 +134,7 @@ class ExecutionArtifactQuery(BaseModel):
         default=None,
         description=(
             "When set, return a bounded tail read (this many bytes, from the "
-            "end of the file) of every role=\"log\" artifact in this page. "
+            'end of the file) of every role="log" artifact in this page. '
             "Every other artifact -- and any log artifact whose content could "
             "not be read -- carries a typed content_error instead. Omit to "
             "keep the manifest content-free."

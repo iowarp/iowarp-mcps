@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-research
   servers: clio-arxiv, clio-ndp
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Build a bibliography from records, not from memory

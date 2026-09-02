@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-analysis
   servers: clio-pandas
   provenance: designed
-  eval-status: smoke-checked
+  eval-status: eval-run
 ---
 
 # Clean a table without inventing data

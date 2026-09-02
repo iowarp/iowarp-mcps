@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-performance
   servers: clio-parallel-sort
   provenance: designed
-  eval-status: smoke-checked
+  eval-status: eval-run
 ---
 
 # Search a log that is too big to read

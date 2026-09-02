@@ -22,7 +22,10 @@ from urllib.parse import urlsplit
 # in ``artifact_content.py``, not here: this module owns snapshot VALIDATION
 # and paging; that one owns the bounded, ``role="log"``-only file read
 # layered on top of a page's results.
-from jarvis_mcp.artifact_content import ARTIFACT_MAX_CONTENT_BYTES, artifact_with_content
+from jarvis_mcp.artifact_content import (
+    ARTIFACT_MAX_CONTENT_BYTES,
+    artifact_with_content,
+)
 
 ARTIFACT_SNAPSHOT_SCHEMA = "jarvis.execution.artifacts.v1"
 ARTIFACT_EVENT_SCHEMA = "jarvis.artifact.v1"
@@ -703,4 +706,3 @@ def _finite_nonnegative(value: object) -> bool:
         and math.isfinite(float(value))
         and float(value) >= 0
     )
-

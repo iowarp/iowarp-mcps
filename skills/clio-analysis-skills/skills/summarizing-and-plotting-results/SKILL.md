@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-analysis
   servers: clio-pandas, clio-plot
   provenance: designed
-  eval-status: smoke-checked
+  eval-status: eval-run
 ---
 
 # From a table to numbers and a figure

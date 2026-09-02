@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-scientific-io
   servers: none
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Choose a format, and chunk it for how it will be read

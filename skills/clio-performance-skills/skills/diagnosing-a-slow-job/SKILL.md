@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-performance
   servers: clio-darshan, clio-parallel-sort
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Work out why a job was slow

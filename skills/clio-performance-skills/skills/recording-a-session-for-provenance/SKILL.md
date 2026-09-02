@@ -5,7 +5,7 @@ clio-kit:
   bundle: clio-performance
   servers: clio-chronolog
   provenance: designed
-  eval-status: trigger-checked
+  eval-status: eval-run
 ---
 
 # Record a session so it can be read back later

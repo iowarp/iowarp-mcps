@@ -25,10 +25,12 @@ from clio_kit.community import (
 )
 from clio_kit.skills import (
     DESCRIPTION_BUDGET,
+    EVAL_LADDER,
     SkillProblem,
     always_on_cost,
     check_skill,
     check_skill_collection,
+    read_skill_frontmatter,
 )
 
 GOOD_DESCRIPTION = (
@@ -44,12 +46,13 @@ def write_skill(
     *,
     description: str = GOOD_DESCRIPTION,
     evals: bool = True,
+    extra: str = "",
 ) -> Path:
     """Write one skill directory and return it."""
     skill_dir = root / name
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
-        f"---\nname: {name}\ndescription: {description}\n---\n\n# {name}\n",
+        f"---\nname: {name}\ndescription: {description}\n{extra}---\n\n# {name}\n",
         encoding="utf-8",
     )
     if evals:
@@ -354,3 +357,24 @@ def test_a_marketplace_without_a_referral_file_is_skipped(
     write_known_marketplaces(config, tmp_path / "empty-marketplace")
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
     assert read_live_marketplaces() == []
+
+
+def test_an_eval_status_off_the_ladder_is_refused(tmp_path: Path) -> None:
+    skill = write_skill(tmp_path, "demo", extra="clio-kit:\n  eval-status: vibes\n")
+    report = check_skill(skill)
+    assert not report.ok
+    assert any("not on the ladder" in p for p in report.problems)
+
+
+def test_every_rung_of_the_ladder_is_accepted(tmp_path: Path) -> None:
+    for rung in EVAL_LADDER:
+        skill = write_skill(
+            tmp_path / rung, "demo", extra=f"clio-kit:\n  eval-status: {rung}\n"
+        )
+        assert check_skill(skill).ok, rung
+
+
+def test_our_own_skills_all_declare_a_rung_we_recognise() -> None:
+    for skill_md in Path("skills").glob("*/skills/*/SKILL.md"):
+        fields = read_skill_frontmatter(skill_md.parent)
+        assert fields.get("eval-status") in EVAL_LADDER, skill_md
