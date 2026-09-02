@@ -134,9 +134,6 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
         for bundle_name in expected_bundles
         if (repository_root / "skills" / f"{bundle_name}-skills").is_dir()
     }
-    gemini_extension = json.loads(
-        (repository_root / "gemini-extension.json").read_text(encoding="utf-8")
-    )
     readme = (repository_root / "README.md").read_text(encoding="utf-8")
 
     assert projects
@@ -171,7 +168,6 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
     assert len(marketplace_plugins) + len(bundle_plugins) + len(skill_plugins) + len(
         community_plugins
     ) == len(marketplace["plugins"])
-    assert gemini_extension["version"] == expected_version
     for path in manifests:
         server_name = path.parent.name
         manifest = json.loads(path.read_text(encoding="utf-8"))
@@ -282,17 +278,6 @@ def test_persistent_configs_use_the_installed_tool() -> None:
                 "command": "clio-kit",
                 "args": ["mcp-server", "jarvis"],
             }
-        }
-    }
-    extension = GENERATOR.build_gemini_extension(
-        ["jarvis"],
-        pypi_version="2.3.0",
-    )
-    assert extension["version"] == "2.3.0"
-    assert extension["mcpServers"] == {
-        "clio-jarvis": {
-            "command": "clio-kit",
-            "args": ["mcp-server", "jarvis"],
         }
     }
 

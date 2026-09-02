@@ -201,29 +201,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-## Gemini CLI
 
-Add to `~/.gemini/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "clio-plot": {
-      "command": "uvx",
-      "args": [
-        "clio-kit",
-        "plot"
-      ]
-    }
-  }
-}
-```
-
-Or install the CLIO Kit extension:
-
-```bash
-gemini extensions install https://github.com/iowarp/clio-kit
-```
 ## Examples
 
 ### 1. Data Exploration and Analysis

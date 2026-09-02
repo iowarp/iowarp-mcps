@@ -32,7 +32,6 @@ const PlatformButton = ({ platform, mcpName, onCopy }) => {
     claude: { label: 'Claude', logo: 'claude-logo.png' },
     cursor: { label: 'Cursor', logo: 'cursor-logo.png' },
     vscode: { label: 'VSCode', logo: 'vscode-logo.png' },
-    gemini: { label: 'Gemini', logo: 'gemini-logo.png' }
   };
 
   const config = platformConfig[platform];
@@ -143,7 +142,6 @@ const FeaturedMCPCard = ({ mcpId, mcp, onCopy }) => {
           <PlatformButton platform="claude" mcpName={mcp.name} onCopy={onCopy} />
           <PlatformButton platform="cursor" mcpName={mcp.name} onCopy={onCopy} />
           <PlatformButton platform="vscode" mcpName={mcp.name} onCopy={onCopy} />
-          <PlatformButton platform="gemini" mcpName={mcp.name} onCopy={onCopy} />
         </div>
       </div>
     </Link>

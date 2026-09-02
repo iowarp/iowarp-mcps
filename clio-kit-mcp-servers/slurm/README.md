@@ -203,29 +203,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-## Gemini CLI
 
-Add to `~/.gemini/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "clio-slurm": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "slurm"
-      ]
-    }
-  }
-}
-```
-
-Or install the CLIO Kit extension:
-
-```bash
-gemini extensions install https://github.com/iowarp/clio-kit
-```
 ## Examples
 
 ### 1. Job Submission and Monitoring

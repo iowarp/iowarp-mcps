@@ -2,7 +2,7 @@
 """Update README files for all MCP servers using live FastMCP metadata.
 
 Imports each server via extract_mcp_metadata.py and updates the Capabilities,
-Claude Code, Claude Desktop, and Gemini CLI sections in each server's README.md.
+Claude Code and Claude Desktop sections in each server's README.md.
 
 Usage:
     python scripts/readme_filler.py clio-kit-mcp-servers
@@ -124,34 +124,6 @@ def format_claude_code_section(server_name: str) -> str:
     return "\n".join(lines)
 
 
-def format_gemini_section(server_name: str) -> str:
-    """Generate the ## Gemini CLI markdown section for a server."""
-    config = json.dumps(
-        {
-            "mcpServers": {
-                f"clio-{server_name}": {
-                    "command": "clio-kit",
-                    "args": ["mcp-server", server_name],
-                }
-            }
-        },
-        indent=2,
-    )
-    lines = [
-        "## Gemini CLI\n",
-        "Add to `~/.gemini/settings.json`:\n",
-        "```json",
-        config,
-        "```\n",
-        "Or install the CLIO Kit extension:\n",
-        "```bash",
-        "gemini extensions install https://github.com/iowarp/clio-kit",
-        "```",
-        "",
-    ]
-    return "\n".join(lines)
-
-
 def update_section(content: str, heading: str, new_section: str) -> str:
     """Replace a ## heading section in content, or append before ## Examples / EOF."""
     pattern = rf"## {re.escape(heading)}.*?(?=\n## |\Z)"
@@ -170,14 +142,12 @@ def update_readme(
     capabilities_section: str,
     claude_code_section: str,
     claude_desktop_section: str,
-    gemini_section: str,
 ) -> None:
-    """Replace Capabilities, Claude Code, Claude Desktop, and Gemini sections."""
+    """Replace the Capabilities, Claude Code and Claude Desktop sections."""
     content = readme_file.read_text(encoding="utf-8")
     content = update_section(content, "Capabilities", capabilities_section)
     content = update_section(content, "Claude Code", claude_code_section)
     content = update_section(content, "Claude Desktop", claude_desktop_section)
-    content = update_section(content, "Gemini CLI", gemini_section)
     readme_file.write_text(content, encoding="utf-8")
 
 
@@ -209,8 +179,7 @@ def update_all_mcps(mcps_dir: str) -> None:
         capabilities = format_capabilities_section(metadata)
         claude_code = format_claude_code_section(server_name)
         claude_desktop = format_claude_desktop_section(server_name)
-        gemini = format_gemini_section(server_name)
-        update_readme(readme, capabilities, claude_code, claude_desktop, gemini)
+        update_readme(readme, capabilities, claude_code, claude_desktop)
         tool_count = len(metadata.get("tools", []))
         print(
             f"  Updated README ({tool_count} tools, "

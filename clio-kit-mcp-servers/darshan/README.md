@@ -227,29 +227,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-## Gemini CLI
 
-Add to `~/.gemini/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "clio-darshan": {
-      "command": "uvx",
-      "args": [
-        "clio-kit",
-        "darshan"
-      ]
-    }
-  }
-}
-```
-
-Or install the CLIO Kit extension:
-
-```bash
-gemini extensions install https://github.com/iowarp/clio-kit
-```
 ## Examples
 
 ### 1. HPC Application Performance Analysis

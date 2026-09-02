@@ -133,7 +133,6 @@ jobs:
         git diff --exit-code -- \
           .claude-plugin/marketplace.json \
           claude_desktop_config.json \
-          gemini-extension.json \
           clio-kit-mcp-servers \
           src/clio_kit/_mcp_contracts
 

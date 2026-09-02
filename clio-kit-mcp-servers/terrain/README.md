@@ -102,26 +102,3 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   }
 }
 ```
-## Gemini CLI
-
-Add to `~/.gemini/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "clio-terrain": {
-      "command": "uvx",
-      "args": [
-        "clio-kit",
-        "terrain"
-      ]
-    }
-  }
-}
-```
-
-Or install the CLIO Kit extension:
-
-```bash
-gemini extensions install https://github.com/iowarp/clio-kit
-```

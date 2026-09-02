@@ -265,26 +265,3 @@ uv --directory clio-kit-mcp-servers/jarvis run pytest -q
 ### Prompts
 
 - **create_pipeline_workflow**: Guided workflow for creating and deploying a JARVIS pipeline.
-## Gemini CLI
-
-Add to `~/.gemini/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "clio-jarvis": {
-      "command": "clio-kit",
-      "args": [
-        "mcp-server",
-        "jarvis"
-      ]
-    }
-  }
-}
-```
-
-Or install the CLIO Kit extension:
-
-```bash
-gemini extensions install https://github.com/iowarp/clio-kit
-```

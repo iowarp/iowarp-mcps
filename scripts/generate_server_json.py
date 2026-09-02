@@ -8,7 +8,6 @@ extract_mcp_metadata.py, reads pyproject.toml for version/description, and write
   - clio-kit-mcp-servers/{name}/.mcp.json                (Claude Code MCP config)
   - .claude-plugin/marketplace.json                      (Claude Code marketplace)
   - claude_desktop_config.json                           (Claude Desktop config)
-  - gemini-extension.json                                (Gemini CLI extension)
 
 Usage:
     python scripts/generate_server_json.py [clio-kit-mcp-servers]
@@ -577,28 +576,6 @@ def build_claude_desktop_config(server_names: list[str]) -> dict[str, Any]:
     return {"mcpServers": servers}
 
 
-# --- Gemini CLI Extension ---
-
-
-def build_gemini_extension(
-    server_names: list[str],
-    *,
-    pypi_version: str,
-) -> dict[str, Any]:
-    """Build the root-versioned Gemini extension bundling all servers."""
-    mcp_servers: dict[str, Any] = {}
-    for name in sorted(server_names):
-        mcp_servers[f"clio-{name}"] = {
-            "command": "clio-kit",
-            "args": ["mcp-server", name],
-        }
-    return {
-        "name": "clio-kit",
-        "version": pypi_version,
-        "mcpServers": mcp_servers,
-    }
-
-
 # --- Main Generation ---
 
 
@@ -762,11 +739,6 @@ def generate_all(mcps_dir: str) -> None:
     claude_config = build_claude_desktop_config(generated)
     _write_json(repo_root / "claude_desktop_config.json", claude_config)
     print(f"Wrote claude_desktop_config.json ({len(generated)} servers)")
-
-    # Gemini CLI extension manifest
-    gemini_ext = build_gemini_extension(generated, pypi_version=pypi_version)
-    _write_json(repo_root / "gemini-extension.json", gemini_ext)
-    print(f"Wrote gemini-extension.json ({len(generated)} servers)")
 
     # The registry manifest intentionally carries only abbreviated tool metadata.
     # Bind the full locked JARVIS, SLURM, and Spack user schemas from actual stdio

@@ -61,7 +61,6 @@ export default function Home() {
               Works with <a href="https://www.claude.com/product/claude-code" target="_blank" rel="noopener">Claude Code</a>,{' '}
               <a href="https://cursor.com/home" target="_blank" rel="noopener">Cursor</a>,{' '}
               <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">VS Code</a>,{' '}
-              <a href="https://github.com/google-gemini/gemini-cli" target="_blank" rel="noopener">Gemini CLI</a>,{' '}
               <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex CLI</a>,{' '}
               <a href="https://github.com/sst/opencode" target="_blank" rel="noopener">OpenCode</a> and other clients.
             </p>
