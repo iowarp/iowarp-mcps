@@ -218,3 +218,6 @@ image.png
 # =============================================================================
 .claude/
 CLAUDE.md
+
+# Owned transient test storage (Linux/macOS)
+.test-runs/
