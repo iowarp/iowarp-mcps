@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "web"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[web]==2.10.5"
+        }
       ]
     }
   ],

@@ -298,24 +298,51 @@ def test_prune_timeout_is_tolerated(tmp_path: Path) -> None:
     assert report.reason == "prune_timeout_10s"
 
 
-def test_gc_refuses_when_any_environment_is_in_use(tmp_path: Path) -> None:
+@pytest.mark.parametrize("keep", [0, 1])
+def test_gc_refuses_when_any_environment_is_in_use(tmp_path: Path, keep: int) -> None:
     """Bulk gc must refuse entirely while any environment is held, deleting none."""
     events, emit = _events_collector()
     held_env, _ = _seed_spec(tmp_path, "spack", _HASHES[0], mtime=1_000.0)
     other_env, _ = _seed_spec(tmp_path, "spack", _HASHES[1], mtime=2_000.0)
 
-    with EnvironmentInUseMarker(tmp_path, held_env.name):
-        with pytest.raises(CacheInUseError):
-            collect_cache_gc(
-                tmp_path,
-                policy=_policy(keep_per_server=1),
-                uv_executable="uv",
-                emit=emit,
-            )
+    with (
+        EnvironmentInUseMarker(tmp_path, held_env.name),
+        pytest.raises(CacheInUseError),
+    ):
+        collect_cache_gc(
+            tmp_path,
+            policy=_policy(keep_per_server=keep),
+            uv_executable="uv",
+            emit=emit,
+        )
 
     assert held_env.exists()
     assert other_env.exists()
     assert any(event["event"] == "cache_gc_refused" for event in events)
+
+
+def test_gc_zero_retires_all_idle_legacy_environments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Migration can reclaim even the last environment, after an honest dry run."""
+    from click.testing import CliRunner
+
+    paths = [
+        path
+        for server, digest in zip(("pandas", "plot"), _HASHES)
+        for path in _seed_spec(tmp_path, server, digest, mtime=1_000)
+    ]
+    monkeypatch.setenv("CLIO_KIT_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("CLIO_KIT_UV_CACHE_PRUNE", "0")
+    runner = CliRunner()
+    preview = runner.invoke(clio_kit.main, ["cache", "gc", "--keep", "0", "--dry-run"])
+    assert preview.exit_code == 0, preview.output
+    assert all(path.exists() for path in paths)
+    result = runner.invoke(clio_kit.main, ["cache", "gc", "--keep", "0"])
+    assert result.exit_code == 0, result.output
+    assert not any(path.exists() for path in paths)
+    invalid = runner.invoke(clio_kit.main, ["cache", "gc", "--keep", "-1"])
+    assert invalid.exit_code != 0
 
 
 def test_gc_collapses_every_server_to_keep_n(tmp_path: Path) -> None:

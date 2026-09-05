@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = (REPOSITORY_ROOT / ".github" / "workflows" / "publish.yml").read_text(
     encoding="utf-8"
@@ -240,7 +239,8 @@ def test_wheel_smoke_exercises_persistent_uv_tool_installation() -> None:
     assert '"$clio_kit" mcp-server spack -- --help' in smoke_block
     assert '"$clio_kit" mcp-server jarvis -- --help' in smoke_block
     assert '"$clio_kit" mcp-server slurm -- --help' in smoke_block
-    assert 'uv tool install --no-cache "$wheel"' in smoke_block
+    assert 'uv tool install --no-cache --with "jarvis-cd @ https://' in smoke_block
+    assert '"$wheel[hpc,jarvis]"' in smoke_block
     assert "UV_TOOL_DIR" in smoke_block
     assert "UV_TOOL_BIN_DIR" in smoke_block
     assert 'export CLIO_KIT_CACHE_DIR="$child_cache"' in smoke_block
@@ -277,7 +277,11 @@ def test_ares_probe_exercises_persistent_uv_tool_installation() -> None:
             / "live_ares_semantic_mcp_probe.py"
         )
     )
-    assert '[uv, "tool", "install", "--force", "--no-cache", wheel]' in probe
+    assert '"--no-cache",' in probe and '"--with",' in probe
+    assert 'f"{wheel}[jarvis]"' in probe
+    assert 'f"jarvis-cd @ {EXPECTED_JARVIS_URL}#sha256={EXPECTED_JARVIS_SHA256}"' in probe
+    assert '"child_environment": sys.prefix' in probe
+    assert 'runtime_info(("jarvis",))' in probe
     assert '"UV_TOOL_DIR"' in probe
     assert '"UV_TOOL_BIN_DIR"' in probe
     assert '"UV_CACHE_DIR"' in probe

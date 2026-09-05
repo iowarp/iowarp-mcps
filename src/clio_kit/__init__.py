@@ -5,11 +5,12 @@ import importlib.metadata as importlib_metadata
 import json
 import os
 import shutil
-import sys
 import subprocess
+import sys
 import sysconfig
 import tempfile
 from pathlib import Path
+
 import click
 
 from clio_kit.env_cache import (
@@ -26,6 +27,7 @@ from clio_kit.mcp_contracts import (
     load_mcp_user_contract,
     load_mcp_user_contract_index,
 )
+from clio_kit.shared_runtime import run_server, runtime_info_command
 
 # Determine if we're running from development or installed package
 MODULE_DIR = Path(__file__).parent
@@ -60,14 +62,16 @@ def get_servers_path() -> Path:
     """Return server data owned by the active clio-kit installation."""
     shared_name = "clio-kit-mcp-servers"
     dev_path = MODULE_DIR.parent.parent / shared_name
+    # The normal checkout/wheel locations avoid reading a large wheel RECORD.
+    for candidate in (dev_path, Path(sysconfig.get_path("data")) / shared_name):
+        if _is_servers_root(candidate):
+            return candidate.resolve()
     candidates = [
         # In an editable source checkout, the repository copy is authoritative.
         # The active environment may still contain shared data from an older
         # wheel build, so consulting distribution records first can silently
         # launch stale server code during contract generation and development.
-        dev_path,
         *_distribution_shared_data_roots(shared_name),
-        Path(sysconfig.get_path("data")) / shared_name,
         MODULE_DIR.parent / shared_name,
         MODULE_DIR / shared_name,
         Path(sys.prefix) / "share" / "clio-kit" / shared_name,
@@ -191,51 +195,11 @@ def get_search_path():
     return dev_path
 
 
-def auto_discover_mcps():
-    """Auto-discover MCP servers from the clio-kit-mcp-servers directory"""
-    servers_path = get_servers_path()
-    if not servers_path.exists():
-        return {}, {}
+def auto_discover_mcps() -> tuple[dict[str, str], dict[str, str]]:
+    """Discover scripts from embedded project metadata."""
+    from clio_kit.runtime_catalog import discover_commands
 
-    server_command_map = {}
-    dir_name_map = {}
-
-    # Scan for directories containing pyproject.toml
-    for item in servers_path.iterdir():
-        if item.is_dir() and not item.name.startswith("."):
-            pyproject_file = item / "pyproject.toml"
-            if pyproject_file.exists():
-                # Read pyproject.toml to extract entry point
-                try:
-                    with open(pyproject_file, "r") as f:
-                        content = f.read()
-
-                    # Simple parsing to find the entry point
-                    # Look for lines like: server-name-mcp = "module:main"
-                    entry_point = None
-                    for line in content.split("\n"):
-                        line = line.strip()
-                        if "-mcp =" in line and "=" in line:
-                            entry_point = line.split("=")[0].strip().strip("\"'")
-                            break
-
-                    if entry_point:
-                        # Create server name by removing -mcp suffix
-                        server_name = entry_point.replace("-mcp", "").lower()
-                        # Handle special cases for naming
-                        if server_name == "node-hardware":
-                            server_name = "node-hardware"
-                        elif server_name == "parallel-sort":
-                            server_name = "parallel-sort"
-
-                        server_command_map[server_name] = entry_point
-                        dir_name_map[server_name] = item.name
-
-                except Exception:
-                    # Skip directories that can't be processed
-                    continue
-
-    return server_command_map, dir_name_map
+    return discover_commands(get_servers_path())
 
 
 def auto_discover_prompts():
@@ -275,7 +239,7 @@ def list_available_prompts():
     prompt_map = auto_discover_prompts()
     # Remove duplicates (dash vs underscore versions)
     unique_prompts = set()
-    for name in prompt_map.keys():
+    for name in prompt_map:
         # Normalize to dash version for display
         unique_prompts.add(name.replace("_", "-"))
     return sorted(unique_prompts)
@@ -548,10 +512,18 @@ def main(ctx):
 )
 @click.argument("server", required=False)
 @click.option("-b", "--branch", help="Git branch to use (for development)")
+@click.option(
+    "--isolated", is_flag=True, help="Explicit legacy per-server locked environment."
+)
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
-def mcp_server(server, branch, args):
+def mcp_server(
+    server: str | None, branch: str | None, isolated: bool, args: tuple[str, ...]
+) -> None:
     """Run an MCP server. List all if no server specified."""
 
+    if server and not branch and not isolated:
+        run_server(server.lower(), args)
+        return
     server_command_map, dir_name_map = auto_discover_mcps()
 
     if not server:
@@ -692,6 +664,7 @@ def _build_locked_environment(
             ],
             env=child_environment,
             capture_output=True,
+            check=False,
         )
     except OSError:
         return False
@@ -785,7 +758,7 @@ def prompt(prompt_name):
         with open(prompt_file, "r") as f:
             content = f.read()
         click.echo(content)
-    except Exception as e:
+    except (OSError, UnicodeError) as e:
         click.echo(f"Error reading prompt file: {e}")
         sys.exit(1)
 
@@ -804,10 +777,7 @@ def list_prompts_cmd():
 
 @main.command(
     "search",
-    context_settings=dict(
-        ignore_unknown_options=True,
-        allow_extra_args=True,
-    ),
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
 )
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def search(args):
@@ -860,7 +830,7 @@ def cache_group() -> None:
     "--keep",
     type=int,
     default=None,
-    help="Environments to keep per server (overrides CLIO_KIT_ENV_KEEP).",
+    help="Legacy environments to keep per server; 0 retires all idle environments.",
 )
 @click.option(
     "--dry-run",
@@ -877,8 +847,8 @@ def cache_gc(keep: int | None, dry_run: bool) -> None:
     cache_root = _clio_cache_root()
     policy = load_cache_policy()
     if keep is not None:
-        if keep < 1:
-            raise click.ClickException("--keep must be >= 1")
+        if keep < 0:
+            raise click.ClickException("--keep must be >= 0")
         policy = dataclasses.replace(policy, keep_per_server=keep)
     try:
         eviction, prune = collect_cache_gc(
@@ -955,6 +925,9 @@ def cache_status() -> None:
 def cli():
     """Entry point for the CLI"""
     main()
+
+
+main.add_command(runtime_info_command)
 
 
 if __name__ == "__main__":

@@ -83,7 +83,7 @@ CLIO Kit is part of the IoWarp platform's comprehensive tooling ecosystem for AI
 
 ```bash
 # Install the released CLI into its own persistent tool environment
-uv tool install 'clio-kit==2.4.3'
+uv tool install 'clio-kit[science,hpc,hdf5]'
 # If uv reports that its executable directory is not on PATH:
 uv tool update-shell
 
@@ -104,16 +104,40 @@ clio-kit prompts                    # List all prompts
 clio-kit prompt code-coverage-prompt # Use a prompt
 ```
 
-`uv tool install` keeps CLIO Kit in a persistent, isolated tool environment.
-Use `uvx --from 'clio-kit==2.4.3' clio-kit ...` only for a temporary, one-shot
-invocation.
+CLIO Kit requires Python 3.11+. Install the union of tools needed by your
+blueprints once. `science` includes NDP, Geo, Pandas, and Plot; `hpc` includes
+SLURM, Lmod, Spack, and Node Hardware. Individual extras can be combined, such as
+`clio-kit[ndp,pandas]`. Launcher-only installs can list tools and read contracts,
+but running a tool requires its dependencies.
 
-Released `clio-kit` wheels execute each embedded MCP server from that server's
-shipped `uv.lock`. The launcher uses a source-and-lock-addressed environment
-under the user cache, installs only production dependencies, and refuses to
-resolve an embedded server whose lock is missing. The `--branch` launcher
-option is an explicit development path and is not an immutable
-release-artifact path.
+Every server is a separate OS process using this shared installation's Python
+and dependencies. Normal launch does not run a solver, create a venv, copy
+server source, or maintain caches. Virtual environments separate dependencies;
+they are not an OS security sandbox. Use OS permissions or containers when a
+trust boundary is required.
+
+Stop the installation's server processes before updating its dependency union.
+For overlapping deployments or incompatible dependency sets, use separately
+named installations. `clio-kit mcp-server NAME --isolated` explicitly retains
+the legacy per-server locked environment; `--branch` remains a separate
+source-development path. Missing shared dependencies never trigger either mode.
+
+`clio-kit runtime-info ndp geo pandas plot` reports the active Python, package
+inventory, and build-recorded source/dependency identities. A shared package
+inventory is not a per-server frozen lock. Source deployments can use the joint
+`uv.lock`: `uv sync --locked --extra science --extra hpc`, then
+`uv run --no-sync clio-kit mcp-server pandas`.
+
+After migration, preview legacy cache reclamation with
+`clio-kit cache gc --keep 0 --dry-run`, then omit `--dry-run` to reclaim idle
+legacy environments. The command refuses while marked legacy servers are live.
+It does not remove the shared installation.
+
+One-shot MCP Registry installs declare their own extras for `uvx`. For a stack
+of multiple servers, use one persistent union installation and point all client
+commands at that same `clio-kit` executable. See
+[the runtime plan](docs/shared-runtime-plan.md) for lifecycle and external-artifact
+installation details.
 
 The root wheel also ships machine-readable user contracts for the locked
 JARVIS, SLURM, Spack, and Scientific Catalog servers. These artifacts are generated from real stdio
@@ -392,7 +416,7 @@ pip install uv
 Then install CLIO Kit persistently and expose uv's tool directory:
 
 ```bash
-uv tool install 'clio-kit==2.4.3'
+uv tool install 'clio-kit[science,hpc,hdf5]'
 uv tool update-shell
 ```
 

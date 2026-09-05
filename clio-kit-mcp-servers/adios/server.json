@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "adios"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[adios]==2.10.5"
+        }
       ]
     }
   ],

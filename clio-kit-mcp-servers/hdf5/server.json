@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "hdf5"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[hdf5]==2.10.5"
+        }
       ]
     }
   ],

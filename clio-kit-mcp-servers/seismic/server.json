@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "seismic"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[seismic]==2.10.5"
+        }
       ]
     }
   ],

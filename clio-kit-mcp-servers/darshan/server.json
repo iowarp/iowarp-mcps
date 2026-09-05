@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "darshan"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[darshan]==2.10.5"
+        }
       ]
     }
   ],

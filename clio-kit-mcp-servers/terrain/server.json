@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "terrain"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[terrain]==2.10.5"
+        }
       ]
     }
   ],

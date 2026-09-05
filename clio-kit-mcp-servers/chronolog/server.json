@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "chronolog"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[chronolog]==2.10.5"
+        }
       ]
     }
   ],

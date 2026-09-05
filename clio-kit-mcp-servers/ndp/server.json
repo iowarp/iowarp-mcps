@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "ndp"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[ndp]==2.10.5"
+        }
       ]
     }
   ],

@@ -14,6 +14,7 @@ authors = [
 ]
 dependencies = [
   "fastmcp>=4.0.0b1",
+  "fastmcp-slim[server]>=4.0.0b1",
   "pydantic>=2.10",
 ]
 

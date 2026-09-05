@@ -64,6 +64,10 @@ def test_pypi_manifest_uses_standard_fixed_package_arguments() -> None:
             "identifier": "clio-kit",
             "version": "2.3.0",
             "transport": {"type": "stdio"},
+            "runtimeHint": "uvx",
+            "runtimeArguments": [
+                {"type": "named", "name": "--with", "value": "clio-kit[spack]==2.3.0"}
+            ],
             "packageArguments": [
                 {"type": "positional", "value": "mcp-server"},
                 {"type": "positional", "value": "spack"},
@@ -126,6 +130,20 @@ def test_every_committed_server_has_an_agent_runnable_package_coordinate() -> No
                 "identifier": "clio-kit",
                 "version": expected_version,
                 "transport": {"type": "stdio"},
+                "runtimeHint": "uvx",
+                "runtimeArguments": [
+                    {"type": "named", "name": "--with", "value": requirement}
+                    for requirement in [
+                        f"clio-kit[{server_name}]=={expected_version}",
+                        *[
+                            raw
+                            for raw in GENERATOR.read_pyproject(path.parent).get(
+                                "dependencies", []
+                            )
+                            if " @ " in raw
+                        ],
+                    ]
+                ],
                 "packageArguments": [
                     {"type": "positional", "value": "mcp-server"},
                     {"type": "positional", "value": path.parent.name},

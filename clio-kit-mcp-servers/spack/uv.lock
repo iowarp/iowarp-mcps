@@ -2066,6 +2066,7 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
+    { name = "fastmcp-slim", extra = ["server"] },
     { name = "pydantic" },
 ]
 
@@ -2081,6 +2082,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", specifier = ">=4.0.0b1" },
+    { name = "fastmcp-slim", extras = ["server"], specifier = ">=4.0.0b1" },
     { name = "pydantic", specifier = ">=2.10" },
 ]
 

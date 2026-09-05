@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "geojson"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[geojson]==2.10.5"
+        }
       ]
     }
   ],

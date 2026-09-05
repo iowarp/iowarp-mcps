@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "paraview"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[paraview]==2.10.5"
+        }
       ]
     }
   ],

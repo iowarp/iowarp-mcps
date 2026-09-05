@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "slurm"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[slurm]==2.10.5"
+        }
       ]
     }
   ],

@@ -16,7 +16,6 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
-
 Json = dict[str, Any]
 EXPECTED_JARVIS_VERSION = "1.8.0"
 EXPECTED_JARVIS_URL = (
@@ -248,7 +247,16 @@ def _install_clio_kit_tool(wheel: str, root: Path) -> tuple[Path, dict[str, str]
         }
     )
     subprocess.run(
-        [uv, "tool", "install", "--force", "--no-cache", wheel],
+        [
+            uv,
+            "tool",
+            "install",
+            "--force",
+            "--no-cache",
+            "--with",
+            f"jarvis-cd @ {EXPECTED_JARVIS_URL}#sha256={EXPECTED_JARVIS_SHA256}",
+            f"{wheel}[jarvis]",
+        ],
         check=True,
         env=env,
         stdout=sys.stderr,
@@ -328,7 +336,9 @@ def _verify_locked_jarvis_child(env: dict[str, str]) -> Json:
             """
 import json
 import tomllib
-from clio_kit import get_servers_path, locked_server_environment
+import sys
+from clio_kit import get_servers_path
+from clio_kit.shared_runtime import runtime_info
 
 server = get_servers_path() / "jarvis"
 project = tomllib.loads((server / "pyproject.toml").read_text(encoding="utf-8"))
@@ -340,7 +350,8 @@ lock = tomllib.loads((server / "uv.lock").read_text(encoding="utf-8"))
 package = next(item for item in lock["package"] if item["name"] == "jarvis-cd")
 print(json.dumps({
     "server_path": str(server),
-    "child_environment": str(locked_server_environment(server)),
+    "child_environment": sys.prefix,
+    "runtime": runtime_info(("jarvis",)),
     "requirement": requirement,
     "locked_version": package["version"],
     "locked_url": package["source"]["url"],
@@ -370,6 +381,10 @@ print(json.dumps({
             f"installed clio-kit carried an unexpected JARVIS lock: {resolved}"
         )
 
+    runtime = resolved["runtime"]
+    assert runtime["prefix"] == resolved["child_environment"]
+    assert not runtime["servers"]["jarvis"]["problems"]
+    assert not (Path(env["CLIO_KIT_CACHE_DIR"]) / "mcp-environments").exists()
     child_environment = Path(str(resolved["child_environment"]))
     installed = _json_command(
         [

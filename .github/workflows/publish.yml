@@ -12,6 +12,7 @@ on:
       - 'scripts/**'
       - 'build-constraints.txt'
       - 'mcp-server-versions.toml'
+      - 'hatch_build.py'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'clio-kit-mcp-servers/**'
@@ -29,6 +30,7 @@ on:
       - 'scripts/**'
       - 'build-constraints.txt'
       - 'mcp-server-versions.toml'
+      - 'hatch_build.py'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'clio-kit-mcp-servers/**'
@@ -256,7 +258,7 @@ jobs:
         mapfile -t wheels < <(find dist -maxdepth 1 -type f -name '*.whl' -print | sort)
         test "${#wheels[@]}" -eq 1
         wheel="$(realpath "${wheels[0]}")"
-        uv tool install --no-cache "$wheel"
+        uv tool install --no-cache --with "jarvis-cd @ https://github.com/grc-iit/jarvis-cd/releases/download/v1.8.0/jarvis_cd-1.8.0-py3-none-any.whl#sha256=2c2e2042d0256bd3d9c117d75aaf00d26d9e814fcbcca9a904abf06399fc1067" "$wheel[hpc,jarvis]"
         clio_kit="$tool_bin/clio-kit"
         test -x "$clio_kit"
         "$clio_kit" --help >/dev/null
@@ -351,6 +353,18 @@ jobs:
         grep -Fq 'Spack MCP Server' <<< "$child_help"
         tool_python="$tool_dir/clio-kit/bin/python"
         test -x "$tool_python"
+        "$clio_kit" runtime-info spack jarvis slurm > "$tool_dir/runtime-info.json"
+        "$tool_python" - "$tool_dir/runtime-info.json" <<'PY'
+        import json, sys
+        from pathlib import Path
+        info = json.loads(Path(sys.argv[1]).read_text())
+        assert info["prefix"] == sys.prefix
+        assert info["dependency_evidence"] == "installed-version-inventory"
+        assert all(not spec["problems"] for spec in info["servers"].values())
+        PY
+        test ! -d "$child_cache/mcp-environments"
+        # Separately retain coverage of the explicit legacy compatibility mode.
+        "$clio_kit" mcp-server spack --isolated -- --help >/dev/null
         spack_environment="$("$tool_python" - <<'PY'
         from clio_kit import (
             LOCKED_SERVER_LAUNCH_SCHEMA,
@@ -378,7 +392,7 @@ jobs:
         print(f"{status.st_dev}:{status.st_ino}")
         PY
         )"
-        reused_child_help="$("$clio_kit" mcp-server spack -- --help)"
+        reused_child_help="$("$clio_kit" mcp-server spack --isolated -- --help)"
         grep -Fq 'Spack MCP Server' <<< "$reused_child_help"
         reused_spack_environment="$("$tool_python" -c \
           'from clio_kit import get_servers_path,locked_server_environment; print(locked_server_environment(get_servers_path() / "spack"))')"
@@ -394,6 +408,7 @@ jobs:
         test "$second_child_identity" = "$first_child_identity"
         jarvis_help="$("$clio_kit" mcp-server jarvis -- --help)"
         grep -Fq 'Jarvis MCP Server' <<< "$jarvis_help"
+        "$clio_kit" mcp-server jarvis --isolated -- --help >/dev/null
         jarvis_environment="$("$tool_python" - <<'PY'
         import tomllib
 

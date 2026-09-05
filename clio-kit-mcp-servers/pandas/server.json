@@ -25,6 +25,14 @@
           "type": "positional",
           "value": "pandas"
         }
+      ],
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "clio-kit[pandas]==2.10.5"
+        }
       ]
     }
   ],

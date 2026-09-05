@@ -33,6 +33,16 @@ MAX_DESCRIPTION_LENGTH = 100
 SERVER_VERSIONS_FILE = "mcp-server-versions.toml"
 STABLE_VERSION_PATTERN = re.compile(r"[1-9][0-9]*\.[0-9]+\.[0-9]+")
 
+
+def shared_runtime_arguments(
+    server_name: str, pypi_version: str, project: dict[str, Any]
+) -> list[dict[str, str]]:
+    """Declare install inputs for a registry's one-shot uvx invocation."""
+    requirements = [f"clio-kit[{server_name}]=={pypi_version}"]
+    requirements.extend(raw for raw in project.get("dependencies", []) if " @ " in raw)
+    return [{"type": "named", "name": "--with", "value": raw} for raw in requirements]
+
+
 # Domain-specific tags for each server
 SERVER_TAGS: dict[str, list[str]] = {
     "adios": ["scientific-computing", "adios2", "bp5", "data-io", "hpc"],
@@ -108,7 +118,7 @@ def read_registry_publish_servers(repo_root: Path) -> tuple[str, ...]:
     release = data.get("mcp-registry-release")
     raw_servers = release.get("publish") if isinstance(release, dict) else None
     if not isinstance(raw_servers, list):
-        raise ValueError(
+        raise ValueError(  # noqa: TRY004 - invalid release metadata uses ValueError.
             f"{versions_path} must define mcp-registry-release.publish as a list"
         )
     if not all(isinstance(server, str) and server for server in raw_servers):
@@ -139,6 +149,7 @@ def extract_metadata(server_dir: Path) -> dict[str, Any] | None:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         if result.returncode != 0:
             print(
@@ -211,6 +222,10 @@ def build_server_json(
                 "identifier": "clio-kit",
                 "version": pypi_version,
                 "transport": {"type": "stdio"},
+                "runtimeHint": "uvx",
+                "runtimeArguments": shared_runtime_arguments(
+                    server_name, pypi_version, project
+                ),
                 "packageArguments": [
                     {"type": "positional", "value": "mcp-server"},
                     {"type": "positional", "value": server_name},
